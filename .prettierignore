@@ -1,0 +1,7 @@
+bun.lock
+apps/web/src/routeTree.gen.ts
+packages/backend/data/
+apps/web/public/posters/
+.local/
+node_modules/
+dist/

@@ -1,0 +1,39 @@
+import { createServerFn } from '@tanstack/react-start';
+import { z } from 'zod';
+import { gallerySearchSchema } from '../../../../packages/protocol/src';
+import { artifact, gallery, resolveNapplet } from '../../../../packages/backend/src/catalog';
+import {
+  catalogStatus,
+  readPublicCatalog,
+  resolvePublicNapplet,
+} from '../../../../packages/backend/src/public-catalog';
+import { siteOrigin } from '../../../../packages/backend/src/site-origin';
+
+const lookupSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('named'), creator: z.string().max(40), slug: z.string().max(64) }),
+  z.object({ type: z.literal('address'), naddr: z.string().max(4096) }),
+  z.object({ type: z.literal('snapshot'), id: z.string().regex(/^[a-f0-9]{64}$/) }),
+]);
+export const getGallery = createServerFn({ method: 'GET' })
+  .validator(gallerySearchSchema)
+  .handler(({ data }) => gallery(data));
+export const getNapplet = createServerFn({ method: 'GET' })
+  .validator(lookupSchema)
+  .handler(async ({ data }) => {
+    const napplet = (await resolveNapplet(data)) ?? (await resolvePublicNapplet(data));
+    return napplet ? { ...napplet, siteOrigin: siteOrigin() } : null;
+  });
+export const getPublicCatalog = createServerFn({ method: 'GET' }).handler(async () => ({
+  status: await catalogStatus(),
+  entries: (await readPublicCatalog())?.entries ?? [],
+}));
+export const getSource = createServerFn({ method: 'GET' })
+  .validator(z.string().regex(/^[a-f0-9]{64}$/))
+  .handler(async ({ data }) => {
+    const release =
+      (await resolveNapplet({ type: 'snapshot', id: data })) ??
+      (await resolvePublicNapplet({ type: 'snapshot', id: data }));
+    if (!release) return null;
+    const file = await artifact(release.artifactHash);
+    return file ? { release, source: await file.text() } : null;
+  });

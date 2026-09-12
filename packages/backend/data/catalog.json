@@ -1,0 +1,572 @@
+[
+  {
+    "slug": "soft-orbit",
+    "title": "Soft orbit",
+    "category": "visual",
+    "color": "#ccd5ff",
+    "description": "A little solar system with absolutely nowhere to be. Move your pointer to bend its orbit.",
+    "instructions": "Move your pointer. Click to change the palette.",
+    "handle": "space-lab",
+    "creator": "Space lab",
+    "identifier": "orbit",
+    "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "naddr": "naddr1qvzqqqyf8ypzq7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqqzk7unzd96qa8f20d",
+    "artifactHash": "aba3fdfe305876e797949cb475c1950aad1b83d35cf07b8a5fdca62c212036e7",
+    "bytes": 3991,
+    "current": {
+      "id": "3459803c852257e5605a95f6f1706e9d8f8fec6bc13a15a97f98b83528302149",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "0360dd7c4d2278c8df3488d88c28a9db216b0f4d375a7852e17c4bdde615a1a3355c7a02d9767fff45d4f4042d1ba0bfb6cdd943420d3471a846ebb436301889",
+      "kind": 35129,
+      "created_at": 1789128000,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "aba3fdfe305876e797949cb475c1950aad1b83d35cf07b8a5fdca62c212036e7"
+        ],
+        [
+          "x",
+          "629059aeb74b07fb655eee630273d5cc11fc08d72b8a4a65a22307d6b362f6b5",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Soft orbit"
+        ],
+        [
+          "description",
+          "A little solar system with absolutely nowhere to be. Move your pointer to bend its orbit."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "d",
+          "orbit"
+        ],
+        [
+          "e",
+          "f108d2632f1ef561c63f898bc17fe8eb511ccd968a2d4c4d1818d339e99f2b64",
+          "",
+          "snapshot"
+        ]
+      ]
+    },
+    "snapshot": {
+      "id": "f108d2632f1ef561c63f898bc17fe8eb511ccd968a2d4c4d1818d339e99f2b64",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "3b00c65605c1c4d0feff7b9be5b9e7c86dc656b96a21a82b4adbece6f770a7a8b8a126c8b6abc46418e6cad7f099272a09d8e74c83191c093829f3b29f52efd5",
+      "kind": 5129,
+      "created_at": 1789128000,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "aba3fdfe305876e797949cb475c1950aad1b83d35cf07b8a5fdca62c212036e7"
+        ],
+        [
+          "x",
+          "629059aeb74b07fb655eee630273d5cc11fc08d72b8a4a65a22307d6b362f6b5",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Soft orbit"
+        ],
+        [
+          "description",
+          "A little solar system with absolutely nowhere to be. Move your pointer to bend its orbit."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "a",
+          "35129:79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:orbit"
+        ]
+      ]
+    },
+    "license": "MIT",
+    "fixture": true
+  },
+  {
+    "slug": "tiny-tennis",
+    "title": "Tiny tennis",
+    "category": "game",
+    "color": "#f6e765",
+    "description": "One paddle. One ball. A pleasantly unreasonable amount of determination.",
+    "instructions": "Move your pointer or finger to control the paddle.",
+    "handle": "space-lab",
+    "creator": "Space lab",
+    "identifier": "tennis",
+    "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "naddr": "naddr1qvzqqqyf8ypzq7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqqr8getwde5hx3h4jcx",
+    "artifactHash": "7dd532bbde972a1be07ef134a05303990c6032c51008858e21bace7ed5db643b",
+    "bytes": 3993,
+    "current": {
+      "id": "3aaab95c7d36d339631e3c26a51c03149a2c544dcf892b503ebcc5769fe3cb0f",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "42c3ee6e4f39cacb8b5fc2bf600e15bc6a3e51288fdb85293aac3643c02fff2dc566861b74d6a6a3a94f84644062b6bb57cd4a75461993cafbc21a6c11241e47",
+      "kind": 35129,
+      "created_at": 1789128001,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "7dd532bbde972a1be07ef134a05303990c6032c51008858e21bace7ed5db643b"
+        ],
+        [
+          "x",
+          "c8b3d3443a3b84e62041b7fe7874a699dc3c4055f150bfa04734161a1c97b982",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Tiny tennis"
+        ],
+        [
+          "description",
+          "One paddle. One ball. A pleasantly unreasonable amount of determination."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "d",
+          "tennis"
+        ],
+        [
+          "e",
+          "5950fcd50bfb2f34286cfbcf56796436ee179a9037acbc113562ef170b36e2b6",
+          "",
+          "snapshot"
+        ]
+      ]
+    },
+    "snapshot": {
+      "id": "5950fcd50bfb2f34286cfbcf56796436ee179a9037acbc113562ef170b36e2b6",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "bc32c7fc61d4a2e27b74248cf6f67d371ad7568c509483d4f9b0f6c4bd9cc30e7c4aafb52f5bf56c0225db8924874e723a34c5b78614dd73fc5a39dce7c7d766",
+      "kind": 5129,
+      "created_at": 1789128001,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "7dd532bbde972a1be07ef134a05303990c6032c51008858e21bace7ed5db643b"
+        ],
+        [
+          "x",
+          "c8b3d3443a3b84e62041b7fe7874a699dc3c4055f150bfa04734161a1c97b982",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Tiny tennis"
+        ],
+        [
+          "description",
+          "One paddle. One ball. A pleasantly unreasonable amount of determination."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "a",
+          "35129:79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:tennis"
+        ]
+      ]
+    },
+    "license": "MIT",
+    "fixture": true
+  },
+  {
+    "slug": "plasma-garden",
+    "title": "Plasma garden",
+    "category": "visual",
+    "color": "#ffafce",
+    "description": "An ever-changing patch of digital flowers. No watering required.",
+    "instructions": "Move your pointer to stir the garden. Click for new colors.",
+    "handle": "space-lab",
+    "creator": "Space lab",
+    "identifier": "plasma",
+    "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "naddr": "naddr1qvzqqqyf8ypzq7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqqr8qmrpwdkkzv5axtx",
+    "artifactHash": "a003f1e7f641e0e7e2ea2df7e36c991ecd01d24d2ac4c149ed0925605b905420",
+    "bytes": 3997,
+    "current": {
+      "id": "85e17caf033cd87ec86c478bdb0c661b4a1005e7f74d5f277ab268601d385993",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "61c588df7142af4aec6121dd382f312dcd93e6a6e43e0bbe1a0872af7cc21a7bc8d19be0e41227fb53e86ac6e6d5cff4a211969dca2682618366587ad9d1397b",
+      "kind": 35129,
+      "created_at": 1789128002,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "a003f1e7f641e0e7e2ea2df7e36c991ecd01d24d2ac4c149ed0925605b905420"
+        ],
+        [
+          "x",
+          "6ca2b2304dfc0804787cf6e35e2727e4a866d969802f4abbfec188ce5c5ef9ff",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Plasma garden"
+        ],
+        [
+          "description",
+          "An ever-changing patch of digital flowers. No watering required."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "d",
+          "plasma"
+        ],
+        [
+          "e",
+          "f55df07b88f0479b1a1556c636ec44120ac975068ea93bc172454d3114de68b7",
+          "",
+          "snapshot"
+        ]
+      ]
+    },
+    "snapshot": {
+      "id": "f55df07b88f0479b1a1556c636ec44120ac975068ea93bc172454d3114de68b7",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "05db96f3f6f1c995c82ed47dfcae039e782576173da53035ca8955b54db10d46e7eb0588b96f398c595ccfcfb72a3a7e5eb54bee2757b877293fa6f1c20e41de",
+      "kind": 5129,
+      "created_at": 1789128002,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "a003f1e7f641e0e7e2ea2df7e36c991ecd01d24d2ac4c149ed0925605b905420"
+        ],
+        [
+          "x",
+          "6ca2b2304dfc0804787cf6e35e2727e4a866d969802f4abbfec188ce5c5ef9ff",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Plasma garden"
+        ],
+        [
+          "description",
+          "An ever-changing patch of digital flowers. No watering required."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "a",
+          "35129:79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:plasma"
+        ]
+      ]
+    },
+    "license": "MIT",
+    "fixture": true
+  },
+  {
+    "slug": "blob-friend",
+    "title": "Blob friend",
+    "category": "toy",
+    "color": "#c2e4a4",
+    "description": "This little blob is very happy you are here. It follows you around. That is the whole thing.",
+    "instructions": "Move your pointer. Click to make your friend jump.",
+    "handle": "space-lab",
+    "creator": "Space lab",
+    "identifier": "blob",
+    "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "naddr": "naddr1qvzqqqyf8ypzq7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqqzxymr0vg7qgmfw",
+    "artifactHash": "7ed6f42554c4626069c28999ab87f05156e50ef24c9a9925e4b39c16ede41506",
+    "bytes": 3993,
+    "current": {
+      "id": "a1a569b7a57bad38cbdbf57112bd75e361bd278f74a92f11db93d17f4ba93988",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "e1c8d460e256c8c0ff8bd48d5a264654f4ef5422282e0c9643055276e53206e5f36c0eb052c9c65ca06a7766ddf639787db5b8c0eb69b98360d6b8912fc8b3f4",
+      "kind": 35129,
+      "created_at": 1789128003,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "7ed6f42554c4626069c28999ab87f05156e50ef24c9a9925e4b39c16ede41506"
+        ],
+        [
+          "x",
+          "fcc899e4a75ffbba8990d95aa09749d4669a8530947f1f5e18cd241867929106",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Blob friend"
+        ],
+        [
+          "description",
+          "This little blob is very happy you are here. It follows you around. That is the whole thing."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "d",
+          "blob"
+        ],
+        [
+          "e",
+          "f034d6d98b17b2067f52da2d9e5aeae115efc52de554ab249da3ce27fff6f7a4",
+          "",
+          "snapshot"
+        ]
+      ]
+    },
+    "snapshot": {
+      "id": "f034d6d98b17b2067f52da2d9e5aeae115efc52de554ab249da3ce27fff6f7a4",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "75c28af0defbab54b6820ff93e384cb06ebe7bbb109b9bd0215dd910316aa61f67b170cb08c5e4d71d2f6c55d0e5d0edcd1b2c7efd24860e250a0d0d04f8da80",
+      "kind": 5129,
+      "created_at": 1789128003,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "7ed6f42554c4626069c28999ab87f05156e50ef24c9a9925e4b39c16ede41506"
+        ],
+        [
+          "x",
+          "fcc899e4a75ffbba8990d95aa09749d4669a8530947f1f5e18cd241867929106",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Blob friend"
+        ],
+        [
+          "description",
+          "This little blob is very happy you are here. It follows you around. That is the whole thing."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "a",
+          "35129:79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:blob"
+        ]
+      ]
+    },
+    "license": "MIT",
+    "fixture": true
+  },
+  {
+    "slug": "very-important",
+    "title": "Very important button",
+    "category": "meme",
+    "color": "#ffb586",
+    "description": "A deeply unnecessary machine for celebrating very small accomplishments.",
+    "instructions": "Click anywhere. You have earned this.",
+    "handle": "space-lab",
+    "creator": "Space lab",
+    "identifier": "button",
+    "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "naddr": "naddr1qvzqqqyf8ypzq7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqqrxyat5w3hkunvzm4f",
+    "artifactHash": "e3fc35540e868295a5b3aec1a22275872015ed5ddb4562c6680e1e2ef2c3341b",
+    "bytes": 4006,
+    "current": {
+      "id": "a7cce7a36da1fd5cdf53cad8bfa99a42d6b4cea758b3de12cdf8313f5216d10a",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "1da3e0ad60ac8d18bfedf6aed4c3ff71407ac4b342339cf7b4ffb3d0ce9d2029c481fffa2a11f5be33129581e52484d0d50d64276b0121c88f2f77a46576ca26",
+      "kind": 35129,
+      "created_at": 1789128004,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "e3fc35540e868295a5b3aec1a22275872015ed5ddb4562c6680e1e2ef2c3341b"
+        ],
+        [
+          "x",
+          "c3d4d143bc4962d24e6a83d92211ed57dbe4f6e2fbe607be9e5ae14451c13ca8",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Very important button"
+        ],
+        [
+          "description",
+          "A deeply unnecessary machine for celebrating very small accomplishments."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "d",
+          "button"
+        ],
+        [
+          "e",
+          "137593335dce422defb041d547020e1cab1eeb358f16bc191a70c0075be0db8b",
+          "",
+          "snapshot"
+        ]
+      ]
+    },
+    "snapshot": {
+      "id": "137593335dce422defb041d547020e1cab1eeb358f16bc191a70c0075be0db8b",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "44b74219a0438cdf323846c2057a4ba124cc777324e55ee0cb233656c7ab231e4501f95df56630eaf12c808ca63342caffbee2487456bbd312817b42ca028859",
+      "kind": 5129,
+      "created_at": 1789128004,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "e3fc35540e868295a5b3aec1a22275872015ed5ddb4562c6680e1e2ef2c3341b"
+        ],
+        [
+          "x",
+          "c3d4d143bc4962d24e6a83d92211ed57dbe4f6e2fbe607be9e5ae14451c13ca8",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Very important button"
+        ],
+        [
+          "description",
+          "A deeply unnecessary machine for celebrating very small accomplishments."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "a",
+          "35129:79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:button"
+        ]
+      ]
+    },
+    "license": "MIT",
+    "fixture": true
+  },
+  {
+    "slug": "pixel-rain",
+    "title": "Pixel rain",
+    "category": "visual",
+    "color": "#b7dfe7",
+    "description": "A pocket-sized weather system, broadcasting from somewhere inside your computer.",
+    "instructions": "Move your pointer to change the wind. Click to pause.",
+    "handle": "space-lab",
+    "creator": "Space lab",
+    "identifier": "rain",
+    "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "naddr": "naddr1qvzqqqyf8ypzq7d7vel0nh9m4326qc54e6rskpczn07dktww9rv4nu5ptvt0s9ucqqz8yctfdc0h2jwr",
+    "artifactHash": "d200fb8704df6b0d1e011a402712e7565921a7c519cad634ddb4c6c90a010074",
+    "bytes": 3991,
+    "current": {
+      "id": "147303e9cce07b77497610f5f82afea91e07429a0e32b64028464c76e28d9bbf",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "8403745186ef1ba260fbeede75ef81cfb98bbb959a7f7731f3949568c2d5c30527af5cba89d0c7c2a7527e9970d5066622f068bca678e32c1580a42eb84e85d6",
+      "kind": 35129,
+      "created_at": 1789128005,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "d200fb8704df6b0d1e011a402712e7565921a7c519cad634ddb4c6c90a010074"
+        ],
+        [
+          "x",
+          "97b4e4c1c71ee847e5e4664977420dbc6ac6e880988a95189ebf0f0e0d21fe16",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Pixel rain"
+        ],
+        [
+          "description",
+          "A pocket-sized weather system, broadcasting from somewhere inside your computer."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "d",
+          "rain"
+        ],
+        [
+          "e",
+          "8a7135573fc39d6468638cf6013b8eb81b92c83c39455e24ae5e922f2db7eaf4",
+          "",
+          "snapshot"
+        ]
+      ]
+    },
+    "snapshot": {
+      "id": "8a7135573fc39d6468638cf6013b8eb81b92c83c39455e24ae5e922f2db7eaf4",
+      "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "sig": "0c5aff3445336b5f564419e4c9422b58d199b2622ecd37751029d7103b83ed8ae506e4e6b4db2b58e31f6b7127500c09b0d70ad5cf96694dfce26cb002760c43",
+      "kind": 5129,
+      "created_at": 1789128005,
+      "content": "",
+      "tags": [
+        [
+          "path",
+          "/index.html",
+          "d200fb8704df6b0d1e011a402712e7565921a7c519cad634ddb4c6c90a010074"
+        ],
+        [
+          "x",
+          "97b4e4c1c71ee847e5e4664977420dbc6ac6e880988a95189ebf0f0e0d21fe16",
+          "aggregate"
+        ],
+        [
+          "title",
+          "Pixel rain"
+        ],
+        [
+          "description",
+          "A pocket-sized weather system, broadcasting from somewhere inside your computer."
+        ],
+        [
+          "t",
+          "napplet-space"
+        ],
+        [
+          "a",
+          "35129:79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:rain"
+        ]
+      ]
+    },
+    "license": "MIT",
+    "fixture": true
+  }
+]

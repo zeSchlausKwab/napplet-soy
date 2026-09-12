@@ -1,0 +1,14 @@
+{
+  "name": "@space/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --bun vite --host 127.0.0.1 --port 3000",
+    "build": "bun --bun vite build",
+    "start": "bun server.ts"
+  },
+  "dependencies": {
+    "cn": "^0.2.6",
+    "radix-ui": "^1.6.7"
+  }
+}
