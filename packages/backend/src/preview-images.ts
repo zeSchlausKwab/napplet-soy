@@ -87,74 +87,86 @@ export async function indexPreviewImages(
     Array.from({ length: Math.min(3, queue.length) }, async () => {
       for (let entry = queue.shift(); entry && !signal.aborted; entry = queue.shift()) {
         entry.preview = null;
-        for (const ref of appReferences(entry.manifest)) {
-          const descriptor = latestMetadata(ref, metadata);
-          if (!descriptor) continue;
-          const profile =
-            descriptor.kind === 31990 && descriptor.content === ''
-              ? latestMetadata({ kind: 0, pubkey: descriptor.pubkey, identifier: '' }, metadata)
-              : undefined;
-          for (const url of descriptorImages(descriptor, profile)) {
-            if (signal.aborted) break;
-            try {
-              const target = previewImageUrl(url);
-              // Immutable content-addressed URLs bind the retrieved bytes. Other HTTPS URLs bind only the signed URL.
-              const digest = /\/([a-f0-9]{64})(?:\.[a-z0-9]{1,8})?$/.exec(target.pathname)?.[1];
-              const old = previous
-                .map((n) => n.preview)
-                .find(
-                  (p) =>
-                    p?.descriptor.id === descriptor.id &&
-                    p.profile?.id === profile?.id &&
-                    p.url === url,
-                );
-              if (
-                digest &&
-                old &&
-                validatedPreview(entry.manifest, old) &&
-                (await cachedPreviewBytes(directory, old))
-              ) {
-                entry.preview = old;
-                break;
-              }
-              let task = downloaded.get(url);
-              if (!task) {
-                if (remaining < MAX_PREVIEW_BYTES)
-                  throw new Error('Preview refresh budget exhausted');
-                remaining -= MAX_PREVIEW_BYTES;
-                task = (async () => {
-                  const bytes = await (options.download ?? fetchPublicBytes)(
-                    target,
-                    AbortSignal.any([signal, AbortSignal.timeout(4000)]),
-                    MAX_PREVIEW_BYTES,
-                  );
-                  if (bytes.length > MAX_PREVIEW_BYTES)
-                    throw new Error('Preview exceeds byte limit');
-                  remaining += MAX_PREVIEW_BYTES - bytes.length;
-                  if (signal.aborted) throw new Error('Preview refresh cancelled');
-                  if (digest && (await sha256(bytes)) !== digest)
-                    throw new Error('Preview hash mismatch');
-                  const normalized = await normalizePreview(bytes);
-                  const hash = await sha256(normalized.data);
-                  const temporary = resolve(path, `${hash}.${crypto.randomUUID()}.tmp`);
-                  await Bun.write(temporary, normalized.data);
-                  await rename(temporary, resolve(path, `${hash}.png`));
-                  return {
-                    hash,
-                    width: normalized.width,
-                    height: normalized.height,
-                    bytes: normalized.data.length,
-                  };
-                })();
-                downloaded.set(url, task);
-              }
-              entry.preview = { descriptor, profile, url, ...(await task) };
+        const candidates = appReferences(entry.manifest)
+          .flatMap((ref) => {
+            const descriptor = latestMetadata(ref, metadata);
+            if (!descriptor) return [];
+            const profile =
+              descriptor.kind === 31990 && descriptor.content === ''
+                ? latestMetadata({ kind: 0, pubkey: descriptor.pubkey, identifier: '' }, metadata)
+                : undefined;
+            return descriptorImages(descriptor, profile).map((url) => ({
+              descriptor,
+              profile,
+              url,
+              priority:
+                descriptor.kind === 32267 &&
+                descriptor.tags.some((t) => t[0] === 'image' && t[1] === url)
+                  ? 0
+                  : descriptor.kind === 31990
+                    ? 1
+                    : 2,
+            }));
+          })
+          .sort((a, b) => a.priority - b.priority);
+        for (const { descriptor, profile, url } of candidates) {
+          if (signal.aborted) break;
+          try {
+            const target = previewImageUrl(url);
+            // Immutable content-addressed URLs bind the retrieved bytes. Other HTTPS URLs bind only the signed URL.
+            const digest = /\/([a-f0-9]{64})(?:\.[a-z0-9]{1,8})?$/.exec(target.pathname)?.[1];
+            const old = previous
+              .map((n) => n.preview)
+              .find(
+                (p) =>
+                  p?.descriptor.id === descriptor.id &&
+                  p.profile?.id === profile?.id &&
+                  p.url === url,
+              );
+            if (
+              digest &&
+              old &&
+              validatedPreview(entry.manifest, old) &&
+              (await cachedPreviewBytes(directory, old))
+            ) {
+              entry.preview = old;
               break;
-            } catch {
-              /* Optional metadata never changes executable availability. Try the next image. */
             }
+            let task = downloaded.get(url);
+            if (!task) {
+              if (remaining < MAX_PREVIEW_BYTES)
+                throw new Error('Preview refresh budget exhausted');
+              remaining -= MAX_PREVIEW_BYTES;
+              task = (async () => {
+                const bytes = await (options.download ?? fetchPublicBytes)(
+                  target,
+                  AbortSignal.any([signal, AbortSignal.timeout(4000)]),
+                  MAX_PREVIEW_BYTES,
+                );
+                if (bytes.length > MAX_PREVIEW_BYTES) throw new Error('Preview exceeds byte limit');
+                remaining += MAX_PREVIEW_BYTES - bytes.length;
+                if (signal.aborted) throw new Error('Preview refresh cancelled');
+                if (digest && (await sha256(bytes)) !== digest)
+                  throw new Error('Preview hash mismatch');
+                const normalized = await normalizePreview(bytes);
+                const hash = await sha256(normalized.data);
+                const temporary = resolve(path, `${hash}.${crypto.randomUUID()}.tmp`);
+                await Bun.write(temporary, normalized.data);
+                await rename(temporary, resolve(path, `${hash}.png`));
+                return {
+                  hash,
+                  width: normalized.width,
+                  height: normalized.height,
+                  bytes: normalized.data.length,
+                };
+              })();
+              downloaded.set(url, task);
+            }
+            entry.preview = { descriptor, profile, url, ...(await task) };
+            break;
+          } catch {
+            /* Optional metadata never changes executable availability. Try the next image. */
           }
-          if (entry.preview) break;
         }
       }
     }),

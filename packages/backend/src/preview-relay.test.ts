@@ -1,15 +1,11 @@
 import { expect, test } from 'bun:test';
 import { RelayPool, type RelayOptions } from 'applesauce-relay';
 import { finalizeEvent, matchFilters } from 'nostr-tools';
-import {
-  queryPreviewMetadata as discoverPreviewMetadata,
-  PreviewWebSocket,
-  previewRelayUrl,
-} from './preview-relay';
+import { queryPreviewMetadata as discoverPreviewMetadata, previewRelayUrl } from './preview-relay';
 import records from '../data/catalog.json';
 import { discoverPreviewMetadata as workerMetadata } from './preview-discovery';
 
-test('metadata relay hints use public WSS and enforce DNS checks under Bun', async () => {
+test('metadata relay hints accept only public WSS destinations', () => {
   for (const url of [
     'ws://example.com',
     'wss://127.0.0.1',
@@ -18,21 +14,6 @@ test('metadata relay hints use public WSS and enforce DNS checks under Bun', asy
     'wss://example.com:8443',
   ])
     expect(() => previewRelayUrl(url)).toThrow();
-  await new Promise<void>((resolve, reject) => {
-    const socket = new PreviewWebSocket('wss://localhost');
-    socket.on('open', () => {
-      socket.terminate();
-      reject(new Error('Private connection was allowed'));
-    });
-    socket.on('error', (error) => {
-      try {
-        expect(error.message).toContain('Private network');
-        resolve();
-      } catch (e) {
-        reject(e);
-      }
-    });
-  });
 });
 
 test('the Node metadata worker accepts a bounded job and refuses private relay destinations', async () => {

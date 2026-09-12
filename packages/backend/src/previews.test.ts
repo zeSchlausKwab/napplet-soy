@@ -240,3 +240,30 @@ test('bad metadata, missing images, unsafe URLs and wrong hashes cannot block or
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('screenshots take priority over pictures/icons across multiple linked app descriptors', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'space-preview-priority-'));
+  try {
+    const picture = descriptor(31990, [], '{"picture":"https://images.example/picture.png"}');
+    const screenshot = descriptor();
+    const event = sign({
+      ...manifest(picture),
+      tags: [
+        ...manifest(picture).tags,
+        ['app', `32267:${screenshot.pubkey}:application`, 'wss://relay.example'],
+      ],
+    });
+    const entry = await publicNapplet(event);
+    const requested: string[] = [];
+    await indexPreviewImages(directory, [entry], [picture, screenshot], AbortSignal.timeout(5000), {
+      download: async (url) => {
+        requested.push(url.href);
+        return raster();
+      },
+    });
+    expect(requested).toEqual(['https://images.example/cover.png']);
+    expect(entry.preview?.descriptor.id).toBe(screenshot.id);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

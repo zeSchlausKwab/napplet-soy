@@ -25,7 +25,7 @@ The command runs local checks, uploads an allowlisted archive of the working sou
 | `/var/lib/napplet-space/caddy` | Caddy certificate/account data |
 | `/etc/napplet-space/Caddyfile` | This site's HTTPS/reverse-proxy configuration |
 
-The `napplet` system account runs the application and Caddy. Bun listens on loopback port 3000. PM2 uses fork mode with one Bun process; Node is used to run PM2 itself. systemd units `napplet-space` and `napplet-space-caddy` persist the services across reboots. Caddy receives only the capability needed to bind low ports. Existing global PM2 state is not used.
+The `napplet` system account runs the application and Caddy. Bun listens on loopback port 3000. PM2 uses fork mode with one Bun process; Node runs PM2 itself and the short-lived linked-preview metadata worker when a catalog refresh contains supported app references. The ordinary deployed profile still disables publicdev imports. systemd units `napplet-space` and `napplet-space-caddy` persist the services across reboots. Caddy receives only the capability needed to bind low ports. Existing global PM2 state is not used.
 
 ## Activation and recovery
 

@@ -41,3 +41,10 @@ Named, naddr, and snapshot pages emit title, description, canonical URL, complet
 `/api/og/<signed-event-id>?v=1` returns a real 1200×630 PNG, with GET/HEAD and ETag support. Images use escaped signed metadata and a local graphics template; local example posters can appear in the art panel. Native resvg runs only on the server with a bundled OFL-licensed DM Sans font, independent of the VPS's installed fonts. Images are cached in a bounded process cache and served only for known catalog entries. Unknown IDs return 404. Change the image version when changing the template.
 
 `SPACE_SITE_ORIGIN` supplies trusted absolute URLs. Dev derives it from its port, dev:prod from its Caddy address, and the VPS deploy script sets it to `https://<domain>`. Host and forwarded headers cannot rewrite share URLs. A local preview becomes fetchable by external social platforms only once the site has a publicly reachable origin.
+
+
+## Linked preview metadata
+
+Catalog refresh resolves optional `app` references to NIP-89 application pictures or Zapstore screenshots/icons. Verified images are normalized and served from `/api/previews/<manifest-id>` for gallery/player covers and embedded in the OG card. Missing metadata or failed images keep the generated poster and do not affect playback. Browsing does not query external image hosts or run napplet code for thumbnails.
+
+Refresh older caches with `bun run dev publicdev --refresh` (or `bun run dev:prod publicdev --refresh`). The preview profile also invalidates older caches once automatically. Descriptor lookup requires Node, already used for PM2, and uses a short-lived bounded worker only when supported app links exist. Read [PREVIEWS.md](PREVIEWS.md) for the supported schemas, limits, and verification evidence.
