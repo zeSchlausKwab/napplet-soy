@@ -2,7 +2,33 @@ import { afterAll, expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { scaffold } from './scaffold';
+// Exercise the shipped command in its own process. Besides checking the real
+// entrypoint, this avoids Bun 1.3.11 build/read failures observed after unrelated
+// filesystem/network tests in the same VM.
+async function scaffold(parent: string, name: string, template: string) {
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      new URL('./index.ts', import.meta.url).pathname,
+      'new',
+      name,
+      '--template',
+      template,
+    ],
+    {
+      cwd: parent,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  );
+  const [code, stdout, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  if (code !== 0) throw new Error(stderr || stdout);
+  return join(parent, name);
+}
 const root = await mkdtemp(join(tmpdir(), 'space-cli-test-'));
 afterAll(() => rm(root, { recursive: true, force: true }));
 test('scaffolds a standalone Git project with shared restricted preview', async () => {
@@ -14,7 +40,7 @@ test('scaffolds a standalone Git project with shared restricted preview', async 
     'animation',
   ]);
   expect(await Bun.file(join(path, 'AGENTS.md')).text()).toContain('No CDN');
-  expect(await Bun.file(join(path, '.napplet/runtime.js')).exists()).toBe(true);
+  expect(await Bun.file(join(path, '.napplet/client.js')).exists()).toBe(true);
   const process = Bun.spawn(['git', '-C', path, 'rev-parse', '--is-inside-work-tree'], {
     stdout: 'pipe',
   });
@@ -55,10 +81,33 @@ test('generated preview runs independently and enforces the shared runtime polic
     }
     expect(ready).toBe(true);
     const shell = await (await fetch(`http://127.0.0.1:${port}/`)).text();
-    expect(shell).toContain('sandbox="allow-scripts"');
-    const response = await fetch(`http://127.0.0.1:${port}/preview`);
-    expect(response.headers.get('content-security-policy')).toContain("connect-src 'none'");
+    expect(shell).toContain('src="/runtime.js"');
+    expect(shell).not.toContain('src="/preview"');
+    const info = await (await fetch(`http://127.0.0.1:${port}/revision`)).json();
+    const response = await fetch(`http://127.0.0.1:${port}/api/artifacts/${info.artifactHash}`);
+    expect(response.headers.get('content-type')).toBe('application/octet-stream');
     expect(await response.text()).toContain('<canvas');
+    const resources = (
+      manifest: string,
+      origin = `http://127.0.0.1:${port}`,
+      url = 'data:text/plain,hello',
+    ) =>
+      fetch(`http://127.0.0.1:${port}/api/resources`, {
+        method: 'POST',
+        headers: { Origin: origin, 'X-Space-Host': '1' },
+        body: JSON.stringify({ manifest, url }),
+      });
+    expect(await (await resources(info.id)).text()).toBe('hello');
+    expect((await resources('0'.repeat(64))).status).toBe(404);
+    expect((await resources(info.id, 'null')).status).toBe(403);
+    expect(
+      (await resources(info.id, `http://127.0.0.1:${port}`, 'https://127.0.0.1/private')).status,
+    ).toBe(422);
+    expect((await fetch(`http://127.0.0.1:${port}/napplet.json`)).status).toBe(404);
+    expect(
+      (await fetch(`http://127.0.0.1:${port}/revision`, { headers: { Host: 'attacker.example' } }))
+        .status,
+    ).toBe(403);
   } finally {
     process.kill();
     await process.exited;

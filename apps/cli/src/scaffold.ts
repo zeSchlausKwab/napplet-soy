@@ -11,14 +11,48 @@ export async function scaffold(parent: string, name: string, template: string) {
   // Fail atomically if anything already occupies the destination; never overwrite a project.
   await mkdir(target);
   await mkdir(resolve(target, '.napplet'));
-  const built = await Bun.build({
-    entrypoints: [new URL('../../../packages/runtime/src/index.ts', import.meta.url).pathname],
-    target: 'bun',
-    format: 'esm',
-    minify: true,
-  });
-  if (!built.success) throw new Error('Could not prepare the shared preview runtime.');
-  await writeFile(resolve(target, '.napplet/runtime.js'), await built.outputs[0].text());
+  // Bundle the exact shared host and policy into the standalone project.
+  const builds = [
+    await Bun.build({
+      entrypoints: [new URL('./preview/server.ts', import.meta.url).pathname],
+      target: 'bun',
+      format: 'esm',
+      minify: true,
+    }),
+    await Bun.build({
+      entrypoints: [new URL('./preview/client.ts', import.meta.url).pathname],
+      target: 'browser',
+      format: 'esm',
+      minify: true,
+      plugins: [
+        {
+          name: 'raw-napplet-prelude',
+          setup(build) {
+            build.onResolve({ filter: /^@napplet\/shim\/prelude.global\?raw$/ }, () => ({
+              path: Bun.resolveSync('@napplet/shim/prelude.global', import.meta.dir),
+              namespace: 'raw',
+            }));
+            build.onLoad({ filter: /.*/, namespace: 'raw' }, async ({ path }) => ({
+              contents: await readFile(path, 'utf8'),
+              loader: 'text',
+            }));
+          },
+        },
+      ],
+    }),
+  ];
+  for (const [i, built] of builds.entries()) {
+    if (!built.success)
+      throw new Error(`Could not prepare the shared preview runtime: ${built.logs.join('\n')}`);
+    await writeFile(
+      resolve(target, `.napplet/${i === 0 ? 'server' : 'client'}.js`),
+      await built.outputs[0].text(),
+    );
+  }
+  await writeFile(
+    resolve(target, '.napplet/preview.html'),
+    await readFile(new URL('../templates/preview.html', import.meta.url), 'utf8'),
+  );
   await writeFile(resolve(target, 'index.html'), exampleHtml(template));
   await writeFile(
     resolve(target, 'dev.ts'),
@@ -32,6 +66,10 @@ export async function scaffold(parent: string, name: string, template: string) {
         name,
         template,
         entry: 'index.html',
+        previewId: crypto.randomUUID(),
+        requires: [],
+        relays: [],
+        servers: [],
         license: 'MIT',
         topics: examples.find((e) => e.slug === template)!.topics,
       },
@@ -49,7 +87,7 @@ export async function scaffold(parent: string, name: string, template: string) {
   );
   await writeFile(
     resolve(target, 'AGENTS.md'),
-    `# ${name}\n\nBuild a small, self-contained creative experiment in index.html.\n\n- All playable JavaScript, CSS, fonts, images, and audio must be embedded in index.html.\n- No CDN imports, network requests, WebSockets, service workers, forms, popups, or access to the parent window.\n- The player is a sandboxed iframe with scripts enabled and an opaque origin. Do not require localStorage.\n- Use canvas, inline SVG, DOM, Web Audio after a user gesture, or embedded data URLs.\n- Keep the package under 10 MiB. Support pointer and touch; respect reduced motion where practical.\n- Run bun run dev for the same restricted preview runtime as napplet.space.\n- Preserve license notices and credit when remixing. Never place private signing keys in this project.\n\nAsk what the creator wants to make, then start with a small visible change.\n`,
+    `# ${name}\n\nBuild a small, self-contained creative experiment in index.html.\n\n- Keep all executable JavaScript and CSS in index.html. Embed small assets; retrieve external byte resources only through napplet.resource.\n- No CDN imports, direct fetch/WebSockets, service workers, forms, popups, or parent-window access. Use host-mediated NAP APIs for resources and Nostr reads.\n- Await window.napplet.shell.ready() before using NAP APIs; use shell.supports(domain) for optional capabilities. Declare mandatory domains in napplet.json requires.\n- The player is an opaque sandbox. Use napplet.storage instead of localStorage. Listen to napplet.identity.onChanged when retaining account data in memory.\n- Use napplet.resource for assets, napplet.relay/outbox for reads, and napplet.fs for session files. Relays in napplet.json are an explicit allowlist; publishing/signing calls remain denied by the playback policy.\n- Use canvas, inline SVG, DOM, Web Audio after a user gesture, or embedded data URLs.\n- Keep the package under 10 MiB. Support pointer and touch; respect reduced motion where practical.\n- Run bun run dev for the same restricted preview runtime as napplet.space.\n- Preserve license notices and credit when remixing. Never place private signing keys in this project.\n\nAsk what the creator wants to make, then start with a small visible change.\n`,
   );
   await writeFile(resolve(target, 'CLAUDE.md'), '@AGENTS.md\n');
   await writeFile(resolve(target, '.gitignore'), 'node_modules/\n.env\n.env.*\n.DS_Store\n');
@@ -59,7 +97,7 @@ export async function scaffold(parent: string, name: string, template: string) {
   );
   await writeFile(
     resolve(target, 'README.md'),
-    `# ${name}\n\nA local napplet based on ${template}, from the Space lab starter collection.\n\nRun \`bun run dev\`, open http://localhost:4173, and edit \`index.html\` with your favorite coding agent. The preview reloads when the artifact changes. No dependency install is required.\n\nEdit the optional lowercase topic labels in \`napplet.json\` as your idea evolves. They describe the creation, for example \`visual\`, \`generative\`, or \`game\`; they are not exclusive categories.\n\nThe HTML is both the source and playable artifact. Keep it self-contained. Public publishing, managed Git hosting, and identity provisioning are not available in this initial local CLI.\n`,
+    `# ${name}\n\nA local napplet based on ${template}, from the Space lab starter collection.\n\nRun \`bun run dev\`, open http://localhost:4173, and edit \`index.html\` with your favorite coding agent. The preview reloads when the artifact changes. No dependency install is required.\n\nThe preview uses the same hash verification, srcdoc sandbox, pinned shim, NAP-SHELL handshake, and host services as the website. Await \`window.napplet.shell.ready()\` before calling host APIs. \`requires\` declares mandatory domains; \`relays\` configures allowed relay reads and \`servers\` supplies Blossom resource hints. Empty lists work for self-contained experiments. You can connect your browser extension to test identity changes; the preview never signs or publishes events.\n\nThe local \`previewId\` scopes your saves and is not a Nostr identity. Local bytes are trusted as your editable source and verified by hash in the browser; signature verification applies once a manifest is published. Files offered by napplet.fs stay in the preview session until you download them.\n\nEdit the optional lowercase topic labels in \`napplet.json\` as your idea evolves. They describe the creation, for example \`visual\`, \`generative\`, or \`game\`; they are not exclusive categories.\n\nThe HTML is both the source and playable artifact. Keep it self-contained. Public publishing, managed Git hosting, and identity provisioning are not available in this initial local CLI.\n`,
   );
   const git = Bun.spawn(['git', 'init', '--initial-branch=main', target], {
     stdout: 'pipe',

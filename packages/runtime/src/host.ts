@@ -36,6 +36,10 @@ export function attachNappletHost(options: HostOptions) {
     initialized = false,
     calls = 0,
     windowStart = Date.now();
+  // Frame budgets and concurrency survive account changes.
+  const resourceQueue = new WorkQueue(4, 16);
+  let resourceCalls = 0,
+    resourceBytes = 0;
   const send = (message: Record<string, unknown>) => {
     if (alive) source?.postMessage(message, '*');
   };
@@ -50,9 +54,6 @@ export function attachNappletHost(options: HostOptions) {
     let answer: ((accepted: boolean) => void) | undefined;
     const lifetime = new AbortController();
     const resources = new Map<string, AbortController>();
-    const resourceQueue = new WorkQueue(4, 16);
-    let resourceCalls = 0,
-      resourceBytes = 0;
     const nostr = new PlaybackNostr(options.relays, sendScoped, () => pubkey);
     const files = new NappletFiles(sendScoped, (value) => {
       if (active && alive) options.files(value);
@@ -214,6 +215,12 @@ export function attachNappletHost(options: HostOptions) {
     }
     if (!initialized || !message.id || !HOST_REQUESTS.has(message.type)) return;
     const scope = account;
+    // NAP-IDENTITY requires this basic snapshot to succeed without an error
+    // field, even when asynchronous services have exhausted their quota.
+    if (message.type === 'identity.getPublicKey') {
+      send({ type: 'identity.getPublicKey.result', id: message.id, pubkey: scope.pubkey ?? '' });
+      return;
+    }
     if (message.type === 'resource.cancel') {
       scope.cancel(message.id);
       return;

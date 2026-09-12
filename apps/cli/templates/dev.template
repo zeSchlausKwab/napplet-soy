@@ -1,22 +1,3 @@
-import { PLAYER_CSP, PLAYER_SANDBOX, verifiedDocument } from './.napplet/runtime.js';
-import { createHash } from 'node:crypto';
+import { startPreviewServer } from './.napplet/server.js';
 
-const artifact = Bun.file(new URL('./index.html', import.meta.url));
-async function revision() { return createHash('sha256').update(await artifact.bytes()).digest('hex'); }
-const server = Bun.serve({
-  hostname: '127.0.0.1', port: Number(process.env.PORT ?? 4173),
-  async fetch(request) {
-    const pathname = new URL(request.url).pathname;
-    if (pathname === '/revision') return new Response(await revision(), { headers:{ 'Cache-Control':'no-store' } });
-    if (pathname === '/preview') {
-      try {
-        const bytes = await artifact.bytes();
-        const hash = createHash('sha256').update(bytes).digest('hex');
-        return new Response(await verifiedDocument(bytes, hash), { headers:{ 'Content-Type':'text/html; charset=utf-8', 'Content-Security-Policy':PLAYER_CSP, 'Cache-Control':'no-store' } });
-      } catch (error) { return new Response(String(error), { status:400, headers:{ 'Content-Type':'text/plain' } }); }
-    }
-    if (pathname !== '/') return new Response('Not found', { status:404 });
-    return new Response(`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local napplet preview</title><style>body{margin:0;background:#f8f6ee;color:#272921;font:13px monospace}header{height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 20px}iframe{display:block;border:0;width:100%;height:calc(100dvh - 50px)}span{font-size:11px;color:#758064}</style><header><strong>✳ Your little experiment</strong><span>local preview · saved changes reload automatically</span></header><iframe title="Your napplet" sandbox="${PLAYER_SANDBOX}" src="/preview" allow="fullscreen" referrerpolicy="no-referrer"></iframe><script>let last;setInterval(async()=>{try{const next=await(await fetch('/revision')).text();if(last&&last!==next)document.querySelector('iframe').src='/preview?v='+next;last=next}catch{}},700)</script></html>`, { headers:{ 'Content-Type':'text/html; charset=utf-8', 'Content-Security-Policy':"frame-src 'self'; object-src 'none'; base-uri 'none'", 'Cache-Control':'no-store' } });
-  },
-});
-console.log(`Local napplet preview: ${server.url}`);
+startPreviewServer(new URL('./', import.meta.url));

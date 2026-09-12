@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Local napplet preview</title>
+  <style>
+    body {
+      margin: 0;
+      background: #f8f6ed;
+      color: #292d23;
+      font: 14px system-ui;
+    }
+    header {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 12px 20px;
+    }
+    header strong {
+      margin-right: auto;
+    }
+    button,
+    a {
+      font: inherit;
+    }
+    button {
+      background: transparent;
+      border: 1px solid #c8cbbf;
+      border-radius: 6px;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+    button:focus-visible,
+    a:focus-visible {
+      outline: 2px solid #397c65;
+      outline-offset: 3px;
+    }
+    #status {
+      padding: 0 20px 12px;
+      margin: 0;
+      min-height: 20px;
+      color: #5d6556;
+    }
+    #stage iframe {
+      display: block;
+      border: 0;
+      width: 100%;
+      height: calc(100dvh - 135px);
+      min-height: 300px;
+    }
+    #files {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 12px 20px;
+    }
+    a {
+      color: #397c65;
+    }
+    dialog {
+      max-width: min(480px, 80vw);
+      border: 1px solid #c8cbbf;
+      border-radius: 8px;
+      background: #f8f6ed;
+      color: #292d23;
+      padding: 24px;
+    }
+    dialog::backdrop {
+      background: #0006;
+    }
+    dialog p {
+      overflow-wrap: anywhere;
+    }
+    dialog div {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    [hidden] {
+      display: none !important;
+    }
+  </style>
+  <header>
+    <strong>✳ Your little experiment</strong><button id="reload">Reload preview</button
+    ><button id="connect">Connect browser extension</button>
+  </header>
+  <p id="status" role="status">Preparing preview…</p>
+  <main id="stage"></main>
+  <div id="files" aria-label="Session file downloads"></div>
+  <dialog id="prompt" aria-label="Napplet permission" aria-describedby="prompt-detail">
+    <p id="prompt-detail"></p>
+    <div>
+      <button id="cancel">Cancel</button><button id="confirm">Save file</button
+      ><a id="open-link" target="_blank" rel="noopener noreferrer" hidden>Open link</a>
+    </div>
+  </dialog>
+  <script type="module" src="/runtime.js"></script>
+</html>

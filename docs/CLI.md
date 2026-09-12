@@ -1,8 +1,16 @@
 # Creator CLI — proposed v1 behavior
 
-Status: product/engineering proposal, updated 2026-09-12. Local `new` scaffolding is implemented; the public installer, identity setup, and publishing workflow below remain planned. `napplet-space` is a working command name, avoiding collision with the existing upstream `napplet` binary.
+Status: product/engineering proposal, updated 2026-09-12. Local `new` scaffolding and a standalone shared NAP preview host are implemented; the public installer, identity setup, and publishing workflow below remain planned. `napplet-space` is a working command name, avoiding collision with the existing upstream `napplet` binary.
 
 Interoperability is a release requirement: publish ordinary NIP-5D manifests with public Blossom `server` hints, a standard `source` reference, and required NAP domains to publicly reachable relays. Use a real creator identity, never the bundled test key. Our own relay is a publication destination, not a requirement that other clients call the Space API. Publish to interoperable default discovery relays too, and include relay hints in portable links. Optional cover/source details and website aliases must not be required to discover or run the napplet. See [PROTOCOL.md](PROTOCOL.md).
+
+## Available today
+
+From this checkout, run `bun run napplet new my-experiment`, then `cd my-experiment` and `bun run dev`. The generated project works independently with Bun and Git, without installing dependencies or starting the platform backend.
+
+The preview bundles the shared verified `srcdoc` loader, pinned shim, mandatory NAP-SHELL handshake, and host services. Await `napplet.shell.ready()` before host calls. Editable project settings include `requires` for mandatory domains, `relays` for allowed read connections, and `servers` for Blossom resource hints. They default to empty arrays. Browser-extension connection, account change notifications, scoped saves, virtual file downloads and mediated resources work locally; signing and publishing remain disabled by the playback policy.
+
+The random `previewId` is a local storage namespace, not a creator public key or manifest. Editable local bytes are hash-checked in the browser; signature admission applies to published manifests. Already-generated projects retain their bundled runtime and are not automatically upgraded.
 
 ## 1. The quick path
 
@@ -25,7 +33,7 @@ For an installed CLI, the entry point is simply `napplet-space new plasma-pet`. 
 
 The install/create command should open the first preview and print the exact project path and next command. A child process cannot change the caller's shell directory, so the UX must not pretend the `cd` happened automatically. If the installer reads script text from stdin, intentional prompts must use the controlling terminal; noninteractive invocation uses explicit options and structured errors.
 
-This creator preview remains lightweight. Platform contributors additionally get a complete Compose environment through `bun run dev` and a production-build mode through `bun run dev:prod`; see [LOCAL-DEVELOPMENT.md](LOCAL-DEVELOPMENT.md).
+This creator preview remains lightweight. Platform contributors use `bun run dev` and the Caddy/PM2 production-build mode `bun run dev:prod`; the full relay/Blossom/GRASP stack remains planned; see [LOCAL-DEVELOPMENT.md](LOCAL-DEVELOPMENT.md).
 
 ## 2. Bootstrap contract
 

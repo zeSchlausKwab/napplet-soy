@@ -113,11 +113,11 @@ test('unknown NAP messages are silent and consume no request quota', async ({ pa
           '*',
         );
       // This request is ordered after the unknown messages and must still succeed.
-      const key = await (window as any).napplet.identity.getPublicKey();
+      const theme = await (window as any).napplet.theme.get();
       window.removeEventListener('message', listen);
-      return { key, replies };
+      return { title: theme.title, replies };
     }),
-  ).toEqual({ key: '', replies: [] });
+  ).toEqual({ title: 'Napplet Space', replies: [] });
 });
 
 test('account changes notify the existing frame and replace storage, files and pending prompts', async ({

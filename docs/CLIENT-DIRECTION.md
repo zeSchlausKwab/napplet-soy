@@ -74,14 +74,14 @@ This is a source review of selected contracts, not an exhaustive conformance res
 | Area | Current code | Assessment |
 | --- | --- | --- |
 | Website loading | Correct napplet kinds, single `/index.html`, signatures/hashes, opaque `srcdoc`, source-bound messages | Core path follows the selected design. Single-file packaging and isolation are requirements, not deviations. |
-| Unknown messages | `packages/runtime/src/host.ts` sends errors for some unknown domains/actions carrying an ID | Actual mismatch: silently ignore unknown types, while retaining policy errors for recognized operations. |
-| CLI preview | `apps/cli/templates/dev.template` uses `src=/preview`, an empty namespace, and no host/SHELL | Actual contract/parity gap: use the website's verified `srcdoc`, shim, handshake, and host module. |
-| Identity relay list | `packages/nostr/src/playback.ts` reports configured host relays | Semantic mismatch with NAP-IDENTITY's user NIP-65 list; separate user preferences from effective relay policy. |
-| Identity changes | Account switching restarts frames; no `identity.changed` push | Missing notification behavior. Preserve account isolation while notifying surviving sessions and cancelling old work. |
+| Unknown messages | Explicit request dispatch ignores unknown domains/actions before quotas or side effects | Fixed; recognized policy-denied operations retain error responses. |
+| CLI preview | Standalone bundles use the shared verifier, `srcdoc`, pinned shim, SHELL, host and resource responder | Fixed for local authoring. Editable local source is the authority; published manifests still require signature verification. |
+| Identity relay list | Latest verified user NIP-65 event supplies read/write preferences | Fixed; returned preferences do not expand the effective host relay allowlist. Guest/missing records return an empty map. |
+| Identity changes | Existing frames receive `identity.changed`; account-scoped services are replaced | Fixed; pending replies, prompts, resources, subscriptions and exports cannot cross into the new account. |
 | Optional domains | INC/INTENT/CVM and other domains absent; extended identity/fs operations missing | Coverage gaps. Absent optional domains alone do not violate the web projection; advertised domains still need operation-level conformance. |
 | Writes/resources | Known writes denied; bounded HTTPS/MIME/byte/time/relay policy | Deliberate host restrictions. Verify denial/error semantics rather than advertising complete operation support. |
 | Theme | Fixed theme with required color fields | Allowed by NAP-THEME; add push updates when theme switching exists. |
 | Source/discovery | HTTPS source links only; bounded startup catalog and no arbitrary uncached naddr resolution | Missing `nostr://` source resolution and general on-demand discovery. |
 | Publication | Fixtures remain unpublished; CLI publication and independent-client acceptance absent | Incomplete authoring path; prove the ordinary relay/Blossom round trip in another host. |
 
-Repair known web/CLI contract gaps first, then integrate the local Khatru/LMDB/Bleve, Blossom, and GRASP publish path. Preserve the flavor interface in that design; defer arbitrary flavor execution and video workers until the creation loop works.
+The four focused web/CLI contract repairs are implemented. Next integrate the local Khatru/LMDB/Bleve, Blossom, and GRASP publish path. Preserve the flavor interface in that design; defer arbitrary flavor execution and video workers until the creation loop works.

@@ -26,7 +26,7 @@ PORT=3020 bun run dev:prod publicdev
 
 This discovers signed napplet manifests from Nostr relays through Applesauce and caches verified Blossom artifacts. Repeat starts reuse a 15-minute cache. Public entries resolve through naddr/snapshot routes; unsupported required capabilities are shown explicitly. No Nappelin/HTTP directory is used. See [public development and OG previews](docs/PUBLIC-DEVELOPMENT.md).
 
-Open a card marked **Ready to play**, then click **Play napplet**. The player now provides the upstream NAP shim, scoped saves, virtual file exports, verified resource loading, and Nostr reads. File exports appear below the player for download. Publishing and account changes remain disabled. See the [public runtime capabilities and limits](docs/PUBLIC-RUNTIME.md).
+Open a card marked **Ready to play**, then click **Play napplet**. The player now provides the upstream NAP shim, scoped saves, virtual file exports, verified resource loading, and Nostr reads. File exports appear below the player for download. Napplet-initiated writes remain disabled. Connecting or disconnecting in the host notifies the running napplet and isolates its account data. See the [public runtime capabilities and limits](docs/PUBLIC-RUNTIME.md).
 
 Every napplet page includes server-rendered Open Graph metadata and a 1200×630 PNG preview. `SPACE_SITE_ORIGIN` controls absolute share URLs; the VPS script sets it from the deployment domain.
 
@@ -50,7 +50,7 @@ cd my-napplet
 bun run dev
 ```
 
-Open <http://localhost:4173> and point your existing coding agent at the new project. It contains HTML source, a Git repository, MIT licensing, agent instructions, and a bundled copy of the shared preview runtime. The preview automatically reloads saved changes. It works independently of the platform checkout after creation.
+Open <http://localhost:4173> and point your existing coding agent at the new project. It contains HTML source, a Git repository, MIT licensing, agent instructions, and a bundled copy of the shared preview runtime. The preview automatically reloads saved changes, injects the same pinned shim and NAP-SHELL handshake, and provides the same storage, identity, relay/resource and file services as the website. Optional `requires`, `relays`, and `servers` settings live in `napplet.json`. It works independently of the platform checkout after creation; existing generated projects retain their bundled runtime.
 
 ## Run the production build locally
 

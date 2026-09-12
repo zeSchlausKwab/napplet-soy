@@ -62,6 +62,13 @@ test('retiring an account aborts resources and suppresses late replies even when
     const results = sent.filter((m) => m.type === 'resource.bytes.result');
     expect(results).toHaveLength(1);
     expect(await (results[0].blob as Blob).text()).toBe('new account data');
+    for (let i = 0; i < 650; i++) deliver({ type: 'theme.get', id: `quota-${i}` });
+    deliver({ type: 'identity.getPublicKey', id: 'key-after-quota' });
+    expect(sent.at(-1)).toEqual({
+      type: 'identity.getPublicKey.result',
+      id: 'key-after-quota',
+      pubkey: 'c'.repeat(64),
+    });
   } finally {
     host.close();
     globals.forEach((key, i) => {
