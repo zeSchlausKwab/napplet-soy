@@ -4,8 +4,11 @@ import { eventSchema, encodeAddress } from '../../protocol/src';
 import { validateManifest } from '../../protocol/src/manifest';
 import { missingDomains } from '../../runtime/src/capabilities';
 import { cachedPreviewSchema } from '../../protocol/src/preview';
+import { manifestTopics } from '../../protocol/src/topics';
 
 export const PUBLIC_CACHE_TTL = 15 * 60 * 1000;
+// Shared by gallery URLs, SSR share metadata, and the renderer's cache validators.
+export const OG_VERSION = '3';
 export const DEFAULT_PUBLIC_RELAYS = [
   'wss://relay.damus.io',
   'wss://nos.lol',
@@ -20,7 +23,7 @@ export const publicNappletSchema = z.object({
   description: z.string().max(1000),
   creator: z.string().max(160),
   pubkey: hex,
-  category: z.literal('public'),
+  topics: z.array(z.string().max(256)).max(32).catch([]).default([]),
   revisionId: hex,
   artifactHash: hex,
   aggregateHash: hex,
@@ -69,7 +72,7 @@ export async function publicNapplet(
     description: (tag('description') ?? '').slice(0, 1000),
     creator: `${pub.slice(0, 16)}…${pub.slice(-6)}`,
     pubkey: event.pubkey,
-    category: 'public',
+    topics: manifestTopics(event),
     revisionId: event.id,
     artifactHash: release.artifactHash,
     aggregateHash: release.aggregateHash,
@@ -85,7 +88,7 @@ export async function publicNapplet(
 export const publicPoster = (entry: PublicNapplet) =>
   entry.preview
     ? `/api/previews/${entry.revisionId}?v=${entry.preview.hash}`
-    : `/api/og/${entry.revisionId}`;
+    : `/api/og/${entry.revisionId}?v=${OG_VERSION}`;
 export const publicLink = (entry: PublicNapplet) =>
   entry.naddr
     ? { to: '/n/$naddr' as const, params: { naddr: entry.naddr } }

@@ -10,7 +10,7 @@ test('fixtures and relay-imported copies have identical playback identity and ca
       (await preparePlayback(record.snapshot, record.artifactHash)).hostIdentity,
     );
     for (const manifest of [record.current, record.snapshot]) {
-      expect(manifest.tags.some((t) => ['space', 't', 'e'].includes(t[0]))).toBe(false);
+      expect(manifest.tags.some((t) => ['space', 'e'].includes(t[0]))).toBe(false);
       const imported = await publicNapplet(manifest);
       const local = await preparePlayback(manifest, record.artifactHash);
       const remote = await preparePlayback(imported.manifest, imported.artifactHash);

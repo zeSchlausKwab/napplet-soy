@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import records from '../../packages/backend/data/catalog.json' with { type: 'json' };
 test('publicdev shows signed relay entries, plays verified Rubik Cube, and gates missing capabilities', async ({
   page,
   request,
@@ -14,8 +15,8 @@ test('publicdev shows signed relay entries, plays verified Rubik Cube, and gates
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
-  await page.getByRole('button', { name: 'Public napplets', exact: true }).click();
-  await expect(page.locator('.napplet-card')).toHaveCount(cache.entries.length);
+  await expect(page.locator('.napplet-card')).toHaveCount(cache.entries.length + records.length);
+  await expect(page.getByRole('button', { name: 'Public napplets' })).toHaveCount(0);
   await page.goto(`/n/${n.naddr}`);
   await expect(page.locator('iframe')).toHaveCount(0);
   await page.getByRole('button', { name: 'Start Rubik Cube' }).click();

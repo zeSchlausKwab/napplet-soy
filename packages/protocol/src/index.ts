@@ -1,5 +1,6 @@
 import { nip19, verifyEvent } from 'nostr-tools';
 import { z } from 'zod';
+import { normalizeTopic } from './topics';
 
 export const NAPPLET_KIND = 35129;
 export const ROOT_NAPPLET_KIND = 15129;
@@ -79,7 +80,7 @@ export function verifiedEvent(input: unknown): SignedEvent {
 export { validateRelease } from './manifest';
 
 export const gallerySearchSchema = z.object({
-  category: z.enum(['all', 'game', 'visual', 'toy', 'meme', 'public']).catch('all'),
+  tag: z.string().max(256).transform(normalizeTopic).catch(''),
   sort: z.enum(['curated', 'new']).catch('curated'),
   q: z.string().max(100).catch(''),
 });

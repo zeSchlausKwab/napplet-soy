@@ -309,17 +309,20 @@ pre:focus-visible {
 }
 .gallery-tools {
   display: flex;
+  flex-wrap: wrap;
   gap: 15px;
   justify-content: space-between;
   margin: 28px 0 24px;
   align-items: center;
 }
-.category-tabs {
+.topic-tabs {
   display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
   align-items: center;
   gap: 3px;
 }
-.category-tabs button {
+.topic-tabs button {
   font-size: 11px;
   display: flex;
   align-items: center;
@@ -331,12 +334,12 @@ pre:focus-visible {
   white-space: nowrap;
   color: #727669;
 }
-.category-tabs button.selected {
+.topic-tabs button.selected {
   color: #fffaf1;
   background: #30352a;
   border-color: #30352a;
 }
-.category-tabs button:not(.selected):hover {
+.topic-tabs button:not(.selected):hover {
   background: #ebece0;
 }
 .search-sort {
@@ -397,17 +400,12 @@ pre:focus-visible {
 .card-preview:hover img {
   transform: scale(1.045);
 }
-.category-tag {
-  position: absolute;
-  left: 13px;
-  top: 13px;
-  font-family: var(--mono);
-  font-size: 8px;
-  letter-spacing: 0.6px;
-  padding: 5px 8px;
-  background: #fffdf1dd;
-  border: 1px solid #00000012;
-  border-radius: 3px;
+.card-preview img.generated-poster {
+  object-fit: contain;
+  background: #f5f3eb;
+}
+.card-preview:hover img.generated-poster {
+  transform: none;
 }
 .play-indicator {
   position: absolute;
@@ -1044,12 +1042,10 @@ pre:focus-visible {
     margin-top: 22px;
     gap: 18px;
   }
-  .category-tabs {
+  .topic-tabs {
     max-width: 100%;
-    overflow: auto;
-    padding-bottom: 4px;
   }
-  .category-tabs button {
+  .topic-tabs button {
     font-size: 10px;
     padding: 8px 10px;
   }
@@ -1077,12 +1073,6 @@ pre:focus-visible {
   }
   .card-meta {
     font-size: 10px;
-  }
-  .category-tag {
-    left: 8px;
-    top: 8px;
-    font-size: 6px;
-    padding: 4px 6px;
   }
   .play-indicator {
     width: 30px;
@@ -1320,5 +1310,70 @@ pre:focus-visible {
   .card-meta.public-meta > span {
     display: block;
     max-width: 100%;
+  }
+}
+
+/* Topic taxonomy is shared by every creation, independent of discovery source. */
+.topic-name {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-align: left;
+}
+.topic-tabs button {
+  max-width: 100%;
+}
+.topic-count {
+  font-family: var(--mono);
+  font-size: 9px;
+  opacity: 0.65;
+}
+.topic-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin: -8px 0 24px;
+  background: #eeeee355;
+}
+.topic-panel p {
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+.topic-panel p span {
+  display: block;
+  color: #727669;
+  font-size: 11px;
+  margin-top: 5px;
+}
+.topic-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin-top: 12px;
+}
+.topic-tags a {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #55745a;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.topic-tags a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.detail-info .topic-tags {
+  margin: 16px 0;
+}
+.topic-tabs button:focus-visible,
+.topic-tags a:focus-visible {
+  outline: 2px solid #55745a;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .topic-tags {
+    gap: 5px 8px;
+  }
+  .topic-tabs button {
+    min-height: 40px;
   }
 }

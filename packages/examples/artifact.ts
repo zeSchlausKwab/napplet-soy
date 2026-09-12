@@ -2,7 +2,7 @@ export const examples = [
   {
     slug: 'soft-orbit',
     title: 'Soft orbit',
-    category: 'visual',
+    topics: ['visual', 'generative', 'animation'],
     color: '#ccd5ff',
     description:
       'A little solar system with absolutely nowhere to be. Move your pointer to bend its orbit.',
@@ -11,7 +11,7 @@ export const examples = [
   {
     slug: 'tiny-tennis',
     title: 'Tiny tennis',
-    category: 'game',
+    topics: ['game', 'arcade'],
     color: '#f6e765',
     description: 'One paddle. One ball. A pleasantly unreasonable amount of determination.',
     instructions: 'Move your pointer or finger to control the paddle.',
@@ -19,7 +19,7 @@ export const examples = [
   {
     slug: 'plasma-garden',
     title: 'Plasma garden',
-    category: 'visual',
+    topics: ['visual', 'generative', 'psychedelic'],
     color: '#ffafce',
     description: 'An ever-changing patch of digital flowers. No watering required.',
     instructions: 'Move your pointer to stir the garden. Click for new colors.',
@@ -27,7 +27,7 @@ export const examples = [
   {
     slug: 'blob-friend',
     title: 'Blob friend',
-    category: 'toy',
+    topics: ['toy', 'character', 'animation'],
     color: '#c2e4a4',
     description:
       'This little blob is very happy you are here. It follows you around. That is the whole thing.',
@@ -36,7 +36,7 @@ export const examples = [
   {
     slug: 'very-important',
     title: 'Very important button',
-    category: 'meme',
+    topics: ['meme', 'toy'],
     color: '#ffb586',
     description: 'A deeply unnecessary machine for celebrating very small accomplishments.',
     instructions: 'Click anywhere. You have earned this.',
@@ -44,7 +44,7 @@ export const examples = [
   {
     slug: 'pixel-rain',
     title: 'Pixel rain',
-    category: 'visual',
+    topics: ['visual', 'generative', 'pixel-art'],
     color: '#b7dfe7',
     description: 'A pocket-sized weather system, broadcasting from somewhere inside your computer.',
     instructions: 'Move your pointer to change the wind. Click to pause.',

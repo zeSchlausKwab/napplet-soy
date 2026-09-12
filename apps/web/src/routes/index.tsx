@@ -6,7 +6,9 @@ import {
   type SearchSchemaInput,
 } from '@tanstack/react-router';
 import { ArrowDown, ArrowUpRight, Search, Shuffle, Sparkles, X } from 'lucide-react';
+import { useState } from 'react';
 import { gallerySearchSchema, type GallerySearch } from '../../../../packages/protocol/src';
+import { matchesGallery, topicFacets } from '../../../../packages/protocol/src/topics';
 import { getGallery, getPublicCatalog } from '@/lib/catalog.functions';
 import { NappletCard } from '@/components/napplet-card';
 import { useNostr } from '@/components/nostr-provider';
@@ -16,45 +18,56 @@ import { publicLink } from '../../../../packages/backend/src/public-model';
 export const Route = createFileRoute('/')({
   validateSearch: (input: SearchSchemaInput & Partial<GallerySearch>) =>
     gallerySearchSchema.parse(input),
-  search: { middlewares: [stripSearchParams({ category: 'all', sort: 'curated', q: '' })] },
+  search: { middlewares: [stripSearchParams({ tag: '', sort: 'curated', q: '' })] },
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
     const [local, publicCatalog] = await Promise.all([
-      getGallery({ data: deps }),
+      getGallery({ data: { tag: '', q: '', sort: 'curated' } }),
       getPublicCatalog(),
     ]);
-    const query = deps.q.trim().toLowerCase();
-    const publicEntries = ['all', 'public'].includes(deps.category)
-      ? publicCatalog.entries.filter(
-          (n) => !query || `${n.title} ${n.description} ${n.creator}`.toLowerCase().includes(query),
-        )
-      : [];
-    const napplets = [...local, ...publicEntries];
+    const catalog = [...local, ...publicCatalog.entries];
+    const napplets = catalog.filter((n) => matchesGallery(n, deps));
     if (deps.sort === 'new')
       napplets.sort(
         (a, b) =>
           ('provenance' in b ? b.manifest.created_at : b.createdAt) -
           ('provenance' in a ? a.manifest.created_at : a.createdAt),
       );
-    return { napplets, status: publicCatalog.status };
+    return {
+      napplets,
+      topics: topicFacets(catalog),
+      total: catalog.length,
+      status: publicCatalog.status,
+    };
   },
   component: Gallery,
 });
-const categories = [
-  ['all', 'Everything'],
-  ['game', 'Mini games'],
-  ['visual', 'Visuals'],
-  ['toy', 'Toys'],
-  ['meme', 'Digital nonsense'],
-  ['public', 'Public napplets'],
-] as const;
 function Gallery() {
   const { ready } = useNostr();
-  const { napplets, status } = Route.useLoaderData();
+  const { napplets, topics, total, status } = Route.useLoaderData();
+  const [showAllTags, setShowAllTags] = useState(false);
   const search = Route.useSearch(),
     navigate = useNavigate({ from: '/' });
   const update = (patch: Partial<GallerySearch>) =>
     void navigate({ search: (prev) => ({ ...prev, ...patch }), resetScroll: false });
+  const visibleTopics = topics.slice(0, 5);
+  if (search.tag && !visibleTopics.some(({ topic }) => topic === search.tag))
+    visibleTopics.push(
+      topics.find(({ topic }) => topic === search.tag) ?? { topic: search.tag, count: 0 },
+    );
+  const tagButton = ({ topic, count }: { topic: string; count: number }) => (
+    <button
+      key={topic}
+      disabled={!ready}
+      aria-label={`Filter by #${topic}`}
+      aria-pressed={search.tag === topic}
+      className={search.tag === topic ? 'selected' : ''}
+      onClick={() => update({ tag: search.tag === topic ? '' : topic })}
+    >
+      <span className="topic-name">#{topic}</span>
+      <span className="topic-count">{count}</span>
+    </button>
+  );
   return (
     <>
       <section className="hero">
@@ -112,17 +125,10 @@ function Gallery() {
             <h2>
               The playground <span>{String(napplets.length).padStart(2, '0')}</span>
             </h2>
-            <p>
-              {status.publicdev
-                ? `${status.publicCount} public napplets alongside our local starting points.`
-                : 'Six little starting points. All yours to explore.'}
-            </p>
-            {status.publicdev && (
+            <p>Follow a tag. Find your kind of weird.</p>
+            {status.publicdev && !status.fetchedAt && (
               <p className="publicdev-status" role="status">
-                Public dev · {status.relays.length} Nostr relays ·{' '}
-                {status.fetchedAt
-                  ? `${status.stale ? 'saved catalog' : 'cached'} ${new Date(status.fetchedAt).toISOString().slice(0, 16).replace('T', ' ')} UTC`
-                  : 'catalog unavailable; local examples are ready'}
+                Discovery is temporarily unavailable. Showing the available collection.
               </p>
             )}
           </div>
@@ -147,20 +153,26 @@ function Gallery() {
           </Button>
         </div>
         <div className="gallery-tools">
-          <div className="category-tabs" aria-label="Filter by category">
-            {categories
-              .filter(([value]) => value !== 'public' || status.publicdev)
-              .map(([value, label]) => (
-                <button
-                  disabled={!ready}
-                  key={value}
-                  aria-pressed={search.category === value}
-                  className={search.category === value ? 'selected' : ''}
-                  onClick={() => update({ category: value })}
-                >
-                  {value === 'all' && <Sparkles size={14} />} {label}
-                </button>
-              ))}
+          <div className="topic-tabs" role="group" aria-label="Filter by tag">
+            <button
+              disabled={!ready}
+              aria-pressed={!search.tag}
+              className={!search.tag ? 'selected' : ''}
+              onClick={() => update({ tag: '' })}
+            >
+              <Sparkles size={14} /> Everything <span className="topic-count">{total}</span>
+            </button>
+            {visibleTopics.map(tagButton)}
+            {topics.length > 5 && (
+              <button
+                disabled={!ready}
+                aria-expanded={showAllTags}
+                aria-controls="all-topics"
+                onClick={() => setShowAllTags(!showAllTags)}
+              >
+                {showAllTags ? 'Fewer tags' : 'More tags'}
+              </button>
+            )}
           </div>
           <div className="search-sort">
             <form
@@ -194,6 +206,19 @@ function Gallery() {
             </select>
           </div>
         </div>
+        {showAllTags && (
+          <div className="topic-panel" id="all-topics">
+            <p>
+              Tags from creators{' '}
+              <span>Pick a topic to explore. Creations without tags stay in Everything.</span>
+            </p>
+            <div className="topic-tabs" role="group" aria-label="More tags">
+              {topics
+                .filter(({ topic }) => !visibleTopics.some((t) => t.topic === topic))
+                .map(tagButton)}
+            </div>
+          </div>
+        )}
         <div className="napplet-grid">
           {napplets.map((n, index) => (
             <NappletCard
@@ -207,7 +232,7 @@ function Gallery() {
           <div className="empty-results">
             <h3>No little wonders found.</h3>
             <p>Try a different word or open up the filters.</p>
-            <Button variant="outline" onClick={() => update({ q: '', category: 'all' })}>
+            <Button variant="outline" onClick={() => update({ q: '', tag: '' })}>
               Show everything
             </Button>
           </div>

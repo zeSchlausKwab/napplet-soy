@@ -46,7 +46,7 @@ There is material upstream drift. The NAP registry overview refers to kind 35128
 
 ## 3. The experience
 
-The landing page starts with creations, each showing a cover, title, creator, short description, category, and social activity. New, Featured, Following, and Random are useful initial views. Simple chronological discovery and editorial collections are sufficient initially; zaps should not determine visibility by themselves.
+The landing page starts with creations, each showing a cover, title, creator, short description, topic tags, and social activity. New, Featured, Following, and Random are useful initial views. Simple chronological discovery and editorial collections are sufficient initially; zaps should not determine visibility by themselves.
 
 Selecting a card opens a playable detail view with persistent site controls: fullscreen, restart, mute, creator, source, remix, comments, like, and zap. Fullscreen means expanding the player; browser fullscreen is an additional user-triggered action. Escape returns to the gallery and restores its scroll position. A pinned-version URL opens the exact creation that was shared. A normal napplet URL follows its latest valid release.
 

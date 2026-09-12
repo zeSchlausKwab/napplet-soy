@@ -1,4 +1,5 @@
-import records from '../data/catalog.json';
+import fixtures from '../data/catalog.json';
+import { manifestTopics, matchesGallery } from '../../protocol/src/topics';
 import { publicArtifact, readPublicCatalog } from './public-catalog';
 import { preparePlayback } from '../../runtime/src/playback';
 import {
@@ -8,6 +9,7 @@ import {
   type GallerySearch,
 } from '../../protocol/src';
 
+const records = fixtures.map((record) => ({ ...record, topics: manifestTopics(record.current) }));
 export type Napplet = (typeof records)[number] & { relays?: string[] };
 export type NappletCard = Omit<Napplet, 'current' | 'snapshot'> & {
   snapshotId: string;
@@ -34,12 +36,7 @@ export function toCard({ current, snapshot, ...record }: Napplet): NappletCard {
 }
 export async function gallery(search: GallerySearch) {
   await ensureValidated();
-  const query = search.q.trim().toLowerCase();
-  let list = records.filter(
-    (n) =>
-      (search.category === 'all' || n.category === search.category) &&
-      (!query || `${n.title} ${n.description} ${n.creator}`.toLowerCase().includes(query)),
-  );
+  let list = records.filter((n) => matchesGallery(n, search));
   if (search.sort === 'new')
     list = [...list].sort((a, b) => b.current.created_at - a.current.created_at);
   return list.map(toCard);

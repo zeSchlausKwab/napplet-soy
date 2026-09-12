@@ -1,3 +1,5 @@
+import { OG_VERSION } from '../../../../packages/backend/src/public-model';
+
 type Shareable = {
   title: string;
   description: string;
@@ -7,7 +9,7 @@ type Shareable = {
 export function nappletHead(n: Shareable | undefined, path: string, imageId?: string) {
   if (!n || !imageId) return { meta: [{ title: 'Not found — napplet.space' }] };
   const url = `${n.siteOrigin}${path}`;
-  const image = `${n.siteOrigin}/api/og/${imageId}?v=2${n.preview ? `&cover=${n.preview.hash}` : ''}`;
+  const image = `${n.siteOrigin}/api/og/${imageId}?v=${OG_VERSION}${n.preview ? `&cover=${n.preview.hash}` : ''}`;
   return {
     meta: [
       { title: `${n.title} — napplet.space` },

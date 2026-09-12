@@ -5,7 +5,7 @@ Updated 2026-09-12. This records the boundary between working code and the large
 ## Implemented
 
 - Bun 1.3.11 with TanStack Start 1.168.52, Router 1.170.35, React 19.2.4, Vite 8.3.0, TypeScript, shadcn/ui, and Tailwind.
-- SSR gallery, query-based category/search/sort filters, random selection, creator pages, named routes, portable `naddr` routes, pinned snapshot routes, and exact-source views.
+- SSR gallery, query-based topic/search/sort filters, random selection, creator pages, named routes, portable `naddr` routes, pinned snapshot routes, and exact-source views.
 - Six deterministic signed starter releases, original SVG posters, and interactive single-HTML examples. Fixture keys and data are clearly separated from production identity work. No fake community statistics.
 - Applesauce event-store isolation, signature verification, optional explicitly configured relay subscriptions, React context, and NIP-07 extension connection. Signing keys never enter a napplet iframe or SSR state.
 - NIP-5A aggregate hashes; signature, author, snapshot, path, and hash checks; bounded artifact download; browser-only execution behind an opaque iframe and restrictive CSP. This does not yet claim full NAP interoperability or a complete hostile-content admission pipeline.
@@ -57,3 +57,11 @@ Latest validation: **48 unit/integration tests, type checking, production build/
 Optional NIP-5A `app` references now resolve through signed Nostr metadata to NIP-89 pictures/profile fallback and Zapstore kind-32267 screenshots/icons. A bounded Node/Applesauce worker performs metadata queries during refresh, including public relay hints. Images are fetched with DNS/IP checks, raster-decoded with Sharp, normalized, and cached independently of playable artifacts. Gallery/player covers use the cached PNG and OG cards incorporate it. Missing, malformed, unsupported, or unreachable metadata does not block playback. See [PREVIEWS.md](PREVIEWS.md).
 
 The current public scan still contains 93 napplets and no app links. A separate signed offline browser fixture proves visible linked previews, and a read-only live query retrieved a real NIP-89 descriptor through the production metadata worker. No synthetic events were inserted into the normal public catalog or published. Test and build results for this addition are recorded in PREVIEWS.md.
+
+## Topic taxonomy
+
+The gallery now derives optional topics from signed NIP-24 `t` tags for every manifest. Fixed categories and the separate “Public napplets” filter are removed. Clickable tags, catalog counts, search, and shareable `?tag=...` filters work across discovery sources; details and generated OG images use the same vocabulary. Untagged napplets remain in Everything and text search. Cards show up to three topics with a link to the full list; available filters come from the loaded collection, not a fixed taxonomy. Generated preview images fit inside their cards without cropping their titles.
+
+Fixture manifests and snapshots now carry meaningful topic tags, and new CLI projects include editable topic suggestions. The 93 currently cached relay manifests have no `t` tags; the client does not invent topics for them. This is presentation metadata, not a new admission rule or a publishing implementation. See [PROTOCOL.md](PROTOCOL.md) for normalization and bounds, and [../CONTEXT.md](../CONTEXT.md) for vocabulary.
+
+Validation: 60 unit/integration tests, type checking, production build/startup, seven Chromium app/linked-preview checks, and a relay Rubik Cube playback check passed. The linked-preview fixture verifies that the same topic filter includes both bundled and imported napplets. Desktop and 390px mobile layouts were inspected; tag navigation, reload/history, missing-topic behavior, and idempotent seeding are covered. Local PM2/Caddy is running the updated build.

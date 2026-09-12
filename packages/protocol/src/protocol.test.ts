@@ -105,12 +105,12 @@ describe('signed napplet identities and releases', () => {
     ).toBeNull();
   });
   test('gallery filters are validated and composable', async () => {
+    expect((await gallery({ tag: 'game', sort: 'curated', q: '' })).map((n) => n.slug)).toEqual([
+      'tiny-tennis',
+    ]);
+    expect(await gallery({ tag: 'game', sort: 'new', q: 'blob' })).toHaveLength(0);
     expect(
-      (await gallery({ category: 'game', sort: 'curated', q: '' })).map((n) => n.slug),
-    ).toEqual(['tiny-tennis']);
-    expect(await gallery({ category: 'game', sort: 'new', q: 'blob' })).toHaveLength(0);
-    expect(
-      gallerySearchSchema.parse({ category: 'unknown', sort: 'broken', q: 'x'.repeat(500) }),
-    ).toEqual({ category: 'all', sort: 'curated', q: '' });
+      gallerySearchSchema.parse({ tag: 'x'.repeat(500), sort: 'broken', q: 'x'.repeat(500) }),
+    ).toEqual({ tag: '', sort: 'curated', q: '' });
   });
 });

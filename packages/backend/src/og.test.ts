@@ -31,10 +31,13 @@ test('preview text is escaped, remote images are never loaded, and origins are e
     title: '<script>&',
     description: '<image href="https://evil.example"/>',
     creator: 'Alice',
-    category: 'public',
-    slug: 'x',
+    topics: ['visual', '<unsafe>'],
+    slug: 'soft-orbit',
   });
   expect(svg).toContain('&lt;script&gt;&amp;');
+  expect(svg).toContain('#visual · #&lt;unsafe&gt;');
+  expect(svg).not.toContain('data:image/svg+xml');
+  expect(svg).not.toContain('FROM NOSTR');
   expect(svg).not.toContain('<image href="https://');
   const old = process.env.SPACE_SITE_ORIGIN;
   try {

@@ -54,6 +54,7 @@ export async function seedExamples(root = new URL('../', import.meta.url)) {
       ['x', aggregate, 'aggregate'],
       ['title', example.title],
       ['description', example.description],
+      ...example.topics.map((topic) => ['t', topic]),
     ];
     const snapshot = sign({
       kind: 5129,

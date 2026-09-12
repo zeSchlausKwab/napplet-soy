@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, Play, Info } from 'lucide-react';
+import { TopicTags } from './topic-tags';
 import type { NappletCard as Card } from '../../../../packages/backend/src/catalog';
 import {
   publicPoster,
@@ -29,6 +30,7 @@ export function NappletCard({
         aria-label={`${playable ? 'Play' : 'View'} ${napplet.title}`}
       >
         <img
+          className={external && !napplet.preview ? 'generated-poster' : undefined}
           src={external ? publicPoster(napplet) : `/posters/${napplet.slug}.svg`}
           referrerPolicy="no-referrer"
           alt=""
@@ -36,9 +38,6 @@ export function NappletCard({
           height="450"
           loading={index < 3 ? 'eager' : 'lazy'}
         />
-        <span className="category-tag">
-          {napplet.category === 'visual' ? 'VISUAL EXPERIMENT' : napplet.category.toUpperCase()}
-        </span>
         <span className="play-indicator">
           {playable ? <Play size={18} fill="currentColor" /> : <Info size={20} />}
         </span>
@@ -71,6 +70,13 @@ export function NappletCard({
           )}
         </span>
       </div>
+      <TopicTags topics={napplet.topics.slice(0, 3)}>
+        {napplet.topics.length > 3 && (
+          <Link {...link} aria-label={`View all tags for ${napplet.title}`}>
+            +{napplet.topics.length - 3}
+          </Link>
+        )}
+      </TopicTags>
     </article>
   );
 }

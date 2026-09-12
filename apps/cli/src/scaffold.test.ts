@@ -8,6 +8,11 @@ afterAll(() => rm(root, { recursive: true, force: true }));
 test('scaffolds a standalone Git project with shared restricted preview', async () => {
   const path = await scaffold(root, 'little-orbit', 'soft-orbit');
   expect(await Bun.file(join(path, 'index.html')).text()).toContain('<canvas');
+  expect((await Bun.file(join(path, 'napplet.json')).json()).topics).toEqual([
+    'visual',
+    'generative',
+    'animation',
+  ]);
   expect(await Bun.file(join(path, 'AGENTS.md')).text()).toContain('No CDN');
   expect(await Bun.file(join(path, '.napplet/runtime.js')).exists()).toBe(true);
   const process = Bun.spawn(['git', '-C', path, 'rev-parse', '--is-inside-work-tree'], {

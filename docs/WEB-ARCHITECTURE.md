@@ -45,7 +45,7 @@ Route loaders call a server function or API boundary that resolves identifiers a
 
 | URL | Meaning |
 | --- | --- |
-| `/` | Gallery; filters in query parameters, e.g. `?sort=new&category=game` |
+| `/` | Gallery; filters in query parameters, e.g. `?sort=new&tag=game` |
 | `/create` | Instructions, templates, installer command |
 | `/@alice` | Creator's site profile |
 | `/@alice/plasma-pet` | Human-readable napplet page, following its current release |
@@ -62,7 +62,7 @@ These are ordinary path routes, with no hash router. Direct requests and refresh
 
 For the proposed Start implementation, use file-based routes under `apps/web/src/routes` and its generated typed route tree. Route modules own validated path/search inputs, loaders, metadata, and error boundaries; server functions and API handlers own protected backend operations. Shared detail components and a shared `resolveNappletPage()` service keep alias, address, and snapshot views consistent. The URL contract above does not depend on the final router choice.
 
-Validate gallery query parameters such as `sort`, `category`, and `q`, provide defaults, and keep shareable navigation state in the URL. Preserve one player instance across its child views. Establish one owner for each cached dataset: route data for page metadata initially, and a deliberate live-update layer for Nostr events. If Query is introduced, hydrate its cache from SSR and update that same cache from subscriptions rather than keeping independent competing copies.
+Validate gallery query parameters such as `sort`, `tag`, and `q`, provide defaults, and keep shareable navigation state in the URL. Preserve one player instance across its child views. Establish one owner for each cached dataset: route data for page metadata initially, and a deliberate live-update layer for Nostr events. If Query is introduced, hydrate its cache from SSR and update that same cache from subscriptions rather than keeping independent competing copies.
 
 The `creator` segment includes the leading `@`; validate and normalize it centrally. A value without `@` is not a creator namespace. This avoids relying on a partially dynamic segment such as `@:handle`. Every relevant loader validates its own input through the shared resolver; do not depend on parent-loader execution order for validation or authorization. Reserved static routes and API/framework resource routes have explicit handlers.
 

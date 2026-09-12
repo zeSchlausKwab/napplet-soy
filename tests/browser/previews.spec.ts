@@ -55,7 +55,18 @@ test('linked screenshot appears in gallery, player cover and SSR sharing without
   page.on('request', (r) => {
     if (!r.url().startsWith(origin) && /^https?:/.test(r.url())) remote.push(r.url());
   });
-  await page.goto(`${origin}/?category=public`);
+  await page.goto(`${origin}/?q=${encodeURIComponent(entry.title)}`);
+  await expect(page.locator('.napplet-card')).toHaveCount(1);
+  await page.getByRole('link', { name: '#generative', exact: true }).click();
+  await expect(page.locator('.napplet-card')).toHaveCount(4);
+  await expect(
+    page.getByRole('button', { name: 'Filter by #generative', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Filter by #generative', exact: true }).click();
+  await expect(page.locator('.napplet-card')).toHaveCount(7);
+  await page.goBack();
+  await expect(page.locator('.napplet-card')).toHaveCount(4);
+  await page.goto(`${origin}/?q=${encodeURIComponent(entry.title)}`);
   const image = page.locator('.card-preview img');
   await expect(image).toHaveAttribute(
     'src',

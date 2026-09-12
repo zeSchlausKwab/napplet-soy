@@ -11,18 +11,27 @@ test('gallery SSR, filtering, navigation and browser history', async ({ page, re
   await expect(page.getByRole('heading', { name: 'The playground' })).toBeVisible();
   await expect(page.locator('.napplet-card')).toHaveCount(6);
   await expect(page.locator('iframe')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Public napplets' })).toHaveCount(0);
   await page.screenshot({
     path: '.local/gallery-desktop.png',
     fullPage: true,
     animations: 'disabled',
   });
-  await page.getByRole('button', { name: 'Mini games' }).click();
+  await page.getByRole('button', { name: 'More tags', exact: true }).click();
+  await page.getByRole('button', { name: 'Filter by #game', exact: true }).click();
   await expect(page.locator('.napplet-card')).toHaveCount(1);
-  await expect(page).toHaveURL(/category=game/);
+  await expect(page).toHaveURL(/tag=game/);
   await page.getByRole('link', { name: 'Play Tiny tennis' }).click();
   await expect(page.getByRole('heading', { name: 'Tiny tennis.' })).toBeVisible();
   await page.goBack();
   await expect(page.locator('.napplet-card')).toHaveCount(1);
+  await page.getByRole('link', { name: '#arcade', exact: true }).click();
+  await expect(page).toHaveURL(/tag=arcade/);
+  await expect(page.locator('.napplet-card')).toHaveCount(1);
+  await page.reload();
+  await expect(
+    page.getByRole('button', { name: 'Filter by #arcade', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   expect(errors).toEqual([]);
 });
 
@@ -100,6 +109,10 @@ test('mobile gallery has no horizontal overflow and signer failure is actionable
     fullPage: true,
     animations: 'disabled',
   });
+  await page.getByRole('button', { name: 'More tags', exact: true }).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Filter by #pixel-art', exact: true }).click();
+  await expect(page.locator('.napplet-card')).toHaveCount(1);
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
   await page.getByRole('button', { name: 'Connect browser extension' }).click();
   await expect(page.getByRole('alert')).toContainText('Install or unlock a Nostr extension');

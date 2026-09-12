@@ -3,6 +3,7 @@ import { ArrowLeft, Code2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useEventStore } from 'applesauce-react/hooks';
 import { Player } from './player';
+import { TopicTags } from './topic-tags';
 import { Button } from './ui/button';
 import { publicPoster, type PublicNapplet } from '../../../../packages/backend/src/public-model';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
@@ -21,7 +22,9 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
       </Link>
       <div className="detail-heading">
         <div>
-          <span className="eyebrow">PUBLIC NAPPLET / NOSTR</span>
+          <span className="eyebrow">
+            NAPPLET{napplet.manifest.kind === 5129 ? ' / PINNED RELEASE' : ''}
+          </span>
           <h1>
             {napplet.title}
             <span className="coral">.</span>
@@ -59,7 +62,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
             <p>
               {napplet.availability === 'host-required'
                 ? `Not supported here yet: ${missingDomains(napplet.domains).join(', ')}.`
-                : 'Its manifest is signed and valid, but its HTML could not be verified from the listed Blossom servers. Refresh public dev to try again.'}
+                : 'Its download could not be verified from the listed servers. Please try again after the catalog refreshes.'}
             </p>
           </div>
         </div>
@@ -68,6 +71,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
         <div>
           <h2>A little about this one</h2>
           <p>{napplet.description || 'The author has not added a description.'}</p>
+          <TopicTags topics={napplet.topics} />
         </div>
         <aside>
           {napplet.sourceUrl && (
@@ -103,8 +107,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
         {napplet.availability === 'ready' &&
           'Playback supports local saves, resource loading, and Nostr reads. Publishing and account changes are disabled. '}
         Discovered on Nostr. The author’s signature and artifact hashes are checked independently of
-        the relay and Blossom server. Public development uses a bounded catalog refreshed at
-        startup.
+        the relay and Blossom server.
       </div>
     </section>
   );

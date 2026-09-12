@@ -4,14 +4,14 @@ import { readPublicCatalog } from './public-catalog';
 import { examples, examplePoster } from '../../examples/artifact';
 import { previewImage } from './previews';
 import { sha256 } from '../../protocol/src/artifact';
-
-export const OG_VERSION = '2';
+import { OG_VERSION } from './public-model';
 type Preview = {
   title: string;
   description: string;
   creator: string;
-  category: string;
+  topics: readonly string[];
   slug: string;
+  fixture?: boolean;
 };
 const escapeXml = (text: string) =>
   text
@@ -36,7 +36,7 @@ function lines(text: string, width: number, count: number) {
   return output;
 }
 export function previewSvg(n: Preview, cover?: Buffer) {
-  const example = n.category !== 'public' ? examples.find((e) => e.slug === n.slug) : undefined;
+  const example = n.fixture ? examples.find((e) => e.slug === n.slug) : undefined;
   const art = cover
     ? `<image x="750" y="150" width="394" height="330" preserveAspectRatio="xMidYMid meet" href="data:image/png;base64,${cover.toString('base64')}"/>`
     : example
@@ -50,7 +50,7 @@ export function previewSvg(n: Preview, cover?: Buffer) {
     <path d="M68 48V78M53 63H83M57 52L79 74M57 74L79 52" stroke="#42755d" stroke-width="3"/>
     <text x="98" y="72" font-size="32" font-weight="700">napplet.space</text>
     <text x="1144" y="68" font-size="19" text-anchor="end" fill="#42755d">SMALL CODE. BIG WEIRD.</text>
-    <text x="56" y="162" font-size="18" fill="#42755d">${escapeXml(n.category.toUpperCase())} / ${n.category === 'public' ? 'FROM NOSTR' : 'STARTER COLLECTION'}</text>
+    <text x="56" y="162" font-size="18" fill="#42755d">${escapeXml(lines(n.topics.length ? n.topics.map((t) => `#${t}`).join(' · ') : 'NAPPLET', 58, 1)[0] ?? 'NAPPLET')}</text>
     ${lines(n.title, 19, 3)
       .map(
         (line, i) =>
@@ -64,7 +64,7 @@ export function previewSvg(n: Preview, cover?: Buffer) {
       )
       .join('')}
     <text x="56" y="574" font-size="21">${escapeXml(lines(n.creator, 52, 1)[0] ?? '')}</text>
-    <text x="1144" y="574" font-size="21" text-anchor="end" fill="#42755d">${n.category === 'public' ? 'Explore this napplet ↗' : 'Play. Inspect. Remix. ↗'}</text>
+    <text x="1144" y="574" font-size="21" text-anchor="end" fill="#42755d">Explore this napplet ↗</text>
     </g>${art}</svg>`;
 }
 const cache = new Map<string, Promise<Buffer>>();

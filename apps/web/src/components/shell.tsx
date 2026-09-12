@@ -31,7 +31,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <nav aria-label="Main navigation">
           <Link
             to="/"
-            search={{ category: 'all', sort: 'curated', q: '' }}
+            search={{ tag: '', sort: 'curated', q: '' }}
             activeProps={{ className: 'nav-active' }}
           >
             Explore

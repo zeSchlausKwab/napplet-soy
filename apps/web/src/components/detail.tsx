@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useEventStore } from 'applesauce-react/hooks';
 import { Button } from './ui/button';
 import { Player } from './player';
+import { TopicTags } from './topic-tags';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
 
 export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?: boolean }) {
@@ -29,9 +30,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
       </Link>
       <div className="detail-heading">
         <div>
-          <span className="eyebrow">
-            {napplet.category.toUpperCase()} / {pinned ? 'PINNED RELEASE' : 'STARTER COLLECTION'}
-          </span>
+          <span className="eyebrow">NAPPLET{pinned ? ' / PINNED RELEASE' : ''}</span>
           <h1>
             {napplet.title}
             <span className="coral">.</span>
@@ -61,6 +60,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
         <div>
           <h2>A little about this one</h2>
           <p>{napplet.description}</p>
+          <TopicTags topics={napplet.topics} />
           <div className="instructions">↳ {napplet.instructions}</div>
         </div>
         <aside>

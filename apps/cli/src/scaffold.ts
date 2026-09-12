@@ -27,7 +27,14 @@ export async function scaffold(parent: string, name: string, template: string) {
   await writeFile(
     resolve(target, 'napplet.json'),
     JSON.stringify(
-      { schema: 'space-local-project/v1', name, template, entry: 'index.html', license: 'MIT' },
+      {
+        schema: 'space-local-project/v1',
+        name,
+        template,
+        entry: 'index.html',
+        license: 'MIT',
+        topics: examples.find((e) => e.slug === template)!.topics,
+      },
       null,
       2,
     ) + '\n',
@@ -52,7 +59,7 @@ export async function scaffold(parent: string, name: string, template: string) {
   );
   await writeFile(
     resolve(target, 'README.md'),
-    `# ${name}\n\nA local napplet based on ${template}, from the Space lab starter collection.\n\nRun \`bun run dev\`, open http://localhost:4173, and edit \`index.html\` with your favorite coding agent. The preview reloads when the artifact changes. No dependency install is required.\n\nThe HTML is both the source and playable artifact. Keep it self-contained. Public publishing, managed Git hosting, and identity provisioning are not available in this initial local CLI.\n`,
+    `# ${name}\n\nA local napplet based on ${template}, from the Space lab starter collection.\n\nRun \`bun run dev\`, open http://localhost:4173, and edit \`index.html\` with your favorite coding agent. The preview reloads when the artifact changes. No dependency install is required.\n\nEdit the optional lowercase topic labels in \`napplet.json\` as your idea evolves. They describe the creation, for example \`visual\`, \`generative\`, or \`game\`; they are not exclusive categories.\n\nThe HTML is both the source and playable artifact. Keep it self-contained. Public publishing, managed Git hosting, and identity provisioning are not available in this initial local CLI.\n`,
   );
   const git = Bun.spawn(['git', 'init', '--initial-branch=main', target], {
     stdout: 'pipe',

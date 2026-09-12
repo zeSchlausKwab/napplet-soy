@@ -2,7 +2,11 @@
   {
     "slug": "soft-orbit",
     "title": "Soft orbit",
-    "category": "visual",
+    "topics": [
+      "visual",
+      "generative",
+      "animation"
+    ],
     "color": "#ccd5ff",
     "description": "A little solar system with absolutely nowhere to be. Move your pointer to bend its orbit.",
     "instructions": "Move your pointer. Click to change the palette.",
@@ -14,9 +18,9 @@
     "artifactHash": "aba3fdfe305876e797949cb475c1950aad1b83d35cf07b8a5fdca62c212036e7",
     "bytes": 3991,
     "current": {
-      "id": "ffdaf6fb3ece626253c201980b1db486733eb41c64cfc022144f20945beb87cf",
+      "id": "7900101000985ee11ab51d029eddfd5599b52006e8a93df266876c7bee3d8134",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "171946109cc2dfa2d221b2b0aa95ae78dc50c53aa4b4d33046233c886787118f4c053af83d2c8460f8e087f624a428f1068798dbeb5e70f297ad896e4dbdd605",
+      "sig": "25b6fb283cfa9c24df1f115e3d920c78c05675f411eb0be30b88c99670ff4268eab0e2b771ec521c8606fe42095cd0e097209936ce411819cf75584e95f217e7",
       "kind": 35129,
       "created_at": 1789128000,
       "content": "",
@@ -40,15 +44,27 @@
           "A little solar system with absolutely nowhere to be. Move your pointer to bend its orbit."
         ],
         [
+          "t",
+          "visual"
+        ],
+        [
+          "t",
+          "generative"
+        ],
+        [
+          "t",
+          "animation"
+        ],
+        [
           "d",
           "orbit"
         ]
       ]
     },
     "snapshot": {
-      "id": "6de57dbb98049edaaf47e974daf7ce0761b6f2e8c0c7032ef5ef8952643c3699",
+      "id": "80b59d4bb5ff6d10c3da427dbb337d220a13c716c778f115e2b36b626e06cb10",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "50708f39f819c9e55ccbb2e49aa3a3215b739d53f3e147cf8af28e019fadc0dcbdb37046bdbcb8cd7ceeccc0a3026b5e68aac5353a58ea844786b367d9618866",
+      "sig": "658f45c4bfc62470679a3dea9465ba6d9653938f39ff9f7763f24662bf0bfdab68506bbcac239e03c95fc208df6f85a989080b6e1f1fb888de236e0bd4ee0212",
       "kind": 5129,
       "created_at": 1789128000,
       "content": "",
@@ -70,6 +86,18 @@
         [
           "description",
           "A little solar system with absolutely nowhere to be. Move your pointer to bend its orbit."
+        ],
+        [
+          "t",
+          "visual"
+        ],
+        [
+          "t",
+          "generative"
+        ],
+        [
+          "t",
+          "animation"
         ],
         [
           "a",
@@ -83,7 +111,10 @@
   {
     "slug": "tiny-tennis",
     "title": "Tiny tennis",
-    "category": "game",
+    "topics": [
+      "game",
+      "arcade"
+    ],
     "color": "#f6e765",
     "description": "One paddle. One ball. A pleasantly unreasonable amount of determination.",
     "instructions": "Move your pointer or finger to control the paddle.",
@@ -95,9 +126,9 @@
     "artifactHash": "7dd532bbde972a1be07ef134a05303990c6032c51008858e21bace7ed5db643b",
     "bytes": 3993,
     "current": {
-      "id": "9c3ea958fa8ec12015366618697e6b57af9f221d215edc78832cf46b662df697",
+      "id": "168207fe7f86ddd961457e03114d952976e58b7b2329442494ae41c0263ea1f0",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "d41b78929608f941f48c9af72beb71b15dda3a646bdf7342bd610e3d6ccd8ba1f9a2fb13f76f580c3ce9ddef0934ff9bf44997e942460f57541dbc85e57c5fe1",
+      "sig": "8ff00482b00d1bae5ccb974b855a9f3f0f1fc6b17e421f71c866b4a54c2f3f21852aac0696573896398ba93581e9998a874c414819d9f15a5d7826dc95b3d237",
       "kind": 35129,
       "created_at": 1789128001,
       "content": "",
@@ -121,15 +152,23 @@
           "One paddle. One ball. A pleasantly unreasonable amount of determination."
         ],
         [
+          "t",
+          "game"
+        ],
+        [
+          "t",
+          "arcade"
+        ],
+        [
           "d",
           "tennis"
         ]
       ]
     },
     "snapshot": {
-      "id": "25deedaa74e1e63ec21406cc617af2ffc6e3a6ce7158ddd6cd1a0d024c404b1b",
+      "id": "374d154c41a787dc0fa340ad4908b3d6e537d8c4d1a7ca0066df528734b5820e",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "8890e93f2ec3e88089c3342ae12a30e316aa52f866149cbf04aefc22f8199b5e6d0e8f96473df3c96460a68c0348d06659e249f3286bfeae3d0e0d091d0f9ced",
+      "sig": "87b1a8a171a6e1455033dddbec6208e552e2294402b5b70ae935d91192deec5f414c43e0199e2031095fa8c760506ef994cfc99137268b3d9e2acae1149cd9d9",
       "kind": 5129,
       "created_at": 1789128001,
       "content": "",
@@ -151,6 +190,14 @@
         [
           "description",
           "One paddle. One ball. A pleasantly unreasonable amount of determination."
+        ],
+        [
+          "t",
+          "game"
+        ],
+        [
+          "t",
+          "arcade"
         ],
         [
           "a",
@@ -164,7 +211,11 @@
   {
     "slug": "plasma-garden",
     "title": "Plasma garden",
-    "category": "visual",
+    "topics": [
+      "visual",
+      "generative",
+      "psychedelic"
+    ],
     "color": "#ffafce",
     "description": "An ever-changing patch of digital flowers. No watering required.",
     "instructions": "Move your pointer to stir the garden. Click for new colors.",
@@ -176,9 +227,9 @@
     "artifactHash": "a003f1e7f641e0e7e2ea2df7e36c991ecd01d24d2ac4c149ed0925605b905420",
     "bytes": 3997,
     "current": {
-      "id": "1dfb5e7d1819d63243381d4f5941593edee6febd1eef59e04bf51cb490c2ae82",
+      "id": "6b450a7cfe43d73fd61281ca12091421c7416f15c3540792a222dc9f424479f2",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "3019a9954faf0a3de1ca3f3d9c3a731f4b7819bf53182d077dec6d8c4c04778012ee2afb2d3c69e96489a2547969286fe6efdbca1d37b6914112178c222979ae",
+      "sig": "34bfe8e2121b81ec47d33f643e8360030806612bb843fbf7ef7c3b4019a0a78584c01be548373c60efad0f48e88a0d9088b2442f2c28702797ef6f328a398969",
       "kind": 35129,
       "created_at": 1789128002,
       "content": "",
@@ -202,15 +253,27 @@
           "An ever-changing patch of digital flowers. No watering required."
         ],
         [
+          "t",
+          "visual"
+        ],
+        [
+          "t",
+          "generative"
+        ],
+        [
+          "t",
+          "psychedelic"
+        ],
+        [
           "d",
           "plasma"
         ]
       ]
     },
     "snapshot": {
-      "id": "fd19c464e6226366b35cb13c60e91716ae8eb0e76bc1b87771566cf3d24e0bf7",
+      "id": "b91a70824cadc667f973a98c30e949145fbf8634004cfac5d1b48554226cb065",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "b07c45e0423d29fd5d605427b3bbb6be838bc1708647b81921c7d51af081c95c3d2cf81fb34e62b652f37c5f5bd60857ecaeb3ebf439ea49931ab395664c0ba4",
+      "sig": "72216929b760a5875f758cf1a5c0b191c1bd3799114aaa89cbdf3d42ac10ddc3bca7a55ef9796d656e89aae9c8c34f186a8f21b78c9c68612d9db1fcc784ce85",
       "kind": 5129,
       "created_at": 1789128002,
       "content": "",
@@ -232,6 +295,18 @@
         [
           "description",
           "An ever-changing patch of digital flowers. No watering required."
+        ],
+        [
+          "t",
+          "visual"
+        ],
+        [
+          "t",
+          "generative"
+        ],
+        [
+          "t",
+          "psychedelic"
         ],
         [
           "a",
@@ -245,7 +320,11 @@
   {
     "slug": "blob-friend",
     "title": "Blob friend",
-    "category": "toy",
+    "topics": [
+      "toy",
+      "character",
+      "animation"
+    ],
     "color": "#c2e4a4",
     "description": "This little blob is very happy you are here. It follows you around. That is the whole thing.",
     "instructions": "Move your pointer. Click to make your friend jump.",
@@ -257,9 +336,9 @@
     "artifactHash": "7ed6f42554c4626069c28999ab87f05156e50ef24c9a9925e4b39c16ede41506",
     "bytes": 3993,
     "current": {
-      "id": "1c7cfa2924b8ec3fd257a677064545f0a5ee38352132fdf41150f18404de0253",
+      "id": "d2b958bbdcf7a458e55098714e103db4744e4b818333546a548496e65499e4f3",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "5bc5866629f1492c483f2ee024b89ef004e84c4d894285d8c53273f026151dff6d471430a8c6cc6e9184e99b6171fcf2520f99c7e4f6f8cc5d547136cb8c2628",
+      "sig": "6e0be4bea4ac8f85f05c8d6f22d13c1b44449cb64b101f0a07bfe4f550ac99516812b37e59b5a8b70822c8ef207bddde7efbff393f0734dce88986513a4299f6",
       "kind": 35129,
       "created_at": 1789128003,
       "content": "",
@@ -283,15 +362,27 @@
           "This little blob is very happy you are here. It follows you around. That is the whole thing."
         ],
         [
+          "t",
+          "toy"
+        ],
+        [
+          "t",
+          "character"
+        ],
+        [
+          "t",
+          "animation"
+        ],
+        [
           "d",
           "blob"
         ]
       ]
     },
     "snapshot": {
-      "id": "e634b60dac5009db6cd402a14f54885dff8e77db22660d2bae6b3492ef8a9e8e",
+      "id": "b736750a1ff7a2f6bae5147386540a4bb38ed38e98e65a2bcd0a1a6bf1014853",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "4c42c31ad0e1a37b66cb7979d4fe59c7bc29ec53d8d6d5a67a3fc440f3c9bc7ad4d17fa8eb618875c2b56587bbf17c877e4b0d98bcddd26986a622aece2dd8e3",
+      "sig": "d113131373173dfee8a6f5abe722ccc166a2cd598d5d40156c32d7281c68f30bce7c2f7412941337adc86b48038e5dc8b5115a3e1e50cb6edccda6feb0fca5a8",
       "kind": 5129,
       "created_at": 1789128003,
       "content": "",
@@ -313,6 +404,18 @@
         [
           "description",
           "This little blob is very happy you are here. It follows you around. That is the whole thing."
+        ],
+        [
+          "t",
+          "toy"
+        ],
+        [
+          "t",
+          "character"
+        ],
+        [
+          "t",
+          "animation"
         ],
         [
           "a",
@@ -326,7 +429,10 @@
   {
     "slug": "very-important",
     "title": "Very important button",
-    "category": "meme",
+    "topics": [
+      "meme",
+      "toy"
+    ],
     "color": "#ffb586",
     "description": "A deeply unnecessary machine for celebrating very small accomplishments.",
     "instructions": "Click anywhere. You have earned this.",
@@ -338,9 +444,9 @@
     "artifactHash": "e3fc35540e868295a5b3aec1a22275872015ed5ddb4562c6680e1e2ef2c3341b",
     "bytes": 4006,
     "current": {
-      "id": "1ae95032f7af0401b28dded6e77ca999da7eeb4ae770861f658966f3ba80a8c1",
+      "id": "87cba794f18297326b5953a2f6acddef5c11c09163f3576df87888d9e5ab3cc1",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "b74debbe2d1e3a6bc1abb93061a6af88e32be44e1cf28f5cb80536e62cf5300ad7127a38fab96e898097338b99294387cef460ce2ba9b07034cd3687e792a549",
+      "sig": "638c3cccbb51935e708f07a364ee81e36788df8f85fb01e3ce0d66e96110cc3d385442663caff1b5beb0b756fa8350eb6f435911e92d6a4ea7902b0f08a64b49",
       "kind": 35129,
       "created_at": 1789128004,
       "content": "",
@@ -364,15 +470,23 @@
           "A deeply unnecessary machine for celebrating very small accomplishments."
         ],
         [
+          "t",
+          "meme"
+        ],
+        [
+          "t",
+          "toy"
+        ],
+        [
           "d",
           "button"
         ]
       ]
     },
     "snapshot": {
-      "id": "e90654bcaeff63b66bd7d26fd6befd505dbcfc8750a7f84406ea18024409f3da",
+      "id": "ba4de1bf51ef0cbd498c633fad70ac44fb2273255feca1ff3305610989a87ffd",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "83754b041206bdb80d260f827676e06779f88767250f0173596d4615096bad7796d196b023cb912068f2dc454858fd8cb4863d9ba5a7aac0fbc248695351604b",
+      "sig": "3eee4c68bb844c48282267330d2b600c79dc54e5a96526bf50f6dd10de21262bdb16ff8e983e85bd69bdab36a1454bb58e36cdc150cbf5fcfb4be3474e07d868",
       "kind": 5129,
       "created_at": 1789128004,
       "content": "",
@@ -394,6 +508,14 @@
         [
           "description",
           "A deeply unnecessary machine for celebrating very small accomplishments."
+        ],
+        [
+          "t",
+          "meme"
+        ],
+        [
+          "t",
+          "toy"
         ],
         [
           "a",
@@ -407,7 +529,11 @@
   {
     "slug": "pixel-rain",
     "title": "Pixel rain",
-    "category": "visual",
+    "topics": [
+      "visual",
+      "generative",
+      "pixel-art"
+    ],
     "color": "#b7dfe7",
     "description": "A pocket-sized weather system, broadcasting from somewhere inside your computer.",
     "instructions": "Move your pointer to change the wind. Click to pause.",
@@ -419,9 +545,9 @@
     "artifactHash": "d200fb8704df6b0d1e011a402712e7565921a7c519cad634ddb4c6c90a010074",
     "bytes": 3991,
     "current": {
-      "id": "f4b87e625b02f655c6589ca72ceee11f3b5505a1ed9eb37d80eb9ce2ad960be4",
+      "id": "62f05a23ed64a3ed1208086991316307368514b603f94ac43189c90340fecfd8",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "3a94326de26ea58dbf494a0033ab97b48359b357b4b1a4304a93fd924f8b40e6ec9a860f6a4494dc9dac3fbcb2fdc38e6398db5fde0404a204cd033cf0ef09d4",
+      "sig": "4c1ff86d5ee3caad17ff5df13854fb8e6c78dc2eaf438dab1170102bb2a14e4533f4a72bc8be4b2c6980c54901eb5534944f78f30eb44ef449ba6d30a5635142",
       "kind": 35129,
       "created_at": 1789128005,
       "content": "",
@@ -445,15 +571,27 @@
           "A pocket-sized weather system, broadcasting from somewhere inside your computer."
         ],
         [
+          "t",
+          "visual"
+        ],
+        [
+          "t",
+          "generative"
+        ],
+        [
+          "t",
+          "pixel-art"
+        ],
+        [
           "d",
           "rain"
         ]
       ]
     },
     "snapshot": {
-      "id": "fd16207b0d9db5ec90136ccf32c93251bbdb6e69d338fc738a8930a220864d74",
+      "id": "85463073e3863df62aa474794e0aafb4b659fa963b20bb7fab0f73fa58328ef5",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "402b51bbb11cb459ec1c11b68358ccf56325b66f044c1e59e9ea1f59cc03a36b7376f1dd58643ca3009fa48cd650372e1886197e821dfe9b9477175bd3d6c740",
+      "sig": "aa03c40afa996da8ec14bc435bbe7d3482e4e2caafb96d5d4966446890128cc7f77f3bf93eab1d230eac107407dd6e86a8a42cbffb9f2a2a704c7ae96beb9796",
       "kind": 5129,
       "created_at": 1789128005,
       "content": "",
@@ -475,6 +613,18 @@
         [
           "description",
           "A pocket-sized weather system, broadcasting from somewhere inside your computer."
+        ],
+        [
+          "t",
+          "visual"
+        ],
+        [
+          "t",
+          "generative"
+        ],
+        [
+          "t",
+          "pixel-art"
         ],
         [
           "a",

@@ -4,7 +4,7 @@ import { NappletCard } from '@/components/napplet-card';
 export const Route = createFileRoute('/$creator')({
   loader: async ({ params }) => {
     if (params.creator !== '@space-lab') throw notFound();
-    return getGallery({ data: { category: 'all', sort: 'curated', q: '' } });
+    return getGallery({ data: { tag: '', sort: 'curated', q: '' } });
   },
   component: Creator,
 });
