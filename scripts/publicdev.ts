@@ -9,6 +9,9 @@ import {
 import { manifestIdentity, validateManifest } from '../packages/protocol/src/manifest';
 import { discoverNapplets } from '../packages/nostr/src/discovery';
 import { downloadArtifact } from '../packages/backend/src/blossom';
+import { discoverPreviewMetadata } from '../packages/backend/src/preview-discovery';
+import { indexPreviewImages, prunePreviewImages } from '../packages/backend/src/preview-images';
+import { PREVIEW_PROFILE } from '../packages/protocol/src/preview';
 import { missingDomains, RUNTIME_PROFILE } from '../packages/runtime/src/capabilities';
 import {
   DEFAULT_PUBLIC_RELAYS,
@@ -86,6 +89,8 @@ export async function refreshPublicCatalog(
     now?: number;
     discover?: typeof discoverNapplets;
     download?: typeof downloadArtifact;
+    metadata?: typeof discoverPreviewMetadata;
+    previewDownload?: NonNullable<Parameters<typeof indexPreviewImages>[4]>['download'];
   } = {},
 ) {
   const relays = options.relays ?? configuredPublicRelays();
@@ -94,12 +99,13 @@ export async function refreshPublicCatalog(
   let previous: PublicCache | null = null;
   try {
     const file = Bun.file(path);
-    if (file.size <= 8 * 1024 * 1024) previous = publicCacheSchema.parse(await file.json());
+    if (file.size <= 16 * 1024 * 1024) previous = publicCacheSchema.parse(await file.json());
   } catch {}
   const sameRelays = previous && JSON.stringify(previous.relays) === JSON.stringify(relays);
   if (
     sameRelays &&
     previous!.runtime === RUNTIME_PROFILE &&
+    previous!.previews === PREVIEW_PROFILE &&
     !options.refresh &&
     now >= previous!.fetchedAt &&
     now - previous!.fetchedAt < PUBLIC_CACHE_TTL
@@ -108,6 +114,22 @@ export async function refreshPublicCatalog(
   try {
     const inputs = await (options.discover ?? discoverNapplets)(relays);
     const { entries, rejected } = await selectPublicManifests(inputs);
+    const previews = (async () => {
+      try {
+        const signal = AbortSignal.timeout(20000);
+        const metadata = await (options.metadata ?? discoverPreviewMetadata)(
+          entries.map((n) => n.manifest),
+          relays,
+          signal,
+        );
+        await indexPreviewImages(directory, entries, metadata, signal, {
+          download: options.previewDownload,
+          previous: sameRelays ? previous!.entries : [],
+        });
+      } catch {
+        /* Missing preview metadata must not roll back a fresh playable catalog. */
+      }
+    })();
     const artifacts = resolve(directory, 'artifacts');
     await mkdir(artifacts, { recursive: true });
     const signal = AbortSignal.timeout(60000);
@@ -140,9 +162,11 @@ export async function refreshPublicCatalog(
         }
       }),
     );
+    await previews;
     const cache = publicCacheSchema.parse({
       version: 2,
       runtime: RUNTIME_PROFILE,
+      previews: PREVIEW_PROFILE,
       fetchedAt: now,
       relays,
       rejected,
@@ -151,6 +175,10 @@ export async function refreshPublicCatalog(
     const temporary = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`;
     await Bun.write(temporary, JSON.stringify(cache, null, 2) + '\n');
     await rename(temporary, path);
+    await prunePreviewImages(directory, [
+      ...entries,
+      ...(sameRelays ? previous!.entries : []),
+    ]).catch(() => {});
     return { cache, source: 'network' as const };
   } catch (error) {
     // An explicitly changed relay set must not fall back to another network's saved catalog.
@@ -159,6 +187,7 @@ export async function refreshPublicCatalog(
       const empty: PublicCache = {
         version: 2,
         runtime: RUNTIME_PROFILE,
+        previews: PREVIEW_PROFILE,
         fetchedAt: 0,
         relays,
         rejected: 0,

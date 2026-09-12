@@ -1,8 +1,13 @@
-type Shareable = { title: string; description: string; siteOrigin: string };
+type Shareable = {
+  title: string;
+  description: string;
+  siteOrigin: string;
+  preview?: { hash: string } | null;
+};
 export function nappletHead(n: Shareable | undefined, path: string, imageId?: string) {
   if (!n || !imageId) return { meta: [{ title: 'Not found — napplet.space' }] };
   const url = `${n.siteOrigin}${path}`;
-  const image = `${n.siteOrigin}/api/og/${imageId}?v=1`;
+  const image = `${n.siteOrigin}/api/og/${imageId}?v=2${n.preview ? `&cover=${n.preview.hash}` : ''}`;
   return {
     meta: [
       { title: `${n.title} — napplet.space` },

@@ -8,6 +8,7 @@ import {
 import { decodeAddress, identityAddress } from '../../protocol/src';
 import type { Lookup } from './catalog';
 import { missingDomains } from '../../runtime/src/capabilities';
+import { validatedPreview } from '../../protocol/src/preview';
 
 // Set by the dev launcher only. No request, hostname, or URL parameter can enable this mode.
 export function publicDirectory() {
@@ -15,14 +16,16 @@ export function publicDirectory() {
     ? resolve(process.env.SPACE_PUBLICDEV_DIR)
     : null;
 }
-let memo: { directory: string; cache: PublicCache } | undefined;
+let memo: { directory: string; modified: number; size: number; cache: PublicCache } | undefined;
 export async function readPublicCatalog() {
   const directory = publicDirectory();
   if (!directory) return null;
-  if (memo?.directory === directory) return memo.cache;
   try {
     const file = Bun.file(resolve(directory, 'catalog.json'));
-    if (file.size > 8 * 1024 * 1024) return null;
+    if (file.size > 16 * 1024 * 1024) return null;
+    const modified = file.lastModified;
+    if (memo?.directory === directory && memo.modified === modified && memo.size === file.size)
+      return memo.cache;
     const cache = publicCacheSchema.parse(await file.json());
     cache.entries = await Promise.all(
       cache.entries.map(async (entry) => {
@@ -32,6 +35,7 @@ export async function readPublicCatalog() {
         return {
           ...derived,
           bytes: entry.bytes,
+          preview: validatedPreview(derived.manifest, entry.preview),
           availability: missingDomains(derived.domains).length
             ? ('host-required' as const)
             : entry.availability === 'host-required'
@@ -40,7 +44,7 @@ export async function readPublicCatalog() {
         };
       }),
     );
-    memo = { directory, cache };
+    memo = { directory, modified, size: file.size, cache };
     return cache;
   } catch {
     return null;

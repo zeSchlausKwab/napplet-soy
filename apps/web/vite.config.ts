@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   plugins: [tailwind(), tanstackStart(), react()],
-  optimizeDeps: { exclude: ['@resvg/resvg-js'] },
-  ssr: { external: ['@resvg/resvg-js'] },
+  optimizeDeps: { exclude: ['@resvg/resvg-js', 'sharp', 'ws'] },
+  ssr: { external: ['@resvg/resvg-js', 'sharp', 'ws'] },
   server: { strictPort: true, allowedHosts: ['napplet.localhost'] },
 });

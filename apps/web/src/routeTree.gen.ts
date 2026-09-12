@@ -19,6 +19,7 @@ import { Route as NNaddrRouteImport } from './routes/n.$naddr'
 import { Route as RSnapshotRouteImport } from './routes/r.$snapshot'
 import { Route as ApiArtifactsHashRouteImport } from './routes/api.artifacts.$hash'
 import { Route as ApiOgIdRouteImport } from './routes/api.og.$id'
+import { Route as ApiPreviewsIdRouteImport } from './routes/api.previews.$id'
 import { Route as RSnapshotSourceRouteImport } from './routes/r.$snapshot.source'
 
 const IndexRoute = IndexRouteImport.update({
@@ -71,6 +72,11 @@ const ApiOgIdRoute = ApiOgIdRouteImport.update({
   path: '/api/og/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPreviewsIdRoute = ApiPreviewsIdRouteImport.update({
+  id: '/api/previews/$id',
+  path: '/api/previews/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RSnapshotSourceRoute = RSnapshotSourceRouteImport.update({
   id: '/source',
   path: '/source',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
   '/api/og/$id': typeof ApiOgIdRoute
+  '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
 }
 export interface FileRoutesByTo {
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
   '/api/og/$id': typeof ApiOgIdRoute
+  '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
 }
 export interface FileRoutesById {
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
   '/api/og/$id': typeof ApiOgIdRoute
+  '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
 }
 export interface FileRouteTypes {
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/r/$snapshot'
     | '/api/artifacts/$hash'
     | '/api/og/$id'
+    | '/api/previews/$id'
     | '/r/$snapshot/source'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/r/$snapshot'
     | '/api/artifacts/$hash'
     | '/api/og/$id'
+    | '/api/previews/$id'
     | '/r/$snapshot/source'
   id:
     | '__root__'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/r/$snapshot'
     | '/api/artifacts/$hash'
     | '/api/og/$id'
+    | '/api/previews/$id'
     | '/r/$snapshot/source'
   fileRoutesById: FileRoutesById
 }
@@ -169,6 +181,7 @@ export interface RootRouteChildren {
   RSnapshotRoute: typeof RSnapshotRouteWithChildren
   ApiArtifactsHashRoute: typeof ApiArtifactsHashRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
+  ApiPreviewsIdRoute: typeof ApiPreviewsIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -243,6 +256,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOgIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/previews/$id': {
+      id: '/api/previews/$id'
+      path: '/api/previews/$id'
+      fullPath: '/api/previews/$id'
+      preLoaderRoute: typeof ApiPreviewsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/r/$snapshot/source': {
       id: '/r/$snapshot/source'
       path: '/source'
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   RSnapshotRoute: RSnapshotRouteWithChildren,
   ApiArtifactsHashRoute: ApiArtifactsHashRoute,
   ApiOgIdRoute: ApiOgIdRoute,
+  ApiPreviewsIdRoute: ApiPreviewsIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

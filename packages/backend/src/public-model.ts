@@ -3,6 +3,7 @@ import { nip19 } from 'nostr-tools';
 import { eventSchema, encodeAddress } from '../../protocol/src';
 import { validateManifest } from '../../protocol/src/manifest';
 import { missingDomains } from '../../runtime/src/capabilities';
+import { cachedPreviewSchema } from '../../protocol/src/preview';
 
 export const PUBLIC_CACHE_TTL = 15 * 60 * 1000;
 export const DEFAULT_PUBLIC_RELAYS = [
@@ -34,11 +35,13 @@ export const publicNappletSchema = z.object({
   relays: z.array(z.string().max(256)).max(8).default([]),
   sourceUrl: z.string().max(4096).nullable(),
   availability: z.enum(['ready', 'host-required', 'unavailable']),
+  preview: cachedPreviewSchema.nullable().catch(null).default(null),
 });
 export type PublicNapplet = z.infer<typeof publicNappletSchema>;
 export const publicCacheSchema = z.object({
   version: z.literal(2),
   runtime: z.string().default('legacy'),
+  previews: z.string().default('legacy'),
   fetchedAt: z.number().int().nonnegative(),
   relays: z.array(z.string().max(256)).max(8),
   rejected: z.number().int().nonnegative(),
@@ -76,9 +79,13 @@ export async function publicNapplet(
     relays: relayHints.slice(0, 8),
     sourceUrl,
     availability: missingDomains(release.domains).length ? 'host-required' : 'unavailable',
+    preview: null,
   };
 }
-export const publicPoster = (entry: PublicNapplet) => `/api/og/${entry.revisionId}`;
+export const publicPoster = (entry: PublicNapplet) =>
+  entry.preview
+    ? `/api/previews/${entry.revisionId}?v=${entry.preview.hash}`
+    : `/api/og/${entry.revisionId}`;
 export const publicLink = (entry: PublicNapplet) =>
   entry.naddr
     ? { to: '/n/$naddr' as const, params: { naddr: entry.naddr } }

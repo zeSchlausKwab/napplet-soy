@@ -1,5 +1,6 @@
 import { request } from 'node:https';
 import { lookup } from 'node:dns';
+import type { LookupFunction } from 'node:net';
 import ipaddr from 'ipaddr.js';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../protocol/src';
 
@@ -10,6 +11,16 @@ export function publicIp(address: string) {
     return false;
   }
 }
+
+export const publicLookup: LookupFunction = (hostname, options, callback) => {
+  lookup(hostname, { all: true }, (error, addresses) => {
+    if (error) return callback(error, '', 4);
+    if (!addresses.length || addresses.some((entry) => !publicIp(entry.address)))
+      return callback(new Error('Private network destination'), '', 4);
+    if (options.all) callback(null, addresses);
+    else callback(null, addresses[0].address, addresses[0].family);
+  });
+};
 export function blossomUrl(server: string, hash: string) {
   if (!/^[a-f0-9]{64}$/.test(hash)) throw new Error('Invalid blob hash');
   const url = new URL(server);
@@ -49,7 +60,11 @@ export function publicResourceUrl(input: string) {
   return url;
 }
 
-export function fetchPublicBytes(url: URL, signal: AbortSignal): Promise<Uint8Array> {
+export function fetchPublicBytes(
+  url: URL,
+  signal: AbortSignal,
+  maxBytes = MAX_ARTIFACT_BYTES,
+): Promise<Uint8Array> {
   publicResourceUrl(url.href);
   const literal = url.hostname.replace(/^\[|\]$/g, '');
   if (ipaddr.isValid(literal) && !publicIp(literal))
@@ -59,15 +74,7 @@ export function fetchPublicBytes(url: URL, signal: AbortSignal): Promise<Uint8Ar
       url,
       {
         signal,
-        lookup: (hostname, options, callback) => {
-          lookup(hostname, { all: true }, (error, addresses) => {
-            if (error) return callback(error, '', 4);
-            if (!addresses.length || addresses.some((entry) => !publicIp(entry.address)))
-              return callback(new Error('Private network destination'), '', 4);
-            if (options.all) callback(null, addresses);
-            else callback(null, addresses[0].address, addresses[0].family);
-          });
-        },
+        lookup: publicLookup,
         headers: {
           Accept: '*/*',
           'User-Agent': 'napplet-space-publicdev/0.1',
@@ -75,10 +82,7 @@ export function fetchPublicBytes(url: URL, signal: AbortSignal): Promise<Uint8Ar
       },
       (response) => {
         // Redirects are not followed. Try the next signed server hint instead.
-        if (
-          response.statusCode !== 200 ||
-          Number(response.headers['content-length']) > MAX_ARTIFACT_BYTES
-        ) {
+        if (response.statusCode !== 200 || Number(response.headers['content-length']) > maxBytes) {
           response.destroy();
           reject(new Error(`Blossom response refused (${response.statusCode})`));
           return;
@@ -87,7 +91,7 @@ export function fetchPublicBytes(url: URL, signal: AbortSignal): Promise<Uint8Ar
         let length = 0;
         response.on('data', (chunk: Buffer) => {
           length += chunk.length;
-          if (length > MAX_ARTIFACT_BYTES) response.destroy(new Error('Artifact exceeds 10 MiB'));
+          if (length > maxBytes) response.destroy(new Error('Download exceeds byte limit'));
           else chunks.push(chunk);
         });
         response.on('error', reject);
