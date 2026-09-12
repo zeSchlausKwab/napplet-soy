@@ -32,6 +32,8 @@ No VPS has been contacted or deployed to. Shell syntax and argument validation a
 
 ## Next vertical slice
 
+First repair the web/CLI contract gaps identified in [CLIENT-DIRECTION.md](CLIENT-DIRECTION.md): unknown-message handling, the CLI's navigated preview and absent host/SHELL, and identity relay-list/change behavior. The NIP-5D proposal is authoritative. The same note records the recommended Khatru/LMDB/Bleve stack and future media/flavor strategy.
+
 Wire one real publish path through creator signing, ngit/GRASP source provisioning, Blossom upload, relay events, persistent validation/indexing, named-route assignment, and playback. The upstream shim is now pinned and playback domains are implemented; expand conformance and author-side preview parity alongside the publish path. The CLI installer, remote signers, persistent naming claims, moderation, likes/comments/zaps, and a full remix/publish journal are still ahead.
 
 Previous slice validation: 33 unit/integration tests passed; six Chromium checks passed against ordinary production mode through Caddy/PM2, plus the explicit publicdev browser check. The latter covers relay-derived naddr lookup, verified Rubik Cube playback, capability gating, and its OG endpoint. Cached public page/artifact/image URLs returned 404 when publicdev was off. The public gallery was also checked at a 390px viewport for overflow.

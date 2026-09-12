@@ -2,7 +2,7 @@
 
 Implementation update (2026-09-12): local fixtures and relay imports use the same manifest validator, capability checks, artifact verification, NAP host, and resource policy. See [PUBLIC-RUNTIME.md](PUBLIC-RUNTIME.md) for implemented operations and limits. Publishing, social writes, and source orchestration remain planned. Linked preview metadata is implemented; see [PREVIEWS.md](PREVIEWS.md). The six bundled examples are local test fixtures; they have not been published to public relays or Blossom.
 
-Standing product rule: a napplet created here is an ordinary public napplet. The client must not require a Space descriptor, hashtag, repository host, alias, or CLI provenance to discover or play it. Optional metadata enriches presentation; it never selects a privileged runtime or determines protocol identity. Apply the same capability, availability, and moderation policies to every publisher. NIP-5D is still a draft, so track a tested upstream revision rather than claiming universal conformance.
+Standing product rule: a napplet created here is an ordinary public napplet. The client must not require a Space descriptor, hashtag, repository host, alias, or CLI provenance to discover or play it. Optional metadata enriches presentation; it never selects a privileged runtime or determines protocol identity. Apply the same capability, availability, and moderation policies to every publisher. The user has selected the NIP-5D proposal as authoritative, regardless of merge status. Pin its revision and referenced NAP contracts, and treat implementation mismatches as bugs. Known gaps and future relay/media/flavor design are recorded in [CLIENT-DIRECTION.md](CLIENT-DIRECTION.md).
 
 ## 1. Compatibility baseline
 

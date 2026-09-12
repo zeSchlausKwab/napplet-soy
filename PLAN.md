@@ -1,5 +1,7 @@
 # napplet.space — proposed v1 plan
 
+2026-09-12 design follow-up: [CLIENT-DIRECTION.md](docs/CLIENT-DIRECTION.md) records the proposed Khatru/LMDB/Bleve relay, screenshot/video strategy, selectable flavor napplets, browser loading options, and concrete conformance gaps. The user explicitly selects the NIP-5D proposal as authoritative. Fix known host/CLI contract gaps before extending publication. Layout flavors are a future addition; ordinary creations remain self-contained.
+
 2026-09-12 implementation additions: automatic idempotent development seeds, explicit relay-only `publicdev`, server-rendered OG/PNG previews, and a ContextVM matchmaking starter. Details and remaining boundaries: [public development](docs/PUBLIC-DEVELOPMENT.md), [ContextVM API/design](docs/CONTEXTVM.md). Creator-hosted ContextVMs are supported as a design direction; managed server-code hosting is deferred.
 
 Status: v1 plan with initial implementation, 2026-09-11. The first web/runtime/local-CLI slice exists; the complete publish/remix platform is still planned. See [README.md](README.md) for working commands and [DEPLOYMENT.md](docs/DEPLOYMENT.md) for Caddy/PM2 deployment. The broader service URLs and workflows below remain the target architecture.
@@ -31,7 +33,7 @@ Recommended defaults, still open to discussion:
 - Local creation first; public Git repository provisioning happens at first publish. Abandoned experiments stay local.
 - A single HTML runtime artifact with code, fonts, textures, and audio embedded. Start with a 10 MiB uncompressed artifact ceiling and a 5 MiB recommended budget; adjust after measuring real creations.
 - Local gameplay and optional host-provided saves in the first runtime profile. Comments, likes, and zaps live in the site's surrounding UI. In-game Nostr writes, multiplayer, external APIs, and payments are later capabilities.
-- A public gallery entry requires accessible source and a declared open-source license. MIT is the new-project default; remixes preserve their inherited obligations. Assets have their own attribution and license records.
+- Our publisher defaults to accessible source and a declared open-source license. MIT is the new-project default; remixes preserve their inherited obligations. Assets have their own attribution and license records. Missing source metadata does not exclude another publisher's otherwise valid napplet from discovery or playback.
 - Posters in the feed, one live player on selection, no sound until interaction.
 
 The last two runtime recommendations deliberately make the first version small enough to ship. “Self-contained” describes the playable package and independence from other napplets; it does not require every future host capability to be forbidden.
