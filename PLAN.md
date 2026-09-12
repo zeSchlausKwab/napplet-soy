@@ -97,6 +97,8 @@ Maintain one shared Compose topology with explicit local, development, and produ
 
 ## 5. Publication is the integration boundary
 
+A creation published here uses the same standard manifest and NAP runtime as any other public napplet. Space metadata is optional presentation data, never an admission or playback requirement. Public relay discovery and hinted Blossom retrieval must work in another client without the Space API. The six bundled examples are unpublished local fixtures; real publishing remains an implementation milestone.
+
 There is no atomic transaction across Git, Blossom, and Nostr. Model publish as a persistent sequence whose steps can be retried safely:
 
 ```text

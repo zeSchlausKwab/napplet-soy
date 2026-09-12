@@ -1,14 +1,14 @@
-# Space v1 — proposed interoperability profile
+# Napplet interoperability and publishing contract
 
-Implementation update (2026-09-12): see [PUBLIC-DEVELOPMENT.md](PUBLIC-DEVELOPMENT.md) for automatic seeds, relay-only publicdev, and SSR/PNG previews, and [CONTEXTVM.md](CONTEXTVM.md) for the multiplayer service boundary. The remaining infrastructure and extensions below are still a plan. Public clients accept ordinary named/root/snapshot manifests without requiring Space extensions.
+Implementation update (2026-09-12): local fixtures and relay imports use the same manifest validator, capability checks, artifact verification, NAP host, and resource policy. See [PUBLIC-RUNTIME.md](PUBLIC-RUNTIME.md) for implemented operations and limits. Publishing, portable presentation metadata, social writes, and source orchestration remain planned. The six bundled examples are local test fixtures; they have not been published to public relays or Blossom.
 
-Status: draft proposal, 2026-09-11. This is an application profile, not an adopted NIP or NAP. It extends existing formats only where the gallery/release workflow needs additional metadata. Compatibility must be demonstrated before publishing this profile as stable.
+Standing product rule: a napplet created here is an ordinary public napplet. The client must not require a Space descriptor, hashtag, repository host, alias, or CLI provenance to discover or play it. Optional metadata enriches presentation; it never selects a privileged runtime or determines protocol identity. Apply the same capability, availability, and moderation policies to every publisher. NIP-5D is still a draft, so track a tested upstream revision rather than claiming universal conformance.
 
 ## 1. Compatibility baseline
 
 The current [NIP-5D proposal at commit 24711d9](https://github.com/dskvr/nips/blob/24711d9c47bbdd07908bf1d52bf677d9cbc530f0/5D.md) defines named napplets as kind `35129`, root napplets as `15129`, and immutable snapshots as `5129`. It adopts the file-manifest tag schema and aggregate-hash algorithm from [NIP-5A](https://github.com/nostr-protocol/nips/blob/master/5A.md). Generic nsites use different kinds; they must not be silently treated as sandboxed napplets.
 
-Space v1 uses named napplets and snapshots. Root napplets are unnecessary for the first product. The source repository has its own NIP-34 identity.
+The client accepts named, root, and snapshot manifests. Our publisher will default to named napplets and additionally publish snapshots for pinned links; snapshots are not a prerequisite for playing another publisher's current manifest. The source repository has its own NIP-34 identity.
 
 The tested release must record exact SDK, shim, template, conformance, ngit, GRASP, Blossom, and protocol revisions. Reading an old README or choosing the latest versions independently is insufficient. The registry's NAP-SHELL handshake language differs from the newer NIP-5D domain-injection language; the compatibility spike must select and document one working contract without asserting compatibility with both.
 
@@ -17,7 +17,7 @@ The tested release must record exact SDK, shim, template, conformance, ngit, GRA
 | Entity | Identifier | Meaning |
 | --- | --- | --- |
 | Creator | Nostr public key | Author who signs the napplet's releases |
-| Napplet | `35129:<author-hex>:<d-tag>` | Stable identity across title changes and releases |
+| Napplet | `35129:<author-hex>:<d-tag>` or `15129:<author-hex>:` | Stable identity across title changes and releases |
 | Release | Signed kind-5129 snapshot event ID | Immutable reference to one publication |
 | Artifact | NIP-5A aggregate hash | Identity of the playable files, independent of metadata |
 | Source repository | `30617:<maintainer-hex>:<repo-id>` | NIP-34 repository address |
@@ -35,63 +35,29 @@ The runtime's protocol tuple `(dTag, aggregateHash)` does not replace the full p
 - Build-time dependencies are allowed. They are bundled into the result rather than resolved on the viewer's device.
 - Proposed limits: 10 MiB uncompressed playable artifact, 50 MiB source archive, 1 MiB cover, 64 KiB release descriptor. These are admission limits, subject to empirical tuning.
 - The local preview and public player use the same runtime library and production bundle policy. A normal unsandboxed Vite page does not prove the napplet will run on the website.
-- Initial host capabilities: only the compatible foundational behavior and optionally scoped storage. Audio and visual output are browser behavior within the sandbox. Additional NAP domains are introduced deliberately after the first profile works.
+- Current host capabilities and operation limits are recorded in [PUBLIC-RUNTIME.md](PUBLIC-RUNTIME.md). Required domains are checked from the signed manifest for every napplet, including fixtures. Direct browser networking remains blocked; supported resource and relay operations go through the host.
 
 The hash algorithm is the upstream NIP-5A algorithm. Implement it once, with vectors shared by CLI, API, and browser. Reject malformed hashes, duplicate/conflicting paths, invalid signatures, inconsistent aggregate hashes, and unsupported required capabilities.
 
 Covers, metadata, and source archives live on Blossom too, but are not playable `path` entries. This preserves a single self-contained runtime artifact.
 
-## 4. Release descriptor extension
+## 4. Optional presentation and source metadata
 
-Propose one application-specific manifest tag:
+Use upstream manifest fields for identity, playable paths, aggregate hash, required domains, Blossom `server` hints, title, description, and `source`. A `source` reference can identify a NIP-34 repository through `nostr://` or a public HTTPS repository/archive. Our publisher defaults to retrievable open source. Source availability affects inspection/remixing, not whether this client can discover and play an otherwise supported napplet.
 
-```json
-["space", "v1", "<sha256-of-descriptor-bytes>"]
-```
+Prefer existing descriptor conventions over inventing a parallel manifest. [NIP-5A's upstream app descriptors](https://github.com/nostr-protocol/nips/blob/master/5A.md#upstream-app-descriptors) allow an optional `app` reference to an addressable descriptor event. Before shipping covers or richer metadata, pin and test the chosen descriptor schema against upstream clients. There is no Space-specific screenshot field required for playback.
 
-This tag is not standardized. Its schema, validation, preservation in snapshots, and compatibility behavior are Space's responsibility. Existing upstream tools must be adapted or extended to preserve it; their current metadata-copy behavior must not be assumed to do so.
+Category, cover, aspect ratio, license details, exact source commit, build provenance, and remix references may enrich the gallery. Keep site aliases and curation separate from signed protocol identity. Verify any signed descriptor and its association before trusting its claims. Missing, unknown, invalid, or unavailable optional descriptors fall back to the ordinary manifest and a generated poster; they do not hide a valid napplet or block playback. An optional descriptor may never override signed paths or required capabilities.
 
-The descriptor is UTF-8 JSON stored on the manifest's hinted Blossom servers. Hash the exact uploaded bytes. Consumers verify that hash before parsing. A typed serializer makes our output deterministic, but consumers need not reserialize JSON to verify it.
+Preview implementation today: the fixtures have bundled SVG illustrations; relay entries use generated OG title cards. The importer does not yet resolve linked preview descriptors. A generic card therefore does not prove the author supplied no screenshot. The planned common pipeline is a verified supported cover when available, otherwise a generated poster, regardless of where the napplet was published. Metadata crawling never executes napplet code to obtain a preview.
 
-Illustrative shape, with placeholders rather than real identifiers:
-
-```json
-{
-  "schema": "space-release/v1",
-  "runtimeProfile": "space-v1",
-  "nappletAddress": "35129:<author-hex>:plasma-k4m2",
-  "artifactAggregateHash": "<sha256>",
-  "title": "Plasma Pet",
-  "description": "A tiny creature made of interference patterns.",
-  "category": "visual",
-  "tags": ["plasma", "interactive"],
-  "source": {
-    "repositoryAddress": "30617:<author-hex>:plasma-k4m2",
-    "cloneUrl": "nostr://<repository-naddr>",
-    "commit": "<git-object-id>",
-    "archive": { "sha256": "<sha256>", "mediaType": "application/gzip" },
-    "license": "MIT",
-    "licensePath": "LICENSE",
-    "attributionPath": "ASSETS.md"
-  },
-  "cover": { "sha256": "<sha256>", "mediaType": "image/webp", "width": 960, "height": 600 },
-  "presentation": { "aspectRatio": "16:10", "inputs": ["pointer", "touch"], "audio": false },
-  "build": { "templateRevision": "<commit>", "toolchainRevision": "<profile-version>" },
-  "remix": null
-}
-```
-
-A remix descriptor adds its immediate parent's full napplet address, exact snapshot event ID, artifact hash, source commit, and original napplet address. The descriptor must not reference its own snapshot event ID: that would create a hash/signature cycle.
-
-The signed manifest binds the descriptor hash; the descriptor binds source and presentation metadata. Check that its napplet address and artifact hash match the enclosing manifest. Where title/description exist in both places, require agreement. Index only descriptor versions the validator supports; unknown versions can remain valid upstream napplets without being eligible for our gallery.
-
-Standard manifest `source` tags should still expose a clone URL for clients unaware of the extension. A `t` tag such as `napplet-space` can provide relay discovery. The extension is additive: another conformant host can still verify and play the HTML without implementing our gallery.
+Removing all optional Space metadata must leave the same napplet address, playable bytes, and NAP behavior. No client should need the Space website API or a `napplet-space` hashtag to discover our publications.
 
 ## 5. Current version, snapshots, and ancestry
 
-The named manifest is the current pointer and carries the standard playable tags, required capabilities, source URL, and descriptor tag. Each publication also produces a snapshot with the same artifact/descriptor and an `a` reference to the napplet's own address. A snapshot has no `d` tag.
+The named manifest is the current pointer and carries standard playable tags, required capabilities, source URL, and any optional descriptor reference. Our publisher also produces a snapshot with the same artifact and an `a` reference to the napplet's own address. A snapshot has no `d` tag. Each event is independently valid and playable without retrieving the other.
 
-The current manifest additionally points to its exact snapshot using a proposed profile convention: `["e", "<snapshot-id>", "<relay-hint>", "snapshot"]`. The `snapshot` marker is a Space convention, not an upstream guarantee. Validate that this event has the same author, napplet address, playable mappings, descriptor, and required capabilities. This removes ambiguity when several releases have identical HTML. Sign the snapshot first, then construct the current manifest; the snapshot never refers back to the current event ID.
+Do not add a mandatory custom current-to-snapshot pointer. The publisher can retain the exact pair in its local journal and the site index. Validate each manifest independently and check source address, signer, and artifact when associating a pair; matching code alone does not identify the exact release metadata. Public playback does not require a snapshot pair. Fixtures use these same rules and no longer emit a custom snapshot pointer or discovery hashtag.
 
 Follow the pinned upstream schema for the named manifest's `a` immediate-parent and `A` original-ancestor tags on remixes. Snapshot `a` means the snapshotted napplet, not its remix parent. Put the exact parent snapshot in the descriptor so those meanings do not collide.
 
@@ -113,7 +79,7 @@ If the newest signed current manifest is invalid or unavailable, surface that st
 
 ## 6. Source guarantees
 
-Every gallery-eligible release includes retrievable source, an exact commit, a license, dependency lockfile, and the documented build recipe. Retain a source archive on Blossom for convenient inspection and recovery. Validate archive paths, links, expanded size, and file count before extracting; validate its tracked tree against the referenced Git revision before claiming it is that source.
+Every release made by our publisher should include retrievable source, an exact commit, a license, dependency lockfile, and the documented build recipe. This is a creator-tool default, not a requirement for indexing other publishers' manifests. Retain a source archive on Blossom for convenient inspection and recovery. Validate archive paths, links, expanded size, and file count before extracting; validate its tracked tree against the referenced Git revision before claiming it is that source.
 
 Retain Git release refs so published commits remain reachable after branches move. Large original media can be represented in a content-addressed source asset lockfile and restored during remix; every required source asset must be retained and hash-checked too. V1 can keep normal small assets in Git and introduce that lockfile only when needed.
 
@@ -136,7 +102,7 @@ Validate zap receipts against NIP-57, including provider identity, request, invo
 
 ## 8. Browser trust boundary
 
-1. Obtain and verify the signed release and its descriptor. Fetch and verify all referenced playable bytes. Recompute the aggregate hash.
+1. Obtain and verify the signed manifest. Fetch and verify all referenced playable bytes and recompute the aggregate hash. Resolve optional descriptors separately for presentation; their absence cannot prevent execution.
 2. Construct a fresh `srcdoc` document, placing the host's CSP first and its selected runtime prelude before creator scripts. Hash verification happens before those host additions; additions are excluded from the signed artifact hash.
 3. Use `sandbox="allow-scripts"` without `allow-same-origin`. Do not grant forms, popups, downloads, top navigation, or devices by default.
 4. Scope each inbound message to the registered iframe `Window`, full app address, release, and current session. Reject malformed/oversized payloads and unknown senders; silently ignore unknown message types as the pinned protocol requires. Bound pending operations and message rates.
@@ -150,7 +116,9 @@ Store saves in host-owned storage scoped by viewer/anonymous local profile and f
 
 ## 9. Protocol-level acceptance checks
 
-- A second implementation verifies the same aggregate hash and opens a known good creation.
+- Publish from our CLI with a real creator identity, then discover the signed manifest using only standard Nostr kind/address filters in a second implementation. That client must retrieve the hinted Blossom bytes, verify the same aggregate hash, and run the creation without the Space API, alias, hashtag, or optional descriptor. This acceptance check is pending until publishing is implemented.
+- Import that publication back through the same relay ingestion path as any other publisher. Local fixtures and imported copies must receive identical validation, capabilities, resource access, and storage identity.
+- Removing optional presentation metadata still yields a discoverable, playable napplet with a generated poster.
 - Another operator can reconstruct the napplet, source, metadata, and ancestry from exported signed events, Git, and Blossom without our Postgres database.
 - An update preserves the stable social thread; a pinned link remains pinned.
 - Two authors with matching `d-tag` and artifact hash do not share permissions or storage.

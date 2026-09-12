@@ -1,8 +1,12 @@
-# Public playback profile
+# Napplet playback profile
 
 Implemented 2026-09-12. Open a public card and choose **Play napplet**. Cards distinguish verified, compatible artifacts from missing capabilities and unavailable downloads. Compatibility means this host implements the requested domains; an individual operation can still be refused by policy or fail upstream.
 
 ## Standards and integration
+
+Fixtures and relay-imported napplets use the same manifest validator, capability admission, artifact verification, host identity, and resource service. The browser subscription covers named, root, and snapshot kinds without a Space hashtag. Fixture metadata contains no custom snapshot pointer. Public publishing remains a separate unfinished feature; the bundled test key must never be used on public relays.
+
+Storage uses the same author/address/aggregate scope regardless of catalog source. A creator-signed snapshot and current manifest of the same build share that scope; a different app or signer cannot claim it. Existing current public-manifest scopes are preserved. The old fixture-only artifact-hash scope is retired; prototype fixture saves are not migrated.
 
 The browser injects the published **@napplet/shim 0.30.0** prelude, with transitive **@napplet/nap 0.32.0** and **@napplet/core 0.32.0** pinned in the lockfile. These are protocol bindings, not another catalog: discovery remains Applesauce queries against Nostr relays. The shim is loaded with the player route, not by executing an external script inside a napplet.
 
@@ -33,7 +37,7 @@ Required unsupported domains still gate launch: for example `inc`, `intent`, `co
 
 The iframe remains `sandbox="allow-scripts"`, with no same-origin grant or raw network access. Inline JavaScript and WebAssembly execute within that boundary. Resources are returned as Blobs, not embedded remote URLs. No resource or napplet code executes on the server.
 
-`POST /api/resources` accepts requests from the first-party host, for a ready public manifest. It rejects opaque/cross-origin callers, credentials, non-HTTPS network URLs, alternate ports and redirects. DNS destinations are checked in the actual connection lookup; private/special IPv4/IPv6 destinations are refused. The endpoint forwards no cookies or authorization headers. MIME is classified from bytes. Unknown binary bytes are permitted only for a verified Blossom digest; active document formats are refused even there.
+`POST /api/resources` accepts requests from the first-party host, for a known playable manifest from either catalog source. It rejects opaque/cross-origin callers, credentials, non-HTTPS network URLs, alternate ports and redirects. DNS destinations are checked in the actual connection lookup; private/special IPv4/IPv6 destinations are refused. The endpoint forwards no cookies or authorization headers. MIME is classified from bytes. Unknown binary bytes are permitted only for a verified Blossom digest; active document formats are refused even there.
 
 Each resource is capped at 10 MiB. The host queues bursts with four simultaneous fetches, at most 16 outstanding envelopes, 60 resource operations/minute and 128 MiB delivered per play session. The larger session budget accommodates the public packaged-loader fixture's ten assets (78 MiB total). The server separately caps eight concurrent fetches globally and four per manifest, with 20-second overall fetch deadlines. Queued cancellation starts no request. There is no persistent server resource cache; upstream shim cache/Blobs belong to the frame and disappear when it is destroyed.
 
@@ -45,7 +49,7 @@ Unit/integration coverage exercises storage isolation and quotas, virtual file c
 
 Read-only public smoke checks: Random Sticker displays/changes stickers and exports a WebP; Rubik Cube renders and plays; Packaged Loader Evidence finishes with all ten resources verified; DJ David Clanker renders its decks and fetches library resources; Nostr Pet reaches its public-account view. These are observations, not a guarantee for every listed app or operation. DJ's optional direct MIDI access remains browser-blocked; playback does not support payments or publication.
 
-Validation: 43 unit/integration tests and 11 Chromium checks passed. To repeat the public tests (the optional large fixture downloads 78 MiB):
+Latest interoperability change: type checking, 48 unit/integration tests, a production build/startup, and four Chromium playback/export checks passed through Caddy/PM2. The 78 MiB packaged-loader check was skipped in this pass; it passed at the previous 43-test/11-browser-check runtime checkpoint. To repeat the public tests (the optional large fixture downloads 78 MiB):
 
 ```sh
 TEST_ORIGIN=http://localhost:8080 TEST_PUBLICDEV=1 TEST_LARGE_PUBLIC=1 \

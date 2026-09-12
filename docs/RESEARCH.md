@@ -14,6 +14,8 @@ Implementation follow-up: the initial application and local Caddy/PM2 deployment
 | [ngit-grasp](https://gitworkshop.dev/danconwaydev.com/ngit-grasp) | GitWorkshop displayed `cdda4a23`, release `v3.0.2` | Maintained server candidate; deployment and interoperability still need testing |
 | [ngit-relay](https://github.com/DanConwayDev/ngit-relay) | README marks repository archived | Do not use as the new server implementation |
 
+Follow-up (2026-09-12): [PROTOCOL.md](PROTOCOL.md) supersedes the early custom `space` descriptor/discovery-tag recommendation below. The client and future publisher must use standard manifests, with optional presentation metadata and no Space-specific discovery or playback requirement. Local fixtures remain unpublished.
+
 ## Specific integration findings
 
 - [CLI documentation](https://github.com/napplet/web/blob/1df6dc87e5eee7257af41efb6247d47ec019e3d8/packages/cli/README.md) describes `create`, `init`, agent skill installation, native key storage, NIP-46 pairing, deploy diagnostics, and snapshots. The package README describes bundled create/skills code while the root README still mentions a Node requirement; test the actual distributed binary rather than choosing one sentence as definitive.

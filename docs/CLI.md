@@ -1,6 +1,8 @@
 # Creator CLI — proposed v1 behavior
 
-Status: product/engineering proposal, 2026-09-11. `napplet-space` is a working command name; these commands and the installer endpoint do not exist yet. It avoids colliding with the existing upstream `napplet` binary.
+Status: product/engineering proposal, updated 2026-09-12. Local `new` scaffolding is implemented; the public installer, identity setup, and publishing workflow below remain planned. `napplet-space` is a working command name, avoiding collision with the existing upstream `napplet` binary.
+
+Interoperability is a release requirement: publish ordinary NIP-5D manifests with public Blossom `server` hints, a standard `source` reference, and required NAP domains to publicly reachable relays. Use a real creator identity, never the bundled test key. Our own relay is a publication destination, not a requirement that other clients call the Space API. Publish to interoperable default discovery relays too, and include relay hints in portable links. Optional cover/source details and website aliases must not be required to discover or run the napplet. See [PROTOCOL.md](PROTOCOL.md).
 
 ## 1. The quick path
 
@@ -53,7 +55,7 @@ Initial support target: macOS ARM64/x64 and Linux x64 with a supported desktop/k
 | Location | Contents | Commit? |
 | --- | --- | --- |
 | `.napplet/config.json` | Existing napplet deployment fields, service defaults, public signer reference | Yes, portable nonsecret fields only |
-| `napplet.space.json` | Profile version, category, presentation, source license, template revision, remix ancestry | Yes |
+| `napplet.space.json` | Optional presentation, source license, template revision, remix ancestry | Yes; not a runtime requirement |
 | `bun.lock` and `package.json` | Dependencies and standard development scripts | Yes |
 | `LICENSE`, `ASSETS.md` | Source license and asset attribution | Yes |
 | `.napplet-space/` | Local deployment journal, receipts, source/build fingerprints, cached progress | No |
@@ -93,7 +95,7 @@ Persist a job keyed by creator, napplet address, source revision, full release-d
 | Push source | Let ngit handle signed state events and Git pushes; retain a release ref | Fetch/verify the commit from the designated Git host; a state event alone is insufficient |
 | Upload | Upload HTML, descriptor, cover, source archive, and any required source assets to Blossom | Hash/size-checked retrieval and per-server receipts; skip existing verified blobs |
 | Snapshot | Sign/publish the immutable snapshot with the fixed metadata | Save signed event before sending; resend the same event after an uncertain response |
-| Current | Sign/publish the addressable current manifest after the snapshot is available | Check accepted/retrievable state, timestamp ordering, and concurrent updates |
+| Current | Sign/publish the standard addressable current manifest after the snapshot is available; no custom snapshot pointer required | Check accepted/retrievable state, timestamp ordering, and concurrent updates |
 | Verify link | Wait for validated site resolution or return a bounded pending state | Exact public link, snapshot ID, source revision, mirror/index status |
 
 Preparing a source archive and build must exclude account credentials, local journals, `.env` secrets, ignored cache directories, and unrelated files. Secret scanning reduces accidental exposure but does not prove their absence. Build commands receive no signing material; only the publishing layer can request signing.
@@ -130,6 +132,8 @@ Do not use `--nsec <secret>` as the zero-configuration integration strategy. Do 
 
 The browser IDE can later call the same publisher library from an isolated workspace. For v1, compilation and source preparation happen locally. Servers validate events/blobs and render previews; they do not execute repository build scripts or hold creator keys.
 
-The API provides metadata queries, service limits, and publication status. A CLI hint that a release is ready can reduce index latency, but relay events remain independently ingestible. External hosting remains possible: gallery admission checks the profile and availability rather than requiring that our CLI created the repository.
+The API provides metadata queries, service limits, and publication status. A CLI hint that a release is ready can reduce index latency, but relay events remain independently ingestible. External hosting remains possible: discovery and playback use the same standard manifest, capability, and availability rules for all authors. A Space descriptor, source-host choice, or use of our CLI cannot be an admission requirement. Optional missing source metadata affects remix support only.
 
 Test first publish, repeat publish, a partial upload, an acknowledged-but-disconnected relay, GRASP state arriving before Git objects, concurrent publication, stale timestamps, changing files during a build, missing source, and resuming after process termination. These failures define whether the simple command is actually dependable.
+
+The publishing milestone is complete only after another client discovers and runs a CLI publication from public relays and Blossom without querying the Space API or understanding any additional metadata. Keep local fixture identity and endpoints out of this test; local seeding must never perform public writes.

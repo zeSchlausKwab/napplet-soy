@@ -90,7 +90,9 @@ bun run test:browser
 TEST_ORIGIN=http://localhost:8080 bun run test:browser
 ```
 
-`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Generated events are not published to relays.
+`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Generated events are not published to relays. They use the same manifest validation and runtime policy as relay imports. The posters are bundled illustrations; public entries currently use generated OG cards, so their appearance does not establish whether the author supplied a screenshot.
+
+Our publishing contract is standard NIP-5D manifests, public relays, retrievable Blossom bytes, and open source by default. Additional Space metadata and named routes are optional overlays. Publishing is not complete until an independent client discovers and runs a release without the Space API; see [the interoperability contract](docs/PROTOCOL.md).
 
 ## What is still ahead
 
