@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -120,7 +121,22 @@ func main() {
 		log.Fatal(err)
 	}
 	listener := &trackedListener{Listener: netutil.LimitListener(tcp, 256), connections: make(map[*trackedConnection]struct{})}
-	server := &http.Server{Handler: relay, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
+	publicURL, err := url.Parse(relay.ServiceURL)
+	if err != nil || publicURL.Host == "" || (publicURL.Scheme != "http" && publicURL.Scheme != "https") {
+		log.Fatal("SPACE_SERVICE_URL must be an HTTP(S) relay URL")
+	}
+	direct := relay.WithServiceURL("http://" + listener.Addr().String() + publicURL.Path)
+	// NIP-42 binds authentication to the URL used by the client. The fixed direct
+	// listener address is an explicit local alias; proxy Host headers keep the
+	// configured public URL. Never trust arbitrary Forwarded headers for auth.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host == listener.Addr().String() {
+			direct.ServeHTTP(w, r)
+		} else {
+			relay.ServeHTTP(w, r)
+		}
+	})
+	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	var maintenance sync.WaitGroup

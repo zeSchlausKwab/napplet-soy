@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { RelayPool } from 'applesauce-relay';
+import { finalizeEvent, generateSecretKey } from 'nostr-tools';
 import { lastValueFrom, toArray } from 'rxjs';
 import { buildRelay, localFixtureTarget, seedLocalRelay } from '../../scripts/relay';
 import { verifiedEvent } from '../../packages/protocol/src';
@@ -17,7 +18,7 @@ async function start() {
       ...process.env,
       SPACE_SERVICE_DATA: join(directory, 'data'),
       SPACE_SERVICE_BIND: '127.0.0.1:0',
-      SPACE_SERVICE_URL: 'http://127.0.0.1:0',
+      SPACE_SERVICE_URL: 'https://relay.example/relay',
       SPACE_SERVICE_INSTANCE: 'test',
     },
     stdout: 'pipe',
@@ -35,7 +36,7 @@ async function start() {
           text += new TextDecoder().decode(next.value);
           const match = text.match(/listening on http:\/\/(127\.0\.0\.1:\d+)/);
           if (match) {
-            url = `ws://${match[1]}`;
+            url = `ws://${match[1]}/relay`;
             return;
           }
         }
@@ -113,3 +114,29 @@ test('signed publications survive process restart', async () => {
   expect(info.supported_nips).toContain(50);
   expect(info.supported_nips).not.toContain(45);
 }, 20_000);
+
+test('NIP-42 authenticates the direct URL before accepting protected events', async () => {
+  const pool = new RelayPool();
+  const relay = pool.relay(url);
+  const key = generateSecretKey();
+  const event = finalizeEvent(
+    {
+      kind: 1,
+      created_at: Math.floor(Date.now() / 1000),
+      content: 'Local protected transport test',
+      tags: [['-']],
+    },
+    key,
+  );
+  try {
+    const refused = await lastValueFrom(relay.event(event));
+    expect(refused.ok).toBe(false);
+    expect(refused.message).toStartWith('auth-required:');
+    expect(
+      (await relay.authenticate({ signEvent: (template) => finalizeEvent(template, key) })).ok,
+    ).toBe(true);
+    expect((await lastValueFrom(relay.event(event))).ok).toBe(true);
+  } finally {
+    pool.close();
+  }
+}, 10_000);
