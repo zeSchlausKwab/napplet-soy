@@ -291,10 +291,31 @@ export class PlaybackNostr {
   async identity(action: string) {
     const pubkey = this.pubkey() ?? '';
     if (action === 'getPublicKey') return { pubkey };
-    if (action === 'getRelays')
-      return {
-        relays: Object.fromEntries(this.relays.map((r) => [r, { read: true, write: false }])),
-      };
+    if (action === 'getRelays') {
+      const records = pubkey
+        ? await this.query([{ authors: [pubkey], kinds: [10002], limit: 1 }])
+        : [];
+      const latest = records.sort(
+        (a, b) => b.event.created_at - a.event.created_at || a.event.id.localeCompare(b.event.id),
+      )[0]?.event;
+      const relays: Record<string, { read: boolean; write: boolean }> = {};
+      for (const tag of latest?.tags ?? []) {
+        if (tag[0] !== 'r' || (tag[2] && !['read', 'write'].includes(tag[2]))) continue;
+        try {
+          const url = new URL(tag[1]);
+          if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password || url.hash)
+            continue;
+          const previous = relays[url.href];
+          relays[url.href] = {
+            read: !!previous?.read || tag[2] !== 'write',
+            write: !!previous?.write || tag[2] !== 'read',
+          };
+        } catch {}
+      }
+      // These are the user's advertised preferences, not permission to contact
+      // these servers. plan()/handle() still enforce the host's relay policy.
+      return { relays };
+    }
     if (action === 'getProfile')
       return { profile: pubkey ? (await this.profile(pubkey)).profile : null };
     if (action === 'getFollows') return { pubkeys: pubkey ? await this.tags(pubkey, 3) : [] };

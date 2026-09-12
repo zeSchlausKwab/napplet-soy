@@ -97,3 +97,72 @@ test('file exports require a host choice, return real bytes, and disappear when 
   await page.getByRole('button', { name: 'Stop napplet' }).click();
   await expect(page.locator('.host-files')).toHaveCount(0);
 });
+
+test('unknown NAP messages are silent and consume no request quota', async ({ page }) => {
+  const frame = await start(page);
+  expect(
+    await frame.evaluate(async () => {
+      const replies: unknown[] = [];
+      const listen = (event: MessageEvent) => {
+        if (String(event.data?.id).startsWith('unknown')) replies.push(event.data);
+      };
+      window.addEventListener('message', listen);
+      for (let i = 0; i < 650; i++)
+        parent.postMessage(
+          { type: i % 2 ? 'future.get' : 'storage.future', id: `unknown-${i}` },
+          '*',
+        );
+      // This request is ordered after the unknown messages and must still succeed.
+      const key = await (window as any).napplet.identity.getPublicKey();
+      window.removeEventListener('message', listen);
+      return { key, replies };
+    }),
+  ).toEqual({ key: '', replies: [] });
+});
+
+test('account changes notify the existing frame and replace storage, files and pending prompts', async ({
+  page,
+}) => {
+  const key = 'a'.repeat(64);
+  await page.addInitScript((key) => {
+    (window as any).nostr = { getPublicKey: async () => key };
+  }, key);
+  const frame = await start(page);
+  await frame.evaluate(async () => {
+    const n = (window as any).napplet;
+    (window as any).changes = [];
+    n.identity.onChanged((pubkey: string) => (window as any).changes.push(pubkey));
+    await n.storage.setItem('level', 'guest-level');
+    await n.fs.write('/files/guest.txt', btoa('guest file'));
+  });
+  await expect(page.getByRole('link', { name: 'guest.txt ↓' })).toBeVisible();
+  const pending = frame.evaluate(() =>
+    (window as any).napplet.fs.pickSaveFile({ suggestedName: 'pending.txt' }).catch(String),
+  );
+  await expect(page.getByRole('dialog', { name: 'Save napplet file' })).toBeVisible();
+  await page.getByRole('button', { name: 'Connect', exact: true }).click();
+  await page.getByRole('button', { name: 'Connect browser extension' }).click();
+  await expect.poll(() => frame.evaluate(() => (window as any).changes)).toEqual([key]);
+  expect(await pending).toContain('Identity changed');
+  await expect(page.getByRole('dialog', { name: 'Save napplet file' })).toHaveCount(0);
+  await expect(page.locator('.host-files')).toHaveCount(0);
+  expect(
+    await frame.evaluate(async () => {
+      const n = (window as any).napplet;
+      const level = await n.storage.getItem('level');
+      await n.storage.setItem('level', 'account-level');
+      return { level, identity: await n.identity.getPublicKey(), files: await n.fs.list('/files') };
+    }),
+  ).toEqual({ level: null, identity: key, files: [] });
+  await page.getByRole('button', { name: 'Disconnect from this app' }).click();
+  await expect.poll(() => frame.evaluate(() => (window as any).changes)).toEqual([key, '']);
+  expect(await frame.evaluate(() => (window as any).napplet.storage.getItem('level'))).toBe(
+    'guest-level',
+  );
+  // The same execution context survived both changes: its listener history remains.
+  await page.getByRole('button', { name: 'Connect browser extension' }).click();
+  await expect.poll(() => frame.evaluate(() => (window as any).changes)).toEqual([key, '', key]);
+  expect(await frame.evaluate(() => (window as any).napplet.storage.getItem('level'))).toBe(
+    'account-level',
+  );
+});

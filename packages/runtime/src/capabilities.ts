@@ -12,5 +12,55 @@ export const RUNTIME_DOMAINS = [
   'fs',
 ] as const;
 export const RUNTIME_PROFILE = 'space-playback-1';
+
+// Only request types understood by this host. Notifications, responses and future
+// operations must be ignored, including unknown operations in supported domains.
+export const HOST_REQUESTS = new Set(
+  Object.entries({
+    identity: [
+      'getPublicKey',
+      'getRelays',
+      'getProfile',
+      'getFollows',
+      'getList',
+      'getZaps',
+      'getMutes',
+      'getBlocked',
+      'getBadges',
+    ],
+    storage: ['get', 'set', 'remove', 'keys'],
+    theme: ['get'],
+    resource: ['info', 'bytes', 'bytesMany', 'cancel'],
+    relay: ['query', 'subscribe', 'close', 'publish', 'publishEncrypted'],
+    outbox: ['getEvent', 'query', 'subscribe', 'close', 'publish', 'resolveRelays'],
+    common: [
+      'encodeNip19',
+      'decodeNip19',
+      'getProfile',
+      'follows',
+      'follow',
+      'unfollow',
+      'react',
+      'report',
+    ],
+    link: ['open'],
+    fs: [
+      'info',
+      'pickFile',
+      'pickFiles',
+      'pickDirectory',
+      'pickSaveFile',
+      'stat',
+      'list',
+      'read',
+      'write',
+      'mkdir',
+      'remove',
+      'move',
+      'watch',
+      'unwatch',
+    ],
+  }).flatMap(([domain, actions]) => actions.map((action) => `${domain}.${action}`)),
+);
 export const missingDomains = (required: readonly string[]) =>
   required.filter((domain) => !(RUNTIME_DOMAINS as readonly string[]).includes(domain));

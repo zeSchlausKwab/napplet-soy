@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Expand, LoaderCircle, Play, RotateCcw, Square } from 'lucide-react';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
@@ -7,12 +7,11 @@ import { preparePlayback } from '../../../../packages/runtime/src/playback';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
 import { publicPoster, type PublicNapplet } from '../../../../packages/backend/src/public-model';
 import shim from '@napplet/shim/prelude.global?raw';
-import { RUNTIME_DOMAINS } from '../../../../packages/runtime/src/capabilities';
-import { SHELL_PRELUDE } from '../../../../packages/runtime/src/prelude';
+import { nappletPrelude } from '../../../../packages/runtime/src/prelude';
 import { attachNappletHost, type HostPrompt } from '../../../../packages/runtime/src/host';
 import type { ExportFile } from '../../../../packages/runtime/src/filesystem';
 
-const prelude = `${shim}\nglobalThis.NappletShimPrelude.install(${JSON.stringify({ domains: RUNTIME_DOMAINS.filter((d) => d !== 'shell') })});\n${SHELL_PRELUDE}`;
+const prelude = nappletPrelude(shim);
 
 function FileExports({ files }: { files: ExportFile[] }) {
   const [downloads, setDownloads] = useState<{ name: string; url: string }[]>([]);
@@ -47,7 +46,12 @@ export function Player({
   const { ready, pubkey } = useNostr();
   const [prompt, setPrompt] = useState<HostPrompt | null>(null);
   const [exports, setExports] = useState<ExportFile[]>([]);
-  const cleanupHost = useRef<(() => void) | undefined>(undefined);
+  const host = useRef<ReturnType<typeof attachNappletHost> | undefined>(undefined);
+  const currentPubkey = useRef(pubkey);
+  useLayoutEffect(() => {
+    currentPubkey.current = pubkey;
+    host.current?.updateIdentity(pubkey);
+  }, [pubkey]);
   const [playing, setPlaying] = useState(false),
     [doc, setDoc] = useState(''),
     [release, setRelease] = useState<Awaited<ReturnType<typeof preparePlayback>> | null>(null),
@@ -56,20 +60,20 @@ export function Player({
   const frame = useRef<HTMLDivElement>(null);
   const bindFrame = useCallback(
     (node: HTMLIFrameElement | null) => {
-      cleanupHost.current?.();
-      cleanupHost.current = undefined;
+      host.current?.close();
+      host.current = undefined;
       if (!node || !release) return;
-      cleanupHost.current = attachNappletHost({
+      host.current = attachNappletHost({
         frame: node,
         identity: release.hostIdentity,
         manifestId: release.manifest.id,
         relays: napplet.relays ?? [],
-        pubkey,
+        pubkey: currentPubkey.current,
         prompt: setPrompt,
         files: setExports,
       });
     },
-    [napplet, pubkey, release],
+    [napplet, release],
   );
   useEffect(() => {
     setExports([]);
@@ -94,7 +98,7 @@ export function Player({
           setError(reason instanceof Error ? reason.message : 'Could not load this creation.');
       });
     return () => controller.abort();
-  }, [playing, releaseId, revision, pubkey]);
+  }, [playing, releaseId, revision]);
   return (
     <div className="player-wrap">
       <div ref={frame} className="player-stage">
@@ -123,7 +127,7 @@ export function Player({
           </div>
         ) : doc ? (
           <iframe
-            key={`${revision}:${pubkey}`}
+            key={revision}
             ref={bindFrame}
             title={napplet.title}
             srcDoc={doc}

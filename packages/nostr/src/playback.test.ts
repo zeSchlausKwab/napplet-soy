@@ -93,3 +93,75 @@ test('playback filters are bounded and guest identity is explicit', async () => 
   await expect(client.common({ type: 'common.follow', pubkeys: [] })).rejects.toThrow('disabled');
   client.close();
 });
+
+test('identity relay preferences come from the latest verified NIP-65 record without granting access', async () => {
+  const key = new Uint8Array(32);
+  key[31] = 3;
+  const now = Math.floor(Date.now() / 1000);
+  const record = (tags: string[][], created_at = now) =>
+    finalizeEvent({ kind: 10002, tags, content: '', created_at }, key);
+  const latest = record([
+    ['r', 'wss://both.example'],
+    ['r', 'wss://read.example', 'read'],
+    ['r', 'wss://write.example', 'write'],
+    ['r', 'wss://merge.example', 'read'],
+    ['r', 'wss://merge.example/', 'write'],
+    ['r', 'https://invalid.example'],
+    ['r', 'wss://unknown.example', 'other'],
+    ['r', 'broken'],
+    ['r', 'wss://user:secret@credentials.example'],
+  ]);
+  const old = record([['r', 'wss://old.example']], now - 1);
+  let reads = 0;
+  const relay = Bun.serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    fetch(request, server) {
+      if (server.upgrade(request)) return;
+      return new Response('', { status: 400 });
+    },
+    websocket: {
+      message(ws, raw) {
+        const message = JSON.parse(String(raw));
+        if (message[0] !== 'REQ') return;
+        reads++;
+        for (const event of [old, latest, { ...latest, created_at: now + 1 }])
+          ws.send(JSON.stringify(['EVENT', message[1], event]));
+        ws.send(JSON.stringify(['EOSE', message[1]]));
+      },
+    },
+  });
+  let pubkey: string | null = latest.pubkey;
+  const allowed = [`ws://127.0.0.1:${relay.port}/`];
+  const client = new PlaybackNostr(
+    allowed,
+    () => {},
+    () => pubkey,
+  );
+  try {
+    expect(await client.identity('getRelays')).toEqual({
+      relays: {
+        'wss://both.example/': { read: true, write: true },
+        'wss://read.example/': { read: true, write: false },
+        'wss://write.example/': { read: false, write: true },
+        'wss://merge.example/': { read: true, write: true },
+      },
+    });
+    expect(await client.plan([latest.pubkey])).toMatchObject({
+      relays: allowed,
+      source: 'fallback',
+    });
+    await expect(
+      client.handle({ type: 'relay.query', relay: 'wss://read.example/', filters: {} }),
+    ).rejects.toThrow('not allowed');
+    const before = reads;
+    pubkey = null;
+    expect(await client.identity('getRelays')).toEqual({ relays: {} });
+    expect(reads).toBe(before);
+    pubkey = 'f'.repeat(64);
+    expect(await client.identity('getRelays')).toEqual({ relays: {} });
+  } finally {
+    client.close();
+    relay.stop(true);
+  }
+});

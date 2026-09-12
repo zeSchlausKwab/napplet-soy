@@ -1,3 +1,5 @@
+import { RUNTIME_DOMAINS } from './capabilities';
+
 /** NAP-SHELL supplements the pinned upstream domain shim, which does not yet provide it. */
 export const SHELL_PRELUDE = `
 (() => {
@@ -24,3 +26,8 @@ export const SHELL_PRELUDE = `
   });
   window.parent.postMessage({type: 'shell.ready'}, '*');
 })();`;
+
+/** The same pinned upstream shim and mandatory shell bootstrap in every host. */
+export function nappletPrelude(shim: string) {
+  return `${shim}\nglobalThis.NappletShimPrelude.install(${JSON.stringify({ domains: RUNTIME_DOMAINS.filter((d) => d !== 'shell') })});\n${SHELL_PRELUDE}`;
+}
