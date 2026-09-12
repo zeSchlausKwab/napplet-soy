@@ -67,25 +67,32 @@ describe('signed napplet identities and releases', () => {
   test('forged or changed event signatures are rejected', () => {
     expect(() => verifiedEvent({ ...record.current, content: 'forged' })).toThrow('signature');
   });
-  test('a correctly signed wrong snapshot pointer is rejected', async () => {
-    const current = sign({
-      ...record.current,
-      tags: record.current.tags.map((t) =>
-        t[0] === 'e' ? ['e', '0'.repeat(64), '', 'snapshot'] : t,
+  test('a snapshot of another napplet cannot be associated with the current release', async () => {
+    const snapshot = sign({
+      ...record.snapshot,
+      tags: record.snapshot.tags.map((t) =>
+        t[0] === 'a' ? ['a', `35129:${record.pubkey}:another-app`] : t,
       ),
     });
-    await expect(validateRelease(current, record.snapshot)).rejects.toThrow('snapshot pointer');
+    await expect(validateRelease(record.current, snapshot)).rejects.toThrow('another napplet');
+  });
+  test('optional metadata and aggregate on current do not become release requirements', async () => {
+    const current = sign({
+      ...record.current,
+      tags: record.current.tags.filter(
+        (t) => !['e', 't', 'title', 'description', 'x'].includes(t[0]),
+      ),
+    });
+    expect((await validateRelease(current, record.snapshot)).artifactHash).toBe(
+      record.artifactHash,
+    );
   });
   test('a correctly signed duplicate playable path is rejected', async () => {
     const snapshot = sign({
       ...record.snapshot,
       tags: [...record.snapshot.tags, ['path', '/extra.html', record.artifactHash]],
     });
-    const current = sign({
-      ...record.current,
-      tags: record.current.tags.map((t) => (t[0] === 'e' ? ['e', snapshot.id, '', 'snapshot'] : t)),
-    });
-    await expect(validateRelease(current, snapshot)).rejects.toThrow('exactly one path');
+    await expect(validateRelease(record.current, snapshot)).rejects.toThrow('one self-contained');
   });
   test('named, portable, and snapshot routes agree', async () => {
     const named = await resolveNapplet({ type: 'named', creator: '@space-lab', slug: record.slug });

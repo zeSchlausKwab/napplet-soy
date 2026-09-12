@@ -25,7 +25,7 @@ export function manifestIdentity(event: SignedEvent): NappletIdentity | null {
   return identity;
 }
 
-/** NIP-5D single-file profile. Space's release-pointer convention is deliberately optional. */
+/** Shared NIP-5D single-file validation, independent of publisher or gallery metadata. */
 export async function validateManifest(input: unknown) {
   const manifest = verifiedEvent(input);
   const identity = manifestIdentity(manifest);
@@ -67,5 +67,30 @@ export async function validateManifest(input: unknown) {
       .map((t) => t[1])
       .filter(Boolean)
       .slice(0, 8),
+  };
+}
+
+/** Check a locally indexed current/snapshot pair; neither requires a Space-specific pointer. */
+export async function validateRelease(currentInput: unknown, snapshotInput: unknown) {
+  const current = await validateManifest(currentInput);
+  const snapshot = await validateManifest(snapshotInput);
+  if (
+    !current.identity ||
+    snapshot.manifest.kind !== 5129 ||
+    current.manifest.pubkey !== snapshot.manifest.pubkey
+  )
+    throw new Error('Mismatched release author or kind');
+  const address = identityAddress(current.identity);
+  if (snapshot.manifest.tags.find((t) => t[0] === 'a')?.[1] !== address)
+    throw new Error('Snapshot belongs to another napplet');
+  if (current.aggregateHash !== snapshot.aggregateHash)
+    throw new Error('Artifact manifest mismatch');
+  return {
+    identity: current.identity,
+    address,
+    artifactHash: current.artifactHash,
+    aggregateHash: current.aggregateHash,
+    current: current.manifest,
+    snapshot: snapshot.manifest,
   };
 }

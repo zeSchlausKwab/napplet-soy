@@ -54,7 +54,6 @@ export async function seedExamples(root = new URL('../', import.meta.url)) {
       ['x', aggregate, 'aggregate'],
       ['title', example.title],
       ['description', example.description],
-      ['t', 'napplet-space'],
     ];
     const snapshot = sign({
       kind: 5129,
@@ -66,7 +65,7 @@ export async function seedExamples(root = new URL('../', import.meta.url)) {
       kind: 35129,
       content: '',
       created_at: snapshot.created_at,
-      tags: [...tags, ['d', identifier], ['e', snapshot.id, '', 'snapshot']],
+      tags: [...tags, ['d', identifier]],
     });
     await validateRelease(current, snapshot);
     await writeIfChanged(`packages/backend/data/artifacts/${hash}.html`, html);

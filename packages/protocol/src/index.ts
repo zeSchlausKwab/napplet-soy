@@ -70,56 +70,13 @@ export async function aggregateHash(paths: Array<{ path: string; hash: string }>
       .join(''),
   );
 }
-function singleTag(event: SignedEvent, name: string) {
-  const tags = event.tags.filter((t) => t[0] === name);
-  if (tags.length !== 1) throw new Error(`Expected exactly one ${name} tag`);
-  return tags[0];
-}
 export function verifiedEvent(input: unknown): SignedEvent {
   const event = eventSchema.parse(input);
   if (new TextEncoder().encode(JSON.stringify(event)).length > 65536 || !verifyEvent(event))
     throw new Error('Invalid Nostr signature');
   return event;
 }
-export async function validateRelease(currentInput: unknown, snapshotInput: unknown) {
-  const current = verifiedEvent(currentInput);
-  const snapshot = verifiedEvent(snapshotInput);
-  if (
-    current.kind !== NAPPLET_KIND ||
-    snapshot.kind !== SNAPSHOT_KIND ||
-    current.pubkey !== snapshot.pubkey
-  )
-    throw new Error('Mismatched release author or kind');
-  const identity: NappletIdentity = {
-    kind: NAPPLET_KIND,
-    pubkey: current.pubkey,
-    identifier: singleTag(current, 'd')[1],
-  };
-  const address = identityAddress(identity);
-  if (singleTag(snapshot, 'a')[1] !== address || snapshot.tags.some((t) => t[0] === 'd'))
-    throw new Error('Snapshot belongs to another napplet');
-  const pointers = current.tags.filter((t) => t[0] === 'e' && t[3] === 'snapshot');
-  if (pointers.length !== 1 || pointers[0][1] !== snapshot.id)
-    throw new Error('Invalid snapshot pointer');
-  const path = singleTag(snapshot, 'path');
-  if (path.length !== 3 || path[1] !== '/index.html' || !hex.safeParse(path[2]).success)
-    throw new Error('Expected one self-contained HTML artifact');
-  const hash = await aggregateHash([{ path: path[1], hash: path[2] }]);
-  for (const event of [current, snapshot]) {
-    const x = singleTag(event, 'x');
-    if (
-      x[1] !== hash ||
-      x[2] !== 'aggregate' ||
-      JSON.stringify(singleTag(event, 'path')) !== JSON.stringify(path)
-    )
-      throw new Error('Artifact manifest mismatch');
-  }
-  for (const key of ['title', 'description']) {
-    if (JSON.stringify(singleTag(current, key)) !== JSON.stringify(singleTag(snapshot, key)))
-      throw new Error('Metadata mismatch');
-  }
-  return { identity, address, artifactHash: path[2], aggregateHash: hash, current, snapshot };
-}
+export { validateRelease } from './manifest';
 
 export const gallerySearchSchema = z.object({
   category: z.enum(['all', 'game', 'visual', 'toy', 'meme', 'public']).catch('all'),

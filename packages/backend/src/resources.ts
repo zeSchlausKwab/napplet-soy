@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { fetchPublicBytes, fetchPublicBlob, publicResourceUrl } from './blossom';
-import { readPublicCatalog } from './public-catalog';
+import { playableManifest } from './catalog';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../protocol/src/artifact';
 
 export const resourceInput = z
@@ -118,17 +118,15 @@ export async function resourceResponse(request: Request) {
   } catch {
     return fail('invalid-request', 400);
   }
-  const entry = (await readPublicCatalog())?.entries.find(
-    (n) => n.revisionId === input.manifest && n.availability === 'ready',
-  );
+  const entry = await playableManifest(input.manifest);
   if (!entry) return fail('not-found', 404);
   const now = Date.now();
   for (const [key, budget] of budgets)
     if (!budget.active && now - budget.start > 60000) budgets.delete(key);
-  let budget = budgets.get(entry.revisionId);
+  let budget = budgets.get(entry.manifest.id);
   if (!budget) {
     budget = { start: now, count: 0, active: 0 };
-    budgets.set(entry.revisionId, budget);
+    budgets.set(entry.manifest.id, budget);
   }
   if (now - budget.start > 60000) {
     budget.start = now;
@@ -139,10 +137,9 @@ export async function resourceResponse(request: Request) {
   budget.active++;
   budget.count++;
   try {
-    const defaults = entry.manifest.tags.filter((t) => t[0] === 'server').map((t) => t[1]);
     const { bytes, mime } = await resolveResource(
       input,
-      defaults,
+      entry.servers,
       AbortSignal.any([request.signal, AbortSignal.timeout(20000)]),
     );
     return new Response(new Uint8Array(bytes).buffer, {

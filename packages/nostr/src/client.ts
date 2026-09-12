@@ -22,18 +22,16 @@ export function createNostrClient(events: SignedEvent[] = []) {
       if (pool) throw new Error('Client already connected');
       pool = new RelayPool();
       const subscription = relays.length
-        ? pool
-            .subscription(relays, { kinds: [35129], '#t': ['napplet-space'], limit: 100 })
-            .subscribe({
-              next: (event) => {
-                try {
-                  store.add(verifiedEvent(event));
-                } catch (error) {
-                  onError(error);
-                }
-              },
-              error: onError,
-            })
+        ? pool.subscription(relays, { kinds: [35129, 15129, 5129], limit: 100 }).subscribe({
+            next: (event) => {
+              try {
+                store.add(verifiedEvent(event));
+              } catch (error) {
+                onError(error);
+              }
+            },
+            error: onError,
+          })
         : undefined;
       return () => {
         subscription?.unsubscribe();

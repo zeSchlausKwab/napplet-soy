@@ -1,5 +1,6 @@
 import records from '../data/catalog.json';
-import { publicArtifact } from './public-catalog';
+import { publicArtifact, readPublicCatalog } from './public-catalog';
+import { preparePlayback } from '../../runtime/src/playback';
 import {
   decodeAddress,
   identityAddress,
@@ -7,7 +8,7 @@ import {
   type GallerySearch,
 } from '../../protocol/src';
 
-export type Napplet = (typeof records)[number];
+export type Napplet = (typeof records)[number] & { relays?: string[] };
 export type NappletCard = Omit<Napplet, 'current' | 'snapshot'> & {
   snapshotId: string;
   createdAt: number;
@@ -76,4 +77,23 @@ export async function artifact(hash: string) {
     process.env.SPACE_ARTIFACT_DIR ?? new URL('../data/artifacts/', import.meta.url).pathname;
   const file = Bun.file(`${directory}/${hash}.html`);
   return (await file.exists()) ? file : null;
+}
+
+/** Resolve only indexed, playable manifests; fixture provenance grants no extra capabilities. */
+export async function playableManifest(id: string) {
+  await ensureValidated();
+  const fixture = records.find((n) => n.current.id === id || n.snapshot.id === id);
+  const entry =
+    fixture ??
+    (await readPublicCatalog())?.entries.find(
+      (n) => n.revisionId === id && n.availability === 'ready',
+    );
+  if (!entry) return null;
+  const manifest =
+    'manifest' in entry ? entry.manifest : entry.current.id === id ? entry.current : entry.snapshot;
+  try {
+    return await preparePlayback(manifest, entry.artifactHash);
+  } catch {
+    return null;
+  }
 }

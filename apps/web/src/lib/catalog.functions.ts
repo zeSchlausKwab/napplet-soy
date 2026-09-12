@@ -21,7 +21,9 @@ export const getNapplet = createServerFn({ method: 'GET' })
   .validator(lookupSchema)
   .handler(async ({ data }) => {
     const napplet = (await resolveNapplet(data)) ?? (await resolvePublicNapplet(data));
-    return napplet ? { ...napplet, siteOrigin: siteOrigin() } : null;
+    return napplet
+      ? { ...napplet, relays: (await catalogStatus()).relays, siteOrigin: siteOrigin() }
+      : null;
   });
 export const getPublicCatalog = createServerFn({ method: 'GET' }).handler(async () => ({
   status: await catalogStatus(),

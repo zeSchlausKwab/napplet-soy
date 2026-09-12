@@ -56,7 +56,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
           {copied}
         </p>
       )}
-      <Player key={napplet.snapshot.id} napplet={napplet} />
+      <Player key={napplet.snapshot.id} napplet={napplet} pinned={pinned} />
       <div className="detail-info">
         <div>
           <h2>A little about this one</h2>
@@ -85,8 +85,8 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
         </aside>
       </div>
       <div className="collection-note">
-        Made by Space lab for the local starter collection. Community publishing, comments, likes,
-        and zaps are coming next.
+        This example is bundled for local development and hasn’t been published to Nostr.
+        Publishing, comments, likes, and zaps are coming next.
       </div>
     </section>
   );

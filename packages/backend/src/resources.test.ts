@@ -1,6 +1,13 @@
 import { test, expect } from 'bun:test';
 import { resourceMime, resourceResponse, resolveResource } from './resources';
 import { fetchPublicBytes, publicResourceUrl } from './blossom';
+import records from '../data/catalog.json';
+import { publicNapplet } from './public-model';
+import { RUNTIME_PROFILE } from '../../runtime/src/capabilities';
+import { finalizeEvent } from 'nostr-tools';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 const bytes = (s: string) => new TextEncoder().encode(s);
 test('resource classification ignores upstream MIME and refuses active documents', () => {
   expect(resourceMime(Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]))).toBe('image/png');
@@ -15,6 +22,69 @@ test('resource classification ignores upstream MIME and refuses active documents
     '\0binary',
   ])
     expect(() => resourceMime(bytes(source))).toThrow();
+});
+
+test('known fixture and relay manifests get the same resource service and capability policy', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'space-resource-parity-'));
+  const previous = {
+    enabled: process.env.SPACE_PUBLICDEV,
+    directory: process.env.SPACE_PUBLICDEV_DIR,
+  };
+  const key = new Uint8Array(32);
+  key[31] = 1;
+  const imported = await publicNapplet(
+    finalizeEvent(
+      {
+        ...records[0].current,
+        tags: records[0].current.tags.map((t) =>
+          t[0] === 'd' ? ['d', 'independent-publisher'] : t,
+        ),
+      },
+      key,
+    ),
+  );
+  const unsupported = await publicNapplet(
+    finalizeEvent(
+      {
+        ...imported.manifest,
+        tags: [...imported.manifest.tags, ['requires', 'cvm']],
+      },
+      key,
+    ),
+  );
+  const request = (manifest: string) =>
+    new Request('http://localhost:3000/api/resources', {
+      method: 'POST',
+      headers: { Origin: 'http://localhost:3000', 'X-Space-Host': '1' },
+      body: JSON.stringify({ manifest, url: 'data:text/plain,hello' }),
+    });
+  try {
+    await Bun.write(
+      join(directory, 'catalog.json'),
+      JSON.stringify({
+        version: 2,
+        runtime: RUNTIME_PROFILE,
+        fetchedAt: Date.now(),
+        relays: [],
+        rejected: 0,
+        entries: [imported, unsupported].map((n) => ({ ...n, availability: 'ready' })),
+      }),
+    );
+    process.env.SPACE_PUBLICDEV = '1';
+    process.env.SPACE_PUBLICDEV_DIR = directory;
+    for (const id of [records[0].current.id, records[0].snapshot.id, imported.revisionId]) {
+      const response = await resourceResponse(request(id));
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe('hello');
+    }
+    expect((await resourceResponse(request(unsupported.revisionId))).status).toBe(404);
+  } finally {
+    if (previous.enabled === undefined) delete process.env.SPACE_PUBLICDEV;
+    else process.env.SPACE_PUBLICDEV = previous.enabled;
+    if (previous.directory === undefined) delete process.env.SPACE_PUBLICDEV_DIR;
+    else process.env.SPACE_PUBLICDEV_DIR = previous.directory;
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 test('resource fetches reject private networks and unsafe schemes without redirecting', async () => {
   for (const value of [

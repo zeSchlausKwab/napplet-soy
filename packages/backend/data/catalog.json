@@ -14,9 +14,9 @@
     "artifactHash": "aba3fdfe305876e797949cb475c1950aad1b83d35cf07b8a5fdca62c212036e7",
     "bytes": 3991,
     "current": {
-      "id": "3459803c852257e5605a95f6f1706e9d8f8fec6bc13a15a97f98b83528302149",
+      "id": "ffdaf6fb3ece626253c201980b1db486733eb41c64cfc022144f20945beb87cf",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "0360dd7c4d2278c8df3488d88c28a9db216b0f4d375a7852e17c4bdde615a1a3355c7a02d9767fff45d4f4042d1ba0bfb6cdd943420d3471a846ebb436301889",
+      "sig": "171946109cc2dfa2d221b2b0aa95ae78dc50c53aa4b4d33046233c886787118f4c053af83d2c8460f8e087f624a428f1068798dbeb5e70f297ad896e4dbdd605",
       "kind": 35129,
       "created_at": 1789128000,
       "content": "",
@@ -40,25 +40,15 @@
           "A little solar system with absolutely nowhere to be. Move your pointer to bend its orbit."
         ],
         [
-          "t",
-          "napplet-space"
-        ],
-        [
           "d",
           "orbit"
-        ],
-        [
-          "e",
-          "f108d2632f1ef561c63f898bc17fe8eb511ccd968a2d4c4d1818d339e99f2b64",
-          "",
-          "snapshot"
         ]
       ]
     },
     "snapshot": {
-      "id": "f108d2632f1ef561c63f898bc17fe8eb511ccd968a2d4c4d1818d339e99f2b64",
+      "id": "6de57dbb98049edaaf47e974daf7ce0761b6f2e8c0c7032ef5ef8952643c3699",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "3b00c65605c1c4d0feff7b9be5b9e7c86dc656b96a21a82b4adbece6f770a7a8b8a126c8b6abc46418e6cad7f099272a09d8e74c83191c093829f3b29f52efd5",
+      "sig": "50708f39f819c9e55ccbb2e49aa3a3215b739d53f3e147cf8af28e019fadc0dcbdb37046bdbcb8cd7ceeccc0a3026b5e68aac5353a58ea844786b367d9618866",
       "kind": 5129,
       "created_at": 1789128000,
       "content": "",
@@ -80,10 +70,6 @@
         [
           "description",
           "A little solar system with absolutely nowhere to be. Move your pointer to bend its orbit."
-        ],
-        [
-          "t",
-          "napplet-space"
         ],
         [
           "a",
@@ -109,9 +95,9 @@
     "artifactHash": "7dd532bbde972a1be07ef134a05303990c6032c51008858e21bace7ed5db643b",
     "bytes": 3993,
     "current": {
-      "id": "3aaab95c7d36d339631e3c26a51c03149a2c544dcf892b503ebcc5769fe3cb0f",
+      "id": "9c3ea958fa8ec12015366618697e6b57af9f221d215edc78832cf46b662df697",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "42c3ee6e4f39cacb8b5fc2bf600e15bc6a3e51288fdb85293aac3643c02fff2dc566861b74d6a6a3a94f84644062b6bb57cd4a75461993cafbc21a6c11241e47",
+      "sig": "d41b78929608f941f48c9af72beb71b15dda3a646bdf7342bd610e3d6ccd8ba1f9a2fb13f76f580c3ce9ddef0934ff9bf44997e942460f57541dbc85e57c5fe1",
       "kind": 35129,
       "created_at": 1789128001,
       "content": "",
@@ -135,25 +121,15 @@
           "One paddle. One ball. A pleasantly unreasonable amount of determination."
         ],
         [
-          "t",
-          "napplet-space"
-        ],
-        [
           "d",
           "tennis"
-        ],
-        [
-          "e",
-          "5950fcd50bfb2f34286cfbcf56796436ee179a9037acbc113562ef170b36e2b6",
-          "",
-          "snapshot"
         ]
       ]
     },
     "snapshot": {
-      "id": "5950fcd50bfb2f34286cfbcf56796436ee179a9037acbc113562ef170b36e2b6",
+      "id": "25deedaa74e1e63ec21406cc617af2ffc6e3a6ce7158ddd6cd1a0d024c404b1b",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "bc32c7fc61d4a2e27b74248cf6f67d371ad7568c509483d4f9b0f6c4bd9cc30e7c4aafb52f5bf56c0225db8924874e723a34c5b78614dd73fc5a39dce7c7d766",
+      "sig": "8890e93f2ec3e88089c3342ae12a30e316aa52f866149cbf04aefc22f8199b5e6d0e8f96473df3c96460a68c0348d06659e249f3286bfeae3d0e0d091d0f9ced",
       "kind": 5129,
       "created_at": 1789128001,
       "content": "",
@@ -175,10 +151,6 @@
         [
           "description",
           "One paddle. One ball. A pleasantly unreasonable amount of determination."
-        ],
-        [
-          "t",
-          "napplet-space"
         ],
         [
           "a",
@@ -204,9 +176,9 @@
     "artifactHash": "a003f1e7f641e0e7e2ea2df7e36c991ecd01d24d2ac4c149ed0925605b905420",
     "bytes": 3997,
     "current": {
-      "id": "85e17caf033cd87ec86c478bdb0c661b4a1005e7f74d5f277ab268601d385993",
+      "id": "1dfb5e7d1819d63243381d4f5941593edee6febd1eef59e04bf51cb490c2ae82",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "61c588df7142af4aec6121dd382f312dcd93e6a6e43e0bbe1a0872af7cc21a7bc8d19be0e41227fb53e86ac6e6d5cff4a211969dca2682618366587ad9d1397b",
+      "sig": "3019a9954faf0a3de1ca3f3d9c3a731f4b7819bf53182d077dec6d8c4c04778012ee2afb2d3c69e96489a2547969286fe6efdbca1d37b6914112178c222979ae",
       "kind": 35129,
       "created_at": 1789128002,
       "content": "",
@@ -230,25 +202,15 @@
           "An ever-changing patch of digital flowers. No watering required."
         ],
         [
-          "t",
-          "napplet-space"
-        ],
-        [
           "d",
           "plasma"
-        ],
-        [
-          "e",
-          "f55df07b88f0479b1a1556c636ec44120ac975068ea93bc172454d3114de68b7",
-          "",
-          "snapshot"
         ]
       ]
     },
     "snapshot": {
-      "id": "f55df07b88f0479b1a1556c636ec44120ac975068ea93bc172454d3114de68b7",
+      "id": "fd19c464e6226366b35cb13c60e91716ae8eb0e76bc1b87771566cf3d24e0bf7",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "05db96f3f6f1c995c82ed47dfcae039e782576173da53035ca8955b54db10d46e7eb0588b96f398c595ccfcfb72a3a7e5eb54bee2757b877293fa6f1c20e41de",
+      "sig": "b07c45e0423d29fd5d605427b3bbb6be838bc1708647b81921c7d51af081c95c3d2cf81fb34e62b652f37c5f5bd60857ecaeb3ebf439ea49931ab395664c0ba4",
       "kind": 5129,
       "created_at": 1789128002,
       "content": "",
@@ -270,10 +232,6 @@
         [
           "description",
           "An ever-changing patch of digital flowers. No watering required."
-        ],
-        [
-          "t",
-          "napplet-space"
         ],
         [
           "a",
@@ -299,9 +257,9 @@
     "artifactHash": "7ed6f42554c4626069c28999ab87f05156e50ef24c9a9925e4b39c16ede41506",
     "bytes": 3993,
     "current": {
-      "id": "a1a569b7a57bad38cbdbf57112bd75e361bd278f74a92f11db93d17f4ba93988",
+      "id": "1c7cfa2924b8ec3fd257a677064545f0a5ee38352132fdf41150f18404de0253",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "e1c8d460e256c8c0ff8bd48d5a264654f4ef5422282e0c9643055276e53206e5f36c0eb052c9c65ca06a7766ddf639787db5b8c0eb69b98360d6b8912fc8b3f4",
+      "sig": "5bc5866629f1492c483f2ee024b89ef004e84c4d894285d8c53273f026151dff6d471430a8c6cc6e9184e99b6171fcf2520f99c7e4f6f8cc5d547136cb8c2628",
       "kind": 35129,
       "created_at": 1789128003,
       "content": "",
@@ -325,25 +283,15 @@
           "This little blob is very happy you are here. It follows you around. That is the whole thing."
         ],
         [
-          "t",
-          "napplet-space"
-        ],
-        [
           "d",
           "blob"
-        ],
-        [
-          "e",
-          "f034d6d98b17b2067f52da2d9e5aeae115efc52de554ab249da3ce27fff6f7a4",
-          "",
-          "snapshot"
         ]
       ]
     },
     "snapshot": {
-      "id": "f034d6d98b17b2067f52da2d9e5aeae115efc52de554ab249da3ce27fff6f7a4",
+      "id": "e634b60dac5009db6cd402a14f54885dff8e77db22660d2bae6b3492ef8a9e8e",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "75c28af0defbab54b6820ff93e384cb06ebe7bbb109b9bd0215dd910316aa61f67b170cb08c5e4d71d2f6c55d0e5d0edcd1b2c7efd24860e250a0d0d04f8da80",
+      "sig": "4c42c31ad0e1a37b66cb7979d4fe59c7bc29ec53d8d6d5a67a3fc440f3c9bc7ad4d17fa8eb618875c2b56587bbf17c877e4b0d98bcddd26986a622aece2dd8e3",
       "kind": 5129,
       "created_at": 1789128003,
       "content": "",
@@ -365,10 +313,6 @@
         [
           "description",
           "This little blob is very happy you are here. It follows you around. That is the whole thing."
-        ],
-        [
-          "t",
-          "napplet-space"
         ],
         [
           "a",
@@ -394,9 +338,9 @@
     "artifactHash": "e3fc35540e868295a5b3aec1a22275872015ed5ddb4562c6680e1e2ef2c3341b",
     "bytes": 4006,
     "current": {
-      "id": "a7cce7a36da1fd5cdf53cad8bfa99a42d6b4cea758b3de12cdf8313f5216d10a",
+      "id": "1ae95032f7af0401b28dded6e77ca999da7eeb4ae770861f658966f3ba80a8c1",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "1da3e0ad60ac8d18bfedf6aed4c3ff71407ac4b342339cf7b4ffb3d0ce9d2029c481fffa2a11f5be33129581e52484d0d50d64276b0121c88f2f77a46576ca26",
+      "sig": "b74debbe2d1e3a6bc1abb93061a6af88e32be44e1cf28f5cb80536e62cf5300ad7127a38fab96e898097338b99294387cef460ce2ba9b07034cd3687e792a549",
       "kind": 35129,
       "created_at": 1789128004,
       "content": "",
@@ -420,25 +364,15 @@
           "A deeply unnecessary machine for celebrating very small accomplishments."
         ],
         [
-          "t",
-          "napplet-space"
-        ],
-        [
           "d",
           "button"
-        ],
-        [
-          "e",
-          "137593335dce422defb041d547020e1cab1eeb358f16bc191a70c0075be0db8b",
-          "",
-          "snapshot"
         ]
       ]
     },
     "snapshot": {
-      "id": "137593335dce422defb041d547020e1cab1eeb358f16bc191a70c0075be0db8b",
+      "id": "e90654bcaeff63b66bd7d26fd6befd505dbcfc8750a7f84406ea18024409f3da",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "44b74219a0438cdf323846c2057a4ba124cc777324e55ee0cb233656c7ab231e4501f95df56630eaf12c808ca63342caffbee2487456bbd312817b42ca028859",
+      "sig": "83754b041206bdb80d260f827676e06779f88767250f0173596d4615096bad7796d196b023cb912068f2dc454858fd8cb4863d9ba5a7aac0fbc248695351604b",
       "kind": 5129,
       "created_at": 1789128004,
       "content": "",
@@ -460,10 +394,6 @@
         [
           "description",
           "A deeply unnecessary machine for celebrating very small accomplishments."
-        ],
-        [
-          "t",
-          "napplet-space"
         ],
         [
           "a",
@@ -489,9 +419,9 @@
     "artifactHash": "d200fb8704df6b0d1e011a402712e7565921a7c519cad634ddb4c6c90a010074",
     "bytes": 3991,
     "current": {
-      "id": "147303e9cce07b77497610f5f82afea91e07429a0e32b64028464c76e28d9bbf",
+      "id": "f4b87e625b02f655c6589ca72ceee11f3b5505a1ed9eb37d80eb9ce2ad960be4",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "8403745186ef1ba260fbeede75ef81cfb98bbb959a7f7731f3949568c2d5c30527af5cba89d0c7c2a7527e9970d5066622f068bca678e32c1580a42eb84e85d6",
+      "sig": "3a94326de26ea58dbf494a0033ab97b48359b357b4b1a4304a93fd924f8b40e6ec9a860f6a4494dc9dac3fbcb2fdc38e6398db5fde0404a204cd033cf0ef09d4",
       "kind": 35129,
       "created_at": 1789128005,
       "content": "",
@@ -515,25 +445,15 @@
           "A pocket-sized weather system, broadcasting from somewhere inside your computer."
         ],
         [
-          "t",
-          "napplet-space"
-        ],
-        [
           "d",
           "rain"
-        ],
-        [
-          "e",
-          "8a7135573fc39d6468638cf6013b8eb81b92c83c39455e24ae5e922f2db7eaf4",
-          "",
-          "snapshot"
         ]
       ]
     },
     "snapshot": {
-      "id": "8a7135573fc39d6468638cf6013b8eb81b92c83c39455e24ae5e922f2db7eaf4",
+      "id": "fd16207b0d9db5ec90136ccf32c93251bbdb6e69d338fc738a8930a220864d74",
       "pubkey": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
-      "sig": "0c5aff3445336b5f564419e4c9422b58d199b2622ecd37751029d7103b83ed8ae506e4e6b4db2b58e31f6b7127500c09b0d70ad5cf96694dfce26cb002760c43",
+      "sig": "402b51bbb11cb459ec1c11b68358ccf56325b66f044c1e59e9ea1f59cc03a36b7376f1dd58643ca3009fa48cd650372e1886197e821dfe9b9477175bd3d6c740",
       "kind": 5129,
       "created_at": 1789128005,
       "content": "",
@@ -555,10 +475,6 @@
         [
           "description",
           "A pocket-sized weather system, broadcasting from somewhere inside your computer."
-        ],
-        [
-          "t",
-          "napplet-space"
         ],
         [
           "a",

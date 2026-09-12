@@ -3,12 +3,11 @@ import { Expand, LoaderCircle, Play, RotateCcw, Square } from 'lucide-react';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
 import { loadArtifact, PLAYER_SANDBOX } from '../../../../packages/runtime/src';
-import { validateRelease } from '../../../../packages/protocol/src';
-import { validateManifest } from '../../../../packages/protocol/src/manifest';
+import { preparePlayback } from '../../../../packages/runtime/src/playback';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
 import { publicPoster, type PublicNapplet } from '../../../../packages/backend/src/public-model';
 import shim from '@napplet/shim/prelude.global?raw';
-import { RUNTIME_DOMAINS, missingDomains } from '../../../../packages/runtime/src/capabilities';
+import { RUNTIME_DOMAINS } from '../../../../packages/runtime/src/capabilities';
 import { SHELL_PRELUDE } from '../../../../packages/runtime/src/prelude';
 import { attachNappletHost, type HostPrompt } from '../../../../packages/runtime/src/host';
 import type { ExportFile } from '../../../../packages/runtime/src/filesystem';
@@ -35,15 +34,23 @@ function FileExports({ files }: { files: ExportFile[] }) {
   );
 }
 
-export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
+export function Player({
+  napplet,
+  pinned = false,
+}: {
+  napplet: Napplet | PublicNapplet;
+  pinned?: boolean;
+}) {
   const external = 'provenance' in napplet;
-  const releaseId = external ? napplet.revisionId : napplet.snapshot.id;
+  const manifest = external ? napplet.manifest : pinned ? napplet.snapshot : napplet.current;
+  const releaseId = manifest.id;
   const { ready, pubkey } = useNostr();
   const [prompt, setPrompt] = useState<HostPrompt | null>(null);
   const [exports, setExports] = useState<ExportFile[]>([]);
   const cleanupHost = useRef<(() => void) | undefined>(undefined);
   const [playing, setPlaying] = useState(false),
     [doc, setDoc] = useState(''),
+    [release, setRelease] = useState<Awaited<ReturnType<typeof preparePlayback>> | null>(null),
     [error, setError] = useState(''),
     [revision, setRevision] = useState(0);
   const frame = useRef<HTMLDivElement>(null);
@@ -51,19 +58,18 @@ export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
     (node: HTMLIFrameElement | null) => {
       cleanupHost.current?.();
       cleanupHost.current = undefined;
-      if (!node) return;
-      const manifest = external ? napplet.manifest : napplet.current;
+      if (!node || !release) return;
       cleanupHost.current = attachNappletHost({
         frame: node,
-        identity: `${manifest.pubkey}:${manifest.kind}:${manifest.tags.find((t) => t[0] === 'd')?.[1] ?? ''}:${external ? napplet.aggregateHash : napplet.artifactHash}`,
-        manifestId: releaseId,
-        relays: external ? napplet.relays : [],
+        identity: release.hostIdentity,
+        manifestId: release.manifest.id,
+        relays: napplet.relays ?? [],
         pubkey,
         prompt: setPrompt,
         files: setExports,
       });
     },
-    [napplet, pubkey, releaseId],
+    [napplet, pubkey, release],
   );
   useEffect(() => {
     setExports([]);
@@ -74,23 +80,14 @@ export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
     const controller = new AbortController();
     setError('');
     setDoc('');
-    const verify = external
-      ? napplet.availability === 'ready' &&
-        napplet.artifactHash &&
-        !missingDomains(napplet.domains).length
-        ? validateManifest(napplet.manifest)
-        : Promise.reject(
-            new Error('This napplet requires capabilities this client does not yet support.'),
-          )
-      : validateRelease(napplet.current, napplet.snapshot);
-    void verify
+    setRelease(null);
+    void preparePlayback(manifest, napplet.artifactHash)
       .then(async (release) => {
-        if (release.artifactHash !== napplet.artifactHash)
-          throw new Error('Release metadata does not match its artifact.');
-        return loadArtifact(release.artifactHash, controller.signal, prelude);
-      })
-      .then((html) => {
-        if (!controller.signal.aborted) setDoc(html);
+        const html = await loadArtifact(release.artifactHash, controller.signal, prelude);
+        if (!controller.signal.aborted) {
+          setRelease(release);
+          setDoc(html);
+        }
       })
       .catch((reason) => {
         if (!controller.signal.aborted)

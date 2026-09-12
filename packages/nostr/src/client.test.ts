@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import records from '../../backend/data/catalog.json';
 import { createNostrClient } from './client';
+import { matchFilters, finalizeEvent } from 'nostr-tools';
 test('Applesauce deduplicates signed seeds and isolates sessions', () => {
   const event = records[0].current;
   const first = createNostrClient([event, event]);
@@ -12,8 +13,18 @@ test('Applesauce deduplicates signed seeds and isolates sessions', () => {
   second.store.dispose();
 });
 
-test('Applesauce receives a signed event through its WebSocket relay transport', async () => {
-  const event = records[0].current;
+test('Applesauce discovers unbranded named, root and snapshot manifests through a filtering relay', async () => {
+  const key = new Uint8Array(32);
+  key[31] = 1;
+  const root = finalizeEvent(
+    {
+      ...records[0].current,
+      kind: 15129,
+      tags: records[0].current.tags.filter((t) => !['d', 't', 'e'].includes(t[0])),
+    },
+    key,
+  );
+  const events = [records[0].current, records[0].snapshot, root];
   // A bounded NIP-01 transport fixture; this is not a substitute for GRASP/relay integration.
   const relay = Bun.serve({
     hostname: '127.0.0.1',
@@ -24,9 +35,11 @@ test('Applesauce receives a signed event through its WebSocket relay transport',
     },
     websocket: {
       message(socket, data) {
-        const [type, subscription] = JSON.parse(String(data));
+        const [type, subscription, ...filters] = JSON.parse(String(data));
         if (type === 'REQ') {
-          socket.send(JSON.stringify(['EVENT', subscription, event]));
+          for (const event of events)
+            if (matchFilters(filters, event))
+              socket.send(JSON.stringify(['EVENT', subscription, event]));
           socket.send(JSON.stringify(['EOSE', subscription]));
         }
       },
@@ -37,8 +50,8 @@ test('Applesauce receives a signed event through its WebSocket relay transport',
   let timer: ReturnType<typeof setTimeout>;
   const arrived = new Promise<void>((resolve, reject) => {
     timer = setTimeout(() => reject(new Error('Relay delivery timed out')), 2000);
-    const subscription = client.store.insert$.subscribe((value) => {
-      if (value.id === event.id) {
+    const subscription = client.store.insert$.subscribe(() => {
+      if (events.every((event) => client.store.getEvent(event.id))) {
         subscription.unsubscribe();
         resolve();
       }
@@ -47,7 +60,7 @@ test('Applesauce receives a signed event through its WebSocket relay transport',
   try {
     stop = client.connect([`ws://127.0.0.1:${relay.port}`]);
     await arrived;
-    expect(client.store.getEvent(event.id)?.id).toBe(event.id);
+    for (const event of events) expect(client.store.getEvent(event.id)?.id).toBe(event.id);
   } finally {
     clearTimeout(timer!);
     stop();
