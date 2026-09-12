@@ -16,7 +16,7 @@ Updated 2026-09-12. This records the boundary between working code and the large
 
 - Idempotent example seeding runs before both development and local production startup; a warm check measured about 33 ms.
 - Explicit `publicdev` imports signed kinds 35129/15129/5129 through Applesauce. No Space-specific snapshot pointer is required. Public source is Nostr relays, with bounded signed-hint Blossom fetching and a separate `.local` cache. No HTTP catalog importer remains.
-- Public naddr/snapshot pages, capability availability states, hash-verified playback, and source downloads. A real relay scan found 93 valid manifests; 13 artifacts were cached, and Rubik Cube ran successfully in Chromium.
+- Public naddr/snapshot pages, capability availability states, hash-verified playback, and source downloads. A real relay scan found 93 valid manifests; 23 compatible artifacts are now cached. The playback host and interoperability evidence are documented in [PUBLIC-RUNTIME.md](PUBLIC-RUNTIME.md).
 - Server-rendered OG/canonical/Twitter metadata and bounded PNG generation with a bundled font. The deploy script sets a trusted site origin. Native image rendering is excluded from Vite optimization and browser bundles.
 - A runnable ContextVM matchmaking starter with encrypted Nostr transport and authenticated ticket ownership, plus a separate PM2 definition. Its API and the pending browser NAP-CVM integration are specified in [CONTEXTVM.md](CONTEXTVM.md). No game engine, managed creator hosting, or public ContextVM deployment is claimed.
 
@@ -32,6 +32,12 @@ No VPS has been contacted or deployed to. Shell syntax and argument validation a
 
 ## Next vertical slice
 
-Wire one real publish path through creator signing, ngit/GRASP source provisioning, Blossom upload, relay events, persistent validation/indexing, named-route assignment, and playback. Establish the upstream SDK/shim/conformance compatibility pins at that boundary before expanding the public gallery. The CLI installer, remote signers, persistent naming claims, moderation, likes/comments/zaps, and a full remix/publish journal are still ahead.
+Wire one real publish path through creator signing, ngit/GRASP source provisioning, Blossom upload, relay events, persistent validation/indexing, named-route assignment, and playback. The upstream shim is now pinned and playback domains are implemented; expand conformance and author-side preview parity alongside the publish path. The CLI installer, remote signers, persistent naming claims, moderation, likes/comments/zaps, and a full remix/publish journal are still ahead.
 
-Final validation for this slice: 33 unit/integration tests passed; six Chromium checks passed against ordinary production mode through Caddy/PM2, plus the explicit publicdev browser check. The latter covers relay-derived naddr lookup, verified Rubik Cube playback, capability gating, and its OG endpoint. Cached public page/artifact/image URLs returned 404 when publicdev was off. The public gallery was also checked at a 390px viewport for overflow.
+Previous slice validation: 33 unit/integration tests passed; six Chromium checks passed against ordinary production mode through Caddy/PM2, plus the explicit publicdev browser check. The latter covers relay-derived naddr lookup, verified Rubik Cube playback, capability gating, and its OG endpoint. Cached public page/artifact/image URLs returned 404 when publicdev was off. The public gallery was also checked at a 390px viewport for overflow.
+
+## Public playback addition
+
+The player now injects the upstream shim and a NAP-SHELL handshake, with scoped saves, virtual file exports, resource mediation, and Applesauce relay/outbox reads. Cards distinguish ready artifacts from unsupported domains and failed downloads. Publishing and account-changing operations are denied explicitly. See [PUBLIC-RUNTIME.md](PUBLIC-RUNTIME.md) for the implemented surface, constraints and real public-app checks. The generated standalone CLI preview retains its basic sandbox and does not yet include these host services.
+
+Current validation: **43 unit/integration tests and 11 Chromium tests passed**. Five public/runtime checks ran through Caddy/PM2, including the real 78 MiB packaged-resource fixture; six existing app checks ran against the same production build with public mode disabled. Public page/artifact/OG/resource endpoints returned 404 in ordinary mode. Mobile public compatibility labels remain visible at 390px with no horizontal overflow. Production build and startup succeeded. The runtime checkpoint is `95b88f4`; subsequent verification, accessibility and documentation changes are committed separately.

@@ -34,7 +34,9 @@ export async function readPublicCatalog() {
           bytes: entry.bytes,
           availability: missingDomains(derived.domains).length
             ? ('host-required' as const)
-            : entry.availability,
+            : entry.availability === 'host-required'
+              ? ('unavailable' as const)
+              : entry.availability,
         };
       }),
     );

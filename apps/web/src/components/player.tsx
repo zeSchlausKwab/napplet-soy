@@ -131,6 +131,7 @@ export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
             title={napplet.title}
             srcDoc={doc}
             sandbox={PLAYER_SANDBOX}
+            inert={prompt !== null}
             allow="fullscreen"
             referrerPolicy="no-referrer"
           />
@@ -146,6 +147,25 @@ export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
             role="dialog"
             aria-modal="true"
             aria-label={prompt.kind === 'save' ? 'Save napplet file' : 'Open external link'}
+            ref={(node) => {
+              node?.querySelector<HTMLButtonElement>('button')?.focus();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                prompt.answer(false);
+              }
+              if (event.key === 'Tab') {
+                const controls = [
+                  ...event.currentTarget.querySelectorAll<HTMLElement>('button, a[href]'),
+                ];
+                const index = controls.indexOf(document.activeElement as HTMLElement);
+                event.preventDefault();
+                controls[
+                  (index + (event.shiftKey ? controls.length - 1 : 1)) % controls.length
+                ]?.focus();
+              }
+            }}
           >
             <strong>
               {prompt.kind === 'save' ? 'Save a file from this napplet?' : 'Open this link?'}

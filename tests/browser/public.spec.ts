@@ -66,3 +66,27 @@ test('public Random Sticker plays, changes pictures, and exports its selected im
   await expect(frame.locator('#status')).not.toHaveAttribute('data-error', 'true');
   expect(errors).toEqual([]);
 });
+
+test('public packaged loader verifies all ten Blossom resources', async ({ page }) => {
+  test.skip(
+    process.env.TEST_PUBLICDEV !== '1' || process.env.TEST_LARGE_PUBLIC !== '1',
+    'Opt-in integration test downloads 78 MiB of public resources.',
+  );
+  test.setTimeout(60000);
+  const cache = JSON.parse(await readFile('.local/publicdev/catalog.json', 'utf8'));
+  const n = cache.entries.find(
+    (entry: { title: string; availability: string }) =>
+      entry.title === 'Packaged Loader Evidence' && entry.availability === 'ready',
+  );
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`/n/${n.naddr}`);
+  await page.getByRole('button', { name: 'Start Packaged Loader Evidence' }).click();
+  await expect(
+    page.frameLocator('iframe').getByRole('heading', { name: 'Packaged application ready' }),
+  ).toBeVisible({ timeout: 45000 });
+  await expect(page.frameLocator('iframe').locator('#production-resource-summary')).toHaveText(
+    '10 verified resources opened in original order.',
+  );
+  expect(errors).toEqual([]);
+});

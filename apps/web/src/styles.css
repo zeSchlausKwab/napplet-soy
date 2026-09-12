@@ -1311,3 +1311,14 @@ pre:focus-visible {
 .compatibility-missing {
   color: #826c47;
 }
+@media (max-width: 600px) {
+  .card-meta.public-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .card-meta.public-meta > span {
+    display: block;
+    max-width: 100%;
+  }
+}

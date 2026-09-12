@@ -8,6 +8,7 @@ import { configuredPublicRelays, selectPublicManifests, refreshPublicCatalog } f
 import { decodeAddress } from '../packages/protocol/src';
 import { validateManifest } from '../packages/protocol/src/manifest';
 import { publicIp, blossomUrl } from '../packages/backend/src/blossom';
+import { RUNTIME_PROFILE } from '../packages/runtime/src/capabilities';
 const n = records[0];
 const key = new Uint8Array(32);
 key[31] = 1;
@@ -101,4 +102,47 @@ test('Blossom hints cannot reach private or special IP ranges; credentials and r
     expect(() => blossomUrl(url, n.artifactHash)).toThrow();
   expect(() => configuredPublicRelays('https://example.com')).toThrow();
   expect(configuredPublicRelays('wss://relay.example')).toEqual(['wss://relay.example/']);
+});
+
+test('a new runtime profile refreshes cached capability decisions and downloads supported manifests', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'space-profile-'));
+  const tags = n.current.tags.filter((t) => !['e', 'x', 'd'].includes(t[0]));
+  const supported = sign([...tags, ['requires', 'fs']]);
+  let calls = 0;
+  const options = {
+    relays: ['wss://relay.example/'],
+    now: Date.now(),
+    discover: async () => {
+      calls++;
+      return [supported];
+    },
+    download: async () =>
+      new Uint8Array(
+        await Bun.file(`packages/backend/data/artifacts/${n.artifactHash}.html`).arrayBuffer(),
+      ),
+  };
+  try {
+    const first = await refreshPublicCatalog(dir, options);
+    expect(first.cache?.entries[0].availability).toBe('ready');
+    await Bun.write(
+      join(dir, 'catalog.json'),
+      JSON.stringify({ ...first.cache, runtime: 'older-host-profile' }),
+    );
+    const next = await refreshPublicCatalog(dir, options);
+    expect(next.source).toBe('network');
+    expect(calls).toBe(2);
+    expect(next.cache?.runtime).toBe(RUNTIME_PROFILE);
+    const unsupported = sign([...tags, ['requires', 'cvm']]);
+    const result = await refreshPublicCatalog(dir, {
+      ...options,
+      refresh: true,
+      discover: async () => [unsupported],
+      download: async () => {
+        throw new Error('must not download');
+      },
+    });
+    expect(result.cache?.entries[0].availability).toBe('host-required');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

@@ -17,9 +17,9 @@ test('resource jobs queue within their concurrency limit and queued cancellation
   const second = queue.run(queued.signal, async () => {
     secondStarted = true;
   });
-  const rejection = expect(second).rejects.toThrow('cancelled');
+  const rejection = second.catch((error) => error);
   queued.abort();
-  await rejection;
+  expect((await rejection).message).toBe('cancelled');
   const third = queue.run(running.signal, async () => 'third');
   finish();
   await first;

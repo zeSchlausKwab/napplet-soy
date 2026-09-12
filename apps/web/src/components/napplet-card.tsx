@@ -47,7 +47,7 @@ export function NappletCard({
         <Link {...link}>{napplet.title}</Link>
         <ArrowUpRight size={17} />
       </div>
-      <div className="card-meta">
+      <div className={`card-meta${external ? ' public-meta' : ''}`}>
         {external ? (
           <span className="public-creator">{napplet.creator}</span>
         ) : (

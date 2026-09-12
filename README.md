@@ -26,6 +26,8 @@ PORT=3020 bun run dev:prod publicdev
 
 This discovers signed napplet manifests from Nostr relays through Applesauce and caches verified Blossom artifacts. Repeat starts reuse a 15-minute cache. Public entries resolve through naddr/snapshot routes; unsupported required capabilities are shown explicitly. No Nappelin/HTTP directory is used. See [public development and OG previews](docs/PUBLIC-DEVELOPMENT.md).
 
+Open a card marked **Ready to play**, then click **Play napplet**. The player now provides the upstream NAP shim, scoped saves, virtual file exports, verified resource loading, and Nostr reads. File exports appear below the player for download. Publishing and account changes remain disabled. See the [public runtime capabilities and limits](docs/PUBLIC-RUNTIME.md).
+
 Every napplet page includes server-rendered Open Graph metadata and a 1200×630 PNG preview. `SPACE_SITE_ORIGIN` controls absolute share URLs; the VPS script sets it from the deployment domain.
 
 ## ContextVM starter
@@ -92,6 +94,6 @@ TEST_ORIGIN=http://localhost:8080 bun run test:browser
 
 ## What is still ahead
 
-The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or public publishing service yet. GRASP/ngit repository provisioning, Blossom uploads, Postgres/workers, production naming claims, key provisioning/remote signers, comments/likes/zaps, and the public one-line installer remain planned. The player supports the restricted single-HTML profile; the basic NIP-5D projection is implemented, while host-mediated NAP domains remain to be added and conformance-tested.
+The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or public publishing service yet. GRASP/ngit repository provisioning, Blossom uploads, Postgres/workers, production naming claims, key provisioning/remote signers, comments/likes/zaps, and the public one-line installer remain planned. The player supports the single-HTML profile and the documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
 
 The deployment script deploys this foundation. It does not claim to provision those remaining services. The next vertical slice should connect one real creation → Git/Blossom publication → relay indexing → named playable link through the operator services described in [PLAN.md](PLAN.md).
