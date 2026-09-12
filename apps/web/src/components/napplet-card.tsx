@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, Play } from 'lucide-react';
+import { ArrowUpRight, Play, Info } from 'lucide-react';
 import type { NappletCard as Card } from '../../../../packages/backend/src/catalog';
 import {
   publicPoster,
@@ -14,6 +14,7 @@ export function NappletCard({
   index?: number;
 }) {
   const external = 'provenance' in napplet;
+  const playable = !external || napplet.availability === 'ready';
   const link = external
     ? publicLink(napplet)
     : {
@@ -22,7 +23,11 @@ export function NappletCard({
       };
   return (
     <article className="napplet-card" style={{ animationDelay: `${index * 45}ms` }}>
-      <Link {...link} className="card-preview" aria-label={`Play ${napplet.title}`}>
+      <Link
+        {...link}
+        className="card-preview"
+        aria-label={`${playable ? 'Play' : 'View'} ${napplet.title}`}
+      >
         <img
           src={external ? publicPoster(napplet) : `/posters/${napplet.slug}.svg`}
           referrerPolicy="no-referrer"
@@ -35,7 +40,7 @@ export function NappletCard({
           {napplet.category === 'visual' ? 'VISUAL EXPERIMENT' : napplet.category.toUpperCase()}
         </span>
         <span className="play-indicator">
-          <Play size={18} fill="currentColor" />
+          {playable ? <Play size={18} fill="currentColor" /> : <Info size={20} />}
         </span>
       </Link>
       <div className="card-heading">
@@ -52,7 +57,13 @@ export function NappletCard({
         )}
         <span>
           {external ? (
-            'from Nostr'
+            <span className={playable ? 'compatibility-ready' : 'compatibility-missing'}>
+              {playable
+                ? 'Ready to play'
+                : napplet.availability === 'host-required'
+                  ? 'Needs more capabilities'
+                  : 'Download unavailable'}
+            </span>
           ) : (
             <>
               {(napplet.bytes / 1024).toFixed(1)} KB <span className="meta-dot">·</span> open source

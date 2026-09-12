@@ -7,6 +7,7 @@ import {
 } from './public-model';
 import { decodeAddress, identityAddress } from '../../protocol/src';
 import type { Lookup } from './catalog';
+import { missingDomains } from '../../runtime/src/capabilities';
 
 // Set by the dev launcher only. No request, hostname, or URL parameter can enable this mode.
 export function publicDirectory() {
@@ -31,7 +32,9 @@ export async function readPublicCatalog() {
         return {
           ...derived,
           bytes: entry.bytes,
-          availability: derived.domains.length ? 'host-required' : entry.availability,
+          availability: missingDomains(derived.domains).length
+            ? ('host-required' as const)
+            : entry.availability,
         };
       }),
     );
@@ -59,7 +62,8 @@ export async function publicArtifact(hash: string) {
   const directory = publicDirectory();
   if (!directory || !/^[a-f0-9]{64}$/.test(hash)) return null;
   const entry = (await readPublicCatalog())?.entries.find(
-    (n) => n.artifactHash === hash && n.availability === 'ready' && n.domains.length === 0,
+    (n) =>
+      n.artifactHash === hash && n.availability === 'ready' && !missingDomains(n.domains).length,
   );
   if (!entry) return null;
   const file = Bun.file(resolve(directory, 'artifacts', `${hash}.html`));

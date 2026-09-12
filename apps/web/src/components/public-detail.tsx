@@ -5,6 +5,7 @@ import { useEventStore } from 'applesauce-react/hooks';
 import { Player } from './player';
 import { Button } from './ui/button';
 import { publicPoster, type PublicNapplet } from '../../../../packages/backend/src/public-model';
+import { missingDomains } from '../../../../packages/runtime/src/capabilities';
 
 export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
   const store = useEventStore();
@@ -57,7 +58,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
             </h2>
             <p>
               {napplet.availability === 'host-required'
-                ? `Required by its manifest: ${napplet.domains.join(', ')}. These capabilities are not available in this client yet.`
+                ? `Not supported here yet: ${missingDomains(napplet.domains).join(', ')}.`
                 : 'Its manifest is signed and valid, but its HTML could not be verified from the listed Blossom servers. Refresh public dev to try again.'}
             </p>
           </div>
@@ -99,6 +100,8 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
         </aside>
       </div>
       <div className="collection-note">
+        {napplet.availability === 'ready' &&
+          'Playback supports local saves, resource loading, and Nostr reads. Publishing and account changes are disabled. '}
         Discovered on Nostr. The author’s signature and artifact hashes are checked independently of
         the relay and Blossom server. Public development uses a bounded catalog refreshed at
         startup.

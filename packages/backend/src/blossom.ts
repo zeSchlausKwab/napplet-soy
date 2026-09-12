@@ -33,6 +33,24 @@ export function fetchPublicBlob(
   signal: AbortSignal,
 ): Promise<Uint8Array> {
   const url = blossomUrl(server, hash);
+  return fetchPublicBytes(url, signal);
+}
+
+export function publicResourceUrl(input: string) {
+  const url = new URL(input);
+  if (
+    url.protocol !== 'https:' ||
+    (url.port && url.port !== '443') ||
+    url.username ||
+    url.password ||
+    url.hash
+  )
+    throw new Error('blocked-by-policy');
+  return url;
+}
+
+export function fetchPublicBytes(url: URL, signal: AbortSignal): Promise<Uint8Array> {
+  publicResourceUrl(url.href);
   const literal = url.hostname.replace(/^\[|\]$/g, '');
   if (ipaddr.isValid(literal) && !publicIp(literal))
     return Promise.reject(new Error('Private network destination'));
@@ -51,7 +69,7 @@ export function fetchPublicBlob(
           });
         },
         headers: {
-          Accept: 'text/html, application/octet-stream',
+          Accept: '*/*',
           'User-Agent': 'napplet-space-publicdev/0.1',
         },
       },

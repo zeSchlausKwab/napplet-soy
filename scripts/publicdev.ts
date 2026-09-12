@@ -9,6 +9,7 @@ import {
 import { manifestIdentity, validateManifest } from '../packages/protocol/src/manifest';
 import { discoverNapplets } from '../packages/nostr/src/discovery';
 import { downloadArtifact } from '../packages/backend/src/blossom';
+import { missingDomains, RUNTIME_PROFILE } from '../packages/runtime/src/capabilities';
 import {
   DEFAULT_PUBLIC_RELAYS,
   PUBLIC_CACHE_TTL,
@@ -98,6 +99,7 @@ export async function refreshPublicCatalog(
   const sameRelays = previous && JSON.stringify(previous.relays) === JSON.stringify(relays);
   if (
     sameRelays &&
+    previous!.runtime === RUNTIME_PROFILE &&
     !options.refresh &&
     now >= previous!.fetchedAt &&
     now - previous!.fetchedAt < PUBLIC_CACHE_TTL
@@ -108,8 +110,8 @@ export async function refreshPublicCatalog(
     const { entries, rejected } = await selectPublicManifests(inputs);
     const artifacts = resolve(directory, 'artifacts');
     await mkdir(artifacts, { recursive: true });
-    const signal = AbortSignal.timeout(10000);
-    const queue = entries.filter((n) => !n.domains.length);
+    const signal = AbortSignal.timeout(60000);
+    const queue = entries.filter((n) => !missingDomains(n.domains).length);
     await Promise.all(
       Array.from({ length: Math.min(3, queue.length) }, async () => {
         for (let n = queue.shift(); n; n = queue.shift()) {
@@ -140,6 +142,7 @@ export async function refreshPublicCatalog(
     );
     const cache = publicCacheSchema.parse({
       version: 2,
+      runtime: RUNTIME_PROFILE,
       fetchedAt: now,
       relays,
       rejected,
@@ -153,7 +156,14 @@ export async function refreshPublicCatalog(
     // An explicitly changed relay set must not fall back to another network's saved catalog.
     if (!sameRelays) {
       await mkdir(directory, { recursive: true });
-      const empty: PublicCache = { version: 2, fetchedAt: 0, relays, rejected: 0, entries: [] };
+      const empty: PublicCache = {
+        version: 2,
+        runtime: RUNTIME_PROFILE,
+        fetchedAt: 0,
+        relays,
+        rejected: 0,
+        entries: [],
+      };
       const temporary = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`;
       await Bun.write(temporary, JSON.stringify(empty));
       await rename(temporary, path);

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { nip19 } from 'nostr-tools';
 import { eventSchema, encodeAddress } from '../../protocol/src';
 import { validateManifest } from '../../protocol/src/manifest';
+import { missingDomains } from '../../runtime/src/capabilities';
 
 export const PUBLIC_CACHE_TTL = 15 * 60 * 1000;
 export const DEFAULT_PUBLIC_RELAYS = [
@@ -30,12 +31,14 @@ export const publicNappletSchema = z.object({
     .max(10 * 1024 * 1024)
     .nullable(),
   domains: z.array(z.string()).max(256),
+  relays: z.array(z.string().max(256)).max(8).default([]),
   sourceUrl: z.string().max(4096).nullable(),
   availability: z.enum(['ready', 'host-required', 'unavailable']),
 });
 export type PublicNapplet = z.infer<typeof publicNappletSchema>;
 export const publicCacheSchema = z.object({
   version: z.literal(2),
+  runtime: z.string().default('legacy'),
   fetchedAt: z.number().int().nonnegative(),
   relays: z.array(z.string().max(256)).max(8),
   rejected: z.number().int().nonnegative(),
@@ -70,8 +73,9 @@ export async function publicNapplet(
     naddr: release.identity ? encodeAddress(release.identity, relayHints.slice(0, 8)) : null,
     bytes: null,
     domains: release.domains,
+    relays: relayHints.slice(0, 8),
     sourceUrl,
-    availability: release.domains.length ? 'host-required' : 'unavailable',
+    availability: missingDomains(release.domains).length ? 'host-required' : 'unavailable',
   };
 }
 export const publicPoster = (entry: PublicNapplet) => `/api/og/${entry.revisionId}`;

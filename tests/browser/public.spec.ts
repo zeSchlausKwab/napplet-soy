@@ -37,3 +37,32 @@ test('publicdev shows signed relay entries, plays verified Rubik Cube, and gates
   expect((await request.get(`/api/og/${n.revisionId}`)).status()).toBe(200);
   expect(errors).toEqual([]);
 });
+
+test('public Random Sticker plays, changes pictures, and exports its selected image', async ({
+  page,
+}) => {
+  test.skip(process.env.TEST_PUBLICDEV !== '1', 'Requires the public relay catalog.');
+  const cache = JSON.parse(await readFile('.local/publicdev/catalog.json', 'utf8'));
+  const napplet = cache.entries.find(
+    (n: { title: string }) => n.title === '600.wtf · Random Sticker',
+  );
+  expect(napplet.availability).toBe('ready');
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`/n/${napplet.naddr}`);
+  await page.getByRole('button', { name: `Start ${napplet.title}` }).click();
+  const frame = page.frameLocator('iframe');
+  const sticker = frame.locator('#sticker');
+  await expect(sticker).toBeVisible();
+  const first = await sticker.getAttribute('data-sticker-id');
+  await frame.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(sticker).not.toHaveAttribute('data-sticker-id', first!);
+  await frame.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Save file', exact: true }).click();
+  await expect(page.locator('.host-files a')).toHaveCount(1);
+  const downloading = page.waitForEvent('download');
+  await page.locator('.host-files a').click();
+  expect((await downloading).suggestedFilename()).toMatch(/\.webp$/);
+  await expect(frame.locator('#status')).not.toHaveAttribute('data-error', 'true');
+  expect(errors).toEqual([]);
+});

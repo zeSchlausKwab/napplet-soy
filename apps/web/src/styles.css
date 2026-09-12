@@ -1266,3 +1266,48 @@ pre:focus-visible {
     gap: 20px;
   }
 }
+/* Runtime-owned prompts and exports stay outside the untrusted iframe. */
+.host-prompt {
+  position: absolute;
+  z-index: 5;
+  inset: auto 1.5rem 1.5rem;
+  margin: auto;
+  max-width: 34rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: #f8f6ed;
+  color: #292d23;
+  box-shadow: 0 10px 60px #0004;
+}
+.host-prompt p {
+  overflow-wrap: anywhere;
+  margin-block: 0.75rem;
+  font-size: 0.9rem;
+}
+.host-prompt > div {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+.host-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  font-size: 0.85rem;
+}
+.host-files > span {
+  color: var(--muted-foreground);
+}
+.host-files a {
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+.compatibility-ready {
+  color: #477966;
+}
+.compatibility-missing {
+  color: #826c47;
+}

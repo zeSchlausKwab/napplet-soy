@@ -14,6 +14,7 @@ import { Route as CreatorRouteImport } from './routes/$creator'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiResourcesRouteImport } from './routes/api.resources'
 import { Route as NNaddrRouteImport } from './routes/n.$naddr'
 import { Route as RSnapshotRouteImport } from './routes/r.$snapshot'
 import { Route as ApiArtifactsHashRouteImport } from './routes/api.artifacts.$hash'
@@ -43,6 +44,11 @@ const CreatorSlugRoute = CreatorSlugRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiResourcesRoute = ApiResourcesRouteImport.update({
+  id: '/api/resources',
+  path: '/api/resources',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NNaddrRoute = NNaddrRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/resources': typeof ApiResourcesRoute
   '/n/$naddr': typeof NNaddrRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/resources': typeof ApiResourcesRoute
   '/n/$naddr': typeof NNaddrRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/resources': typeof ApiResourcesRoute
   '/n/$naddr': typeof NNaddrRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/$creator/$slug'
     | '/api/health'
+    | '/api/resources'
     | '/n/$naddr'
     | '/r/$snapshot'
     | '/api/artifacts/$hash'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/$creator/$slug'
     | '/api/health'
+    | '/api/resources'
     | '/n/$naddr'
     | '/r/$snapshot'
     | '/api/artifacts/$hash'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/$creator/$slug'
     | '/api/health'
+    | '/api/resources'
     | '/n/$naddr'
     | '/r/$snapshot'
     | '/api/artifacts/$hash'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   CreatorRoute: typeof CreatorRouteWithChildren
   CreateRoute: typeof CreateRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiResourcesRoute: typeof ApiResourcesRoute
   NNaddrRoute: typeof NNaddrRoute
   RSnapshotRoute: typeof RSnapshotRouteWithChildren
   ApiArtifactsHashRoute: typeof ApiArtifactsHashRoute
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/resources': {
+      id: '/api/resources'
+      path: '/api/resources'
+      fullPath: '/api/resources'
+      preLoaderRoute: typeof ApiResourcesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/n/$naddr': {
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreatorRoute: CreatorRouteWithChildren,
   CreateRoute: CreateRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiResourcesRoute: ApiResourcesRoute,
   NNaddrRoute: NNaddrRoute,
   RSnapshotRoute: RSnapshotRouteWithChildren,
   ApiArtifactsHashRoute: ApiArtifactsHashRoute,

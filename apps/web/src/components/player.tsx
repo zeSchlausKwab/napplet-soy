@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Expand, LoaderCircle, Play, RotateCcw, Square } from 'lucide-react';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
@@ -7,17 +7,66 @@ import { validateRelease } from '../../../../packages/protocol/src';
 import { validateManifest } from '../../../../packages/protocol/src/manifest';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
 import { publicPoster, type PublicNapplet } from '../../../../packages/backend/src/public-model';
+import shim from '@napplet/shim/prelude.global?raw';
+import { RUNTIME_DOMAINS, missingDomains } from '../../../../packages/runtime/src/capabilities';
+import { SHELL_PRELUDE } from '../../../../packages/runtime/src/prelude';
+import { attachNappletHost, type HostPrompt } from '../../../../packages/runtime/src/host';
+import type { ExportFile } from '../../../../packages/runtime/src/filesystem';
+
+const prelude = `${shim}\nglobalThis.NappletShimPrelude.install(${JSON.stringify({ domains: RUNTIME_DOMAINS.filter((d) => d !== 'shell') })});\n${SHELL_PRELUDE}`;
+
+function FileExports({ files }: { files: ExportFile[] }) {
+  const [downloads, setDownloads] = useState<{ name: string; url: string }[]>([]);
+  useEffect(() => {
+    const next = files.map((file) => ({ name: file.name, url: URL.createObjectURL(file.blob) }));
+    setDownloads(next);
+    return () => next.forEach((file) => URL.revokeObjectURL(file.url));
+  }, [files]);
+  if (!downloads.length) return null;
+  return (
+    <div className="host-files">
+      <span>Session files · download before closing</span>
+      {downloads.map((file) => (
+        <a key={file.name} href={file.url} download={file.name.split('/').pop()}>
+          {file.name} ↓
+        </a>
+      ))}
+    </div>
+  );
+}
 
 export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
   const external = 'provenance' in napplet;
   const releaseId = external ? napplet.revisionId : napplet.snapshot.id;
-  const { ready } = useNostr();
+  const { ready, pubkey } = useNostr();
+  const [prompt, setPrompt] = useState<HostPrompt | null>(null);
+  const [exports, setExports] = useState<ExportFile[]>([]);
+  const cleanupHost = useRef<(() => void) | undefined>(undefined);
   const [playing, setPlaying] = useState(false),
     [doc, setDoc] = useState(''),
     [error, setError] = useState(''),
     [revision, setRevision] = useState(0);
   const frame = useRef<HTMLDivElement>(null);
+  const bindFrame = useCallback(
+    (node: HTMLIFrameElement | null) => {
+      cleanupHost.current?.();
+      cleanupHost.current = undefined;
+      if (!node) return;
+      const manifest = external ? napplet.manifest : napplet.current;
+      cleanupHost.current = attachNappletHost({
+        frame: node,
+        identity: `${manifest.pubkey}:${manifest.kind}:${manifest.tags.find((t) => t[0] === 'd')?.[1] ?? ''}:${external ? napplet.aggregateHash : napplet.artifactHash}`,
+        manifestId: releaseId,
+        relays: external ? napplet.relays : [],
+        pubkey,
+        prompt: setPrompt,
+        files: setExports,
+      });
+    },
+    [napplet, pubkey, releaseId],
+  );
   useEffect(() => {
+    setExports([]);
     if (!playing) {
       setDoc('');
       return;
@@ -26,15 +75,19 @@ export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
     setError('');
     setDoc('');
     const verify = external
-      ? napplet.availability === 'ready' && napplet.artifactHash && !napplet.domains.length
+      ? napplet.availability === 'ready' &&
+        napplet.artifactHash &&
+        !missingDomains(napplet.domains).length
         ? validateManifest(napplet.manifest)
-        : Promise.reject(new Error('This napplet needs its original host.'))
+        : Promise.reject(
+            new Error('This napplet requires capabilities this client does not yet support.'),
+          )
       : validateRelease(napplet.current, napplet.snapshot);
     void verify
       .then(async (release) => {
         if (release.artifactHash !== napplet.artifactHash)
           throw new Error('Release metadata does not match its artifact.');
-        return loadArtifact(release.artifactHash, controller.signal);
+        return loadArtifact(release.artifactHash, controller.signal, prelude);
       })
       .then((html) => {
         if (!controller.signal.aborted) setDoc(html);
@@ -44,7 +97,7 @@ export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
           setError(reason instanceof Error ? reason.message : 'Could not load this creation.');
       });
     return () => controller.abort();
-  }, [playing, releaseId, revision]);
+  }, [playing, releaseId, revision, pubkey]);
   return (
     <div className="player-wrap">
       <div ref={frame} className="player-stage">
@@ -73,7 +126,8 @@ export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
           </div>
         ) : doc ? (
           <iframe
-            key={revision}
+            key={`${revision}:${pubkey}`}
+            ref={bindFrame}
             title={napplet.title}
             srcDoc={doc}
             sandbox={PLAYER_SANDBOX}
@@ -86,7 +140,43 @@ export function Player({ napplet }: { napplet: Napplet | PublicNapplet }) {
             Verifying creation…
           </div>
         )}
+        {prompt && (
+          <div
+            className="host-prompt"
+            role="dialog"
+            aria-modal="true"
+            aria-label={prompt.kind === 'save' ? 'Save napplet file' : 'Open external link'}
+          >
+            <strong>
+              {prompt.kind === 'save' ? 'Save a file from this napplet?' : 'Open this link?'}
+            </strong>
+            <p>{prompt.value}</p>
+            {prompt.kind === 'save' && (
+              <p>The file will appear below the player for you to download.</p>
+            )}
+            <div>
+              <Button variant="outline" onClick={() => prompt.answer(false)}>
+                Cancel
+              </Button>
+              {prompt.kind === 'save' ? (
+                <Button onClick={() => prompt.answer(true)}>Save file</Button>
+              ) : (
+                <Button asChild>
+                  <a
+                    href={prompt.value}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => prompt.answer(true)}
+                  >
+                    Open link
+                  </a>
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+      <FileExports files={exports} />
       <div className="player-controls">
         <span>
           {playing && doc ? (
