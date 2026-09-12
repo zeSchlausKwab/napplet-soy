@@ -40,6 +40,7 @@ if (import.meta.main) {
     const archive = join(staging, `napplet-${release}.tar.gz`);
     try {
       await run(['bun', 'run', 'check']);
+      await run(['bun', 'run', 'test:relay']);
       await run([
         'tar',
         '--exclude=node_modules',
@@ -59,6 +60,8 @@ if (import.meta.main) {
         'packages',
         'scripts',
         'infra',
+        'services',
+        'tests/services',
       ]);
       await run(['scp', archive, `${host}:/tmp/napplet-${release}.tar.gz`]);
       const script = await Bun.file(new URL('./deploy-remote.sh', import.meta.url)).text();

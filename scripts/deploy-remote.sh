@@ -19,16 +19,17 @@ archive="/tmp/napplet-$release_id.tar.gz"
 bun_version=1.3.11
 caddy_version=2.10.2
 pm2_version=7.0.4
+go_version=1.25.0
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq ca-certificates curl unzip tar xz-utils nodejs npm
+apt-get install -y -qq ca-certificates curl unzip tar xz-utils nodejs npm build-essential git
 id napplet >/dev/null 2>&1 || useradd --system --create-home --home-dir "$state_root" --shell /usr/sbin/nologin napplet
 install -d -m 755 "$app_root/bin" "$app_root/tools" "$app_root/releases" "$app_root/shared" /etc/napplet-space
-install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy"
+install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay"
 
 case "$(uname -m)" in
-  x86_64) bun_asset=bun-linux-x64-baseline.zip; caddy_arch=amd64 ;;
-  aarch64|arm64) bun_asset=bun-linux-aarch64.zip; caddy_arch=arm64 ;;
+  x86_64) bun_asset=bun-linux-x64-baseline.zip; caddy_arch=amd64; go_sha=2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613 ;;
+  aarch64|arm64) bun_asset=bun-linux-aarch64.zip; caddy_arch=arm64; go_sha=05de75d6994a2783699815ee553bd5a9327d8b79991de36e38b66862782f54ae ;;
   *) echo 'Supported VPS architectures: x86_64 and arm64.' >&2; exit 1 ;;
 esac
 tool_staging=$(mktemp -d)
@@ -45,6 +46,15 @@ if [[ ! -x "$app_root/bin/caddy" ]] || [[ "$("$app_root/bin/caddy" version)" != 
   curl -fsSL "https://github.com/caddyserver/caddy/releases/download/v$caddy_version/caddy_${caddy_version}_checksums.txt" -o "$tool_staging/caddy-checksums"
   (cd "$tool_staging"; awk -v asset="$caddy_asset" '$2 == asset {print}' caddy-checksums > caddy-selected; test -s caddy-selected; sha512sum -c caddy-selected; tar -xzf "$caddy_asset" caddy)
   install -m 755 "$tool_staging/caddy" "$app_root/bin/caddy"
+fi
+# Native LMDB uses cgo. Keep the same verified toolchain as local builds.
+go_root="$app_root/tools/go$go_version"
+if [[ ! -x "$go_root/go/bin/go" ]] || [[ "$("$go_root/go/bin/go" version)" != "go version go$go_version "* ]]; then
+  go_asset="go$go_version.linux-$caddy_arch.tar.gz"
+  curl -fsSL "https://go.dev/dl/$go_asset" -o "$tool_staging/$go_asset"
+  (cd "$tool_staging"; printf '%s  %s\n' "$go_sha" "$go_asset" | sha256sum -c -)
+  install -d "$go_root"
+  tar -xzf "$tool_staging/$go_asset" -C "$go_root"
 fi
 if [[ ! -f "$app_root/tools/node_modules/pm2/package.json" ]] || [[ "$(node -p "require('$app_root/tools/node_modules/pm2/package.json').version")" != "$pm2_version" ]]; then
   npm install --prefix "$app_root/tools" --no-audit --no-fund "pm2@$pm2_version"
@@ -64,10 +74,24 @@ if [[ -f "$app_root/shared/server.env" ]]; then
   source "$app_root/shared/server.env"
   set +a
 fi
-export PATH="$app_root/bin:/usr/bin:/bin"
+export PATH="$go_root/go/bin:$app_root/bin:/usr/bin:/bin"
 export SPACE_SITE_ORIGIN="https://$domain"
 export SPACE_PUBLICDEV=0 SPACE_PUBLICDEV_DIR=''
-runuser -u napplet -- bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
+runuser -u napplet -- bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run test:relay; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
+
+start_relay() {
+  local source_release=$1
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_RELAY_BIND=127.0.0.1:19347 SPACE_RELAY_BIN="$source_release/bin/napplet-relay" SPACE_RELAY_DATA="$state_root/relay" SPACE_RELAY_ORIGIN="https://$domain/relay" SPACE_RELAY_INSTANCE="$domain" PATH="$PATH" node "$pm2_bin" start "$source_release/infra/relay.ecosystem.config.cjs" --update-env
+}
+relay_ready() {
+  local expected
+  expected=$(cat "$1/bin/napplet-relay.build")
+  for attempt in {1..60}; do
+    if curl -fsS --max-time 2 http://127.0.0.1:19347/health 2>/dev/null | grep -Fq "\"build\":\"$expected\""; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
 
 previous=$(readlink -f "$app_root/current" 2>/dev/null || true)
 smoke_pid=''
@@ -92,10 +116,13 @@ rollback() {
     if [[ -n "$previous" ]]; then
       ln -sfn "$previous" "$app_root/current.rollback"
       mv -Tf "$app_root/current.rollback" "$app_root/current"
+      pm2_run delete napplet-relay || true
+      if [[ -f "$previous/infra/relay.ecosystem.config.cjs" ]]; then start_relay "$previous" || true; fi
       pm2_run delete napplet-web || true
       runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$previous" SPACE_RELEASE_ID="$(basename "$previous")" PATH="$PATH" node "$pm2_bin" start "$previous/infra/ecosystem.config.cjs" --update-env || true
     else
       pm2_run delete napplet-web || true
+      pm2_run delete napplet-relay || true
       rm -f "$app_root/current"
     fi
     pm2_run save --force || true
@@ -126,6 +153,8 @@ $domain {
     Referrer-Policy strict-origin-when-cross-origin
     -Server
   }
+  @relay path /relay /relay/
+  reverse_proxy @relay 127.0.0.1:19347
   reverse_proxy 127.0.0.1:3000
 }
 CADDY
@@ -133,6 +162,9 @@ CADDY
 ln -sfn "$release_dir" "$app_root/current.next"
 mv -Tf "$app_root/current.next" "$app_root/current"
 activated=1
+pm2_run delete napplet-relay || true
+start_relay "$release_dir"
+relay_ready "$release_dir"
 pm2_run delete napplet-web || true
 runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$release_dir" SPACE_RELEASE_ID="$release_id" PATH="$PATH" node "$pm2_bin" start "$release_dir/infra/ecosystem.config.cjs" --update-env
 healthy=0

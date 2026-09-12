@@ -80,3 +80,10 @@ New CLI projects bundle the website's prelude builder, pinned shim, NAP-SHELL bo
 Regression checks cover an independently spawned generated project, actual loopback relay traffic, CSP inheritance, source/config reloads, tampered bytes, unsupported requirements, account changes and cancelled work. Public relay writes remain absent.
 
 Validation for this repair: type checking and **62 unit/integration tests passed**. **15 Chromium checks passed**: nine covering the standalone CLI, linked previews, public playback and runtime through the relevant local servers, plus six ordinary-mode gallery/SSR/sandbox checks. Production build and Caddy/PM2 startup passed. The opt-in 78 MiB packaged-resource test was not repeated.
+
+
+## Managed relay foundation
+
+Khatru/LMDB/Bleve now runs as a persistent PM2 process in both local modes and is wired into the VPS build/activation/rollback script. Dev startup reconciles the 12 signed example events over Applesauce; repeated seeds skip writes and publicdev never becomes a fixture destination. Caddy exposes ordinary WebSocket and NIP-11 traffic at `/relay`. Build reuse, health, process ownership and graceful shutdown are implemented. See [RELAY.md](RELAY.md) for exact pins, two checksum-guarded upstream fixes, search semantics, bounds and verification.
+
+This is the relay portion of the next publishing slice. Blossom, GRASP/ngit source provisioning, creator keys, persistent website indexing/naming and CLI publication remain unfinished. The local fixture events are queryable, but their bytes/source are not yet portable publications. No VPS has been contacted.

@@ -3,6 +3,13 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { seedExamples } from './seed';
 import { refreshPublicCatalog } from './publicdev';
+import {
+  buildRelay,
+  localRelayInstance,
+  localRelayUrl,
+  relayBinary,
+  seedLocalRelay,
+} from './relay';
 
 const root = resolve(import.meta.dir, '..');
 const local = resolve(root, '.local');
@@ -20,6 +27,12 @@ const env = {
   PORT: port,
   SPACE_RELEASE_DIR: root,
   SPACE_APP_NAME: 'napplet-local-web',
+  SPACE_SERVICE_PREFIX: 'napplet-local',
+  SPACE_RELAY_BIN: relayBinary,
+  SPACE_RELAY_BIND: '127.0.0.1:19347',
+  SPACE_RELAY_DATA: resolve(local, 'services/relay'),
+  SPACE_RELAY_ORIGIN: `${site}/relay`,
+  SPACE_RELAY_INSTANCE: localRelayInstance,
   SPACE_SITE_ADDRESS: site,
   SPACE_WEB_PORT: port,
   XDG_DATA_HOME: resolve(local, 'caddy/data'),
@@ -30,9 +43,14 @@ const env = {
   SPACE_PUBLICDEV_DIR: publicdev ? resolve(local, 'publicdev') : '',
 };
 async function prepare() {
+  await startRelay();
   const seed = await seedExamples();
   console.log(
     `Local examples: ${seed.count} checked, ${seed.writes} files updated (${seed.milliseconds} ms).`,
+  );
+  const relaySeed = await seedLocalRelay();
+  console.log(
+    `Local relay: ${relaySeed.events} signed events checked, ${relaySeed.published} published (${relaySeed.milliseconds} ms).`,
   );
   if (publicdev) {
     const result = await refreshPublicCatalog(env.SPACE_PUBLICDEV_DIR, {
@@ -48,6 +66,41 @@ async function prepare() {
 async function run(args: string[]) {
   const child = Bun.spawn(args, { cwd: root, env, stdout: 'inherit', stderr: 'inherit' });
   if ((await child.exited) !== 0) throw new Error(`${args[0]} failed`);
+}
+async function relayHealth() {
+  try {
+    const response = await fetch('http://127.0.0.1:19347/health', {
+      signal: AbortSignal.timeout(1000),
+    });
+    if (!response.ok) return null;
+    return (await response.json()) as { service: string; build: string; instance: string };
+  } catch {
+    return null;
+  }
+}
+async function startRelay() {
+  const build = await buildRelay();
+  const health = await relayHealth();
+  if (health && (health.service !== 'relay' || health.instance !== localRelayInstance))
+    throw new Error(
+      'Port 19347 belongs to another service or checkout; stop that checkout before starting this relay.',
+    );
+  if (health?.build === build) return;
+  const stop = Bun.spawn(['node', pm2, 'delete', 'napplet-local-relay'], {
+    env,
+    stdout: 'ignore',
+    stderr: 'ignore',
+  });
+  await stop.exited;
+  await run(['node', pm2, 'start', 'infra/relay.ecosystem.config.cjs', '--update-env']);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const result = await relayHealth();
+    if (result?.build === build && result.instance === localRelayInstance) return;
+    await Bun.sleep(500);
+  }
+  throw new Error(
+    'Relay did not become ready. Check .local/pm2/logs/napplet-local-relay-error.log.',
+  );
 }
 async function fetchBytes(url: string) {
   const response = await fetch(url);
@@ -81,6 +134,9 @@ async function doctor() {
   console.log(`Bun ${Bun.version} (pinned deployment: 1.3.11)`);
   console.log(
     `Caddy: ${(await Bun.file(caddy).exists()) ? 'installed locally' : 'run bun run dev:setup'}`,
+  );
+  console.log(
+    `Relay: ${(await relayHealth()) ? `ready at ${localRelayUrl}` : 'not running; use bun run dev or dev:prod'}`,
   );
   try {
     const result = await fetch(`${site}/api/health`, { signal: AbortSignal.timeout(3000) });
@@ -119,6 +175,7 @@ try {
     }
     case 'setup':
       await installCaddy();
+      await buildRelay();
       await doctor();
       break;
     case 'doctor':

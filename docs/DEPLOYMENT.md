@@ -19,24 +19,25 @@ The command runs local checks, uploads an allowlisted archive of the working sou
 | `/opt/napplet-space/releases/<id>` | Source and production build for one release |
 | `/opt/napplet-space/current` | Active release symlink |
 | `/opt/napplet-space/bin` | Bun 1.3.11 and Caddy 2.10.2, verified against upstream checksums |
-| `/opt/napplet-space/tools` | PM2 7.0.4 and its dependencies |
+| `/opt/napplet-space/tools` | PM2 7.0.4 and checksum-pinned Go 1.25.0 |
+| `/var/lib/napplet-space/relay` | Durable signed relay events and rebuildable Bleve index |
 | `/opt/napplet-space/shared/server.env` | Optional operator-maintained runtime/public build configuration; never uploaded |
 | `/var/lib/napplet-space/pm2` | Dedicated PM2 process list, logs, and PID state |
 | `/var/lib/napplet-space/caddy` | Caddy certificate/account data |
 | `/etc/napplet-space/Caddyfile` | This site's HTTPS/reverse-proxy configuration |
 
-The `napplet` system account runs the application and Caddy. Bun listens on loopback port 3000. PM2 uses fork mode with one Bun process; Node runs PM2 itself and the short-lived linked-preview metadata worker when a catalog refresh contains supported app references. The ordinary deployed profile still disables publicdev imports. systemd units `napplet-space` and `napplet-space-caddy` persist the services across reboots. Caddy receives only the capability needed to bind low ports. Existing global PM2 state is not used.
+The `napplet` system account runs the application and Caddy. Bun listens on loopback port 3000; the native Khatru relay listens on loopback 19347 and Caddy exposes it at `wss://<domain>/relay`. PM2 uses fork mode with one Bun process; Node runs PM2 itself and the short-lived linked-preview metadata worker when a catalog refresh contains supported app references. The ordinary deployed profile still disables publicdev imports. systemd units `napplet-space` and `napplet-space-caddy` persist the services across reboots. Caddy receives only the capability needed to bind low ports. Existing global PM2 state is not used.
 
 ## Activation and recovery
 
 1. Take an exclusive deployment lock.
-2. Install missing pinned tools, extract into a new release directory, install locked dependencies, typecheck/test, and build.
+2. Install missing pinned tools, extract into a new release directory, install locked dependencies, typecheck/test, run the Go race and relay process tests, and build both web and relay.
 3. Start the candidate on port 3101 and verify `/api/health` reports the expected release ID.
 4. Validate the proposed Caddy configuration.
-5. Switch the active symlink, restart/reload the dedicated PM2 application, and verify the release ID on port 3000.
+5. Switch the active symlink, restart/reload the dedicated PM2 relay/application, and verify the relay build fingerprint and the release ID on port 3000.
 6. Save PM2 state and activate the Caddy configuration and reboot services.
 
-The single Bun process may have a brief interruption during activation. This does not promise zero-downtime deployment. On activation failure, the error handler returns the active symlink and PM2 process to the previous release where available, and restores the prior Caddy configuration if it was changed. Candidate build failures leave the current process alone. Old releases remain on disk for inspection; automated retention is deferred.
+The single Bun process may have a brief interruption during activation. This does not promise zero-downtime deployment. On activation failure, the error handler returns the active symlink and PM2 web/relay processes to the previous release where available, and restores the prior Caddy configuration if it was changed. Candidate build failures leave the current process alone. Old releases remain on disk for inspection; automated retention is deferred.
 
 First-deploy HTTPS issuance depends on public DNS and network reachability. The script validates configuration and checks local application health; it does not certify external DNS, certificate issuance, reboot recovery, or provider firewalls. No firewall or DNS records are modified automatically.
 
@@ -55,7 +56,7 @@ Protect `shared/server.env` as operator configuration. It is sourced by the depl
 
 `bun run dev:prod` uses the same PM2 ecosystem and Bun production entry as the VPS deployment and a checksum-verified Caddy 2.10.2. Its PM2 state and downloaded tools stay under `.local`. Default local HTTP avoids changing the OS trust store; local HTTPS can use Caddy's internal CA, which needs separate trust setup. Local PM2 starts both app and proxy; on the VPS systemd owns Caddy and PM2 owns Bun. The same actual server implementations handle requests in both environments.
 
-The initial deploy scope is the web/runtime/CLI foundation. GRASP, Blossom, the relay, database, and index/preview workers have not been provisioned or tested. Add their shared local/production definitions during the next publishing slice. Docker's daemon was unavailable in the implementation environment, so no container integration is claimed.
+Deployment now includes the [managed relay](RELAY.md), with the same Go build runner, LMDB/Bleve backends, compatibility patches and PM2 definition as local development. It starts with no fixture events. GRASP, Blossom, the community database, and index/preview workers have not been provisioned or tested. Add their shared local/production definitions during the next publishing slice. The relay runs natively; no container integration is claimed.
 
 ## Share previews and optional ContextVM
 

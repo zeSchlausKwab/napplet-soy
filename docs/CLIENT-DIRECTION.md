@@ -1,6 +1,6 @@
 # Relay, media, flavors, and protocol alignment
 
-2026-09-12. NIP-5D authority is confirmed by the user. The relay, capture workflow, and flavor interface below are recommended directions, not implemented features. This follow-up changes documentation only.
+2026-09-12. NIP-5D authority is confirmed by the user. The [relay](RELAY.md) is now implemented and tested locally. The capture workflow and flavor interface below remain recommended directions. The original follow-up changed documentation only; the relay implementation is recorded separately.
 
 ## Authoritative contracts
 
@@ -12,7 +12,7 @@ The registry currently contains SHELL, IDENTITY, THEME, INC, and INTENT. Our oth
 
 Recommend a small Go application built on [Khatru](https://pkg.go.dev/fiatjaf.com/nostr/khatru), with LMDB retaining signed events and Bleve as a rebuildable search projection. Keep Bun for the website and Applesauce for Nostr clients. Khatru supplies the relay framework; our application wires storage and operator policy. GRASP remains the Git service with its own protocol responsibilities.
 
-Inspected candidate: `fiatjaf.com/nostr@v0.0.0-20260902034142-316ef6591fa2`, commit `316ef6591fa2f1d4247ce949a9361a44dcfe1f95`. This is not yet a tested deployment pin. Its [Bleve adapter](https://pkg.go.dev/fiatjaf.com/nostr@v0.0.0-20260902034142-316ef6591fa2/eventstore/bleve) indexes title/description tags, but default `IndexableKinds` omits napplet kinds. Configure 35129/15129/5129 and relevant supporting kinds explicitly. It needs a raw event store and configured languages.
+Inspected candidate: `fiatjaf.com/nostr@v0.0.0-20260902034142-316ef6591fa2`, commit `316ef6591fa2f1d4247ce949a9361a44dcfe1f95`. This pin is now tested locally with the two compatibility patches documented in [RELAY.md](RELAY.md); remote Linux deployment remains unverified. Its [Bleve adapter](https://pkg.go.dev/fiatjaf.com/nostr@v0.0.0-20260902034142-316ef6591fa2/eventstore/bleve) indexes title/description tags, but default `IndexableKinds` omits napplet kinds. Configure 35129/15129/5129 and relevant supporting kinds explicitly. It needs a raw event store and configured languages.
 
 Expose text search through [NIP-50](https://github.com/nostr-protocol/nips/blob/master/50.md), and topics through ordinary `#t` filters. Other clients must be able to make the same queries. The web projection adds availability, names, moderation, and curation; it does not replace signed events. Search covers retained/indexed events, not the whole Nostr network.
 

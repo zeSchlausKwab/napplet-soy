@@ -6,14 +6,14 @@ This is the first working implementation slice: Bun + React + TanStack Start, sh
 
 ## Start developing
 
-Requires Bun **1.3.11**, Node **18+** for PM2, and Git.
+Platform development requires Bun **1.3.11**, Node **18+** for PM2, Git, Go **1.21+**, and a C compiler. The relay build selects Go **1.25.0** automatically. See [relay setup](docs/RELAY.md).
 
 ```sh
 bun install --frozen-lockfile
 bun run dev
 ```
 
-Open <http://localhost:3000>. No relay, database, wallet, or account is needed to explore the starter collection. Every dev launch checks and repairs the six examples, rewriting only changed files. The browser opens no public relay connections by default. Set `VITE_NOSTR_RELAYS` to an explicit comma-separated relay list to enable the Applesauce subscription; restart/rebuild after changing public configuration.
+Open <http://localhost:3000>. The persistent Khatru/LMDB/Bleve relay starts automatically; no wallet or account is needed to explore the starter collection. Every dev launch checks and repairs the six examples, rewriting only changed files, and reconciles their 12 signed events through the local relay. The browser opens no public relay connections by default. Set `VITE_NOSTR_RELAYS` to an explicit comma-separated relay list to enable the Applesauce subscription; restart/rebuild after changing public configuration.
 
 ## Browse public napplets
 
@@ -35,10 +35,10 @@ Every napplet page includes server-rendered Open Graph metadata and a 1200×630 
 A small encrypted ContextVM matchmaking service is available with join, status, and leave tools:
 
 ```sh
-SPACE_CVM_RELAYS=ws://127.0.0.1:7777 bun run cvm
+SPACE_CVM_RELAYS=ws://127.0.0.1:19347/relay bun run cvm
 ```
 
-Supply an actual relay. The server creates a persistent local key automatically. The draft NAP-CVM browser bridge and a playable multiplayer demo are next; the player does not advertise that capability yet. See the [API and provider design](docs/CONTEXTVM.md).
+Start the platform dev stack first to provide the relay. The server creates a persistent local key automatically. The draft NAP-CVM browser bridge and a playable multiplayer demo are next; the player does not advertise that capability yet. See the [API and provider design](docs/CONTEXTVM.md).
 
 ## Make a local napplet
 
@@ -59,7 +59,7 @@ bun run dev:setup
 bun run dev:prod
 ```
 
-This downloads a checksum-verified Caddy **2.10.2** binary into `.local/bin`, builds the application, and starts Caddy and the Bun server under an isolated PM2 **7.0.4** instance. Open <http://localhost:8080>. Stop the ordinary dev server first, or select another backend port with `PORT=3020 bun run dev:prod`.
+This downloads a checksum-verified Caddy **2.10.2** binary into `.local/bin`, builds the application, and starts Caddy, the Bun server and the persistent Nostr relay under an isolated PM2 **7.0.4** instance. Open <http://localhost:8080>. Stop the ordinary dev server first, or select another backend port with `PORT=3020 bun run dev:prod`.
 
 ```sh
 bun run dev:doctor
@@ -76,7 +76,7 @@ Point a domain's DNS to a dedicated Debian/Ubuntu VPS with systemd, SSH access, 
 bun run deploy --host root@your-vps --domain napplet.example
 ```
 
-The script installs Bun, Caddy, and PM2, creates an unprivileged service account, uploads a source archive excluding local secrets and dependencies, builds on the VPS, tests a candidate release on a loopback port, and activates it under PM2. Caddy manages HTTPS, and systemd restores both services after a reboot. Failed activation attempts restore the previous release/configuration where available. See [deployment details](docs/DEPLOYMENT.md).
+The script installs Bun, Caddy, PM2 and the pinned Go toolchain, creates an unprivileged service account, uploads a source archive excluding local secrets and dependencies, builds on the VPS, tests a candidate release on a loopback port, and activates it under PM2. Caddy manages HTTPS, and systemd restores both services after a reboot. Failed activation attempts restore the previous release/configuration where available. See [deployment details](docs/DEPLOYMENT.md).
 
 ## Verify
 
@@ -90,7 +90,7 @@ bun run test:browser
 TEST_ORIGIN=http://localhost:8080 bun run test:browser
 ```
 
-`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Generated events are not published to relays. They use the same manifest validation and runtime policy as relay imports. The local posters are bundled illustrations. Relay imports resolve linked NIP-89 pictures and Zapstore screenshots/icons, cache safe raster images for gallery/player/OG previews, and fall back to generated cards when unavailable. See [linked previews](docs/PREVIEWS.md) for formats and limits.
+`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Dev startup publishes these fixture events only to the literal-loopback relay; public relays never receive fixtures. Artifact/source publication is still pending. They use the same manifest validation and runtime policy as relay imports. The local posters are bundled illustrations. Relay imports resolve linked NIP-89 pictures and Zapstore screenshots/icons, cache safe raster images for gallery/player/OG previews, and fall back to generated cards when unavailable. See [linked previews](docs/PREVIEWS.md) for formats and limits.
 
 Our publishing contract is standard NIP-5D manifests, public relays, retrievable Blossom bytes, and open source by default. Additional Space metadata and named routes are optional overlays. Publishing is not complete until an independent client discovers and runs a release without the Space API; see [the interoperability contract](docs/PROTOCOL.md).
 
@@ -98,4 +98,4 @@ Our publishing contract is standard NIP-5D manifests, public relays, retrievable
 
 The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or public publishing service yet. GRASP/ngit repository provisioning, Blossom uploads, Postgres/workers, production naming claims, key provisioning/remote signers, comments/likes/zaps, and the public one-line installer remain planned. The player supports the single-HTML profile and the documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
 
-The deployment script deploys this foundation. It does not claim to provision those remaining services. The next vertical slice should connect one real creation → Git/Blossom publication → relay indexing → named playable link through the operator services described in [PLAN.md](PLAN.md).
+The deployment script deploys this foundation. It does not claim to provision those remaining services. The [managed relay](docs/RELAY.md) is now implemented. The remaining publishing slice must connect one real creation → Git/Blossom publication → relay indexing → named playable link through the operator services described in [PLAN.md](PLAN.md).

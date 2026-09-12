@@ -10,5 +10,7 @@
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
 	}
+	@relay path /relay /relay/
+	reverse_proxy @relay 127.0.0.1:19347
 	reverse_proxy 127.0.0.1:{$SPACE_WEB_PORT:3000}
 }
