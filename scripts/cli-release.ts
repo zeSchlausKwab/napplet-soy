@@ -21,16 +21,33 @@ for (const platform of ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64'
   files.push(`${version}/${name}`, `${version}/${name}.sha256`);
 }
 const staging = await mkdtemp(join(tmpdir(), 'napplet-cli-release-'));
-const remote = `/tmp/napplet-cli-${version}-${crypto.randomUUID()}.tar`;
 const archive = join(staging, 'release.tar');
-const ssh = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', '-o', 'StrictHostKeyChecking=yes'];
+const ssh = [
+  '-o',
+  'BatchMode=yes',
+  '-o',
+  'ConnectTimeout=10',
+  '-o',
+  'StrictHostKeyChecking=yes',
+  '-o',
+  'ServerAliveInterval=10',
+  '-o',
+  'ServerAliveCountMax=3',
+];
 async function run(args: string[], input?: string | Blob) {
   const child = Bun.spawn(args, {
     stdin: input === undefined ? 'ignore' : typeof input === 'string' ? new Blob([input]) : input,
-    stdout: 'inherit',
+    stdout: 'pipe',
     stderr: 'inherit',
   });
-  if ((await child.exited) !== 0) throw new Error(`${args[0]} failed`);
+  const timer = setTimeout(() => child.kill('SIGTERM'), 180000);
+  try {
+    const [code, output] = await Promise.all([child.exited, new Response(child.stdout).text()]);
+    if (code !== 0) throw new Error(`${args[0]} failed`);
+    return output;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 try {
   await run([
@@ -43,24 +60,64 @@ try {
     ...files,
   ]);
   const hash = new Bun.CryptoHasher('sha256').update(await Bun.file(archive).bytes()).digest('hex');
-  // Bounded parallel streams avoid SFTP round-trip overhead on high-latency links.
-  // Reassemble and verify the whole archive before extracting anything.
+  const remote = `/tmp/napplet-cli-${version}-${hash}.tar`;
+  // Small verified chunks survive connection drops and repeat invocations.
   const size = Bun.file(archive).size;
-  const partSize = Math.ceil(size / 4);
-  const parts = [0, 1, 2, 3].map((index) => `${remote}.part${index}`);
-  const uploads = await Promise.allSettled(
-    parts.map(async (path, index) => {
-      await run(
-        ['ssh', ...ssh, host, `umask 077; cat > ${path}`],
-        Bun.file(archive).slice(index * partSize, Math.min(size, (index + 1) * partSize)),
-      );
-      console.log(`Uploaded CLI archive part ${index + 1}/4`);
-    }),
+  const partSize = 2 * 1024 * 1024;
+  const parts = Array.from(
+    { length: Math.ceil(size / partSize) },
+    (_, index) => `${remote}.part${String(index).padStart(3, '0')}`,
   );
-  if (uploads.some((result) => result.status === 'rejected')) {
-    await run(['ssh', ...ssh, host, `rm -f ${parts.join(' ')}`]);
-    throw new Error('CLI archive upload failed; existing downloads were preserved.');
-  }
+  const saved = await run([
+    'ssh',
+    ...ssh,
+    host,
+    `sha256sum ${remote}.part[0-9][0-9][0-9] 2>/dev/null || true`,
+  ]);
+  const known = new Map(
+    saved
+      .trim()
+      .split('\n')
+      .map((line) => line.split(/  +/))
+      .map(([hash, path]) => [path, hash]),
+  );
+  let next = 0,
+    completed = 0;
+  const upload = async () => {
+    while (next < parts.length) {
+      const index = next++;
+      const path = parts[index];
+      const bytes = await Bun.file(archive)
+        .slice(index * partSize, Math.min(size, (index + 1) * partSize))
+        .bytes();
+      const partHash = new Bun.CryptoHasher('sha256').update(bytes).digest('hex');
+      if (known.get(path) !== partHash) {
+        for (let attempt = 0; ; attempt++) {
+          try {
+            await run(
+              [
+                'ssh',
+                ...ssh,
+                host,
+                `set -e; umask 077; cat > ${path}.upload; printf '%s  %s\\n' '${partHash}' '${path}.upload' | sha256sum --check --status; mv ${path}.upload ${path}`,
+              ],
+              new Blob([bytes]),
+            );
+            break;
+          } catch (error) {
+            if (attempt === 2) throw error;
+            await Bun.sleep(1000 * (attempt + 1));
+          }
+        }
+      }
+      console.log(`Verified CLI upload ${++completed}/${parts.length}`);
+    }
+  };
+  const uploads = await Promise.allSettled(Array.from({ length: 4 }, upload));
+  if (uploads.some((result) => result.status === 'rejected'))
+    throw new Error(
+      'CLI archive upload interrupted. Rerun cli:release to reuse the verified chunks. Existing downloads were preserved.',
+    );
   // Every interpolated value above has a fixed/allowlisted alphabet.
   await run(
     [
@@ -76,7 +133,7 @@ mkdir -p "$root"
 exec 9>"$root/.release-lock"
 flock -n 9 || { echo 'Another CLI release is active.' >&2; exit 1; }
 stage=$(mktemp -d "$root/.release.XXXXXXXX")
-trap 'rm -rf "$stage"; rm -f ${remote} ${parts.join(' ')}' EXIT
+trap 'rm -rf "$stage"; rm -f ${remote}' EXIT
 cat ${parts.join(' ')} > ${remote}
 printf '%s  %s\\n' '${hash}' '${remote}' | sha256sum --check --status
 tar -xf ${remote} -C "$stage"
@@ -88,9 +145,11 @@ if [[ -e "$root/${version}" ]]; then
 else
   mv "$stage/${version}" "$root/${version}"
 fi
+rm -f ${parts.join(' ')}
 printf 'CLI ${version} downloads are ready.\\n'
 `,
   );
+  console.log(`CLI ${version} downloads are ready on ${host}.`);
 } finally {
   await rm(staging, { recursive: true, force: true });
 }
