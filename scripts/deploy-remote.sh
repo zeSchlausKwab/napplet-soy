@@ -177,8 +177,8 @@ printf '%s\n' "$SPACE_ADMIN_PUBKEYS" > "$app_root/shared/admin-pubkeys"
 chmod 600 "$app_root/shared/admin-pubkeys"
 export SPACE_PUBLICDEV=0 SPACE_PUBLICDEV_DIR=''
 export SPACE_INDEX_DIR="$state_root/index"
-export SPACE_INDEX_RELAYS="${SPACE_INDEX_RELAYS:-ws://127.0.0.1:19347/relay}"
-export SPACE_INDEX_HINTS="${SPACE_INDEX_HINTS:-wss://$domain/relay}"
+source "$release_dir/scripts/index-env.sh"
+napplet_index_env "$domain" "$release_dir/packages/nostr/discovery-relays.json"
 export SPACE_INDEX_LOCAL_BLOSSOM=''
 # GRASP migrations are not reversible by switching binaries. Pin changes need a
 # separately rehearsed migration/restore procedure; ordinary deploys cannot do it.

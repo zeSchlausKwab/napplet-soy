@@ -2,6 +2,8 @@ import { manifestBlocked } from '../../moderation/src/policy';
 import { Database } from 'bun:sqlite';
 import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import type { Filter } from 'nostr-tools';
 import { PublicationRelays } from '../../publish/src/relay';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../protocol/src';
 import { validateManifest } from '../../protocol/src/manifest';
@@ -131,38 +133,68 @@ export class IndexWorker {
   }
   async collect(read: PublicationRelays['read'], now = Date.now()) {
     const errors: string[] = [];
+    const collect = async (relay: string, stream: string, filter: Filter, forceFull = false) => {
+      const cursor = `cursor:${relay}:${stream}`;
+      const full = this.store.state<number>(`full:${cursor}`) ?? 0;
+      const since = forceFull || now - full >= 3600000 ? null : this.store.state<number>(cursor);
+      let until = Math.floor(now / 1000);
+      try {
+        // Descending pages overlap the last timestamp so ties are never skipped.
+        // A saturated second is reported; its cursor is deliberately not advanced.
+        for (let page = 0; ; page++) {
+          if (page >= 100) throw new Error('Catch-up page capacity reached');
+          const events = await read(relay, {
+            ...filter,
+            limit: 200,
+            until,
+            ...(since === null ? {} : { since: Math.max(0, since - 600) }),
+          });
+          for (const event of events) this.store.admit(event, now);
+          if (events.length < 200) break;
+          const oldest = Math.min(...events.map((event) => event.created_at));
+          if (oldest >= until)
+            throw new Error('Relay page saturated within one second; catch-up incomplete');
+          until = oldest;
+        }
+        this.store.setState(cursor, Math.floor(now / 1000));
+        if (since === null) this.store.setState(`full:${cursor}`, now);
+      } catch (error) {
+        errors.push(
+          `${relay} ${stream}: ${error instanceof Error ? error.message : 'discovery failed'}`,
+        );
+      }
+    };
+    const kinds = [35129, 15129, 5129];
+    // Discover all targets first. General-purpose relays carry enormous volumes
+    // of unrelated kind-5 events; never run an unfiltered deletion firehose.
     for (const relay of this.config.relays)
-      for (const kind of [5, 35129, 15129, 5129]) {
-        const cursor = `cursor:${relay}:${kind}`;
-        const full = this.store.state<number>(`full:${cursor}`) ?? 0;
-        const since = now - full >= 3600000 ? null : this.store.state<number>(cursor);
-        let until = Math.floor(now / 1000);
-        try {
-          // Descending pages overlap the last timestamp so ties are never skipped.
-          // A saturated second is reported; its cursor is deliberately not advanced.
-          for (let page = 0; ; page++) {
-            if (page >= 100) throw new Error('Catch-up page capacity reached');
-            const events = await read(relay, {
-              kinds: [kind],
-              limit: 200,
-              until,
-              ...(since === null ? {} : { since: Math.max(0, since - 600) }),
-            });
-            for (const event of events) this.store.admit(event, now);
-            if (events.length < 200) break;
-            const oldest = Math.min(...events.map((event) => event.created_at));
-            if (oldest >= until)
-              throw new Error('Relay page saturated within one second; catch-up incomplete');
-            until = oldest;
-          }
-          this.store.setState(cursor, Math.floor(now / 1000));
-          if (since === null) this.store.setState(`full:${cursor}`, now);
-        } catch (error) {
-          errors.push(
-            `${relay} kind ${kind}: ${error instanceof Error ? error.message : 'discovery failed'}`,
-          );
+      for (const kind of kinds) await collect(relay, String(kind), { kinds: [kind] });
+    const rows = this.store.rows();
+    const targets = {
+      '#e': rows.map((row) => row.id).sort(),
+      '#a': rows
+        .filter((row) => JSON.parse(row.event).kind !== 5129)
+        .map((row) => row.key)
+        .sort(),
+    };
+    const fingerprint = createHash('sha256').update(JSON.stringify(targets)).digest('hex');
+    for (const relay of this.config.relays) {
+      await collect(relay, 'napplet-deletions', { kinds: [5], '#k': kinds.map(String) });
+      // NIP-09 recommends k tags, but older clients may omit them. Query exact
+      // known IDs/addresses too. New target sets must get full history even when
+      // their deletion predates this worker's previous catch-up cursor.
+      const changed = this.store.state<string>(`deletion-targets:${relay}`) !== fingerprint;
+      const before = errors.length;
+      for (const tag of ['#e', '#a'] as const) {
+        const values = targets[tag];
+        for (let offset = 0; offset < values.length; offset += 128) {
+          const filter: Filter = { kinds: [5] };
+          filter[tag] = values.slice(offset, offset + 128);
+          await collect(relay, `deletion-targets:${tag}:${offset}`, filter, changed);
         }
       }
+      if (errors.length === before) this.store.setState(`deletion-targets:${relay}`, fingerprint);
+    }
     return errors;
   }
   async hydrate(

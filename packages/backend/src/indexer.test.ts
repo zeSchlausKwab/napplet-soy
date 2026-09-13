@@ -2,7 +2,13 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { finalizeEvent, generateSecretKey, getPublicKey, type Filter } from 'nostr-tools';
+import {
+  finalizeEvent,
+  generateSecretKey,
+  getPublicKey,
+  matchFilter,
+  type Filter,
+} from 'nostr-tools';
 import { aggregateHash, encodeAddress, sha256, type SignedEvent } from '../../protocol/src';
 import { IndexWorker, indexConfig } from './index-worker';
 import { manifestKey, indexedProjection } from './index-store';
@@ -201,7 +207,61 @@ test('pagination overlaps timestamp boundaries and retains its cursor on saturat
     await w.collect(async () => {
       throw new Error('offline');
     }),
-  ).toHaveLength(4);
+  ).toEqual(
+    expect.arrayContaining([
+      expect.stringContaining('5129: offline'),
+      expect.stringContaining('napplet-deletions: offline'),
+      expect.stringContaining('deletion-targets:#e:0: offline'),
+    ]),
+  );
+});
+test('discovery scopes deletions while retaining kind-tagged and legacy target deletions', async () => {
+  const w = await setup(),
+    r = await release();
+  const deletion = (tags: string[][]) =>
+    finalizeEvent(
+      {
+        kind: 5,
+        created_at: r.current.created_at + 1,
+        content: '',
+        tags,
+      },
+      r.secret,
+    );
+  const unrelated = deletion([
+    ['e', 'f'.repeat(64)],
+    ['k', '1'],
+  ]);
+  const legacy = deletion([['e', r.snapshot.id]]);
+  const addressDeletion = deletion([['a', manifestKey(r.current)]]);
+  const futureTarget = finalizeEvent({ ...r.snapshot, content: 'later arrival' }, r.secret);
+  const tagged = deletion([
+    ['e', futureTarget.id],
+    ['k', '5129'],
+  ]);
+  const events = [r.current, r.snapshot, unrelated, legacy, addressDeletion, tagged];
+  const filters: Filter[] = [];
+  const read = async (_relay: string, filter: Filter) => {
+    filters.push(filter);
+    return events.filter((event) => matchFilter(filter, event));
+  };
+  expect(await w.collect(read)).toEqual([]);
+  expect(
+    filters.filter((f) => f.kinds?.includes(5)).every((f) => f['#k'] || f['#e'] || f['#a']),
+  ).toBe(true);
+  expect(w.store.removed(r.current)).toBe(true);
+  expect(w.store.removed(r.snapshot)).toBe(true);
+  w.store.admit(futureTarget);
+  expect(w.store.removed(futureTarget)).toBe(true);
+  // A newly discovered target still gets full deletion history after cursors exist.
+  const late = finalizeEvent(
+    { ...r.current, tags: [...r.current.tags.filter((t) => t[0] !== 'd'), ['d', 'late']] },
+    r.secret,
+  );
+  events.push(late, deletion([['e', late.id]]));
+  w.store.admit(late); // Backdated target discovered on another relay after our cursor.
+  expect(await w.collect(read, Date.now() + 20 * 60000)).toEqual([]);
+  expect(w.store.removed(late)).toBe(true);
 });
 test('website receipt requires matching signed manifests, healthy indexing and verified artifact bytes', async () => {
   const w = await setup(),

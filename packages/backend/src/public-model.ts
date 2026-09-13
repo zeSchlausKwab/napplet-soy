@@ -5,15 +5,11 @@ import { validateManifest } from '../../protocol/src/manifest';
 import { missingDomains } from '../../runtime/src/capabilities';
 import { cachedPreviewSchema } from '../../protocol/src/preview';
 import { manifestTopics } from '../../protocol/src/topics';
+export { default as DEFAULT_PUBLIC_RELAYS } from '../../nostr/discovery-relays.json';
 
 export const PUBLIC_CACHE_TTL = 15 * 60 * 1000;
 // Shared by gallery URLs, SSR share metadata, and the renderer's cache validators.
 export const OG_VERSION = '3';
-export const DEFAULT_PUBLIC_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.primal.net',
-];
 const hex = z.string().regex(/^[a-f0-9]{64}$/);
 export const publicNappletSchema = z.object({
   provenance: z.literal('nostr'),
