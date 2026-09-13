@@ -1,6 +1,6 @@
 # Managed Nostr relay
 
-Implemented 2026-09-12. The relay is the first backing service in the publishing path. It runs as a native Go process under PM2 locally and on the VPS. The application and clients remain Bun/React/Applesauce. Blossom, GRASP, creator signing, the publish journal, and the persistent website catalog are still pending.
+Implemented 2026-09-12. The relay is the first backing service in the publishing path. It runs as a native Go process under PM2 locally and in the VPS deployment definition. The application and clients remain Bun/React/Applesauce. [Blossom storage](BLOSSOM.md) followed on 2026-09-13; GRASP, creator signing, the publish journal, and the persistent website catalog are still pending.
 
 ## Run and query
 
@@ -46,7 +46,7 @@ Both dev modes repair the six bundled examples, then use Applesauce to query and
 
 Fixture publication only accepts literal loopback `ws://` destinations, never relay hints, user defaults, publicdev targets, or a production account. `publicdev` remains an independent read-only public relay import. Deployment starts an empty relay and never runs the fixture seed against it.
 
-These fixtures do **not** constitute completed portable publications: their bytes and posters still come from the bundled collection and they have no published Blossom/source hints. The gallery still reads the existing catalog/cache. The next integration must upload bytes to Blossom, provision source through GRASP/ngit, and index relay publications into playable/named routes. The publishing contract still requires independent-client discovery and playback without the Space API.
+These fixtures do **not** constitute completed portable publications: their HTML bytes are now also seeded into local Blossom, but their ordinary manifests still have no published Blossom/source hints. The gallery still reads the existing catalog/cache and bundled posters. The next integration must provision source through GRASP/ngit, include retrievable byte hints in creator publications, and index relay publications into playable/named routes. The publishing contract still requires independent-client discovery and playback without the Space API.
 
 ## Operator boundary and evidence
 

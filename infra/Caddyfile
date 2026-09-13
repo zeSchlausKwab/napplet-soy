@@ -2,6 +2,13 @@
 	admin off
 }
 
+# Blob bytes have a separate origin and the root paths required by Blossom.
+http://127.0.0.1:8081 {
+	bind 127.0.0.1
+	header -Server
+	reverse_proxy 127.0.0.1:19348
+}
+
 {$SPACE_SITE_ADDRESS:http://localhost:8080} {
 	bind 127.0.0.1 ::1
 	encode zstd gzip

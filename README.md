@@ -13,7 +13,7 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-Open <http://localhost:3000>. The persistent Khatru/LMDB/Bleve relay starts automatically; no wallet or account is needed to explore the starter collection. Every dev launch checks and repairs the six examples, rewriting only changed files, and reconciles their 12 signed events through the local relay. The browser opens no public relay connections by default. Set `VITE_NOSTR_RELAYS` to an explicit comma-separated relay list to enable the Applesauce subscription; restart/rebuild after changing public configuration.
+Open <http://localhost:3000>. The persistent Khatru/LMDB/Bleve relay and [Blossom storage](docs/BLOSSOM.md) start automatically; no wallet or account is needed to explore the starter collection. Every dev launch checks and repairs the six examples, verifies their bytes and ownership in local Blossom, and reconciles their 12 signed events through the local relay. Unchanged blobs and fixture files are not rewritten. The browser opens no public relay connections by default. Set `VITE_NOSTR_RELAYS` to an explicit comma-separated relay list to enable the Applesauce subscription; restart/rebuild after changing public configuration.
 
 ## Browse public napplets
 
@@ -59,7 +59,7 @@ bun run dev:setup
 bun run dev:prod
 ```
 
-This downloads a checksum-verified Caddy **2.10.2** binary into `.local/bin`, builds the application, and starts Caddy, the Bun server and the persistent Nostr relay under an isolated PM2 **7.0.4** instance. Open <http://localhost:8080>. Stop the ordinary dev server first, or select another backend port with `PORT=3020 bun run dev:prod`.
+This downloads a checksum-verified Caddy **2.10.2** binary into `.local/bin`, builds the application, and starts Caddy, the Bun server, Nostr relay and Blossom under an isolated PM2 **7.0.4** instance. Open <http://localhost:8080>. Blossom uses the separate origin <http://127.0.0.1:8081>, with its direct loopback origin at port 19348 available in either dev mode. Stop the ordinary dev server first, or select another backend port with `PORT=3020 bun run dev:prod`.
 
 ```sh
 bun run dev:doctor
@@ -70,10 +70,11 @@ These commands affect only this checkout's `.local/pm2` state. They do not insta
 
 ## Deploy to a VPS
 
-Point a domain's DNS to a dedicated Debian/Ubuntu VPS with systemd, SSH access, and reachable ports 80/443:
+Point your website hostname and `blossom.<website-hostname>` at a dedicated Debian/Ubuntu VPS with systemd, SSH access, and reachable ports 80/443:
 
 ```sh
 bun run deploy --host root@your-vps --domain napplet.example
+# Optional: --blossom-domain files.example
 ```
 
 The script installs Bun, Caddy, PM2 and the pinned Go toolchain, creates an unprivileged service account, uploads a source archive excluding local secrets and dependencies, builds on the VPS, tests a candidate release on a loopback port, and activates it under PM2. Caddy manages HTTPS, and systemd restores both services after a reboot. Failed activation attempts restore the previous release/configuration where available. See [deployment details](docs/DEPLOYMENT.md).
@@ -82,6 +83,8 @@ The script installs Bun, Caddy, PM2 and the pinned Go toolchain, creates an unpr
 
 ```sh
 bun run check
+bun run test:relay
+bun run test:blossom
 bun run build
 bunx playwright install chromium
 # With the web server running:
@@ -90,12 +93,12 @@ bun run test:browser
 TEST_ORIGIN=http://localhost:8080 bun run test:browser
 ```
 
-`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Dev startup publishes these fixture events only to the literal-loopback relay; public relays never receive fixtures. Artifact/source publication is still pending. They use the same manifest validation and runtime policy as relay imports. The local posters are bundled illustrations. Relay imports resolve linked NIP-89 pictures and Zapstore screenshots/icons, cache safe raster images for gallery/player/OG previews, and fall back to generated cards when unavailable. See [linked previews](docs/PREVIEWS.md) for formats and limits.
+`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Dev startup writes fixture events and blobs only to literal-loopback services; public relays and storage never receive fixtures. Connecting creator source, artifact publication and relay discovery remains ahead. Fixtures use the same manifest validation and runtime policy as relay imports. The local posters are bundled illustrations. Relay imports resolve linked NIP-89 pictures and Zapstore screenshots/icons, cache safe raster images for gallery/player/OG previews, and fall back to generated cards when unavailable. See [linked previews](docs/PREVIEWS.md) for formats and limits.
 
 Our publishing contract is standard NIP-5D manifests, public relays, retrievable Blossom bytes, and open source by default. Additional Space metadata and named routes are optional overlays. Publishing is not complete until an independent client discovers and runs a release without the Space API; see [the interoperability contract](docs/PROTOCOL.md).
 
 ## What is still ahead
 
-The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or public publishing service yet. GRASP/ngit repository provisioning, Blossom uploads, Postgres/workers, production naming claims, key provisioning/remote signers, comments/likes/zaps, and the public one-line installer remain planned. The player supports the single-HTML profile and the documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
+The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or complete public publishing flow yet. GRASP/ngit repository provisioning, Postgres/workers, production naming claims, key provisioning/remote signers, comments/likes/zaps, and the public one-line installer remain planned. The player supports the single-HTML profile and the documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
 
-The deployment script deploys this foundation. It does not claim to provision those remaining services. The [managed relay](docs/RELAY.md) is now implemented. The remaining publishing slice must connect one real creation → Git/Blossom publication → relay indexing → named playable link through the operator services described in [PLAN.md](PLAN.md).
+The deployment script deploys this foundation, including the [managed relay](docs/RELAY.md) and [signed Blossom storage](docs/BLOSSOM.md). The remaining publishing slice must connect one real creation → Git/Blossom publication → relay indexing → named playable link through the operator services described in [PLAN.md](PLAN.md).

@@ -4,6 +4,13 @@ import { resolve } from 'node:path';
 import { seedExamples } from './seed';
 import { refreshPublicCatalog } from './publicdev';
 import {
+  buildBlossom,
+  blossomBundle,
+  localBlossomOrigin,
+  localBlossomInstance,
+  seedLocalBlossom,
+} from './blossom';
+import {
   buildRelay,
   localRelayInstance,
   localRelayUrl,
@@ -33,6 +40,12 @@ const env = {
   SPACE_RELAY_DATA: resolve(local, 'services/relay'),
   SPACE_RELAY_ORIGIN: `${site}/relay`,
   SPACE_RELAY_INSTANCE: localRelayInstance,
+  SPACE_BLOSSOM_BUNDLE: blossomBundle,
+  SPACE_BLOSSOM_ORIGIN: localBlossomOrigin,
+  SPACE_BLOSSOM_PORT: '19348',
+  SPACE_BLOSSOM_LOCAL: '1',
+  SPACE_BLOSSOM_DATA: resolve(local, 'services/blossom'),
+  SPACE_BLOSSOM_INSTANCE: localBlossomInstance,
   SPACE_SITE_ADDRESS: site,
   SPACE_WEB_PORT: port,
   XDG_DATA_HOME: resolve(local, 'caddy/data'),
@@ -44,9 +57,14 @@ const env = {
 };
 async function prepare() {
   await startRelay();
+  await startBlossom();
   const seed = await seedExamples();
   console.log(
     `Local examples: ${seed.count} checked, ${seed.writes} files updated (${seed.milliseconds} ms).`,
+  );
+  const blossomSeed = await seedLocalBlossom();
+  console.log(
+    `Local Blossom: ${blossomSeed.blobs} blobs verified, ${blossomSeed.uploaded} uploaded (${blossomSeed.milliseconds} ms).`,
   );
   const relaySeed = await seedLocalRelay();
   console.log(
@@ -102,6 +120,41 @@ async function startRelay() {
     'Relay did not become ready. Check .local/pm2/logs/napplet-local-relay-error.log.',
   );
 }
+async function blossomHealth() {
+  try {
+    const response = await fetch(`${localBlossomOrigin}/health`, {
+      signal: AbortSignal.timeout(1000),
+    });
+    if (!response.ok) return null;
+    return (await response.json()) as { service: string; build: string; instance: string };
+  } catch {
+    return null;
+  }
+}
+async function startBlossom() {
+  const build = await buildBlossom();
+  const health = await blossomHealth();
+  if (health && (health.service !== 'blossom' || health.instance !== localBlossomInstance))
+    throw new Error(
+      'Port 19348 belongs to another service or checkout; stop that checkout before starting this Blossom.',
+    );
+  if (health?.build === build) return;
+  const stop = Bun.spawn(['node', pm2, 'delete', 'napplet-local-blossom'], {
+    env,
+    stdout: 'ignore',
+    stderr: 'ignore',
+  });
+  await stop.exited;
+  await run(['node', pm2, 'start', 'infra/blossom.ecosystem.config.cjs', '--update-env']);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const result = await blossomHealth();
+    if (result?.build === build && result.instance === localBlossomInstance) return;
+    await Bun.sleep(500);
+  }
+  throw new Error(
+    'Blossom did not become ready. Check .local/pm2/logs/napplet-local-blossom-error.log.',
+  );
+}
 async function fetchBytes(url: string) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Download failed: ${url}`);
@@ -137,6 +190,9 @@ async function doctor() {
   );
   console.log(
     `Relay: ${(await relayHealth()) ? `ready at ${localRelayUrl}` : 'not running; use bun run dev or dev:prod'}`,
+  );
+  console.log(
+    `Blossom: ${(await blossomHealth()) ? `ready at ${localBlossomOrigin}` : 'not running; use bun run dev or dev:prod'}`,
   );
   try {
     const result = await fetch(`${site}/api/health`, { signal: AbortSignal.timeout(3000) });
@@ -176,6 +232,7 @@ try {
     case 'setup':
       await installCaddy();
       await buildRelay();
+      await buildBlossom();
       await doctor();
       break;
     case 'doctor':

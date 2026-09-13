@@ -14,6 +14,12 @@ export function validateTarget(host: string | undefined, domain: string | undefi
     throw new Error('--domain must be a DNS hostname, without a scheme or path.');
   return { host, domain };
 }
+export function validateBlossomDomain(domain: string, input = `blossom.${domain}`) {
+  validateTarget('validation', input);
+  if (input === domain)
+    throw new Error('--blossom-domain must be separate from the website hostname.');
+  return input;
+}
 async function run(args: string[], stdin?: string) {
   const child = Bun.spawn(args, {
     stdout: 'inherit',
@@ -25,22 +31,29 @@ async function run(args: string[], stdin?: string) {
 if (import.meta.main) {
   const { values } = parseArgs({
     args: process.argv.slice(2),
-    options: { host: { type: 'string' }, domain: { type: 'string' }, help: { type: 'boolean' } },
+    options: {
+      host: { type: 'string' },
+      domain: { type: 'string' },
+      'blossom-domain': { type: 'string' },
+      help: { type: 'boolean' },
+    },
   });
   if (values.help) {
     console.log(
-      'Usage: bun run deploy --host root@your-vps --domain napplet.example\n\nFor a dedicated Debian/Ubuntu VPS with systemd and root or passwordless sudo.\nInstalls pinned Bun, Caddy and PM2; uploads source without secrets; checks and activates a release.',
+      'Usage: bun run deploy --host root@your-vps --domain napplet.example [--blossom-domain blobs.example]\n\nFor a dedicated Debian/Ubuntu VPS with systemd and root or passwordless sudo.\nPoint both the website and Blossom hostname (default blossom.<domain>) to this VPS.\nInstalls pinned Bun, Caddy and PM2; uploads source without secrets; checks and activates a release.',
     );
     process.exit(0);
   }
   try {
     const { host, domain } = validateTarget(values.host, values.domain);
+    const blossomDomain = validateBlossomDomain(domain, values['blossom-domain']);
     const release = `${new Date().toISOString().replace(/[-:TZ.]/g, '')}-${process.pid}`;
     const staging = await mkdtemp(join(tmpdir(), 'napplet-deploy-'));
     const archive = join(staging, `napplet-${release}.tar.gz`);
     try {
       await run(['bun', 'run', 'check']);
       await run(['bun', 'run', 'test:relay']);
+      await run(['bun', 'run', 'test:blossom']);
       await run([
         'tar',
         '--exclude=node_modules',
@@ -70,11 +83,12 @@ if (import.meta.main) {
         [
           'ssh',
           host,
-          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain}; else exec sudo -n bash -s -- ${release} ${domain}; fi`,
+          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain}; fi`,
         ],
         script,
       );
       console.log(`\nRelease ${release} is running behind Caddy at https://${domain}`);
+      console.log(`Blossom storage: https://${blossomDomain}`);
     } finally {
       await rm(staging, { recursive: true, force: true });
     }

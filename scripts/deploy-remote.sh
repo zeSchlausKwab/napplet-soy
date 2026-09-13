@@ -4,8 +4,10 @@ set -Eeuo pipefail
 # Dedicated Debian/Ubuntu VPS. All app state is scoped to this installation.
 release_id=${1:?release id required}
 domain=${2:?domain required}
+blossom_domain=${3:-blossom.$domain}
 [[ "$release_id" =~ ^[0-9]+-[0-9]+$ ]] || exit 2
 [[ "$domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ ]] || exit 2
+[[ "$blossom_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$blossom_domain" != "$domain" ]] || exit 2
 [[ $EUID -eq 0 ]] || { echo 'Root or passwordless sudo is required.' >&2; exit 1; }
 command -v apt-get >/dev/null || { echo 'This script supports Debian/Ubuntu VPS hosts.' >&2; exit 1; }
 [[ -d /run/systemd/system ]] || { echo 'A running systemd host is required.' >&2; exit 1; }
@@ -25,7 +27,7 @@ apt-get update -qq
 apt-get install -y -qq ca-certificates curl unzip tar xz-utils nodejs npm build-essential git
 id napplet >/dev/null 2>&1 || useradd --system --create-home --home-dir "$state_root" --shell /usr/sbin/nologin napplet
 install -d -m 755 "$app_root/bin" "$app_root/tools" "$app_root/releases" "$app_root/shared" /etc/napplet-space
-install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay"
+install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom"
 
 case "$(uname -m)" in
   x86_64) bun_asset=bun-linux-x64-baseline.zip; caddy_arch=amd64; go_sha=2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613 ;;
@@ -77,7 +79,7 @@ fi
 export PATH="$go_root/go/bin:$app_root/bin:/usr/bin:/bin"
 export SPACE_SITE_ORIGIN="https://$domain"
 export SPACE_PUBLICDEV=0 SPACE_PUBLICDEV_DIR=''
-runuser -u napplet -- bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run test:relay; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
+runuser -u napplet -- bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
 
 start_relay() {
   local source_release=$1
@@ -88,6 +90,20 @@ relay_ready() {
   expected=$(cat "$1/bin/napplet-relay.build")
   for attempt in {1..60}; do
     if curl -fsS --max-time 2 http://127.0.0.1:19347/health 2>/dev/null | grep -Fq "\"build\":\"$expected\""; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+start_blossom() {
+  local source_release=$1
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_BLOSSOM_PORT=19348 SPACE_BLOSSOM_BUNDLE="$source_release/bin/blossom.js" SPACE_BLOSSOM_DATA="$state_root/blossom" SPACE_BLOSSOM_ORIGIN="https://$blossom_domain" SPACE_BLOSSOM_LOCAL=0 SPACE_BLOSSOM_INSTANCE="$domain" PATH="$PATH" node "$pm2_bin" start "$source_release/infra/blossom.ecosystem.config.cjs" --update-env
+}
+blossom_ready() {
+  local expected response
+  expected=$(cat "$1/bin/blossom.js.build")
+  for attempt in {1..30}; do
+    response=$(curl -fsS --max-time 2 http://127.0.0.1:19348/health 2>/dev/null) || response=''
+    if [[ "$response" == *"\"build\":\"$expected\""* && "$response" == *"\"instance\":\"$domain\""* ]]; then return 0; fi
     sleep 1
   done
   return 1
@@ -118,11 +134,14 @@ rollback() {
       mv -Tf "$app_root/current.rollback" "$app_root/current"
       pm2_run delete napplet-relay || true
       if [[ -f "$previous/infra/relay.ecosystem.config.cjs" ]]; then start_relay "$previous" || true; fi
+      pm2_run delete napplet-blossom || true
+      if [[ -f "$previous/infra/blossom.ecosystem.config.cjs" ]]; then start_blossom "$previous" || true; fi
       pm2_run delete napplet-web || true
       runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$previous" SPACE_RELEASE_ID="$(basename "$previous")" PATH="$PATH" node "$pm2_bin" start "$previous/infra/ecosystem.config.cjs" --update-env || true
     else
       pm2_run delete napplet-web || true
       pm2_run delete napplet-relay || true
+      pm2_run delete napplet-blossom || true
       rm -f "$app_root/current"
     fi
     pm2_run save --force || true
@@ -157,6 +176,10 @@ $domain {
   reverse_proxy @relay 127.0.0.1:19347
   reverse_proxy 127.0.0.1:3000
 }
+$blossom_domain {
+  header -Server
+  reverse_proxy 127.0.0.1:19348
+}
 CADDY
 "$app_root/bin/caddy" validate --config "$app_root/shared/Caddyfile.next" --adapter caddyfile
 ln -sfn "$release_dir" "$app_root/current.next"
@@ -165,6 +188,9 @@ activated=1
 pm2_run delete napplet-relay || true
 start_relay "$release_dir"
 relay_ready "$release_dir"
+pm2_run delete napplet-blossom || true
+start_blossom "$release_dir"
+blossom_ready "$release_dir"
 pm2_run delete napplet-web || true
 runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$release_dir" SPACE_RELEASE_ID="$release_id" PATH="$PATH" node "$pm2_bin" start "$release_dir/infra/ecosystem.config.cjs" --update-env
 healthy=0
@@ -220,4 +246,4 @@ systemctl enable napplet-space napplet-space-caddy
 if systemctl is-active --quiet napplet-space-caddy; then systemctl reload napplet-space-caddy; else systemctl start napplet-space-caddy; fi
 systemctl is-active --quiet napplet-space-caddy
 trap - ERR
-echo "Activated $release_id for https://$domain. Caddy will obtain a certificate when DNS resolves and ports 80/443 are reachable."
+echo "Activated $release_id for https://$domain with Blossom at https://$blossom_domain. Caddy will obtain certificates when both DNS names resolve and ports 80/443 are reachable."

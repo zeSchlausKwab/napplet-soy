@@ -1,5 +1,7 @@
 # napplet.space — proposed v1 plan
 
+2026-09-13 infrastructure update: the [managed relay](docs/RELAY.md) and [Blossom storage](docs/BLOSSOM.md) now run natively under PM2 locally and in the VPS deployment definition. This revises the original Compose/upstream-blob-server recommendation below: Blossom currently uses a bounded Bun implementation with shared Applesauce signing, explicit ownership/durable commit handling and protocol/process tests. We own its maintenance and conformance checks. GRASP and the complete publishing/indexing flow are still next; no VPS deployment is claimed.
+
 2026-09-12 design follow-up: [CLIENT-DIRECTION.md](docs/CLIENT-DIRECTION.md) records the proposed Khatru/LMDB/Bleve relay, screenshot/video strategy, selectable flavor napplets, browser loading options, and concrete conformance gaps. The user explicitly selects the NIP-5D proposal as authoritative. Fix known host/CLI contract gaps before extending publication. Layout flavors are a future addition; ordinary creations remain self-contained.
 
 2026-09-12 implementation additions: automatic idempotent development seeds, explicit relay-only `publicdev`, server-rendered OG/PNG previews, and a ContextVM matchmaking starter. Details and remaining boundaries: [public development](docs/PUBLIC-DEVELOPMENT.md), [ContextVM API/design](docs/CONTEXTVM.md). Creator-hosted ContextVMs are supported as a design direction; managed server-code hosting is deferred.
@@ -91,7 +93,7 @@ flowchart LR
 | GRASP | Git objects, repository announcements/state, repository authorization | General gallery comments unless explicitly configured to accept them |
 | Blossom | Content-addressed HTML, covers, source archives, release descriptors | Executing creator code or managing Git branches |
 
-Deploy these as a small Compose stack first: reverse proxy, combined SSR web/API service, worker, Postgres, social relay, GRASP, and Blossom. Preview execution gets a separately restricted worker. Use existing maintained service implementations after interoperability tests; do not implement our own relay or blob server as a prerequisite. The web and worker share backend modules; the initial product does not need a separate API deployment.
+The original topology proposed Compose for the reverse proxy, combined SSR web/API service, worker, Postgres, social relay, GRASP, and Blossom. The implemented web/relay/Blossom topology now uses native Caddy/PM2, following the VPS requirement; remaining services still need shared local/production definitions. The relay reuses Khatru/LMDB/Bleve, and Blossom's initial implementation and maintenance boundary are recorded above. Preview execution still needs a separately restricted worker. The web and worker share backend modules; the initial product does not need a separate API deployment.
 
 Choose service roles such as `relay.napplet.space` and `git.napplet.space`, with Blossom's public blob origin on a separate registrable content domain to be selected. Untrusted downloadable content carries no gallery cookies. The player uses verified `srcdoc`, rather than navigating directly to an uploaded HTML URL.
 

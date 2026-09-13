@@ -1,6 +1,6 @@
 # First implementation slice
 
-Updated 2026-09-12. This records the boundary between working code and the larger v1 plan.
+Updated 2026-09-13. This records the boundary between working code and the larger v1 plan.
 
 ## Implemented
 
@@ -28,7 +28,7 @@ Protocol/runtime/CLI/deployment-input tests and Chromium tests cover signatures,
 
 Local PM2 checks exposed its Bun `require()` wrapper incompatibility with top-level await; the ecosystem now executes the Bun binary directly. PM2 also retains old executable/cwd settings on reload, so activation explicitly recreates the dedicated application process. React 19.3.0 triggered a Bun 1.3.11 CommonJS loader error when importing its production SSR renderer; React/React DOM are pinned to the verified 19.2.4 pair. Candidate smoke checks and the standalone server explicitly use production mode so this class of difference is tested before activation.
 
-No VPS has been contacted or deployed to. Shell syntax and argument validation are tested; remote apt installation, Linux systemd behavior, certificate issuance, actual reboot recovery, and remote rollback remain unverified. Docker's daemon was unavailable, and no GRASP/Blossom/database deployment was substituted or claimed.
+No VPS has been contacted or deployed to. Shell syntax and argument validation are tested; remote apt installation, Linux systemd behavior, certificate issuance, actual reboot recovery, and remote rollback remain unverified. The implemented relay and Blossom services run natively; GRASP and the community database are not provisioned.
 
 ## Next vertical slice
 
@@ -86,4 +86,16 @@ Validation for this repair: type checking and **62 unit/integration tests passed
 
 Khatru/LMDB/Bleve now runs as a persistent PM2 process in both local modes and is wired into the VPS build/activation/rollback script. Dev startup reconciles the 12 signed example events over Applesauce; repeated seeds skip writes and publicdev never becomes a fixture destination. Caddy exposes ordinary WebSocket and NIP-11 traffic at `/relay`. Build reuse, health, process ownership and graceful shutdown are implemented. See [RELAY.md](RELAY.md) for exact pins, two checksum-guarded upstream fixes, search semantics, bounds and verification.
 
-This is the relay portion of the next publishing slice. Blossom, GRASP/ngit source provisioning, creator keys, persistent website indexing/naming and CLI publication remain unfinished. The local fixture events are queryable, but their bytes/source are not yet portable publications. No VPS has been contacted.
+This completed the relay portion of the publishing slice. Blossom storage followed as recorded below. GRASP/ngit source provisioning, creator keys, persistent website indexing/naming and CLI publication remain unfinished. No VPS has been contacted.
+
+## Managed Blossom foundation
+
+The Bun blob service implements the pinned Blossom BUD-01/02/06/11/12 contract with signed uploads, exact-byte hashing, descriptors, ranges, optional preflight, private cursor-based listing and shared uploader ownership. CAS files and SQLite metadata persist outside release directories; one process owns a directory, commits are serialized, and startup reclaims interrupted files. The shared uploader uses Applesauce signing and independently verifies bytes after uploading. See [BLOSSOM.md](BLOSSOM.md) for precise policies, limits and recovery boundaries.
+
+Both dev modes now start Blossom, verify six fixture blobs through its API, and upload only missing/damaged/unowned blobs. Publicdev is never a write destination. The VPS script builds/tests the same bundle, activates it under PM2, checks its build/instance, and includes it in rollback. Caddy gives blob storage its own root origin: local port 8081 or `blossom.<domain>` (overridable with `--blossom-domain`). Data stays at `/var/lib/napplet-space/blossom`.
+
+Service tests cover real HTTP authorization, ownership and deletion, hash mismatch, ranges, cursors, concurrent quotas, idempotent seeding, file repair and process locking. The bundled service survives SIGTERM and SIGKILL. A real local relay round trip discovers a signed NIP-5D manifest through Applesauce and retrieves its exact bytes using its standard Blossom server hint.
+
+This is still a publication component: fixture manifests in the ordinary catalog/relay do not yet advertise these running services, and normal website indexing still uses existing catalogs. GRASP/creator identity/CLI publication and persistent index/naming integration remain next. No VPS or public-relay publication was attempted.
+
+Validation: 64 application tests, 15 Blossom HTTP/process tests, 10 Go race tests and four relay process tests passed. Two Chromium checks passed through Caddy: the new cross-origin upload/read/delete flow and the existing relay-discovered Rubik Cube playback/OG flow. Type checking, the production build/startup, Caddy configuration validation and VPS shell syntax passed. The local stack is running with publicdev and 93 relay-discovered entries; a warm six-blob verification took 64 ms with no uploads.

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { validateTarget } from './deploy';
+import { validateBlossomDomain, validateTarget } from './deploy';
 test('deployment accepts explicit SSH targets and DNS domains', () => {
   expect(validateTarget('root@203.0.113.10', 'napplet.example')).toEqual({
     host: 'root@203.0.113.10',
@@ -24,4 +24,16 @@ test('deployment rejects shell injection, missing targets, and URL-shaped domain
     '*.example',
   ])
     expect(() => validateTarget('my-vps', domain)).toThrow();
+});
+test('Blossom deploys on a separate validated hostname', () => {
+  expect(validateBlossomDomain('napplet.example')).toBe('blossom.napplet.example');
+  expect(validateBlossomDomain('napplet.example', 'files.example')).toBe('files.example');
+  for (const value of [
+    'napplet.example',
+    'x.example;whoami',
+    'https://files.example',
+    'x.example\nreverse_proxy evil',
+    '*.example',
+  ])
+    expect(() => validateBlossomDomain('napplet.example', value)).toThrow();
 });
