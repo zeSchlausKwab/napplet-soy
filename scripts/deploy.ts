@@ -42,12 +42,13 @@ if (import.meta.main) {
       domain: { type: 'string' },
       'blossom-domain': { type: 'string' },
       'git-domain': { type: 'string' },
+      preflight: { type: 'boolean' },
       help: { type: 'boolean' },
     },
   });
   if (values.help) {
     console.log(
-      'Usage: bun run deploy --host root@your-vps --domain napplet.example [--blossom-domain blobs.example] [--git-domain source.example]\n\nFor a dedicated Debian/Ubuntu VPS with systemd and root or passwordless sudo.\nPoint the website, blossom.<domain> and git.<domain> hostnames to this VPS.\nInstalls pinned Bun, Caddy, PM2, Go and Rust; uploads source without secrets; checks and activates a release.',
+      'Usage: bun run deploy --host root@your-vps --domain napplet.example [--preflight] [--blossom-domain blobs.example] [--git-domain source.example]\n\n--preflight reads OS, capacity, listening ports and proxy service details without installing or changing anything.\nDeployment currently requires a dedicated Debian/Ubuntu VPS with systemd and root or passwordless sudo; run preflight before preparing a shared-host deployment.\nPoint the website, blossom.<domain> and git.<domain> hostnames to this VPS.',
     );
     process.exit(0);
   }
@@ -55,6 +56,28 @@ if (import.meta.main) {
     const { host, domain } = validateTarget(values.host, values.domain);
     const blossomDomain = validateBlossomDomain(domain, values['blossom-domain']);
     const gitDomain = validateGitDomain(domain, blossomDomain, values['git-domain']);
+    const sshOptions = [
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'ConnectTimeout=10',
+      '-o',
+      'StrictHostKeyChecking=yes',
+    ];
+    if (values.preflight) {
+      await run(
+        [
+          'ssh',
+          ...sshOptions,
+          host,
+          'if [ "$(id -u)" = 0 ]; then exec bash -s; else exec sudo -n bash -s; fi',
+        ],
+        await Bun.file(new URL('./deploy-preflight.sh', import.meta.url)).text(),
+      );
+      process.exit(0);
+    }
+    // Fail on missing unattended access before building or uploading a release.
+    await run(['ssh', ...sshOptions, host, 'if [ "$(id -u)" != 0 ]; then sudo -n true; fi']);
     const release = `${new Date().toISOString().replace(/[-:TZ.]/g, '')}-${process.pid}`;
     const staging = await mkdtemp(join(tmpdir(), 'napplet-deploy-'));
     const archive = join(staging, `napplet-${release}.tar.gz`);
@@ -85,12 +108,13 @@ if (import.meta.main) {
         'services',
         'tests/services',
       ]);
-      await run(['scp', archive, `${host}:/tmp/napplet-${release}.tar.gz`]);
+      await run(['scp', ...sshOptions, archive, `${host}:/tmp/napplet-${release}.tar.gz`]);
       const script = await Bun.file(new URL('./deploy-remote.sh', import.meta.url)).text();
       // Arguments have an allowlisted alphabet; never interpolate arbitrary input into a remote shell.
       await run(
         [
           'ssh',
+          ...sshOptions,
           host,
           `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain}; fi`,
         ],

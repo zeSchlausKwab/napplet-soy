@@ -5,8 +5,13 @@ Updated 2026-09-13. The user requested a simple deploy script including Caddy an
 ## One command
 
 ```sh
+bun run deploy --host your-vps --domain napplet.soy --preflight
 bun run deploy --host root@your-vps --domain napplet.example
 ```
+
+`--preflight` is read-only: it reports OS, capacity, listening ports, proxy services and container names/images/ports without installing software or exposing environment values. SSH and SCP use batch mode and strict saved-host-key verification. Establish key access first; an SSH config alias can select a different login, port or identity. An existing proxy on ports 80/443 or occupied application ports stops a first dedicated-host deployment before package/service changes. Shared-host activation still requires integration with the inspected existing proxy; do not launch a second Caddy listener.
+
+The first live target is `napplet.soy` at `159.198.46.2`, alongside another existing site. The app's public publication defaults and visible hostname now use `napplet.soy`; its DNS names are `napplet.soy`, `www.napplet.soy`, `blossom.napplet.soy` and `git.napplet.soy`. Remote inventory and shared-proxy setup must be completed before running the deployment there.
 
 Use a dedicated Debian/Ubuntu host with systemd, x86_64 or arm64, DNS pointing to it, and inbound TCP 80/443 available. All three hostnames—`napplet.example`, `blossom.napplet.example`, and `git.napplet.example`—must resolve to the VPS. Override the service names with `--blossom-domain files.example` and `--git-domain source.example`; all three must be different. An SSH config alias works for `--host`, including its key/port settings. The SSH account must be root or have passwordless sudo. This script installs system dependencies and dedicated systemd services; it is not intended to silently replace another site's proxy on a shared VPS.
 

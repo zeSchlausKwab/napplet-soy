@@ -22,11 +22,11 @@ export function Shell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="site-header">
-        <Link to="/" className="brand" aria-label="napplet.space home">
+        <Link to="/" className="brand" aria-label="napplet.soy home">
           <span className="brand-mark">
             <Asterisk size={26} strokeWidth={3} />
           </span>
-          napplet<span className="brand-dot">.space</span>
+          napplet<span className="brand-dot">.soy</span>
         </Link>
         <nav aria-label="Main navigation">
           <Link

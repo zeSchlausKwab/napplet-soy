@@ -20,6 +20,21 @@ app_root=/opt/napplet-space
 state_root=/var/lib/napplet-space
 release_dir="$app_root/releases/$release_id"
 archive="/tmp/napplet-$release_id.tar.gz"
+# Reject a shared host before package installation or service changes. Shared
+# proxy integration must be prepared from its actual configuration first.
+command -v ss >/dev/null || { echo 'Read-only preflight needs ss (iproute2); no changes made.' >&2; exit 1; }
+if [[ -n "$(ss -H -ltn '( sport = :80 or sport = :443 )')" ]]; then
+  if ! systemctl is-active --quiet napplet-space-caddy ||
+    [[ ! -f /etc/napplet-space/Caddyfile ]] ||
+    ! grep -Fxq "$domain {" /etc/napplet-space/Caddyfile; then
+    echo 'An existing site owns HTTP/HTTPS. This dedicated-host deploy cannot replace its proxy. Run --preflight and prepare shared-proxy integration first; no changes made.' >&2
+    exit 1
+  fi
+fi
+if [[ ! -L "$app_root/current" ]] && [[ -n "$(ss -H -ltn '( sport = :3000 or sport = :3101 or sport = :19347 or sport = :19348 or sport = :19349 )')" ]]; then
+  echo 'A required application port is occupied. Reserve separate ports before deployment; no changes made.' >&2
+  exit 1
+fi
 bun_version=1.3.11
 caddy_version=2.10.2
 pm2_version=7.0.4

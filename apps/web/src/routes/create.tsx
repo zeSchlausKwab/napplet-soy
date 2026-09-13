@@ -89,8 +89,8 @@ function Create() {
           <span>03</span>
           <h2>Play it. Pass it around.</h2>
           <p>
-            Preview in the same restricted sandbox. Download the HTML to share while the publishing
-            flow takes shape.
+            Preview in the same restricted sandbox, then use the platform CLI to publish your creation
+            to Nostr and get a link to share.
           </p>
         </article>
       </div>

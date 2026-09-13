@@ -7,15 +7,15 @@ type Shareable = {
   preview?: { hash: string } | null;
 };
 export function nappletHead(n: Shareable | undefined, path: string, imageId?: string) {
-  if (!n || !imageId) return { meta: [{ title: 'Not found — napplet.space' }] };
+  if (!n || !imageId) return { meta: [{ title: 'Not found — napplet.soy' }] };
   const url = `${n.siteOrigin}${path}`;
   const image = `${n.siteOrigin}/api/og/${imageId}?v=${OG_VERSION}${n.preview ? `&cover=${n.preview.hash}` : ''}`;
   return {
     meta: [
-      { title: `${n.title} — napplet.space` },
+      { title: `${n.title} — napplet.soy` },
       { name: 'description', content: n.description },
       { property: 'og:type', content: 'website' },
-      { property: 'og:site_name', content: 'napplet.space' },
+      { property: 'og:site_name', content: 'napplet.soy' },
       { property: 'og:title', content: n.title },
       { property: 'og:description', content: n.description },
       { property: 'og:url', content: url },
@@ -23,12 +23,12 @@ export function nappletHead(n: Shareable | undefined, path: string, imageId?: st
       { property: 'og:image:type', content: 'image/png' },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
-      { property: 'og:image:alt', content: `${n.title} on napplet.space` },
+      { property: 'og:image:alt', content: `${n.title} on napplet.soy` },
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: n.title },
       { name: 'twitter:description', content: n.description },
       { name: 'twitter:image', content: image },
-      { name: 'twitter:image:alt', content: `${n.title} on napplet.space` },
+      { name: 'twitter:image:alt', content: `${n.title} on napplet.soy` },
     ],
     links: [{ rel: 'canonical', href: url }],
   };

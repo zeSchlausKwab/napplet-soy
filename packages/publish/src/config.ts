@@ -83,10 +83,10 @@ export function resolveTargets(
           mirrors: [],
         }
       : {
-          relay: 'wss://napplet.space/relay',
-          blossom: 'https://blossom.napplet.space',
-          grasp: 'https://git.napplet.space',
-          site: 'https://napplet.space',
+          relay: 'wss://napplet.soy/relay',
+          blossom: 'https://blossom.napplet.soy',
+          grasp: 'https://git.napplet.soy',
+          site: 'https://napplet.soy',
           mirrors: ['wss://relay.damus.io', 'wss://nos.lol'],
         };
   const { files: _, ...configured } = project.publish ?? {};

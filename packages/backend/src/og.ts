@@ -49,7 +49,7 @@ export function previewSvg(n: Preview, cover?: Buffer) {
     <path d="M56 105H1144M56 524H1144" stroke="#d5d4cc"/>
     <g font-family="DM Sans" fill="#252922">
     <path d="M68 48V78M53 63H83M57 52L79 74M57 74L79 52" stroke="#42755d" stroke-width="3"/>
-    <text x="98" y="72" font-size="32" font-weight="700">napplet.space</text>
+    <text x="98" y="72" font-size="32" font-weight="700">napplet.soy</text>
     <text x="1144" y="68" font-size="19" text-anchor="end" fill="#42755d">SMALL CODE. BIG WEIRD.</text>
     <text x="56" y="162" font-size="18" fill="#42755d">${escapeXml(lines(n.topics.length ? n.topics.map((t) => `#${t}`).join(' · ') : 'NAPPLET', 58, 1)[0] ?? 'NAPPLET')}</text>
     ${lines(n.title, 19, 3)

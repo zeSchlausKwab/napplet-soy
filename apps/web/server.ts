@@ -49,4 +49,4 @@ const server = Bun.serve({
     return response;
   },
 });
-console.log(`napplet.space production build listening on ${server.url}`);
+console.log(`napplet.soy production build listening on ${server.url}`);

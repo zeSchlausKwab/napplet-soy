@@ -22,7 +22,7 @@ An ordinary `publish` checks the current project. If a different unfinished rele
 | Profile | Primary relay | Blossom | GRASP | Website route origin |
 | --- | --- | --- | --- | --- |
 | local | `ws://127.0.0.1:19347/relay` | `http://127.0.0.1:8081` | `http://127.0.0.1:8082` | `http://localhost:8080` |
-| public | `wss://napplet.space/relay` | `https://blossom.napplet.space` | `https://git.napplet.space` | `https://napplet.space` |
+| public | `wss://napplet.soy/relay` | `https://blossom.napplet.soy` | `https://git.napplet.soy` | `https://napplet.soy` |
 
 Public defaults describe the intended deployment; they have not been deployed or tested here. Public mode additionally mirrors manifests to `wss://relay.damus.io` and `wss://nos.lol`. Local mode has no public mirrors or fallback. This implementation was verified exclusively against isolated local services, with no public event writes.
 
