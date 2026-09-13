@@ -15,6 +15,6 @@
       "@/*": ["./apps/web/src/*"]
     }
   },
-  "include": ["apps", "packages", "scripts", "tests/services"],
+  "include": ["apps", "packages", "scripts", "tests/services", "services/blossom"],
   "exclude": ["node_modules", "**/dist", "**/.output"]
 }
