@@ -2,6 +2,18 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
+import { normalizeTarget } from '../packages/moderation/src/policy';
+
+export function validateWebPort(input = '3000') {
+  if (
+    !/^\d{4,5}$/.test(input) ||
+    Number(input) < 1024 ||
+    Number(input) > 65534 ||
+    [19346, 19347, 19348, 19349].includes(Number(input))
+  )
+    throw new Error('--web-port must leave two free unprivileged ports outside the service ports.');
+  return Number(input);
+}
 
 export function validateTarget(host: string | undefined, domain: string | undefined) {
   if (!host || !/^(?:[a-z_][a-z0-9_-]*@)?[a-zA-Z0-9][a-zA-Z0-9.-]*$/.test(host))
@@ -42,13 +54,16 @@ if (import.meta.main) {
       domain: { type: 'string' },
       'blossom-domain': { type: 'string' },
       'git-domain': { type: 'string' },
+      'shared-caddy': { type: 'boolean' },
+      'web-port': { type: 'string' },
+      'admin-pubkey': { type: 'string' },
       preflight: { type: 'boolean' },
       help: { type: 'boolean' },
     },
   });
   if (values.help) {
     console.log(
-      'Usage: bun run deploy --host root@your-vps --domain napplet.example [--preflight] [--blossom-domain blobs.example] [--git-domain source.example]\n\n--preflight reads OS, capacity, listening ports and proxy service details without installing or changing anything.\nDeployment currently requires a dedicated Debian/Ubuntu VPS with systemd and root or passwordless sudo; run preflight before preparing a shared-host deployment.\nPoint the website, blossom.<domain> and git.<domain> hostnames to this VPS.',
+      'Usage: bun run deploy --host root@your-vps --domain napplet.example --admin-pubkey npub-or-hex [--shared-caddy] [--web-port 3040] [--preflight]\n\n--shared-caddy reuses the stock caddy.service and /etc/caddy/Caddyfile, preserving existing sites. Other proxies need explicit integration. The default web port is 3040 when sharing, 3000 otherwise; the next port is used for candidate checks.\n--preflight reports capacity, listening ports and service details without changing anything.\nPoint the website, www, blossom and git hostnames to this VPS. Root or passwordless sudo and systemd on Debian/Ubuntu are required.',
     );
     process.exit(0);
   }
@@ -76,6 +91,10 @@ if (import.meta.main) {
       );
       process.exit(0);
     }
+    const webPort = validateWebPort(
+      values['web-port'] ?? (values['shared-caddy'] ? '3040' : '3000'),
+    );
+    const admin = normalizeTarget('pubkey', values['admin-pubkey'] ?? '');
     // Fail on missing unattended access before building or uploading a release.
     await run(['ssh', ...sshOptions, host, 'if [ "$(id -u)" != 0 ]; then sudo -n true; fi']);
     const release = `${new Date().toISOString().replace(/[-:TZ.]/g, '')}-${process.pid}`;
@@ -116,7 +135,7 @@ if (import.meta.main) {
           'ssh',
           ...sshOptions,
           host,
-          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain}; fi`,
+          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin}; fi`,
         ],
         script,
       );

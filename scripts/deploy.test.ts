@@ -1,5 +1,34 @@
 import { expect, test } from 'bun:test';
-import { validateBlossomDomain, validateGitDomain, validateTarget } from './deploy';
+import {
+  validateBlossomDomain,
+  validateGitDomain,
+  validateTarget,
+  validateWebPort,
+} from './deploy';
+import { sharedCaddyCandidate } from './shared-caddy';
+test('shared deployment preserves existing configuration and updates only its own import', () => {
+  const original =
+    '{\n email admin@example.com\n}\nexisting.example {\n reverse_proxy localhost:3000\n}\n';
+  const fragment = '/etc/napplet-space/Caddyfile';
+  const first = sharedCaddyCandidate(original, fragment, fragment);
+  expect(first.startsWith(original)).toBe(true);
+  expect(sharedCaddyCandidate(first, fragment, fragment)).toBe(first);
+  const candidate = sharedCaddyCandidate(
+    first,
+    fragment,
+    '/opt/napplet-space/shared/Caddyfile.next',
+  );
+  expect(candidate.startsWith(original)).toBe(true);
+  expect(candidate).toContain('import /opt/napplet-space/shared/Caddyfile.next');
+  expect(() => sharedCaddyCandidate(`${first}\nimport ${fragment}`, fragment, fragment)).toThrow(
+    'Duplicate',
+  );
+});
+test('application ports reserve a separate smoke port and cannot collide with native services', () => {
+  expect(validateWebPort('3040')).toBe(3040);
+  for (const value of ['80', '0', '65535', '19346', '19347', '19348', '19349', '3000;id', '-1'])
+    expect(() => validateWebPort(value)).toThrow();
+});
 test('deployment accepts explicit SSH targets and DNS domains', () => {
   expect(validateTarget('root@203.0.113.10', 'napplet.example')).toEqual({
     host: 'root@203.0.113.10',

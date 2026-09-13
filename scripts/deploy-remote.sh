@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Dedicated Debian/Ubuntu VPS. All app state is scoped to this installation.
+# Debian/Ubuntu VPS; dedicated or explicitly shared stock Caddy service. All app state is scoped to this installation.
 release_id=${1:?release id required}
 domain=${2:?domain required}
 blossom_domain=${3:-blossom.$domain}
 git_domain=${4:-git.$domain}
+proxy_mode=${5:-dedicated}
+web_port=${6:-3000}
+admin_pubkey=${7:?admin public key required}
+[[ "$proxy_mode" == dedicated || "$proxy_mode" == shared ]] || exit 2
+[[ "$web_port" =~ ^[0-9]{4,5}$ && "$web_port" -ge 1024 && "$web_port" -le 65534 ]] || exit 2
+[[ "$admin_pubkey" =~ ^[a-f0-9]{64}$ ]] || exit 2
+smoke_port=$((web_port+1))
+[[ "$web_port" -lt 19346 || "$web_port" -gt 19349 ]] || exit 2
 [[ "$release_id" =~ ^[0-9]+-[0-9]+$ ]] || exit 2
 [[ "$domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ ]] || exit 2
 [[ "$blossom_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$blossom_domain" != "$domain" ]] || exit 2
@@ -20,32 +28,56 @@ app_root=/opt/napplet-space
 state_root=/var/lib/napplet-space
 release_dir="$app_root/releases/$release_id"
 archive="/tmp/napplet-$release_id.tar.gz"
-# Reject a shared host before package installation or service changes. Shared
-# proxy integration must be prepared from its actual configuration first.
-command -v ss >/dev/null || { echo 'Read-only preflight needs ss (iproute2); no changes made.' >&2; exit 1; }
-if [[ -n "$(ss -H -ltn '( sport = :80 or sport = :443 )')" ]]; then
-  if ! systemctl is-active --quiet napplet-space-caddy ||
-    [[ ! -f /etc/napplet-space/Caddyfile ]] ||
-    ! grep -Fxq "$domain {" /etc/napplet-space/Caddyfile; then
-    echo 'An existing site owns HTTP/HTTPS. This dedicated-host deploy cannot replace its proxy. Run --preflight and prepare shared-proxy integration first; no changes made.' >&2
-    exit 1
+# Inspect before package installation, preserving existing listeners and proxy ownership.
+command -v ss >/dev/null || { echo 'Preflight needs ss (iproute2); no changes made.' >&2; exit 1; }
+if [[ "$proxy_mode" == shared ]]; then
+  [[ -x /usr/bin/caddy && -f /etc/caddy/Caddyfile && ! -L /etc/caddy/Caddyfile ]] || { echo 'Shared mode requires the stock Caddyfile installation.' >&2; exit 1; }
+  systemctl is-active --quiet caddy
+  systemctl show caddy -p ExecStart --value | grep -Fq '/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile'
+  [[ -z "$(systemctl show caddy -p DropInPaths --value)" ]] || { echo 'Inspect custom Caddy unit overrides before using shared mode.' >&2; exit 1; }
+  if ! grep -Fxq 'import /etc/napplet-space/Caddyfile' /etc/caddy/Caddyfile; then
+    /usr/bin/caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null | python3 -c '
+import json,sys
+names=set(sys.argv[1:]); found=set()
+def walk(x):
+ if isinstance(x,dict):
+  for k,v in x.items():
+   if k=="host" and isinstance(v,list): found.update(names.intersection(v))
+   walk(v)
+ elif isinstance(x,list):
+  for v in x: walk(v)
+walk(json.load(sys.stdin))
+if found: sys.exit("A requested hostname already belongs to the existing Caddy configuration.")
+' "$domain" "www.$domain" "$blossom_domain" "$git_domain"
+  fi
+elif [[ -n "$(ss -H -ltn '( sport = :80 or sport = :443 )')" ]]; then
+  if ! systemctl is-active --quiet napplet-space-caddy || [[ ! -f /etc/napplet-space/Caddyfile ]] || ! grep -Fxq "$domain {" /etc/napplet-space/Caddyfile; then
+    echo 'An existing site owns HTTP/HTTPS. Run --preflight and use an inspected shared proxy; no changes made.' >&2; exit 1
   fi
 fi
-if [[ ! -L "$app_root/current" ]] && [[ -n "$(ss -H -ltn '( sport = :3000 or sport = :3101 or sport = :19347 or sport = :19348 or sport = :19349 )')" ]]; then
-  echo 'A required application port is occupied. Reserve separate ports before deployment; no changes made.' >&2
-  exit 1
+if [[ -f "$app_root/shared/deploy-profile" && "$(cat "$app_root/shared/deploy-profile")" != "$proxy_mode:$web_port" ]]; then
+  echo 'Changing existing proxy mode or application ports needs an explicit migration.' >&2; exit 1
+fi
+if [[ -n "$(ss -H -ltn "sport = :$smoke_port")" ]]; then echo 'Candidate port is occupied.' >&2; exit 1; fi
+if [[ ! -L "$app_root/current" ]] && [[ -n "$(ss -H -ltn "( sport = :$web_port or sport = :19347 or sport = :19348 or sport = :19349 )")" ]]; then
+  echo 'A required application port is occupied; no changes made.' >&2; exit 1
 fi
 bun_version=1.3.11
 caddy_version=2.10.2
 pm2_version=7.0.4
 go_version=1.25.0
 rust_version=1.97.1
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq ca-certificates curl unzip tar xz-utils nodejs npm build-essential git pkg-config libssl-dev
+export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l
+packages=(ca-certificates curl unzip tar xz-utils build-essential git pkg-config libssl-dev)
+if ! command -v node >/dev/null || ! command -v npm >/dev/null; then packages+=(nodejs npm); fi
+missing=()
+for package in "${packages[@]}"; do
+  [[ "$(dpkg-query -W -f '${Status}' "$package" 2>/dev/null || true)" == 'install ok installed' ]] || missing+=("$package")
+done
+if [[ ${#missing[@]} -gt 0 ]]; then apt-get update -qq; apt-get install -y -qq --no-upgrade "${missing[@]}"; fi
 id napplet >/dev/null 2>&1 || useradd --system --create-home --home-dir "$state_root" --shell /usr/sbin/nologin napplet
 install -d -m 755 "$app_root/bin" "$app_root/tools" "$app_root/releases" "$app_root/shared" /etc/napplet-space
-install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom" "$state_root/grasp" "$state_root/index"
+install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom" "$state_root/grasp" "$state_root/index" "$state_root/moderation"
 
 case "$(uname -m)" in
   x86_64) rust_target=x86_64-unknown-linux-gnu; rust_sha=88f28fa9af20594179f85d6df67078dfd6fa93e2f6da5e1e9b0ac4997988ca4f; bun_asset=bun-linux-x64-baseline.zip; caddy_arch=amd64; go_sha=2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613 ;;
@@ -61,7 +93,7 @@ if [[ ! -x "$app_root/bin/bun" ]] || [[ "$("$app_root/bin/bun" --version)" != "$
   install -m 755 "$tool_staging/${bun_asset%.zip}/bun" "$app_root/bin/bun"
 fi
 caddy_asset="caddy_${caddy_version}_linux_${caddy_arch}.tar.gz"
-if [[ ! -x "$app_root/bin/caddy" ]] || [[ "$("$app_root/bin/caddy" version)" != "v$caddy_version "* ]]; then
+if [[ "$proxy_mode" == dedicated ]] && { [[ ! -x "$app_root/bin/caddy" ]] || [[ "$("$app_root/bin/caddy" version)" != "v$caddy_version "* ]]; }; then
   curl -fsSL "https://github.com/caddyserver/caddy/releases/download/v$caddy_version/$caddy_asset" -o "$tool_staging/$caddy_asset"
   curl -fsSL "https://github.com/caddyserver/caddy/releases/download/v$caddy_version/caddy_${caddy_version}_checksums.txt" -o "$tool_staging/caddy-checksums"
   (cd "$tool_staging"; awk -v asset="$caddy_asset" '$2 == asset {print}' caddy-checksums > caddy-selected; test -s caddy-selected; sha512sum -c caddy-selected; tar -xzf "$caddy_asset" caddy)
@@ -104,6 +136,14 @@ if [[ -f "$app_root/shared/server.env" ]]; then
 fi
 export PATH="$rust_root/bin:$go_root/go/bin:$app_root/bin:/usr/bin:/bin"
 export SPACE_SITE_ORIGIN="https://$domain"
+export PORT="$web_port"
+export SPACE_ADMIN_PUBKEYS="${SPACE_ADMIN_PUBKEYS:-$admin_pubkey}"
+export SPACE_MODERATION_FILE="$state_root/moderation/policy.json"
+export VITE_NOSTR_RELAYS="${VITE_NOSTR_RELAYS:-wss://$domain/relay}"
+# Store only public deployment identity; operator secrets stay in server.env.
+printf '%s\n' "$SPACE_ADMIN_PUBKEYS" > "$app_root/shared/admin-pubkeys"
+chmod 600 "$app_root/shared/admin-pubkeys"
+runuser -u napplet -- "$app_root/bin/bun" "$release_dir/scripts/moderation-init.ts" "$SPACE_MODERATION_FILE"
 export SPACE_PUBLICDEV=0 SPACE_PUBLICDEV_DIR=''
 export SPACE_INDEX_DIR="$state_root/index"
 export SPACE_INDEX_RELAYS="${SPACE_INDEX_RELAYS:-ws://127.0.0.1:19347/relay}"
@@ -116,7 +156,7 @@ if [[ -f "$state_root/grasp/upstream.commit" ]] && [[ "$(cat "$state_root/grasp/
   echo 'GRASP upstream pin changed. Stop here: migrate/restore its full state separately before deployment.' >&2
   exit 1
 fi
-runuser -u napplet -- bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
+systemd-run --scope --quiet --unit="napplet-build-$release_id" -p MemoryMax=3G -p CPUQuota=200% -p TasksMax=512 runuser -u napplet -- env -u SPACE_MODERATION_FILE -u SPACE_ADMIN_PUBKEYS -u SPACE_INDEX_DIR GOMAXPROCS=2 GOFLAGS=-p=2 CARGO_BUILD_JOBS=2 nice -n 10 bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
 
 start_relay() {
   local source_release=$1
@@ -177,6 +217,9 @@ previous=$(readlink -f "$app_root/current" 2>/dev/null || true)
 smoke_pid=''
 activated=0
 caddy_changed=0
+shared_candidate=""
+shared_active_hash=""
+shared_parent_hash=""
 had_caddy_config=0
 [[ -f /etc/napplet-space/Caddyfile ]] && had_caddy_config=1
 rollback() {
@@ -184,7 +227,16 @@ rollback() {
   trap - ERR
   [[ -z "$smoke_pid" ]] || { kill "$smoke_pid" 2>/dev/null || true; wait "$smoke_pid" 2>/dev/null || true; }
   if [[ "$caddy_changed" == 1 ]]; then
-    if [[ "$had_caddy_config" == 1 ]]; then
+    if [[ "$proxy_mode" == shared ]]; then
+      if [[ "$(sha256sum /etc/caddy/Caddyfile | cut -d ' ' -f1)" == "$shared_active_hash" || "$(sha256sum /etc/caddy/Caddyfile | cut -d ' ' -f1)" == "$shared_parent_hash" ]]; then
+        cp -p "$app_root/shared/Caddyfile.host.previous" /etc/caddy/Caddyfile
+        chmod 644 /etc/caddy/Caddyfile
+      else
+        echo 'Caddy parent changed concurrently; preserved the operator edit.' >&2
+      fi
+      if [[ "$had_caddy_config" == 1 ]]; then cp "$app_root/shared/Caddyfile.previous" /etc/napplet-space/Caddyfile; else rm -f /etc/napplet-space/Caddyfile; fi
+      systemctl reload caddy || true
+    elif [[ "$had_caddy_config" == 1 ]]; then
       cp "$app_root/shared/Caddyfile.previous" /etc/napplet-space/Caddyfile
       systemctl reload napplet-space-caddy || true
     else
@@ -192,6 +244,7 @@ rollback() {
       rm -f /etc/napplet-space/Caddyfile
     fi
   fi
+  [[ -z "$shared_candidate" ]] || rm -f "$shared_candidate"
   if [[ "$activated" == 1 ]]; then
     if [[ -n "$previous" ]]; then
       ln -sfn "$previous" "$app_root/current.rollback"
@@ -222,11 +275,11 @@ rollback() {
 trap rollback ERR
 
 # Test the new production build before touching the active process.
-runuser -u napplet -- env NODE_ENV=production PORT=3101 HOST=127.0.0.1 SPACE_RELEASE_ID="$release_id" "$app_root/bin/bun" "$release_dir/apps/web/server.ts" > "$release_dir/smoke.log" 2>&1 &
+runuser -u napplet -- env NODE_ENV=production PORT="$smoke_port" HOST=127.0.0.1 SPACE_RELEASE_ID="$release_id" "$app_root/bin/bun" "$release_dir/apps/web/server.ts" > "$release_dir/smoke.log" 2>&1 &
 smoke_pid=$!
 healthy=0
 for attempt in {1..30}; do
-  if curl -fsS --max-time 2 http://127.0.0.1:3101/api/health 2>/dev/null | grep -Fq "\"release\":\"$release_id\""; then healthy=1; break; fi
+  if curl -fsS --max-time 2 http://127.0.0.1:$smoke_port/api/health 2>/dev/null | grep -Fq "\"release\":\"$release_id\""; then healthy=1; break; fi
   sleep 1
 done
 [[ "$healthy" == 1 ]]
@@ -244,7 +297,10 @@ $domain {
   }
   @relay path /relay /relay/
   reverse_proxy @relay 127.0.0.1:19347
-  reverse_proxy 127.0.0.1:3000
+  reverse_proxy 127.0.0.1:$web_port
+}
+www.$domain {
+  redir https://$domain{uri} permanent
 }
 $blossom_domain {
   header -Server
@@ -260,7 +316,18 @@ $git_domain {
   reverse_proxy 127.0.0.1:19349
 }
 CADDY
-"$app_root/bin/caddy" validate --config "$app_root/shared/Caddyfile.next" --adapter caddyfile
+shared_candidate="/etc/caddy/.napplet-$release_id"
+shared_parent_hash=''
+shared_active_hash=''
+if [[ "$proxy_mode" == shared ]]; then
+  cp -p /etc/caddy/Caddyfile "$app_root/shared/Caddyfile.host.previous"
+  chmod 600 "$app_root/shared/Caddyfile.host.previous"
+  shared_parent_hash=$(sha256sum /etc/caddy/Caddyfile | cut -d ' ' -f1)
+  "$app_root/bin/bun" "$release_dir/scripts/shared-caddy.ts" /etc/caddy/Caddyfile /etc/napplet-space/Caddyfile "$app_root/shared/Caddyfile.next" "$shared_candidate"
+  runuser -u caddy -- /usr/bin/caddy validate --config "$shared_candidate" --adapter caddyfile
+else
+  "$app_root/bin/caddy" validate --config "$app_root/shared/Caddyfile.next" --adapter caddyfile
+fi
 ln -sfn "$release_dir" "$app_root/current.next"
 mv -Tf "$app_root/current.next" "$app_root/current"
 activated=1
@@ -282,7 +349,7 @@ pm2_run delete napplet-web || true
 runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$release_dir" SPACE_RELEASE_ID="$release_id" PATH="$PATH" node "$pm2_bin" start "$release_dir/infra/ecosystem.config.cjs" --update-env
 healthy=0
 for attempt in {1..30}; do
-  if curl -fsS --max-time 2 http://127.0.0.1:3000/api/health 2>/dev/null | grep -Fq "\"release\":\"$release_id\""; then healthy=1; break; fi
+  if curl -fsS --max-time 2 http://127.0.0.1:$web_port/api/health 2>/dev/null | grep -Fq "\"release\":\"$release_id\""; then healthy=1; break; fi
   sleep 1
 done
 [[ "$healthy" == 1 ]]
@@ -304,6 +371,7 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 UNIT
+if [[ "$proxy_mode" == dedicated ]]; then
 cat > /etc/systemd/system/napplet-space-caddy.service <<UNIT
 [Unit]
 Description=napplet.space Caddy HTTPS proxy
@@ -325,12 +393,31 @@ PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 UNIT
+fi
 if [[ "$had_caddy_config" == 1 ]]; then cp /etc/napplet-space/Caddyfile "$app_root/shared/Caddyfile.previous"; fi
-install -m 644 "$app_root/shared/Caddyfile.next" /etc/napplet-space/Caddyfile
-caddy_changed=1
+if [[ "$proxy_mode" == shared ]]; then
+  [[ "$(sha256sum /etc/caddy/Caddyfile | cut -d ' ' -f1)" == "$shared_parent_hash" ]] || { echo 'Caddy changed during deployment; refusing to overwrite it.' >&2; false; }
+  "$app_root/bin/bun" "$release_dir/scripts/shared-caddy.ts" /etc/caddy/Caddyfile /etc/napplet-space/Caddyfile /etc/napplet-space/Caddyfile "$shared_candidate"
+  shared_active_hash=$(sha256sum "$shared_candidate" | cut -d ' ' -f1)
+  # Write the fragment first; the first installation is unreachable until its import is activated.
+  caddy_changed=1
+  install -m 644 "$app_root/shared/Caddyfile.next" /etc/napplet-space/Caddyfile
+  install -m 644 "$shared_candidate" /etc/caddy/Caddyfile
+  runuser -u caddy -- /usr/bin/caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+  systemctl reload caddy
+  systemctl is-active --quiet caddy
+  rm -f "$shared_candidate"
+else
+  install -m 644 "$app_root/shared/Caddyfile.next" /etc/napplet-space/Caddyfile
+  caddy_changed=1
+fi
 systemctl daemon-reload
-systemctl enable napplet-space napplet-space-caddy
-if systemctl is-active --quiet napplet-space-caddy; then systemctl reload napplet-space-caddy; else systemctl start napplet-space-caddy; fi
-systemctl is-active --quiet napplet-space-caddy
+systemctl enable napplet-space
+if [[ "$proxy_mode" == dedicated ]]; then
+  systemctl enable napplet-space-caddy
+  if systemctl is-active --quiet napplet-space-caddy; then systemctl reload napplet-space-caddy; else systemctl start napplet-space-caddy; fi
+  systemctl is-active --quiet napplet-space-caddy
+fi
+printf '%s\n' "$proxy_mode:$web_port" > "$app_root/shared/deploy-profile"
 trap - ERR
-echo "Activated $release_id for https://$domain with Blossom at https://$blossom_domain and Git at https://$git_domain. Caddy will obtain certificates when all three DNS names resolve and ports 80/443 are reachable."
+echo "Activated $release_id for https://$domain with Blossom at https://$blossom_domain and Git at https://$git_domain. HTTPS certificate issuance depends on DNS and network reachability."

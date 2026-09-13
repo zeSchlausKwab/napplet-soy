@@ -146,7 +146,16 @@ export async function buildGrasp(output = graspBinary) {
       await Bun.write(path, patched);
     }
     await command(
-      ['cargo', 'build', '--locked', '--release', '-p', 'ngit-grasp', '-j', '4'],
+      [
+        'cargo',
+        'build',
+        '--locked',
+        '--release',
+        '-p',
+        'ngit-grasp',
+        '-j',
+        process.env.CARGO_BUILD_JOBS || '4',
+      ],
       source,
       false,
       {
