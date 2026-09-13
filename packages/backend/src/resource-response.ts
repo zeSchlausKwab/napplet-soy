@@ -1,3 +1,4 @@
+import { blocked } from '../../moderation/src/policy';
 import { z } from 'zod';
 import { fetchPublicBytes, fetchPublicBlob, publicResourceUrl } from './blossom';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../protocol/src/artifact';
@@ -54,6 +55,7 @@ export async function resolveResource(
 ) {
   let bytes: Uint8Array;
   const digest = /^blossom:sha256:([a-f0-9]{64})$/.exec(input.url)?.[1];
+  if (digest && blocked('hash', digest)) throw new Error('blocked-by-policy');
   if (digest) {
     let found: Uint8Array | undefined;
     for (const server of [...new Set([...(input.servers ?? []), ...defaults])].slice(0, 8)) {
@@ -80,6 +82,7 @@ export async function resolveResource(
     bytes = new Uint8Array(await response.arrayBuffer());
   } else throw new Error('unsupported-scheme');
   if (bytes.length > MAX_ARTIFACT_BYTES) throw new Error('too-large');
+  if (blocked('hash', await sha256(bytes))) throw new Error('blocked-by-policy');
   return { bytes, mime: resourceMime(bytes, !!digest) };
 }
 

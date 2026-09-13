@@ -1,3 +1,4 @@
+import { blocked } from '../../packages/moderation/src/policy';
 import { BlobStore, type StoreLimits } from './store';
 import {
   authorize,
@@ -111,6 +112,8 @@ export async function createBlossom(config: BlossomConfig) {
       if (!hash || !HASH.test(hash))
         throw new BlossomError(400, 'X-SHA-256 must contain a lowercase SHA-256 hash');
       const event = authorizeWrite(request, 'upload', hash);
+      if (blocked('pubkey', event.pubkey) || blocked('hash', hash))
+        throw new BlossomError(403, 'Blocked by operator policy');
       const size = length(
         request.headers.get(method === 'HEAD' ? 'x-content-length' : 'content-length'),
         method === 'HEAD' ? 'X-Content-Length' : 'Content-Length',
@@ -153,6 +156,8 @@ export async function createBlossom(config: BlossomConfig) {
       await store.remove(event.pubkey, hash);
       return new Response(null, { status: 204 });
     }
+    if (blocked('hash', hash) || store.owners(hash).some((owner) => blocked('pubkey', owner)))
+      throw new BlossomError(404, 'Blob not found');
     if (!['GET', 'HEAD'].includes(method)) throw new BlossomError(405, 'Method not allowed');
     const row = store.lookup(hash);
     if (!row || !(await store.available(row))) throw new BlossomError(404, 'Blob not found');
@@ -161,7 +166,7 @@ export async function createBlossom(config: BlossomConfig) {
       'Content-Length': String(row.size),
       'Accept-Ranges': 'bytes',
       ETag: `"${hash}"`,
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'no-store',
     });
     if (!/^(image\/(png|jpeg|gif|webp|avif)|audio\/|video\/)/.test(row.type))
       headers.set('Content-Disposition', `attachment; filename="${hash}"`);

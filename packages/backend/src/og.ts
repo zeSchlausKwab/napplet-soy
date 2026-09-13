@@ -107,7 +107,7 @@ export async function ogResponse(id: string, request: Request) {
   const headers = {
     'Content-Type': 'image/png',
     'Content-Length': String(bytes.length),
-    'Cache-Control': 'public, max-age=3600',
+    'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
     ETag: etag,
   };

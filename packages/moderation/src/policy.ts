@@ -1,0 +1,223 @@
+import {
+  closeSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { z } from 'zod';
+import { nip19 } from 'nostr-tools';
+
+const hex = /^[a-f0-9]{64}$/;
+export const ruleTypes = ['pubkey', 'address', 'event', 'hash'] as const;
+export type RuleType = (typeof ruleTypes)[number];
+export function normalizeTarget(type: RuleType, input: string) {
+  let target = input.trim().replace(/^nostr:/, '');
+  if (type === 'pubkey' && target.startsWith('npub1')) {
+    const value = nip19.decode(target);
+    if (value.type !== 'npub') throw new Error('Expected an npub.');
+    target = value.data;
+  }
+  if (type === 'address' && target.startsWith('naddr1')) {
+    const value = nip19.decode(target);
+    if (value.type !== 'naddr') throw new Error('Expected a napplet naddr.');
+    target = `${value.data.kind}:${value.data.pubkey}:${value.data.identifier}`;
+  }
+  if (type === 'event' && /^(note|nevent)1/.test(target)) {
+    const value = nip19.decode(target);
+    if (value.type !== 'note' && value.type !== 'nevent') throw new Error('Expected an event.');
+    target = value.type === 'note' ? value.data : value.data.id;
+  }
+  if (
+    type === 'address'
+      ? !/^(?:35129:[a-f0-9]{64}:[^\u0000-\u001f\u007f]{0,256}|15129:[a-f0-9]{64}:)$/.test(target)
+      : !hex.test(target)
+  )
+    throw new Error(
+      type === 'address'
+        ? 'Enter a napplet naddr or 35129:pubkey:identifier.'
+        : 'Enter a valid public identifier or lowercase SHA-256 hash.',
+    );
+  return target;
+}
+const rule = z.object({
+  type: z.enum(ruleTypes),
+  target: z.string().max(512),
+  reason: z.string().max(500),
+  actor: z.string().regex(hex),
+  at: z.number().int(),
+});
+const audit = rule.extend({
+  action: z.enum(['block', 'unblock']),
+  revision: z.number().int(),
+  requestId: z.string().regex(hex),
+});
+const schema = z.object({
+  version: z.literal(1),
+  revision: z.number().int().nonnegative(),
+  rules: z.array(rule).max(10000),
+  audit: z.array(audit).max(500),
+  used: z.array(z.object({ id: z.string().regex(hex), expires: z.number().int() })).max(1000),
+});
+export type Policy = z.infer<typeof schema>;
+const empty = (): Policy => ({ version: 1, revision: 0, rules: [], audit: [], used: [] });
+export class PolicyError extends Error {
+  constructor(
+    message: string,
+    public status = 503,
+  ) {
+    super(message);
+  }
+}
+export function policyPath() {
+  return process.env.SPACE_MODERATION_FILE ? resolve(process.env.SPACE_MODERATION_FILE) : null;
+}
+let cached: { path: string; stamp: string; policy: Policy; keys: Set<string> } | undefined;
+export function readPolicy(path = policyPath()) {
+  if (!path) return empty();
+  try {
+    const stat = statSync(path);
+    if (stat.size > 8 * 1024 * 1024) throw new Error();
+    const stamp = `${stat.ino}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`;
+    if (cached?.path === path && cached.stamp === stamp) return cached.policy;
+    const policy = schema.parse(JSON.parse(readFileSync(path, 'utf8')));
+    const keys = new Set<string>();
+    for (const r of policy.rules) {
+      if (normalizeTarget(r.type, r.target) !== r.target || keys.has(`${r.type}:${r.target}`))
+        throw new Error();
+      keys.add(`${r.type}:${r.target}`);
+    }
+    cached = { path, stamp, policy, keys };
+    return policy;
+  } catch {
+    throw new PolicyError('Moderation policy is unavailable.');
+  }
+}
+export function blocked(type: RuleType, target: string) {
+  const path = policyPath();
+  if (!path) return false;
+  readPolicy(path); // A configured but missing/corrupt policy fails closed.
+  return cached!.keys.has(`${type}:${target}`);
+}
+export function manifestBlocked(event: {
+  id: string;
+  pubkey: string;
+  kind: number;
+  tags: string[][];
+}) {
+  if (blocked('pubkey', event.pubkey) || blocked('event', event.id)) return true;
+  if (
+    [35129, 15129].includes(event.kind) &&
+    blocked(
+      'address',
+      `${event.kind}:${event.pubkey}:${event.kind === 15129 ? '' : (event.tags.find((t) => t[0] === 'd')?.[1] ?? '')}`,
+    )
+  )
+    return true;
+  if (
+    event.kind === 5129 &&
+    event.tags.some(
+      (t) =>
+        t[0] === 'a' &&
+        (t[1]?.startsWith(`35129:${event.pubkey}:`) || t[1] === `15129:${event.pubkey}:`) &&
+        blocked('address', t[1]),
+    )
+  )
+    return true;
+  return event.tags.some(
+    (t) =>
+      (t[0] === 'path' && !!t[2] && blocked('hash', t[2])) ||
+      (t[0] === 'x' && !!t[1] && blocked('hash', t[1])),
+  );
+}
+export function initializePolicy(path: string) {
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  if (!existsSync(path)) {
+    try {
+      writeFileSync(path, JSON.stringify(empty()), { flag: 'wx', mode: 0o600 });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    }
+  }
+  readPolicy(path);
+}
+export const actionSchema = z
+  .object({
+    action: z.enum(['block', 'unblock']),
+    type: z.enum(ruleTypes),
+    target: z.string().min(1).max(4096),
+    reason: z.string().trim().min(1).max(500),
+    revision: z.number().int().nonnegative(),
+  })
+  .strict();
+export type ModerationAction = z.infer<typeof actionSchema>;
+/** One atomic document contains rules, replay receipts and the bounded audit trail. */
+export function updatePolicy(
+  input: ModerationAction,
+  actor: string,
+  requestId: string,
+  now = Math.floor(Date.now() / 1000),
+) {
+  const path = policyPath();
+  if (!path) throw new PolicyError('Moderation is not configured.');
+  const target = normalizeTarget(input.type, input.target);
+  const lockPath = `${path}.lock`,
+    temporary = `${path}.${process.pid}.tmp`;
+  let lock: number;
+  try {
+    lock = openSync(lockPath, 'wx', 0o600);
+  } catch {
+    throw new PolicyError('Another policy update is in progress; retry.', 409);
+  }
+  try {
+    const current = readPolicy(path);
+    if (current.used.some((r) => r.id === requestId && r.expires >= now))
+      throw new PolicyError('This signed request was already used.', 409);
+    if (input.revision !== current.revision)
+      throw new PolicyError('Policy changed. Refresh before trying again.', 409);
+    const used = current.used.filter((r) => r.expires >= now);
+    if (used.length >= 1000) throw new PolicyError('Admin request budget exceeded.', 429);
+    const rules = current.rules.filter((r) => r.type !== input.type || r.target !== target);
+    const item = { type: input.type, target, reason: input.reason, actor, at: now };
+    if (input.action === 'block') rules.push(item);
+    if (rules.length > 10000) throw new PolicyError('Block list capacity reached.', 409);
+    const next: Policy = {
+      version: 1,
+      revision: current.revision + 1,
+      rules,
+      audit: [
+        ...current.audit,
+        { ...item, action: input.action, revision: current.revision + 1, requestId },
+      ].slice(-500),
+      used: [...used, { id: requestId, expires: now + 120 }],
+    };
+    const serialized = JSON.stringify(next);
+    if (Buffer.byteLength(serialized) > 8 * 1024 * 1024)
+      throw new PolicyError('Policy storage capacity reached.', 409);
+    const fd = openSync(temporary, 'wx', 0o600);
+    try {
+      writeFileSync(fd, serialized);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    renameSync(temporary, path);
+    const dir = openSync(dirname(path), 'r');
+    try {
+      fsyncSync(dir);
+    } finally {
+      closeSync(dir);
+    }
+    return next;
+  } finally {
+    closeSync(lock);
+    unlinkSync(lockPath);
+    if (existsSync(temporary)) unlinkSync(temporary);
+  }
+}

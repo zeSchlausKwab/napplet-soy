@@ -1,3 +1,4 @@
+import { initializePolicy } from '../packages/moderation/src/policy';
 import { chmod, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -62,11 +63,13 @@ const env = {
     process.env.SPACE_SITE_ORIGIN || (command === 'production' ? site : `http://localhost:${port}`),
   SPACE_PUBLICDEV: publicdev ? '1' : '0',
   SPACE_PUBLICDEV_DIR: publicdev ? resolve(local, 'publicdev') : '',
+  SPACE_MODERATION_FILE: resolve(local, 'services/moderation/policy.json'),
   SPACE_INDEX_DIR: resolve(local, 'services/index'),
   SPACE_INDEX_RELAYS: localRelayUrl,
   SPACE_INDEX_LOCAL_BLOSSOM: localBlossomOrigin,
 };
 async function prepare() {
+  initializePolicy(env.SPACE_MODERATION_FILE);
   await startRelay();
   await startBlossom();
   await startGrasp();

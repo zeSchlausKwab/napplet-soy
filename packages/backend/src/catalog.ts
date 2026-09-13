@@ -1,3 +1,4 @@
+import { blocked, manifestBlocked } from '../../moderation/src/policy';
 import fixtures from '../data/catalog.json';
 import { manifestTopics, matchesGallery } from '../../protocol/src/topics';
 import { publicArtifact, readPublicCatalog } from './public-catalog';
@@ -46,6 +47,7 @@ export async function gallery(search: GallerySearch) {
   let list = records.filter((n) => {
     const winner = indexStore()?.row(`35129:${n.pubkey}:${n.identifier}`);
     return (
+      !manifestBlocked(n.current) &&
       !indexStore()?.removed(n.current) &&
       (!winner || winner.id === n.current.id) &&
       matchesGallery(n, search)
@@ -59,7 +61,7 @@ export type Lookup =
   | { type: 'named'; creator: string; slug: string }
   | { type: 'address'; naddr: string }
   | { type: 'snapshot'; id: string };
-export async function resolveNapplet(input: Lookup) {
+async function resolveUnmoderated(input: Lookup) {
   await ensureValidated();
   if (input.type === 'named') {
     if (!/^@[a-z0-9-]{1,32}$/.test(input.creator) || !/^[a-z0-9-]{1,64}$/.test(input.slug))
@@ -86,11 +88,23 @@ export async function resolveNapplet(input: Lookup) {
     return null;
   }
 }
+export async function resolveNapplet(input: Lookup) {
+  const entry = await resolveUnmoderated(input);
+  if (!entry || manifestBlocked(input.type === 'snapshot' ? entry.snapshot : entry.current))
+    return null;
+  return entry;
+}
 export async function artifact(hash: string) {
   await ensureValidated();
-  if (!/^[a-f0-9]{64}$/.test(hash)) return null;
+  if (!/^[a-f0-9]{64}$/.test(hash) || blocked('hash', hash)) return null;
   if (!records.some((n) => n.artifactHash === hash))
     return (await indexedArtifact(hash)) ?? publicArtifact(hash);
+  if (
+    !records.some(
+      (n) => n.artifactHash === hash && !manifestBlocked(n.current) && !manifestBlocked(n.snapshot),
+    )
+  )
+    return null;
   // Trusted bundled fixtures only. Remote Blossom ingestion is a separate bounded worker task.
   const directory =
     process.env.SPACE_ARTIFACT_DIR ?? new URL('../data/artifacts/', import.meta.url).pathname;
@@ -117,6 +131,7 @@ export async function playableManifest(id: string) {
   if ('availability' in entry && entry.availability !== 'ready') return null;
   const manifest =
     'manifest' in entry ? entry.manifest : entry.current.id === id ? entry.current : entry.snapshot;
+  if (manifestBlocked(manifest)) return null;
   try {
     return await preparePlayback(manifest, entry.artifactHash);
   } catch {

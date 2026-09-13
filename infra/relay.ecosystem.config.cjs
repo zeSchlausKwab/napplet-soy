@@ -17,6 +17,7 @@ module.exports = {
       kill_timeout: 15000,
       time: true,
       env: {
+        SPACE_MODERATION_FILE: process.env.SPACE_MODERATION_FILE || '',
         SPACE_SERVICE_BIND: process.env.SPACE_RELAY_BIND || '127.0.0.1:19347',
         SPACE_SERVICE_URL: process.env.SPACE_RELAY_ORIGIN || 'http://localhost:8080/relay',
         SPACE_SERVICE_DATA:

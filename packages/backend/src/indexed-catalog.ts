@@ -1,3 +1,4 @@
+import { blocked, manifestBlocked } from '../../moderation/src/policy';
 import { join, resolve } from 'node:path';
 import { decodeAddress, identityAddress, MAX_ARTIFACT_BYTES, sha256 } from '../../protocol/src';
 import { IndexStore, indexedProjection } from './index-store';
@@ -41,7 +42,9 @@ export async function indexedEntries() {
     store
       .recent()
       .map((row) =>
-        store.removed(JSON.parse(row.event)) ? null : indexedProjection(row, relays()),
+        store.removed(JSON.parse(row.event)) || manifestBlocked(JSON.parse(row.event))
+          ? null
+          : indexedProjection(row, relays()),
       ),
   );
   return entries.filter((entry) => entry !== null);
@@ -61,7 +64,9 @@ export async function indexedLookup(input: Lookup) {
   return {
     known: !!row,
     entry:
-      row && !indexStore()!.removed(JSON.parse(row.event))
+      row &&
+      !manifestBlocked(JSON.parse(row.event)) &&
+      !indexStore()!.removed(JSON.parse(row.event))
         ? await indexedProjection(row, relays())
         : null,
   };
@@ -69,18 +74,22 @@ export async function indexedLookup(input: Lookup) {
 export async function indexedRevision(id: string) {
   if (!/^[a-f0-9]{64}$/.test(id)) return null;
   const row = indexStore()?.revision(id);
-  return row && !indexStore()!.removed(JSON.parse(row.event))
+  return row &&
+    !manifestBlocked(JSON.parse(row.event)) &&
+    !indexStore()!.removed(JSON.parse(row.event))
     ? indexedProjection(row, relays())
     : null;
 }
 export async function indexedArtifact(hash: string) {
   const store = indexStore();
-  if (!store || !/^[a-f0-9]{64}$/.test(hash)) return null;
+  if (!store || !/^[a-f0-9]{64}$/.test(hash) || blocked('hash', hash)) return null;
   const entries = await Promise.all(
     store
       .artifactRows(hash)
       .map((row) =>
-        store.removed(JSON.parse(row.event)) ? null : indexedProjection(row, relays()),
+        store.removed(JSON.parse(row.event)) || manifestBlocked(JSON.parse(row.event))
+          ? null
+          : indexedProjection(row, relays()),
       ),
   );
   const entry = entries.find((n) => n?.artifactHash === hash && n.availability === 'ready');

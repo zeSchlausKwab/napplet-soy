@@ -18,6 +18,7 @@ module.exports = {
       kill_timeout: 15000,
       time: true,
       env: {
+        SPACE_MODERATION_FILE: process.env.SPACE_MODERATION_FILE || '',
         NODE_ENV: 'production',
         SPACE_RELEASE_ID: process.env.SPACE_RELEASE_ID || 'local',
         SPACE_INDEX_DIR: process.env.SPACE_INDEX_DIR,

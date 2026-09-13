@@ -120,6 +120,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <Radio size={12} />
             {relayConfigured ? 'Relay configured' : 'Built on Nostr'}
           </span>
+          <Link to="/admin">Administration</Link>
           <a href="https://github.com/napplet/naps" target="_blank" rel="noreferrer">
             The protocol <ArrowUpRight size={13} />
           </a>

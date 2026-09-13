@@ -1,3 +1,4 @@
+import { manifestBlocked } from '../../moderation/src/policy';
 import { decodeAddress, identityAddress, verifiedEvent } from '../../protocol/src';
 import { validateRelease } from '../../protocol/src/manifest';
 import { indexedLookup, indexedArtifact, indexHealth, indexStore } from './indexed-catalog';
@@ -21,7 +22,8 @@ export async function publicationResponse(request: Request) {
     return new Response('Invalid publication lookup', { status: 400 });
   }
   const row = indexStore()?.row(address);
-  const current = row ? verifiedEvent(JSON.parse(row.event)) : null;
+  const candidate = row ? verifiedEvent(JSON.parse(row.event)) : null;
+  const current = candidate && !manifestBlocked(candidate) ? candidate : null;
   const entry = (await indexedLookup({ type: 'address', naddr })).entry;
   const snapshot = (await indexedLookup({ type: 'snapshot', id: snapshotId })).entry;
   let status: 'ready' | 'pending' | 'superseded' =

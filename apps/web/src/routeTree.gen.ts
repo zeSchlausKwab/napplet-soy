@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CreatorRouteImport } from './routes/$creator'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
+import { Route as ApiAdminRouteImport } from './routes/api.admin'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiPublicationsRouteImport } from './routes/api.publications'
 import { Route as ApiResourcesRouteImport } from './routes/api.resources'
@@ -33,6 +35,11 @@ const CreatorRoute = CreatorRouteImport.update({
   path: '/$creator',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreateRoute = CreateRouteImport.update({
   id: '/create',
   path: '/create',
@@ -42,6 +49,11 @@ const CreatorSlugRoute = CreatorSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => CreatorRoute,
+} as any)
+const ApiAdminRoute = ApiAdminRouteImport.update({
+  id: '/api/admin',
+  path: '/api/admin',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -92,8 +104,10 @@ const RSnapshotSourceRoute = RSnapshotSourceRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRouteWithChildren
+  '/admin': typeof AdminRoute
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
+  '/api/admin': typeof ApiAdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
@@ -107,8 +121,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRouteWithChildren
+  '/admin': typeof AdminRoute
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
+  '/api/admin': typeof ApiAdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
@@ -123,8 +139,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRouteWithChildren
+  '/admin': typeof AdminRoute
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
+  '/api/admin': typeof ApiAdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
@@ -140,8 +158,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$creator'
+    | '/admin'
     | '/create'
     | '/$creator/$slug'
+    | '/api/admin'
     | '/api/health'
     | '/api/publications'
     | '/api/resources'
@@ -155,8 +175,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$creator'
+    | '/admin'
     | '/create'
     | '/$creator/$slug'
+    | '/api/admin'
     | '/api/health'
     | '/api/publications'
     | '/api/resources'
@@ -170,8 +192,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$creator'
+    | '/admin'
     | '/create'
     | '/$creator/$slug'
+    | '/api/admin'
     | '/api/health'
     | '/api/publications'
     | '/api/resources'
@@ -186,7 +210,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CreatorRoute: typeof CreatorRouteWithChildren
+  AdminRoute: typeof AdminRoute
   CreateRoute: typeof CreateRoute
+  ApiAdminRoute: typeof ApiAdminRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiPublicationsRoute: typeof ApiPublicationsRoute
   ApiResourcesRoute: typeof ApiResourcesRoute
@@ -213,6 +239,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreatorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/create': {
       id: '/create'
       path: '/create'
@@ -226,6 +259,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$creator/$slug'
       preLoaderRoute: typeof CreatorSlugRouteImport
       parentRoute: typeof CreatorRoute
+    }
+    '/api/admin': {
+      id: '/api/admin'
+      path: '/api/admin'
+      fullPath: '/api/admin'
+      preLoaderRoute: typeof ApiAdminRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/health': {
       id: '/api/health'
@@ -319,7 +359,9 @@ const RSnapshotRouteWithChildren = RSnapshotRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreatorRoute: CreatorRouteWithChildren,
+  AdminRoute: AdminRoute,
   CreateRoute: CreateRoute,
+  ApiAdminRoute: ApiAdminRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiPublicationsRoute: ApiPublicationsRoute,
   ApiResourcesRoute: ApiResourcesRoute,

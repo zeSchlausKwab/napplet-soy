@@ -1,3 +1,4 @@
+import { manifestBlocked } from '../../moderation/src/policy';
 import { Database } from 'bun:sqlite';
 import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -181,6 +182,7 @@ export class IndexWorker {
     const queue = await Promise.all(
       this.store
         .due(now)
+        .filter((row) => !manifestBlocked(JSON.parse(row.event)))
         .map(async (row) => ({
           row,
           entry: this.store.removed(JSON.parse(row.event))

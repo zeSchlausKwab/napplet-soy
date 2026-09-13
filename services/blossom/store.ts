@@ -72,6 +72,12 @@ export class BlobStore {
   lookup(hash: string) {
     return this.db.query<BlobRow, [string]>('SELECT * FROM blobs WHERE hash=?').get(hash);
   }
+  owners(hash: string) {
+    return this.db
+      .query<{ pubkey: string }, [string]>('SELECT pubkey FROM owners WHERE hash=?')
+      .all(hash)
+      .map((row) => row.pubkey);
+  }
   private owns(pubkey: string, hash: string) {
     return !!this.db.query('SELECT 1 FROM owners WHERE pubkey=? AND hash=?').get(pubkey, hash);
   }

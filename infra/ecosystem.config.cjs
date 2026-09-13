@@ -19,6 +19,8 @@ module.exports = {
       kill_timeout: 10000,
       time: true,
       env: {
+        SPACE_MODERATION_FILE: process.env.SPACE_MODERATION_FILE || '',
+        SPACE_ADMIN_PUBKEYS: process.env.SPACE_ADMIN_PUBKEYS || '',
         NODE_ENV: 'production',
         HOST: '127.0.0.1',
         PORT: process.env.PORT || '3000',

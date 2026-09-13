@@ -1,20 +1,30 @@
+import { blocked, manifestBlocked } from '../../moderation/src/policy';
+import type { CachedPreview } from '../../protocol/src/preview';
 import { readPublicCatalog, publicDirectory } from './public-catalog';
 import { cachedPreviewBytes } from './preview-images';
 import { indexedRevision, indexStore } from './indexed-catalog';
 
+function allowedPreview(preview: CachedPreview) {
+  const sourceHash = /(?:sha256:|\/)([a-f0-9]{64})(?:[.?#/]|$)/.exec(preview.url)?.[1];
+  return (
+    !manifestBlocked(preview.descriptor) &&
+    !blocked('hash', preview.hash) &&
+    (!sourceHash || !blocked('hash', sourceHash))
+  );
+}
 /** Only normalized images attached to an indexed manifest can be served. No request-time fetch. */
 export async function previewImage(id: string) {
   if (!/^[a-f0-9]{64}$/.test(id)) return null;
   const indexed = await indexedRevision(id);
   const store = indexStore();
-  if (indexed?.preview && store) {
+  if (indexed?.preview && store && allowedPreview(indexed.preview)) {
     const bytes = await cachedPreviewBytes(store.directory, indexed.preview);
     if (bytes) return bytes;
   }
   const directory = publicDirectory();
   if (!directory) return null;
   const entry = (await readPublicCatalog())?.entries.find((n) => n.revisionId === id);
-  if (!entry?.preview) return null;
+  if (!entry?.preview || !allowedPreview(entry.preview)) return null;
   return cachedPreviewBytes(directory, entry.preview);
 }
 
@@ -27,7 +37,7 @@ export async function previewResponse(id: string, request: Request) {
   const headers = {
     'Content-Type': 'image/png',
     'Content-Length': String(bytes.length),
-    'Cache-Control': 'public, max-age=3600',
+    'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
     ETag: etag,
   };

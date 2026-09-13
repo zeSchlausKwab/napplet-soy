@@ -52,6 +52,9 @@ func newRelay(store *eventStore) *khatru.Relay {
 	relay.OnDisconnect = budgets.forget
 	relay.OnConnect = budgets.connect
 	relay.OnEvent = func(ctx context.Context, e nostr.Event) (bool, string) {
+		if store.moderation.blocked(e) {
+			return true, "blocked: operator policy"
+		}
 		if !budgets.allow(ctx, true) {
 			return true, "rate-limited: event budget exceeded"
 		}
@@ -87,6 +90,9 @@ func newRelay(store *eventStore) *khatru.Relay {
 		return false, ""
 	}
 	relay.PreventBroadcast = func(ws *khatru.WebSocket, f nostr.Filter, e nostr.Event) bool {
+		if store.moderation.blocked(e) {
+			return true
+		}
 		if f.Search == "" {
 			return false
 		}
@@ -108,6 +114,10 @@ func main() {
 	defer store.Close()
 	relay := newRelay(store)
 	relay.Router().HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		if err := store.moderation.check(); err != nil {
+			http.Error(w, err.Error(), 503)
+			return
+		}
 		if err := store.check(); err != nil {
 			http.Error(w, err.Error(), 503)
 			return

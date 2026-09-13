@@ -16,7 +16,12 @@ export async function blossomBuildID() {
     .update(process.platform)
     .update(process.arch);
   const paths = ['bun.lock', 'scripts/blossom.ts'];
-  for (const directory of ['services/blossom', 'packages/blossom/src', 'packages/protocol/src'])
+  for (const directory of [
+    'services/blossom',
+    'packages/blossom/src',
+    'packages/protocol/src',
+    'packages/moderation/src',
+  ])
     for (const file of new Bun.Glob('**/*.ts').scanSync(resolve(root, directory)))
       if (!file.endsWith('.test.ts')) paths.push(`${directory}/${file}`);
   for (const path of paths.sort())

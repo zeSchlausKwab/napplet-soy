@@ -26,13 +26,14 @@ import (
 // Signed events are authoritative. Search is disposable and rebuilt on startup,
 // including after an unclean stop between the LMDB and Bleve writes.
 type eventStore struct {
-	mu      sync.RWMutex
-	raw     *lmdb.LMDBBackend
-	index   bleve.Index
-	path    string
-	healthy bool
-	closed  bool
-	lock    *os.File
+	moderation *moderationPolicy
+	mu         sync.RWMutex
+	raw        *lmdb.LMDBBackend
+	index      bleve.Index
+	path       string
+	healthy    bool
+	closed     bool
+	lock       *os.File
 }
 
 func openStore(path string) (*eventStore, error) {
@@ -47,7 +48,7 @@ func openStore(path string) (*eventStore, error) {
 		lock.Close()
 		return nil, fmt.Errorf("relay data directory is already in use: %w", err)
 	}
-	s := &eventStore{path: path, lock: lock, raw: &lmdb.LMDBBackend{Path: filepath.Join(path, "events"), MapSize: 1 << 30}}
+	s := &eventStore{moderation: &moderationPolicy{path: os.Getenv("SPACE_MODERATION_FILE")}, path: path, lock: lock, raw: &lmdb.LMDBBackend{Path: filepath.Join(path, "events"), MapSize: 1 << 30}}
 	if err = s.raw.Init(); err != nil {
 		lock.Close()
 		return nil, err
@@ -153,6 +154,9 @@ func (s *eventStore) SaveEvent(e nostr.Event) error {
 	if s.closed {
 		return errors.New("store closed")
 	}
+	if s.moderation.blocked(e) {
+		return errors.New("blocked: operator policy")
+	}
 	if s.deleted(e) {
 		return errors.New("blocked: deleted publication")
 	}
@@ -171,6 +175,9 @@ func (s *eventStore) ReplaceEvent(e nostr.Event) ([]nostr.Event, error) {
 	defer s.mu.Unlock()
 	if s.closed {
 		return nil, errors.New("store closed")
+	}
+	if s.moderation.blocked(e) {
+		return nil, errors.New("blocked: operator policy")
 	}
 	if s.deleted(e) {
 		return nil, errors.New("blocked: deleted publication")
@@ -350,7 +357,7 @@ func (s *eventStore) query(f nostr.Filter, maxLimit int, includeDeleted bool) []
 				continue
 			}
 			for e := range s.raw.QueryEvents(nostr.Filter{IDs: []nostr.ID{id}}, 1) {
-				if e.ID != id || !f.Matches(e) || expired(e) || (!includeDeleted && s.deleted(e)) {
+				if e.ID != id || !f.Matches(e) || expired(e) || (!includeDeleted && (s.deleted(e) || s.moderation.blocked(e))) {
 					continue
 				}
 				found = append(found, e)

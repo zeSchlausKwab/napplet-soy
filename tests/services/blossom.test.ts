@@ -8,6 +8,7 @@ import { createBlossom, type BlossomConfig } from '../../services/blossom/server
 import { blossomAuthorization, uploadBlob } from '../../packages/blossom/src/client';
 import { blossomOrigin, type BlobDescriptor } from '../../packages/blossom/src/protocol';
 import { sha256 } from '../../packages/protocol/src';
+import { initializePolicy, readPolicy, updatePolicy } from '../../packages/moderation/src/policy';
 
 let service: Awaited<ReturnType<typeof createBlossom>>;
 let directory: string;
@@ -61,6 +62,44 @@ async function remove(signer = owner, digest = hash) {
     },
   });
 }
+test('operator blocks close direct blob/range/conditional reads and future uploads, while preserving deletion', async () => {
+  const original = process.env.SPACE_MODERATION_FILE;
+  try {
+    process.env.SPACE_MODERATION_FILE = join(directory, 'moderation.json');
+    initializePolicy(process.env.SPACE_MODERATION_FILE);
+    const actor = await owner.getPublicKey();
+    const change = (
+      type: 'hash' | 'pubkey',
+      target: string,
+      action: 'block' | 'unblock' = 'block',
+    ) =>
+      updatePolicy(
+        { type, target, action, reason: 'Service test', revision: readPolicy().revision },
+        actor,
+        crypto.randomUUID().replaceAll('-', '').repeat(2),
+      );
+    expect((await put()).status).toBe(201);
+    change('hash', hash);
+    for (const headers of [{}, { Range: 'bytes=0-10' }, { 'If-None-Match': `"${hash}"` }] as Record<
+      string,
+      string
+    >[]) {
+      const response = await fetch(`${origin}/${hash}`, { headers });
+      expect(response.status).toBe(404);
+      expect(response.headers.get('cache-control')).toBe('no-store');
+    }
+    expect((await put()).status).toBe(403);
+    change('hash', hash, 'unblock');
+    expect((await fetch(`${origin}/${hash}`)).status).toBe(200);
+    change('pubkey', actor);
+    expect((await fetch(`${origin}/${hash}`)).status).toBe(404);
+    expect((await put(new TextEncoder().encode('new upload'))).status).toBe(403);
+    expect((await remove()).status).toBe(204);
+  } finally {
+    if (original === undefined) delete process.env.SPACE_MODERATION_FILE;
+    else process.env.SPACE_MODERATION_FILE = original;
+  }
+});
 async function token(change: (event: EventTemplate) => void, legacy = false) {
   const now = Math.floor(Date.now() / 1000);
   const template: EventTemplate = {

@@ -18,6 +18,7 @@ module.exports = {
       kill_timeout: 15000,
       time: true,
       env: {
+        SPACE_MODERATION_FILE: process.env.SPACE_MODERATION_FILE || '',
         NODE_ENV: 'production',
         SPACE_BLOSSOM_PORT: process.env.SPACE_BLOSSOM_PORT || '19348',
         SPACE_BLOSSOM_ORIGIN: process.env.SPACE_BLOSSOM_ORIGIN,

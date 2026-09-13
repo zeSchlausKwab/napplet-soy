@@ -11,7 +11,7 @@ export const Route = createFileRoute('/api/artifacts/$hash')({
                 'Content-Type': 'text/plain; charset=utf-8',
                 'Content-Disposition': 'attachment; filename="index.html"',
                 'X-Content-Type-Options': 'nosniff',
-                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Cache-Control': 'no-store',
                 'Content-Security-Policy': "default-src 'none'; sandbox",
               },
             })

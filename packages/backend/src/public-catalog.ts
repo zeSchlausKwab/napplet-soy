@@ -1,3 +1,4 @@
+import { blocked, manifestBlocked } from '../../moderation/src/policy';
 import { resolve } from 'node:path';
 import {
   publicCacheSchema,
@@ -19,7 +20,7 @@ export function publicDirectory() {
     : null;
 }
 let memo: { directory: string; modified: number; size: number; cache: PublicCache } | undefined;
-export async function readPublicCatalog() {
+async function readUnmoderatedCatalog() {
   const directory = publicDirectory();
   if (!directory) return null;
   try {
@@ -51,6 +52,12 @@ export async function readPublicCatalog() {
   } catch {
     return null;
   }
+}
+export async function readPublicCatalog() {
+  const cache = await readUnmoderatedCatalog();
+  return cache
+    ? { ...cache, entries: cache.entries.filter((n) => !manifestBlocked(n.manifest)) }
+    : null;
 }
 export async function resolvePublicNapplet(input: Lookup) {
   const indexed = await indexedLookup(input);
@@ -111,7 +118,7 @@ export async function communityEntries() {
 }
 export async function publicArtifact(hash: string) {
   const directory = publicDirectory();
-  if (!directory || !/^[a-f0-9]{64}$/.test(hash)) return null;
+  if (!directory || !/^[a-f0-9]{64}$/.test(hash) || blocked('hash', hash)) return null;
   const entry = (await readPublicCatalog())?.entries.find(
     (n) =>
       n.artifactHash === hash && n.availability === 'ready' && !missingDomains(n.domains).length,
