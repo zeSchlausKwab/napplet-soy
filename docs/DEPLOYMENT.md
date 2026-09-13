@@ -156,3 +156,41 @@ and `/opt/napplet-space/downloads/cli` in production. Set
 `SPACE_CLI_DOWNLOAD_DIR` to override the store. It contains only public versioned
 archives/checksums and remains outside application release/rollback directories.
 See [CLI guide](CLI.md) for native platform checks and requirements.
+
+
+### Standalone CLI launch — 2026-09-13
+
+Active release: `20260913190543119-13840`. Rollback release:
+`20260913181640977-29742`. Application and release-tool source through `7db71ed`.
+Unchanged native services, dependencies and image codecs were reused in an
+isolated copy; all 218 deployed source files were checked against local SHA-256
+values, the web build was rebuilt with the existing private Bun 1.3.8 runtime,
+and all 116 application tests passed on the VPS before activation. Candidate
+checks verified the installer and all four download/checksum routes before the
+existing rollback-capable Caddy/PM2 activation procedure switched the site.
+
+CLI 0.1.0 archives live in `/opt/napplet-space/downloads/cli/0.1.0`. Their sizes
+and SHA-256 values are recorded in `apps/cli/distribution/release-0.1.0.json`.
+The release uploader now transfers small verified chunks over four SSH streams,
+retries interrupted connections and reuses completed chunks on another invocation.
+This was needed after a slow SSH transfer dropped; the old site remained active
+throughout transfer and staging.
+
+Post-deploy verification passed:
+
+- Eight live Chromium checks, including mobile layout, SSR styles, OG metadata,
+  sandbox restrictions, onboarding and all download links.
+- Actual public HTTPS installer into a temporary prefix with no Bun or Node on
+  PATH: verified archive → new Git project → frozen browser check → CLI preview.
+- Main/admin endpoints, unauthorized administration rejection, www redirect,
+  Blossom health, relay/GRASP NIP-11 and WebSocket EOSE, Git metrics protection,
+  and the existing `schlaustronics.com` site.
+- Native Apple Silicon checks included identity reuse, encrypted recovery,
+  publication against isolated local services, idempotent retries and crash
+  recovery. Linux ARM64 and x86-64 packages passed fresh browser downloads,
+  Secret Service identity checks and sandbox startup in isolated Ubuntu 24.04
+  containers. Intel macOS startup and sandbox checks passed under Rosetta;
+  the Intel package requires AVX2 on physical Intel Macs.
+
+Temporary test identities were removed. No test creations were published to
+public relays. Windows and musl Linux distributions remain unsupported.
