@@ -8,6 +8,11 @@ if [[ -r /etc/os-release ]]; then
   awk -F= '$1=="PRETTY_NAME" {gsub(/"/,"",$2);print $2}' /etc/os-release
 else uname -s; fi
 printf 'Architecture: '; uname -m
+printf '\nBun CPU requirement\n'
+if ! declare -F napplet_check_cpu >/dev/null; then
+  source "$(dirname "${BASH_SOURCE[0]}")/deploy-cpu-check.sh"
+fi
+napplet_check_cpu || true # Inventory remains useful even when deployment is blocked.
 printf 'Login: '; id
 printf '\nCapacity\n'
 getconf _NPROCESSORS_ONLN

@@ -19,6 +19,12 @@ smoke_port=$((web_port+1))
 [[ "$blossom_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$blossom_domain" != "$domain" ]] || exit 2
 [[ "$git_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$git_domain" != "$domain" && "$git_domain" != "$blossom_domain" ]] || exit 2
 [[ $EUID -eq 0 ]] || { echo 'Root or passwordless sudo is required.' >&2; exit 1; }
+# deploy.ts sends the shared helper before this script over stdin. Also support
+# direct invocation from a checkout; enforce the same guard before any writes.
+if ! declare -F napplet_check_cpu >/dev/null; then
+  source "$(dirname "${BASH_SOURCE[0]}")/deploy-cpu-check.sh"
+fi
+napplet_check_cpu
 command -v apt-get >/dev/null || { echo 'This script supports Debian/Ubuntu VPS hosts.' >&2; exit 1; }
 [[ -d /run/systemd/system ]] || { echo 'A running systemd host is required.' >&2; exit 1; }
 exec 9>/var/lock/napplet-space-deploy.lock

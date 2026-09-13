@@ -80,6 +80,7 @@ if (import.meta.main) {
       '-o',
       'StrictHostKeyChecking=yes',
     ];
+    const cpuCheck = await Bun.file(new URL('./deploy-cpu-check.sh', import.meta.url)).text();
     if (values.preflight) {
       await run(
         [
@@ -88,7 +89,7 @@ if (import.meta.main) {
           host,
           'if [ "$(id -u)" = 0 ]; then exec bash -s; else exec sudo -n bash -s; fi',
         ],
-        await Bun.file(new URL('./deploy-preflight.sh', import.meta.url)).text(),
+        `${cpuCheck}\n${await Bun.file(new URL('./deploy-preflight.sh', import.meta.url)).text()}`,
       );
       process.exit(0);
     }
@@ -96,8 +97,16 @@ if (import.meta.main) {
       values['web-port'] ?? (values['shared-caddy'] ? '3040' : '3000'),
     );
     const admin = normalizeTarget('pubkey', values['admin-pubkey'] ?? '');
-    // Fail on missing unattended access before building or uploading a release.
-    await run(['ssh', ...sshOptions, host, 'if [ "$(id -u)" != 0 ]; then sudo -n true; fi']);
+    // Check unattended access and CPU capabilities before building or uploading.
+    await run(
+      [
+        'ssh',
+        ...sshOptions,
+        host,
+        'if [ "$(id -u)" = 0 ]; then exec bash -s; else exec sudo -n bash -s; fi',
+      ],
+      `${cpuCheck}\nnapplet_check_cpu\n`,
+    );
     const release = `${new Date().toISOString().replace(/[-:TZ.]/g, '')}-${process.pid}`;
     const staging = await mkdtemp(join(tmpdir(), 'napplet-deploy-'));
     const archive = join(staging, `napplet-${release}.tar.gz`);
@@ -139,7 +148,7 @@ if (import.meta.main) {
           host,
           `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin}; fi`,
         ],
-        script,
+        `${cpuCheck}\n${script}`,
       );
       console.log(`\nRelease ${release} is running behind Caddy at https://${domain}`);
       console.log(`Blossom storage: https://${blossomDomain}`);
