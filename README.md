@@ -52,6 +52,19 @@ bun run dev
 
 Open <http://localhost:4173> and point your existing coding agent at the new project. It contains HTML source, a Git repository, MIT licensing, agent instructions, and a bundled copy of the shared preview runtime. The preview automatically reloads saved changes, injects the same pinned shim and NAP-SHELL handshake, and provides the same storage, identity, relay/resource and file services as the website. Optional `requires`, `relays`, and `servers` settings live in `napplet.json`. It works independently of the platform checkout after creation; existing generated projects retain their bundled runtime.
 
+## Creator identity
+
+Interactive `new` offers a new identity, an existing remote signer, or setup later. Once selected, the same identity is reused across projects. Noninteractive creation can use `--identity create`; `--identity later` creates just the preview project.
+
+```sh
+bun run napplet account create          # create once, then reuse
+bun run napplet account connect         # paste a bunker link at the hidden prompt
+bun run napplet account show
+bun run napplet account export "$HOME/napplet-recovery.ncryptsec"
+```
+
+Local keys and NIP-46 session credentials use the OS credential store. New projects contain only the selected creator's public key and network. Export creates a passphrase-encrypted NIP-49 recovery file; `account import` restores it or imports an nsec through hidden input. `account list` and `account use <account-id>` switch saved identities. Add `--network local` for separate test credentials. Linux creator accounts need an unlocked Secret Service/keyring; there is no plaintext fallback. See [identity and recovery](docs/IDENTITY.md).
+
 ## Run the production build locally
 
 ```sh
@@ -86,6 +99,7 @@ bun run check
 bun run test:relay
 bun run test:blossom
 bun run test:grasp
+bun run test:identity
 bun run build
 bunx playwright install chromium
 # With the web server running:
@@ -100,6 +114,6 @@ Our publishing contract is standard NIP-5D manifests, public relays, retrievable
 
 ## What is still ahead
 
-The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or complete public publishing flow yet. Creator-facing Git publication, Postgres/workers, production naming claims, key provisioning/remote signers, comments/likes/zaps, and the public one-line installer remain planned. The player supports the single-HTML profile and the documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
+The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or complete public publishing flow yet. Creator-facing Git publication, Postgres/workers, production naming claims, comments/likes/zaps, and the public one-line installer remain planned. The player supports the single-HTML profile and the documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
 
 The deployment script deploys this foundation, including the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), and [GRASP source hosting](docs/GRASP.md). The remaining publishing slice must connect one real creation → Git/Blossom publication → relay indexing → named playable link through the operator services described in [PLAN.md](PLAN.md).

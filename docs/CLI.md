@@ -1,6 +1,6 @@
 # Creator CLI — proposed v1 behavior
 
-Status: product/engineering proposal, updated 2026-09-12. Local `new` scaffolding and a standalone shared NAP preview host are implemented; the public installer, identity setup, and publishing workflow below remain planned. `napplet-space` is a working command name, avoiding collision with the existing upstream `napplet` binary.
+Status: product/engineering proposal, updated 2026-09-13. Local `new` scaffolding, shared NAP preview, OS-backed creator accounts, NIP-46 bunker connections and encrypted recovery are implemented. The public installer and resumable publishing workflow below remain planned. `napplet-space` is a working command name, avoiding collision with the existing upstream `napplet` binary.
 
 Interoperability is a release requirement: publish ordinary NIP-5D manifests with public Blossom `server` hints, a standard `source` reference, and required NAP domains to publicly reachable relays. Use a real creator identity, never the bundled test key. Our own relay is a publication destination, not a requirement that other clients call the Space API. Publish to interoperable default discovery relays too, and include relay hints in portable links. Optional cover/source details and website aliases must not be required to discover or run the napplet. See [PROTOCOL.md](PROTOCOL.md).
 
@@ -11,6 +11,10 @@ From this checkout, run `bun run napplet new my-experiment`, then `cd my-experim
 The preview bundles the shared verified `srcdoc` loader, pinned shim, mandatory NAP-SHELL handshake, and host services. Await `napplet.shell.ready()` before host calls. Editable project settings include `requires` for mandatory domains, `relays` for allowed read connections, and `servers` for Blossom resource hints. They default to empty arrays. Browser-extension connection, account change notifications, scoped saves, virtual file downloads and mediated resources work locally; signing and publishing remain disabled by the playback policy.
 
 The random `previewId` is a local storage namespace, not a creator public key or manifest. Editable local bytes are hash-checked in the browser; signature admission applies to published manifests. Already-generated projects retain their bundled runtime and are not automatically upgraded.
+
+Creator accounts are available through `account create`, `show`, `list`, `use`, `check`, `connect`, `import`, and `export`. Interactive `new` offers setup when no account is selected; existing selection is reused without opening the keystore or contacting a remote signer during scaffolding. Noninteractive `new` leaves setup for later unless `--identity create` is explicit. `--identity later` also bypasses account metadata. Only `{pubkey, network}` is written into `napplet.json`; this reference is not permission to sign as a cloned project's author. The preview's browser-extension connection remains separate from the publishing signer.
+
+Use `--network local` for separate account metadata and keychain credentials; its bunker transport accepts only literal-loopback WS destinations. Default public mode accepts WSS signer relays. `account connect` accepts a bunker URL at a hidden prompt; `account import` accepts an nsec or encrypted NIP-49 key. Explicit stdin options support automation without putting secrets in argv. `--json` returns public account data or an error with `code` and `message`. Detailed storage, recovery, tests and current limits: [IDENTITY.md](IDENTITY.md).
 
 ## 1. The quick path
 
@@ -33,14 +37,14 @@ For an installed CLI, the entry point is simply `napplet-space new plasma-pet`. 
 
 The install/create command should open the first preview and print the exact project path and next command. A child process cannot change the caller's shell directory, so the UX must not pretend the `cd` happened automatically. If the installer reads script text from stdin, intentional prompts must use the controlling terminal; noninteractive invocation uses explicit options and structured errors.
 
-This creator preview remains lightweight. Platform contributors use `bun run dev` and the Caddy/PM2 production-build mode `bun run dev:prod`; the full relay/Blossom/GRASP stack remains planned; see [LOCAL-DEVELOPMENT.md](LOCAL-DEVELOPMENT.md).
+This creator preview remains lightweight. Platform contributors use `bun run dev` and the Caddy/PM2 production-build mode `bun run dev:prod`; both now include the managed relay, Blossom and GRASP services. See [LOCAL-DEVELOPMENT.md](LOCAL-DEVELOPMENT.md).
 
 ## 2. Bootstrap contract
 
 `new` performs the following with bundled defaults:
 
 1. Choose a destination without overwriting an existing directory. Derive a display title and generate a collision-resistant public identifier.
-2. Select the existing creator identity, or generate the default local creator key. `--identity <ref>` and `account connect` support an existing signer. A supplied `npub` alone is insufficient to publish.
+2. Select the existing creator identity, or offer creator setup. `--identity create|connect|later` controls setup; `account use <npub-or-account-id>` selects a previously stored signer. A supplied `npub` alone is insufficient to publish.
 3. Materialize a pinned maintained template, initialize Git, and write a normal initial source commit. New projects start a new Git history; the template revision is recorded as provenance. A remix preserves source history and ancestry.
 4. Install pinned project dependencies with the supported toolchain. Configure all service endpoints, source-repository naming, and tool references without a relay-selection wizard.
 5. Install matching upstream napplet skills plus a short Space-specific workflow guide, using the requested agent target or a portable `AGENTS.md` default. Include examples for drawing, input, audio, saving state, checking, and publishing.
@@ -127,6 +131,8 @@ Restore the original's source and dependency lockfile, preserve its license/cred
 Remix content is untrusted. Clone/read first; avoid automatically executing inherited hooks or lifecycle scripts, and do not install another creator's agent instructions as trusted policy. Use the curated build recipe and agent guide for the supported profile. Projects requiring custom executable setup need an explicit trust step, so the instant path should keep that need rare. Native credential storage is not a sandbox against arbitrary processes running as the same OS user.
 
 ## 8. Signer adapter: mandatory early spike
+
+Implemented checkpoint: the shared Applesauce adapter now signs directly for the GRASP and Blossom publication libraries and NIP-5D manifests. An isolated native-service test verifies all three with one reopened creator. Native macOS CLI reuse/recovery and an encrypted loopback NIP-46 provider are tested; Linux/Windows credential stores and external signer applications still need acceptance coverage. See [IDENTITY.md](IDENTITY.md).
 
 The upstream napplet CLI and ngit both have local/remote signing support, but they do not automatically share a credential format or fallback policy. Prove one of these integration approaches in this order:
 

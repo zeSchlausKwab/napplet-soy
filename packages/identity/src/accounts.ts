@@ -329,7 +329,7 @@ export class Accounts {
       await signer.close();
     }
   }
-  async use(ref: string) {
+  async use(ref: string, options: Parameters<typeof openCredential>[2] = {}) {
     return this.locked(async (index) => {
       const account = index.accounts.find(
         (a) => a.id === ref || nip19.npubEncode(a.pubkey) === ref,
@@ -337,6 +337,7 @@ export class Accounts {
       if (!account || account.status !== 'ready')
         throw new AccountError('ACCOUNT_UNKNOWN', 'Choose a ready account from account list.');
       const signer = await openCredential(await this.credential(account), this.network, {
+        ...options,
         expectedPubkey: account.pubkey,
       });
       await signer.close();

@@ -92,6 +92,11 @@ test('NIP-46 pairs over encrypted relay traffic, stores only a client session an
     expect(account.pubkey).toBe(await e.creator.getPublicKey());
     expect(account.pubkey).not.toBe(await e.transport.getPublicKey());
     const reopened = new Accounts('local', e.directory, e.vault);
+    await expect(reopened.use(account.id, { signal: AbortSignal.abort() })).rejects.toMatchObject({
+      code: 'SIGNER_CLOSED',
+    });
+    expect(await reopened.current()).toEqual(account);
+    expect(await reopened.use(account.id, { timeoutMs: 3000 })).toEqual(account);
     const signer = await reopened.signer({ timeoutMs: 3000 });
     try {
       const signed = await signer.signEvent({

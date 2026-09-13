@@ -14,6 +14,8 @@ async function scaffold(parent: string, name: string, template: string) {
       name,
       '--template',
       template,
+      '--identity',
+      'later',
     ],
     {
       cwd: parent,

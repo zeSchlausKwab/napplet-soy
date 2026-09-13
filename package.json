@@ -31,7 +31,9 @@
     "test:blossom": "bun test tests/services/blossom*.test.ts",
     "grasp:build": "bun scripts/grasp-build.ts",
     "grasp:seed": "bun scripts/grasp.ts",
-    "test:grasp": "bun test tests/services/grasp.test.ts"
+    "test:grasp": "bun test tests/services/grasp.test.ts",
+    "test:identity": "bun test packages/identity apps/cli/src/accounts.test.ts tests/services/creator.test.ts",
+    "test:identity:native": "SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/native-identity.test.ts"
   },
   "dependencies": {
     "@contextvm/sdk": "0.13.16",
