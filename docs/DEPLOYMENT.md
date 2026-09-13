@@ -15,7 +15,7 @@ bun run deploy --host root@your-vps --domain napplet.soy --shared-caddy --web-po
 
 The first live target is `napplet.soy` at `159.198.46.2`, alongside another existing site. The app's public publication defaults and visible hostname now use `napplet.soy`; its DNS names are `napplet.soy`, `www.napplet.soy`, `blossom.napplet.soy` and `git.napplet.soy`. Inventory confirmed the existing Caddy 2.6.2 supports the required directives; port 3000 is occupied, so Napplet uses 3040 (candidate 3041).
 
-Use a Debian/Ubuntu host with systemd, x86_64 with SSE4.2 or arm64, DNS pointing to it, and inbound TCP 80/443 available. Bun requires SSE4.2 on x86_64 even with its baseline build; AVX is not required by this deployment. A legacy virtual CPU can hide the required instructions even when the physical host supports them. Ask the provider to expose an appropriate CPU model or host passthrough; this cannot be enabled by installing a package inside Ubuntu. See [Bun CPU requirements](https://bun.com/docs/installation#cpu-requirements).
+Use a Debian/Ubuntu host with systemd, x86_64 with a modern baseline CPU profile (x86-64-v2, including SSE4.2) or arm64, DNS pointing to it, and inbound TCP 80/443 available. Bun's documented x86_64 support requires SSE4.2 even with its baseline build; Sharp's prebuilt Linux image-processing library also requires SSE4.2 and reports a v2 microarchitecture requirement when its CPU check fails. AVX is not required by this deployment. A legacy virtual CPU can hide the required instructions even when the physical host supports them. Ask the provider to expose an appropriate CPU model or host passthrough; this cannot be enabled by installing a package inside Ubuntu. See [Bun CPU requirements](https://bun.com/docs/installation#cpu-requirements) and [Sharp prebuilt requirements](https://sharp.pixelplumbing.com/install/#prebuilt-binaries). The deployment's early SSE4.2 guard catches this known incompatible profile; it does not replace execution checks for the complete runtime and native dependencies.
 
 All three hostnames—`napplet.example`, `blossom.napplet.example`, and `git.napplet.example`—must resolve to the VPS. Override the service names with `--blossom-domain files.example` and `--git-domain source.example`; all three must be different. An SSH config alias works for `--host`, including its key/port settings. The SSH account must be root or have passwordless sudo. The script installs missing build dependencies without upgrading existing packages, uses a separate PM2 home, and never replaces another site’s proxy binary or service. `--shared-caddy` must be explicit.
 
@@ -80,7 +80,28 @@ Deployment includes the [managed relay](RELAY.md), [Blossom storage](BLOSSOM.md)
 - Locked dependency installation succeeded, but Bun's JavaScript runtime was killed by the deployment scope's memory limit before tests ran. The failure reproduced with only `bun -e 'console.log(...)'`, with no application imports, under a separate 768 MiB/20-second diagnostic limit. Disabling JIT did not resolve it. `bun --version` alone succeeds and is insufficient as a runtime check.
 - `/proc/cpuinfo` reports `QEMU Virtual CPU version 2.5+` without `sse4_2`, below Bun's documented minimum. The new CPU guard was verified on this VPS: the deploy command now exits before builds, uploads or remote writes.
 
-To resume, arrange a provider-side CPU profile exposing SSE4.2 and coordinate any required stop/start with the existing site's operator. Run preflight again, verify the installed Bun can execute a small JavaScript program under the diagnostic resource limits, then rerun the shared deployment command above. Complete external HTTPS, relay/Blossom/Git, admin-signature and reboot-recovery checks before calling the deployment finished. Increasing the memory limit or changing app code is not a substitute for a supported CPU.
+### Follow-up: comparison with the existing applications
+
+The operator identified the provider as Namecheap and noted that similar apps already run there. A controlled comparison confirmed that the original blanket conclusion, "this VPS cannot run Bun", was too broad:
+
+| Probe on the same VPS | Observed result |
+| --- | --- |
+| Existing `/root/.bun/bin/bun`, version 1.3.8, minimal JavaScript | Pass |
+| Napplet's isolated Bun 1.3.11, identical JavaScript/environment/resource limits | OOM kill at 768 MiB, before output |
+| Fresh upstream checksum-verified Bun 1.3.8 baseline, as the `napplet` user | Pass; binary hash matches the existing runtime |
+| Inactive release checks using the isolated 1.3.8 copy | Typecheck passes; 97 tests pass, 5 fail and one module-load error is reported, with Sharp failing its CPU compatibility check |
+
+The side-by-side probes used clean environments and separate systemd services limited to 768 MiB, one CPU, 12 seconds and no core dumps. The project check used 1536 MiB, two CPUs and a 90-second ceiling. The minimal command was `bun -e 'console.log("NAPPLET RUNTIME OK")'`. No active runtime was replaced and no existing application was restarted. The temporary diagnostic binary and PATH symlink were removed after the comparison.
+
+This establishes a version-specific Bun startup failure on this host, but does not isolate its internal cause. Separately, Sharp explicitly reports `Unsupported CPU: Prebuilt binaries for Linux x64 require v2 microarchitecture`. Therefore, downgrading Bun alone does not make this release deployable. A successful older Bun process is not evidence that the full pinned dependency set supports the same CPU profile. The CPU guard remains justified for the current deployment; it should not be described as proof that every Bun version fails.
+
+Namecheap documents KVM/QEMU virtualization and its customer-facing SolusVM controls, but the published panel guide does not list CPU-model selection. Ask hosting support about availability rather than promising a self-service setting: [virtualization](https://www.namecheap.com/support/knowledgebase/article.aspx/909/48/what-virtualization-technology-is-set-up-on-vps/), [VPS panel guide](https://www.namecheap.com/support/knowledgebase/article.aspx/9974/48/how-to-manage-your-vps-with-solusvm-for-kvm/).
+
+Suggested support request (prepared only; not sent):
+
+> My VPS at 159.198.46.2 exposes "QEMU Virtual CPU version 2.5+" and lacks SSE4.2, SSE4.1, SSSE3 and POPCNT in /proc/cpuinfo. Our current Sharp image-processing library rejects this CPU profile. Can you expose an x86-64-v2-capable CPU model or host passthrough, or migrate the VPS to a host/profile that provides these features? Please confirm availability and any downtime before making changes; existing sites and all server data must be preserved.
+
+To resume, arrange a provider-side CPU profile meeting these requirements and coordinate any required stop/start with the existing site's operator. Run preflight again, verify the pinned Bun can execute a small JavaScript program and load Sharp under diagnostic resource limits, then rerun the shared deployment command above. Complete external HTTPS, relay/Blossom/Git, admin-signature and reboot-recovery checks before calling the deployment finished. If the provider cannot expose these features, a separately tested compatibility profile or a different host is required; neither has been implemented or provisioned.
 
 ## Share previews and optional ContextVM
 
