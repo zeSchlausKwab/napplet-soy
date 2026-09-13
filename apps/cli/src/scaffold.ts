@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { preparePreviewRuntime } from './preview/bundle';
 import { examples, exampleHtml } from '../../../packages/examples/artifact';
 
 export class ScaffoldInputError extends Error {}
@@ -17,49 +18,9 @@ export async function scaffold(parent: string, name: string, template: string) {
   // Fail atomically if anything already occupies the destination; never overwrite a project.
   await mkdir(target);
   await mkdir(resolve(target, '.napplet'));
-  // Bundle the exact shared host and policy into the standalone project.
-  const builds = [
-    await Bun.build({
-      entrypoints: [new URL('./preview/server.ts', import.meta.url).pathname],
-      target: 'bun',
-      format: 'esm',
-      minify: true,
-    }),
-    await Bun.build({
-      entrypoints: [new URL('./preview/client.ts', import.meta.url).pathname],
-      target: 'browser',
-      format: 'esm',
-      minify: true,
-      plugins: [
-        {
-          name: 'raw-napplet-prelude',
-          setup(build) {
-            build.onResolve({ filter: /^@napplet\/shim\/prelude.global\?raw$/ }, () => ({
-              path: Bun.resolveSync('@napplet/shim/prelude.global', import.meta.dir),
-              namespace: 'raw',
-            }));
-            build.onLoad({ filter: /.*/, namespace: 'raw' }, async ({ path }) => ({
-              contents: await readFile(path, 'utf8'),
-              loader: 'text',
-            }));
-          },
-        },
-      ],
-    }),
-  ];
-  for (const [i, built] of builds.entries()) {
-    if (!built.success)
-      throw new Error(`Could not prepare the shared preview runtime: ${built.logs.join('\n')}`);
-    await writeFile(
-      resolve(target, `.napplet/${i === 0 ? 'server' : 'client'}.js`),
-      await built.outputs[0].text(),
-    );
-  }
-  await writeFile(
-    resolve(target, '.napplet/preview.html'),
-    await readFile(new URL('../templates/preview.html', import.meta.url), 'utf8'),
-  );
+  await preparePreviewRuntime(target);
   await writeFile(resolve(target, 'index.html'), exampleHtml(template));
+  const previewId = crypto.randomUUID();
   await writeFile(
     resolve(target, 'dev.ts'),
     await readFile(new URL('../templates/dev.template', import.meta.url), 'utf8'),
@@ -72,7 +33,8 @@ export async function scaffold(parent: string, name: string, template: string) {
         name,
         template,
         entry: 'index.html',
-        previewId: crypto.randomUUID(),
+        previewId,
+        identifier: `n-${previewId.replaceAll('-', '').slice(0, 11)}`,
         requires: [],
         relays: [],
         servers: [],
@@ -106,7 +68,7 @@ export async function scaffold(parent: string, name: string, template: string) {
   );
   await writeFile(
     resolve(target, 'README.md'),
-    `# ${name}\n\nA local napplet based on ${template}, from the Space lab starter collection.\n\nRun \`bun run dev\`, open http://localhost:4173, and edit \`index.html\` with your favorite coding agent. The preview reloads when the artifact changes. No dependency install is required.\n\nThe preview uses the same hash verification, srcdoc sandbox, pinned shim, NAP-SHELL handshake, and host services as the website. Await \`window.napplet.shell.ready()\` before calling host APIs. \`requires\` declares mandatory domains; \`relays\` configures allowed relay reads and \`servers\` supplies Blossom resource hints. Empty lists work for self-contained experiments. You can connect your browser extension to test identity changes; the preview never signs or publishes events.\n\nThe local \`previewId\` scopes your saves and is not a Nostr identity. Local bytes are trusted as your editable source and verified by hash in the browser; signature verification applies once a manifest is published. Files offered by napplet.fs stay in the preview session until you download them.\n\nEdit the optional lowercase topic labels in \`napplet.json\` as your idea evolves. They describe the creation, for example \`visual\`, \`generative\`, or \`game\`; they are not exclusive categories.\n\nThe HTML is both the source and playable artifact. Keep it self-contained. Creator identities are managed by the platform CLI account commands. A selected creator is recorded here only as a public key and network profile; keys and remote-signer credentials stay in your OS credential store. This public reference never authorizes a clone or remix to use another creator’s signer. Public publishing is still being connected to the managed Git, Blossom and relay services.\n`,
+    `# ${name}\n\nA local napplet based on ${template}, from the Space lab starter collection.\n\nRun \`bun run dev\`, open http://localhost:4173, and edit \`index.html\` with your favorite coding agent. The preview reloads when the artifact changes. No dependency install is required.\n\nThe preview uses the same hash verification, srcdoc sandbox, pinned shim, NAP-SHELL handshake, and host services as the website. Await \`window.napplet.shell.ready()\` before calling host APIs. \`requires\` declares mandatory domains; \`relays\` configures allowed relay reads and \`servers\` supplies Blossom resource hints. Empty lists work for self-contained experiments. You can connect your browser extension to test identity changes; the preview never signs or publishes events.\n\nThe local \`previewId\` scopes your saves and is not a Nostr identity. Local bytes are trusted as your editable source and verified by hash in the browser; signature verification applies once a manifest is published. Files offered by napplet.fs stay in the preview session until you download them.\n\nEdit the optional lowercase topic labels in \`napplet.json\` as your idea evolves. They describe the creation, for example \`visual\`, \`generative\`, or \`game\`; they are not exclusive categories.\n\nThe HTML is both the source and playable artifact. Keep it self-contained. Creator identities are managed by the platform CLI account commands. A selected creator is recorded here only as a public key and network profile; keys and remote-signer credentials stay in your OS credential store. This public reference never authorizes a clone or remix to use another creator’s signer. From the platform checkout, use \`bun run napplet publish --project <this-folder> --dry-run\` to inspect the source and destinations, then omit --dry-run to publish. Add --network local to use the dev services. The publisher keeps frozen source and retry state in .napplet-space; keep that directory when moving the project. Relay publication is available; website indexing and named links are still being implemented.\n`,
   );
   const git = Bun.spawn(['git', 'init', '--initial-branch=main', target], {
     stdout: 'pipe',

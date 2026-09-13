@@ -81,6 +81,23 @@ bun run dev:down
 
 These commands affect only this checkout's `.local/pm2` state. They do not install global PM2 services or modify the OS trust store. Local HTTP is the initial convenience mode; `SPACE_SITE_ADDRESS=https://localhost:8443` selects Caddy's local HTTPS. For that mode, install/trust its local CA separately before browsing; readiness checks also need the local CA trusted. Public HTTPS is configured by the VPS deploy script.
 
+## Publish a creation
+
+The CLI now freezes selected source, checks it in the shared browser sandbox, pushes a Git release, uploads HTML and a source archive to Blossom, and publishes standard snapshot/current manifests. Retries reuse saved signatures and commits. Try it against the running local services with a matching local creator:
+
+```sh
+bun run napplet account create --network local
+bun run napplet new local-experiment --network local
+bunx playwright install chromium
+bun run napplet publish --project local-experiment --network local --dry-run
+bun run napplet publish --project local-experiment --network local
+bun run napplet status --project local-experiment --network local
+# After interruption, finish the saved bytes even if the editor has newer changes:
+bun run napplet publish --project local-experiment --network local --resume
+```
+
+The current result is `announced_pending_index`: the relay and storage are verified, while website indexing and named routes remain ahead. Keep `.napplet-space` with the project for retry history. Public destinations can be configured, but the intended production defaults have not been deployed or verified here. See [publishing commands, source scope and recovery](docs/PUBLISHING.md).
+
 ## Deploy to a VPS
 
 Point your website hostname, `blossom.<website-hostname>` and `git.<website-hostname>` at a dedicated Debian/Ubuntu VPS with systemd, SSH access, and reachable ports 80/443:
@@ -100,6 +117,7 @@ bun run test:relay
 bun run test:blossom
 bun run test:grasp
 bun run test:identity
+bun run test:publish
 bun run build
 bunx playwright install chromium
 # With the web server running:
@@ -108,12 +126,12 @@ bun run test:browser
 TEST_ORIGIN=http://localhost:8080 bun run test:browser
 ```
 
-`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Dev startup writes fixture events, blobs and Git source only to literal-loopback services; public relays and storage never receive fixtures. Connecting creator source, artifact publication and relay discovery remains ahead. Fixtures use the same manifest validation and runtime policy as relay imports. The local posters are bundled illustrations. Relay imports resolve linked NIP-89 pictures and Zapstore screenshots/icons, cache safe raster images for gallery/player/OG previews, and fall back to generated cards when unavailable. See [linked previews](docs/PREVIEWS.md) for formats and limits.
+`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Dev startup writes fixture events, blobs and Git source only to literal-loopback services; public relays and storage never receive fixtures. The CLI now connects creator source, artifact publication and relay discovery; persistent website indexing remains ahead. Fixtures use the same manifest validation and runtime policy as relay imports. The local posters are bundled illustrations. Relay imports resolve linked NIP-89 pictures and Zapstore screenshots/icons, cache safe raster images for gallery/player/OG previews, and fall back to generated cards when unavailable. See [linked previews](docs/PREVIEWS.md) for formats and limits.
 
 Our publishing contract is standard NIP-5D manifests, public relays, retrievable Blossom bytes, and open source by default. Additional Space metadata and named routes are optional overlays. Publishing is not complete until an independent client discovers and runs a release without the Space API; see [the interoperability contract](docs/PROTOCOL.md).
 
 ## What is still ahead
 
-The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or complete public publishing flow yet. Creator-facing Git publication, Postgres/workers, production naming claims, comments/likes/zaps, and the public one-line installer remain planned. The player supports the single-HTML profile and the documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
+The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or complete public publishing flow yet. Postgres/workers, production naming claims, comments/likes/zaps, and the public one-line installer remain planned. The player supports the single-HTML profile and the documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
 
-The deployment script deploys this foundation, including the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), and [GRASP source hosting](docs/GRASP.md). The remaining publishing slice must connect one real creation → Git/Blossom publication → relay indexing → named playable link through the operator services described in [PLAN.md](PLAN.md).
+The deployment script deploys this foundation, including the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), and [GRASP source hosting](docs/GRASP.md). The next slice must connect CLI-published relay events → persistent website indexing → named playable link through the operator services described in [PLAN.md](PLAN.md).

@@ -14,7 +14,7 @@ Interactive project creation offers **create**, **connect existing**, or **set u
 
 `account create` is idempotent: it reuses the selected account. `account import` and `account connect` add and select an identity while retaining earlier entries. `account list` displays their public keys, types, status and account IDs. `account use <account-id>` verifies the stored signer before selecting it. An npub is also accepted; use the account ID when multiple sessions represent the same public key.
 
-New projects store only `creator: {pubkey, network}` in `napplet.json`. This is a public authorship reference, not access to a key. A future publisher must match it against an explicitly selected signer; cloning/remixing someone else's project must never select their credentials. A missing reference can use the current account when publishing is implemented. The local `previewId` and browser-extension identity belong to preview behavior and remain independent of the publishing signer.
+New projects store only `creator: {pubkey, network}` in `napplet.json`. This is a public authorship reference, not access to a key. The publisher matches it against the explicitly selected signer; cloning/remixing someone else's project must never select their credentials. A missing reference uses the current account. The local `previewId` and browser-extension identity belong to preview behavior and remain independent of the publishing signer.
 
 ## Where credentials live
 
@@ -74,4 +74,4 @@ Tests cover reuse, independent process access, two generated projects, encrypted
 
 The service integration test uses one reopened creator to publish source through native ngit-grasp, upload HTML through Blossom, and sign a standard manifest on Khatru. An independent Git clone and relay/Blossom reader recover the expected source and playable bytes. All test services and signing traffic are loopback-only.
 
-These account components are ready for the publication orchestrator. There is still no complete `publish` command, public installer, persistent gallery indexing/naming transaction, or independent-client public publication acceptance result.
+The [resumable publisher](PUBLISHING.md) now uses these components. The public installer, persistent gallery indexing/naming transaction and independent-client public publication acceptance remain ahead.

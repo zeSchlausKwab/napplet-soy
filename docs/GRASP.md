@@ -29,11 +29,11 @@ Both `dev` and `dev:prod` start Caddy before seeding so Git URLs remain identica
 
 ## Source publication adapter
 
-`packages/grasp/src/client.ts` uses an Applesauce-compatible signer. It prepares a kind-30617 announcement with the repository identifier, HTTPS clone URL, relay URL and earliest unique commit, followed by kind-30618 authorizing a commit at `refs/heads/main`. Metadata is signed and checked before network activity. The adapter accepts a committed, clean repository with one root and publishes its selected commit as `main`; multi-branch/tag management is left to a full ngit client.
+`packages/grasp/src/client.ts` uses an Applesauce-compatible signer. It prepares a kind-30617 announcement with the repository identifier, HTTPS clone URL, relay URL and earliest unique commit, followed by kind-30618 authorizing a commit at `refs/heads/main`. Metadata is signed and checked before network activity. The adapter accepts a committed, clean repository with one root and publishes its selected commit as `main`; it can additionally retain up to 128 immutable `refs/tags/release-<id>` tags. The publisher supplies an expected main commit for a Git force-with-lease; general multi-branch/tag management is left to a full ngit client.
 
 Publish those events to GRASP, push the authorized Git objects, then verify both relay events and the advertised branch tip. GRASP initially holds repository metadata in purgatory until the required objects exist. A successful relay acknowledgement alone is insufficient. The adapter supports retrying the same signed publication; it does not re-sign on retry. Private keys never go to the Git subprocess.
 
-`scripts/grasp.ts` exercises this path for the six local examples, storing a public retry journal outside each source repository. Unchanged seeds verify existing events and Git refs without new commits or publications. These repositories currently demonstrate the source component; catalog manifests and the creator CLI are not yet wired into a complete source/Blossom/release publication transaction.
+`scripts/grasp.ts` exercises this path for the six local examples, storing a public retry journal outside each source repository. Unchanged seeds verify existing events and Git refs without new commits or publications. These repositories demonstrate the source component. The [creator publisher](PUBLISHING.md) now connects Git, Blossom and standard manifest publication; persistent website ingestion remains ahead.
 
 ## Verification
 

@@ -30,7 +30,11 @@ export type PreviewRevision = {
 };
 
 /** Local source is the authority here: no publisher keys or fabricated relay events. */
-export function startPreviewServer(root: URL) {
+export function startPreviewServer(
+  root: URL,
+  port = Number(process.env.PORT ?? 4173),
+  announce = true,
+) {
   async function revision() {
     // BunFile caches stat/size: create fresh handles after every editor save.
     const artifact = Bun.file(new URL('index.html', root));
@@ -58,7 +62,7 @@ export function startPreviewServer(root: URL) {
   const noStore = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
   const server = Bun.serve({
     hostname: '127.0.0.1',
-    port: Number(process.env.PORT ?? 4173),
+    port,
     async fetch(request) {
       const url = new URL(request.url);
       // Loopback binding and Host/Origin checks also apply to the resource proxy.
@@ -114,6 +118,6 @@ export function startPreviewServer(root: URL) {
       }
     },
   });
-  console.log(`Local napplet preview: ${server.url}`);
+  if (announce) console.log(`Local napplet preview: ${server.url}`);
   return server;
 }

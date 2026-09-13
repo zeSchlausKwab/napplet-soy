@@ -5,6 +5,8 @@ import { scaffold, ScaffoldInputError } from './scaffold';
 import { Accounts, type Account } from '../../../packages/identity/src/accounts';
 import { AccountError, type Network } from '../../../packages/identity/src/signer';
 import { ask, hiddenInput as readHiddenInput, secretStdin } from './input';
+import { publishProject, publicationStatus, PublishError } from '../../../packages/publish/src';
+import { checkPublication } from './publish-check';
 
 const help = `Usage:
   bun run napplet new <folder> [--template soft-orbit] [--identity create|connect|later]
@@ -13,13 +15,17 @@ const help = `Usage:
   bun run napplet account import [--stdin]
   bun run napplet account use <npub-or-account-id>
   bun run napplet account export <new-recovery-file> [--passphrase-stdin]
+  bun run napplet publish [--project <folder>] [--dry-run | --resume]
+  bun run napplet status [--project <folder>]
 
 All commands accept --network public|local and --json.
 Create reuses your selected account. Connect accepts a hidden bunker link.
 Import accepts a hidden nsec or encrypted NIP-49 recovery key. With --stdin,
 provide the key on line 1 and, for an encrypted key, its passphrase on line 2.
 Export writes a passphrase-encrypted NIP-49 file outside Git projects.
-Secrets never belong in command arguments. Public publishing is still under construction.`;
+Publish targets: --relay <url> --blossom <origin> --grasp <origin> --site <origin>
+and optional repeated --mirror <url>. Local mode defaults to the dev services.
+Secrets never belong in command arguments. Website indexing is still under construction.`;
 let json = process.argv.slice(2).includes('--json');
 let createdProject: string | undefined;
 const controller = new AbortController();
@@ -57,6 +63,14 @@ try {
         'passphrase-stdin': { type: 'boolean' },
         json: { type: 'boolean' },
         help: { type: 'boolean' },
+        project: { type: 'string' },
+        'dry-run': { type: 'boolean' },
+        resume: { type: 'boolean' },
+        relay: { type: 'string' },
+        blossom: { type: 'string' },
+        grasp: { type: 'string' },
+        site: { type: 'string' },
+        mirror: { type: 'string', multiple: true },
       },
     });
   } catch {
@@ -102,6 +116,17 @@ try {
       );
   };
   const [command, action, argument, ...extra] = positionals;
+  const publishingOptions =
+    values.project ||
+    values['dry-run'] ||
+    values.resume ||
+    values.relay ||
+    values.blossom ||
+    values.grasp ||
+    values.site ||
+    values.mirror;
+  if (!['publish', 'status'].includes(command) && publishingOptions)
+    throw new AccountError('USAGE', 'Publication options are only valid for publish/status.');
   if (command === 'new') {
     if (
       !action ||
@@ -148,8 +173,68 @@ try {
       );
     else
       console.log(
-        `\nYour napplet is ready at ${directory}\n\n  cd ${action}\n  bun run dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nPublic publishing is still under construction.`,
+        `\nYour napplet is ready at ${directory}\n\n  cd ${action}\n  bun run dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nUse the platform CLI publish --project <folder> to publish. Website indexing is still under construction.`,
       );
+  } else if (command === 'publish' || command === 'status') {
+    if (
+      action ||
+      values.template ||
+      values.identity ||
+      values.stdin ||
+      values['passphrase-stdin'] ||
+      (command === 'status' &&
+        (values['dry-run'] ||
+          values.resume ||
+          values.relay ||
+          values.blossom ||
+          values.grasp ||
+          values.site ||
+          values.mirror))
+    )
+      throw new AccountError(
+        'USAGE',
+        'Use publish [--project folder] [--dry-run | --resume], or status [--project folder].',
+      );
+    const targets = {
+      ...(values.relay ? { relay: values.relay } : {}),
+      ...(values.blossom ? { blossom: values.blossom } : {}),
+      ...(values.grasp ? { grasp: values.grasp } : {}),
+      ...(values.site ? { site: values.site } : {}),
+      ...(values.mirror ? { mirrors: values.mirror } : {}),
+    };
+    const result =
+      command === 'status'
+        ? await publicationStatus(values.project ?? process.cwd(), network)
+        : await publishProject({
+            directory: values.project ?? process.cwd(),
+            network,
+            targets,
+            accounts,
+            dryRun: values['dry-run'],
+            resume: values.resume,
+            check: checkPublication,
+            signal: controller.signal,
+            onAuth,
+            progress: json ? undefined : (stage) => process.stderr.write(`Publishing: ${stage}\n`),
+            summary: json
+              ? undefined
+              : (plan) =>
+                  process.stderr.write(
+                    `Creator: ${plan.pubkey}\nSource (${plan.sourceBytes} bytes, ${JSON.stringify(plan.license)}):\n${plan.files.map((file) => `  ${file.path}`).join('\n')}\nRelay: ${plan.targets.relay}\nBlossom: ${plan.targets.blossom}\nGit: ${plan.targets.grasp}\n`,
+                  ),
+          });
+    if (json) console.log(JSON.stringify(result));
+    else if (result.status === 'dry_run') console.log(JSON.stringify(result, null, 2));
+    else if (result.status === 'not_started')
+      console.log(
+        'No publication yet. Run publish --dry-run to inspect the source and destinations.',
+      );
+    else {
+      console.log(
+        `${result.unchanged ? 'Existing publication' : 'Publication'}: ${result.status}\nSource commit: ${result.sourceCommit}\nNapplet: ${result.naddr}\nSnapshot: ${result.snapshotId ?? 'pending'}\nWebsite indexing is pending; the route is not yet confirmed: ${result.url}`,
+      );
+      if (result.error) console.log(`${result.error.code}: ${result.error.message}`);
+    }
   } else if (command === 'account') {
     if (
       !action ||
@@ -249,7 +334,11 @@ try {
   if (json)
     console.log(
       JSON.stringify({
-        error: { code: safe.code, message: safe.message },
+        error: {
+          code: safe.code,
+          message: safe.message,
+          ...(safe instanceof PublishError ? { stage: safe.stage, retryable: safe.retryable } : {}),
+        },
         ...(createdProject ? { directory: createdProject } : {}),
       }),
     );
