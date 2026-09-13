@@ -120,7 +120,7 @@ if [[ ! -f "$app_root/tools/node_modules/pm2/package.json" ]] || [[ "$(node -p "
   npm install --prefix "$app_root/tools" --no-audit --no-fund "pm2@$pm2_version"
 fi
 pm2_bin="$app_root/tools/node_modules/pm2/bin/pm2"
-pm2_run() { runuser -u napplet -- env PM2_HOME="$state_root/pm2" PATH="$app_root/bin:/usr/bin:/bin" node "$pm2_bin" "$@"; }
+pm2_run() { runuser -u napplet -- env PM2_HOME="$state_root/pm2" PATH="$app_root/bin:/usr/sbin:/usr/bin:/sbin:/bin" node "$pm2_bin" "$@"; }
 
 [[ ! -e "$release_dir" ]] || { echo 'Release directory already exists.' >&2; exit 1; }
 install -d -o napplet -g napplet "$release_dir"
@@ -134,7 +134,7 @@ if [[ -f "$app_root/shared/server.env" ]]; then
   source "$app_root/shared/server.env"
   set +a
 fi
-export PATH="$rust_root/bin:$go_root/go/bin:$app_root/bin:/usr/bin:/bin"
+export PATH="$rust_root/bin:$go_root/go/bin:$app_root/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export SPACE_SITE_ORIGIN="https://$domain"
 export PORT="$web_port"
 export SPACE_ADMIN_PUBKEYS="${SPACE_ADMIN_PUBKEYS:-$admin_pubkey}"
@@ -143,7 +143,6 @@ export VITE_NOSTR_RELAYS="${VITE_NOSTR_RELAYS:-wss://$domain/relay}"
 # Store only public deployment identity; operator secrets stay in server.env.
 printf '%s\n' "$SPACE_ADMIN_PUBKEYS" > "$app_root/shared/admin-pubkeys"
 chmod 600 "$app_root/shared/admin-pubkeys"
-runuser -u napplet -- "$app_root/bin/bun" "$release_dir/scripts/moderation-init.ts" "$SPACE_MODERATION_FILE"
 export SPACE_PUBLICDEV=0 SPACE_PUBLICDEV_DIR=''
 export SPACE_INDEX_DIR="$state_root/index"
 export SPACE_INDEX_RELAYS="${SPACE_INDEX_RELAYS:-ws://127.0.0.1:19347/relay}"
@@ -157,6 +156,8 @@ if [[ -f "$state_root/grasp/upstream.commit" ]] && [[ "$(cat "$state_root/grasp/
   exit 1
 fi
 systemd-run --scope --quiet --unit="napplet-build-$release_id" -p MemoryMax=3G -p CPUQuota=200% -p TasksMax=512 runuser -u napplet -- env -u SPACE_MODERATION_FILE -u SPACE_ADMIN_PUBKEYS -u SPACE_INDEX_DIR GOMAXPROCS=2 GOFLAGS=-p=2 CARGO_BUILD_JOBS=2 nice -n 10 bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
+
+runuser -u napplet -- "$app_root/bin/bun" "$release_dir/scripts/moderation-init.ts" "$SPACE_MODERATION_FILE"
 
 start_relay() {
   local source_release=$1
@@ -363,7 +364,7 @@ After=network.target
 Type=forking
 User=napplet
 Environment=PM2_HOME=$state_root/pm2
-Environment=PATH=$app_root/bin:/usr/bin:/bin
+Environment=PATH=$app_root/bin:/usr/sbin:/usr/bin:/sbin:/bin
 PIDFile=$state_root/pm2/pm2.pid
 ExecStart=/usr/bin/node $pm2_bin resurrect
 ExecStop=/usr/bin/node $pm2_bin kill

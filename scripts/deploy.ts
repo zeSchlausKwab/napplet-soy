@@ -40,6 +40,7 @@ export function validateGitDomain(domain: string, blossom: string, input = `git.
 }
 async function run(args: string[], stdin?: string) {
   const child = Bun.spawn(args, {
+    env: { ...process.env, COPYFILE_DISABLE: '1' },
     stdout: 'inherit',
     stderr: 'inherit',
     stdin: stdin === undefined ? 'inherit' : new Blob([stdin]),
@@ -107,6 +108,7 @@ if (import.meta.main) {
       await run(['bun', 'run', 'test:grasp']);
       await run([
         'tar',
+        '--no-xattrs',
         '--exclude=node_modules',
         '--exclude=dist',
         '--exclude=.output',
