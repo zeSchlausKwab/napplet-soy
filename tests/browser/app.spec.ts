@@ -97,6 +97,35 @@ test('portable and pinned source routes resolve; unknown addresses return 404', 
   expect((await request.get('/@nobody/missing')).status()).toBe(404);
 });
 
+test('server-rendered gallery loads responsive styles without JavaScript', async ({
+  browser,
+  request,
+}) => {
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    viewport: { width: 390, height: 844 },
+  });
+  try {
+    const page = await context.newPage();
+    await page.goto('/');
+    const stylesheets = await page
+      .locator('link[rel="stylesheet"]')
+      .evaluateAll((links) => links.map((link) => (link as HTMLLinkElement).href));
+    expect(stylesheets.length).toBeGreaterThan(0);
+    for (const url of stylesheets) {
+      const response = await request.get(url);
+      expect(response.status()).toBe(200);
+      expect(response.headers()['content-type']).toContain('text/css');
+    }
+    await expect(page.locator('.napplet-grid')).toHaveCSS('display', 'grid');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  } finally {
+    await context.close();
+  }
+});
+
 test('mobile gallery has no horizontal overflow and signer failure is actionable', async ({
   page,
 }) => {

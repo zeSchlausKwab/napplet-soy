@@ -1,4 +1,5 @@
-@import 'tailwindcss';
+/* Keep generated client bundles out of the subsequent SSR class scan. */
+@import 'tailwindcss' source('./');
 @import 'tw-animate-css';
 @import '@fontsource/dm-sans/400.css';
 @import '@fontsource/dm-sans/500.css';
