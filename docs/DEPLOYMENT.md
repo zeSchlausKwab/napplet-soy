@@ -196,3 +196,36 @@ Post-deploy verification passed:
 
 Temporary test identities were removed. No test creations were published to
 public relays. Windows and musl Linux distributions remain unsupported.
+
+## Public relay discovery — 2026-09-13
+
+Active release: `20260913202705982-26454`, application source through `2d2ec24`.
+Rollback release: `20260913200901614-97707`; the earlier CLI release remains on disk.
+
+The original deployment read only its managed relay. It now queries that relay plus
+Damus, nos.lol and Primal through the persistent indexer; `publicdev` remains disabled.
+The first catch-up admitted 114 signed records, producing 91 distinct creations after
+validation, replacement/deletion handling and snapshot deduplication (97 gallery cards
+including the six examples). This is a current observation, not a fixed catalog size.
+
+Deployment exposed two related compatibility issues: deletion batches exceeded the
+managed relay's 64-value tag-filter limit, and Bun 1.3.8's custom DNS path lost the
+TLS hostname. The initial activation rolled back; the corrected release uses bounded
+deletion batches and the same guarded HTTPS transport in short-lived Node workers.
+A valid 9,246,415-byte napplet also exceeded the old three-second mirror deadline;
+mirror attempts now have eight seconds within the worker's twelve-second deadline.
+Signature, SHA-256, UTF-8, certificate, private-network and size checks remain enforced.
+
+The release reused verified unchanged native binaries and locked dependencies, then
+rebuilt the web application. Both Caddy configuration checksums stayed unchanged;
+the other VPS site, HTTPS, relay, Blossom and Git endpoints remained healthy.
+
+Verification: 119 application tests and typechecking passed on the VPS; the local
+native relay → worker → production SSR → sandbox integration passed. Both opt-in
+HTTPS tests passed on Bun 1.3.8, including the 9.2 MB artifact and rejection of
+invalid certificates, private addresses and oversized responses. The eight existing
+app/onboarding browser checks passed with dynamic-catalog fixture assertions.
+Live Rubik Cube playback, OG metadata and responsive rendering passed, followed by
+Random Sticker loading/changing/exporting images through the production resource
+endpoint. All 225 deployed source checksums matched; PM2 saved the four-relay
+configuration for reboot recovery. No test events were published to public relays.
