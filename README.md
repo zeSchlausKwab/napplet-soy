@@ -2,7 +2,7 @@
 
 A playground for self-contained games, visual experiments, and digital nonsense.
 
-This is the first working implementation slice: Bun + React + TanStack Start, shadcn/ui, and Applesauce. It includes six signed local examples, SSR and client navigation, named/Nostr/pinned URLs, hash-verified sandbox playback, source inspection, a local starter CLI, and Caddy/PM2 deployment tooling.
+This is the first working implementation slice: Bun + React + TanStack Start, shadcn/ui, and Applesauce. It includes six signed local examples, SSR and client navigation, named/Nostr/pinned URLs, hash-verified sandbox playback, source inspection, a standalone creator CLI, and Caddy/PM2 deployment tooling.
 
 ## Start developing
 
@@ -45,9 +45,10 @@ Start the platform dev stack first to provide the relay. The server creates a pe
 From this repository:
 
 ```sh
-bun run napplet new my-napplet --template soft-orbit
+curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet --template soft-orbit
+# Follow the printed PATH instruction if needed.
 cd my-napplet
-bun run dev
+napplet-space dev
 ```
 
 Open <http://localhost:4173> and point your existing coding agent at the new project. It contains HTML source, a Git repository, MIT licensing, agent instructions, and a bundled copy of the shared preview runtime. The preview automatically reloads saved changes, injects the same pinned shim and NAP-SHELL handshake, and provides the same storage, identity, relay/resource and file services as the website. Optional `requires`, `relays`, and `servers` settings live in `napplet.json`. It works independently of the platform checkout after creation; existing generated projects retain their bundled runtime.
@@ -96,7 +97,7 @@ bun run napplet status --project local-experiment --network local
 bun run napplet publish --project local-experiment --network local --resume
 ```
 
-Publication returns `indexed` once the website confirms the exact current/snapshot pair and verified artifact. If the website is still catching up, it returns `announced_pending_index`; use `bun run napplet status --project local-experiment --network local --refresh` to check again without signing or publishing. Keep `.napplet-space` for retry history. Authenticated named routes remain ahead, and production defaults have not been deployed here. See [publishing and recovery](docs/PUBLISHING.md) and [persistent indexing](docs/INDEXING.md).
+Publication returns `indexed` once the website confirms the exact current/snapshot pair and verified artifact. If the website is still catching up, it returns `announced_pending_index`; use `bun run napplet status --project local-experiment --network local --refresh` to check again without signing or publishing. Keep `.napplet-space` for retry history. Authenticated named routes remain ahead, and the public defaults target the deployed napplet.soy services. See [publishing and recovery](docs/PUBLISHING.md) and [persistent indexing](docs/INDEXING.md).
 
 ## Deploy to a VPS
 
@@ -132,6 +133,8 @@ Our publishing contract is standard NIP-5D manifests, public relays, retrievable
 
 ## What is still ahead
 
-The site merges bundled examples, a persistent SQLite relay index and the optional publicdev collection by Nostr identity. Its separate PM2 worker verifies manifests, downloads artifacts and resolves linked previews. Authenticated naming claims, full catalog pagination, comments/likes/zaps, and the public installer remain planned. The player supports the single-HTML profile and documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
+The site merges bundled examples, a persistent SQLite relay index and the optional publicdev collection by Nostr identity. Its separate PM2 worker verifies manifests, downloads artifacts and resolves linked previews. Authenticated naming claims, full catalog pagination, and comments/likes/zaps remain planned. The public installer now distributes standalone macOS/Linux creator packages. The player supports the single-HTML profile and documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
 
 The deployment script includes the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), [GRASP source hosting](docs/GRASP.md), and [persistent website index](docs/INDEXING.md). The next slice adds authenticated creator handles and named links over existing portable identities.
+
+Standalone creator installation, requirements and release procedure: [CLI guide](docs/CLI.md).

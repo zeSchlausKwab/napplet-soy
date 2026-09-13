@@ -17,6 +17,8 @@
     "check": "bun run typecheck && bun run test",
     "fixtures": "bun scripts/seed.ts",
     "napplet": "bun apps/cli/src/index.ts",
+    "cli:build": "bun scripts/cli-build.ts",
+    "cli:release": "bun scripts/cli-release.ts",
     "cvm": "bun apps/cvm/src/index.ts",
     "deploy": "bun scripts/deploy.ts",
     "dev:setup": "bun scripts/dev.ts setup",

@@ -36,6 +36,7 @@ const env = {
   BUN_BIN: process.execPath,
   PORT: port,
   SPACE_RELEASE_DIR: root,
+  SPACE_CLI_DOWNLOAD_DIR: resolve(local, 'cli'),
   SPACE_APP_NAME: 'napplet-local-web',
   SPACE_SERVICE_PREFIX: 'napplet-local',
   SPACE_RELAY_BIN: relayBinary,

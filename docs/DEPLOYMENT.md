@@ -142,3 +142,17 @@ The first live browser run also caught an SSR stylesheet URL that returned 404 u
 Deployment sets `SPACE_SITE_ORIGIN=https://<domain>` for canonical and OG URLs and disables `publicdev`. Public dev caches remain outside the archive. The native resvg renderer and its bundled DM Sans font are installed/built for the VPS architecture with the rest of the locked dependencies.
 
 The separate `infra/cvm.ecosystem.config.cjs` can run the ContextVM starter under PM2 with explicit relay URLs and a persistent key path. Automated activation of that optional service and provisioning its relay remain part of the next operator-services slice; the web deployment does not silently start or announce it.
+
+
+## Creator CLI downloads
+
+The standalone installer and `/cli` guide are served by the web application.
+Build and test the creator packages with `bun run cli:build`, then upload them
+with `bun run cli:release --host root@your-vps` before deploying a website version
+that advertises that CLI version. The upload script verifies all four archives
+locally and remotely, preserves immutable prior versions, and requires no web
+service restart. The same HTTP download handler serves `.local/cli` in local dev
+and `/opt/napplet-space/downloads/cli` in production. Set
+`SPACE_CLI_DOWNLOAD_DIR` to override the store. It contains only public versioned
+archives/checksums and remains outside application release/rollback directories.
+See [CLI guide](CLI.md) for native platform checks and requirements.

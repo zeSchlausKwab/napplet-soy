@@ -25,6 +25,7 @@ module.exports = {
         HOST: '127.0.0.1',
         PORT: process.env.PORT || '3000',
         SPACE_RELEASE_ID: process.env.SPACE_RELEASE_ID || 'local',
+        SPACE_CLI_DOWNLOAD_DIR: process.env.SPACE_CLI_DOWNLOAD_DIR || path.join(release, '../../downloads/cli'),
         SPACE_ARTIFACT_DIR: path.join(release, 'packages/backend/data/artifacts'),
         SPACE_SITE_ORIGIN: process.env.SPACE_SITE_ORIGIN || '',
         SPACE_PUBLICDEV: process.env.SPACE_PUBLICDEV || '0',

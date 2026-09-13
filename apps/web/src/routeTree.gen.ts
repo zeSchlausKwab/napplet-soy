@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CreatorRouteImport } from './routes/$creator'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as CliRouteImport } from './routes/cli'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
 import { Route as ApiAdminRouteImport } from './routes/api.admin'
@@ -24,6 +25,7 @@ import { Route as ApiArtifactsHashRouteImport } from './routes/api.artifacts.$ha
 import { Route as ApiOgIdRouteImport } from './routes/api.og.$id'
 import { Route as ApiPreviewsIdRouteImport } from './routes/api.previews.$id'
 import { Route as RSnapshotSourceRouteImport } from './routes/r.$snapshot.source'
+import { Route as CliDownloadVersionFileRouteImport } from './routes/cli.download.$version.$file'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -38,6 +40,11 @@ const CreatorRoute = CreatorRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CliRoute = CliRouteImport.update({
+  id: '/cli',
+  path: '/cli',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateRoute = CreateRouteImport.update({
@@ -100,11 +107,17 @@ const RSnapshotSourceRoute = RSnapshotSourceRouteImport.update({
   path: '/source',
   getParentRoute: () => RSnapshotRoute,
 } as any)
+const CliDownloadVersionFileRoute = CliDownloadVersionFileRouteImport.update({
+  id: '/download/$version/$file',
+  path: '/download/$version/$file',
+  getParentRoute: () => CliRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRouteWithChildren
   '/admin': typeof AdminRoute
+  '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
   '/api/admin': typeof ApiAdminRoute
@@ -117,11 +130,13 @@ export interface FileRoutesByFullPath {
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
+  '/cli/download/$version/$file': typeof CliDownloadVersionFileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRouteWithChildren
   '/admin': typeof AdminRoute
+  '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
   '/api/admin': typeof ApiAdminRoute
@@ -134,12 +149,14 @@ export interface FileRoutesByTo {
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
+  '/cli/download/$version/$file': typeof CliDownloadVersionFileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRouteWithChildren
   '/admin': typeof AdminRoute
+  '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
   '/api/admin': typeof ApiAdminRoute
@@ -152,6 +169,7 @@ export interface FileRoutesById {
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
+  '/cli/download/$version/$file': typeof CliDownloadVersionFileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -159,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$creator'
     | '/admin'
+    | '/cli'
     | '/create'
     | '/$creator/$slug'
     | '/api/admin'
@@ -171,11 +190,13 @@ export interface FileRouteTypes {
     | '/api/og/$id'
     | '/api/previews/$id'
     | '/r/$snapshot/source'
+    | '/cli/download/$version/$file'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$creator'
     | '/admin'
+    | '/cli'
     | '/create'
     | '/$creator/$slug'
     | '/api/admin'
@@ -188,11 +209,13 @@ export interface FileRouteTypes {
     | '/api/og/$id'
     | '/api/previews/$id'
     | '/r/$snapshot/source'
+    | '/cli/download/$version/$file'
   id:
     | '__root__'
     | '/'
     | '/$creator'
     | '/admin'
+    | '/cli'
     | '/create'
     | '/$creator/$slug'
     | '/api/admin'
@@ -205,12 +228,14 @@ export interface FileRouteTypes {
     | '/api/og/$id'
     | '/api/previews/$id'
     | '/r/$snapshot/source'
+    | '/cli/download/$version/$file'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CreatorRoute: typeof CreatorRouteWithChildren
   AdminRoute: typeof AdminRoute
+  CliRoute: typeof CliRouteWithChildren
   CreateRoute: typeof CreateRoute
   ApiAdminRoute: typeof ApiAdminRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -244,6 +269,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cli': {
+      id: '/cli'
+      path: '/cli'
+      fullPath: '/cli'
+      preLoaderRoute: typeof CliRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create': {
@@ -330,6 +362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RSnapshotSourceRouteImport
       parentRoute: typeof RSnapshotRoute
     }
+    '/cli/download/$version/$file': {
+      id: '/cli/download/$version/$file'
+      path: '/download/$version/$file'
+      fullPath: '/cli/download/$version/$file'
+      preLoaderRoute: typeof CliDownloadVersionFileRouteImport
+      parentRoute: typeof CliRoute
+    }
   }
 }
 
@@ -343,6 +382,16 @@ const CreatorRouteChildren: CreatorRouteChildren = {
 
 const CreatorRouteWithChildren =
   CreatorRoute._addFileChildren(CreatorRouteChildren)
+
+interface CliRouteChildren {
+  CliDownloadVersionFileRoute: typeof CliDownloadVersionFileRoute
+}
+
+const CliRouteChildren: CliRouteChildren = {
+  CliDownloadVersionFileRoute: CliDownloadVersionFileRoute,
+}
+
+const CliRouteWithChildren = CliRoute._addFileChildren(CliRouteChildren)
 
 interface RSnapshotRouteChildren {
   RSnapshotSourceRoute: typeof RSnapshotSourceRoute
@@ -360,6 +409,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreatorRoute: CreatorRouteWithChildren,
   AdminRoute: AdminRoute,
+  CliRoute: CliRouteWithChildren,
   CreateRoute: CreateRoute,
   ApiAdminRoute: ApiAdminRoute,
   ApiHealthRoute: ApiHealthRoute,

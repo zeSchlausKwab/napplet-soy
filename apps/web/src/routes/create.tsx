@@ -25,7 +25,7 @@ function Create() {
   const { template } = Route.useSearch();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
-  const command = `bun run napplet new my-napplet --template ${template}`;
+  const command = `curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet --template ${template}`;
   return (
     <section className="create-page">
       <span className="eyebrow">FROM “WHAT IF” TO “LOOK AT THIS”</span>
@@ -42,7 +42,7 @@ function Create() {
       <div className="terminal-box">
         <div>
           <Terminal size={15} />
-          <span>IN YOUR LOCAL NAPPLET-SPACE CHECKOUT</span>
+          <span>IN YOUR TERMINAL</span>
           <Button
             variant="ghost"
             size="icon"
@@ -65,8 +65,8 @@ function Create() {
       </div>
       {error && <p role="status">{error}</p>}
       <p className="command-note">
-        The public one-line installer is still being built. This command works from the platform
-        repository today.
+        macOS and Linux. No Bun or Node installation needed. Git is required.
+        <a href="/cli"> Installation help and downloads ↗</a>
       </p>
       <div className="creation-steps">
         <article>
@@ -81,16 +81,16 @@ function Create() {
           <span>02</span>
           <h2>Make it your kind of weird</h2>
           <p>
-            Run <code>bun run dev</code> in the new project. Edit the HTML with the AI tool you
-            already use.
+            Run <code>napplet-space dev</code> in the new project. Edit the HTML with the AI tool
+            you already use.
           </p>
         </article>
         <article>
           <span>03</span>
           <h2>Play it. Pass it around.</h2>
           <p>
-            Preview in the same restricted sandbox, then use the platform CLI to publish your creation
-            to Nostr and get a link to share.
+            Run <code>napplet-space publish</code> to check your creation, publish to Nostr, and get
+            a link to share.
           </p>
         </article>
       </div>
