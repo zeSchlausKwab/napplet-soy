@@ -3,6 +3,7 @@ import { lookup } from 'node:dns';
 import type { LookupFunction } from 'node:net';
 import ipaddr from 'ipaddr.js';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../protocol/src';
+import { fetchPublicBytesInNode } from './public-http-node';
 
 export function publicIp(address: string) {
   try {
@@ -61,6 +62,18 @@ export function publicResourceUrl(input: string) {
 }
 
 export function fetchPublicBytes(
+  url: URL,
+  signal: AbortSignal,
+  maxBytes = MAX_ARTIFACT_BYTES,
+): Promise<Uint8Array> {
+  // Keep the workaround scoped to the VPS's pinned compatibility runtime.
+  // Never work around its TLS failure by disabling certificate validation.
+  if (typeof Bun !== 'undefined' && Bun.version === '1.3.8')
+    return fetchPublicBytesInNode(url, signal, maxBytes);
+  return fetchPublicBytesNative(url, signal, maxBytes);
+}
+
+export function fetchPublicBytesNative(
   url: URL,
   signal: AbortSignal,
   maxBytes = MAX_ARTIFACT_BYTES,

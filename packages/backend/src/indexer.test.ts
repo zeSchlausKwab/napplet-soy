@@ -183,6 +183,9 @@ test('pagination overlaps timestamp boundaries and retains its cursor on saturat
   const filters: Filter[] = [];
   const read = async (_relay: string, filter: Filter) => {
     filters.push(filter);
+    for (const [key, values] of Object.entries(filter))
+      if (key.startsWith('#') && Array.isArray(values) && values.length > 64)
+        throw new Error('restricted: invalid tag filter');
     return events
       .filter(
         (e) =>

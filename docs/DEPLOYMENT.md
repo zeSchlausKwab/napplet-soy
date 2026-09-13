@@ -75,6 +75,8 @@ Protect `shared/server.env` as operator configuration. It is sourced by the depl
 
 The build enables PNG, JPEG, WebP and GIF decoding plus EXIF/color support. Optional libvips integrations are disabled; the app still rejects non-raster input before invoking the decoder. libvips and Sharp are installed in Napplet's own directories, without changing system library paths or another application's runtime. Builds stay within the existing 3 GiB/two-CPU deployment scope. Expect slower first-time builds and potentially slower image normalization; normalized previews are cached.
 
+Bun 1.3.8 also loses the original TLS hostname when `node:https` uses a custom DNS lookup. On that pinned runtime, guarded public HTTPS downloads run in a short-lived Node worker using the same DNS, certificate, redirect and byte-limit checks. This applies to artifacts, resources and preview images; SHA-256 verification remains in the caller. Newer Bun and the standalone CLI keep their existing transport. No TLS verification is disabled.
+
 All ordinary checks still run, plus libvips's own test suite and a codec smoke check. Bun executes a small JavaScript program under a separate 768 MiB/15-second limit before further toolchain installation or builds. A release retains its own runtime symlink, so selecting the normal profile later does not change the runtime used by a rollback release. To return to the standard profile after the CPU is fixed, rerun deployment without `--legacy-cpu`; keep the prior release and its compatibility library directory while it remains a rollback candidate.
 
 ## Local parity and remaining services

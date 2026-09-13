@@ -187,9 +187,10 @@ export class IndexWorker {
       const before = errors.length;
       for (const tag of ['#e', '#a'] as const) {
         const values = targets[tag];
-        for (let offset = 0; offset < values.length; offset += 128) {
+        // Match the managed relay's maximum values per tag filter.
+        for (let offset = 0; offset < values.length; offset += 64) {
           const filter: Filter = { kinds: [5] };
-          filter[tag] = values.slice(offset, offset + 128);
+          filter[tag] = values.slice(offset, offset + 64);
           await collect(relay, `deletion-targets:${tag}:${offset}`, filter, changed);
         }
       }
