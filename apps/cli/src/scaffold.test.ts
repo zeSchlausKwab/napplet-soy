@@ -60,6 +60,30 @@ test('rejects path escape and unknown templates before writing', async () => {
   );
 });
 
+test('missing Git gives an actionable error before creating a project', async () => {
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      new URL('./index.ts', import.meta.url).pathname,
+      'new',
+      'needs-git',
+      '--identity',
+      'later',
+      '--json',
+    ],
+    {
+      cwd: root,
+      env: { PATH: '/no-installed-tools' },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  );
+  const [code, output] = await Promise.all([child.exited, new Response(child.stdout).text()]);
+  expect(code).toBe(1);
+  expect(JSON.parse(output).error.code).toBe('GIT_REQUIRED');
+  expect(await Bun.file(join(root, 'needs-git/index.html')).exists()).toBe(false);
+});
+
 test('generated preview runs independently and enforces the shared runtime policy', async () => {
   const path = await scaffold(root, 'running-example', 'tiny-tennis');
   const reservation = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: () => new Response('') });

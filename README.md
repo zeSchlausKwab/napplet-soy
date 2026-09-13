@@ -51,7 +51,7 @@ cd my-napplet
 napplet-space dev
 ```
 
-Open <http://localhost:4173> and point your existing coding agent at the new project. It contains HTML source, a Git repository, MIT licensing, agent instructions. The installed CLI supplies the shared preview runtime. The preview automatically reloads saved changes, injects the same pinned shim and NAP-SHELL handshake, and provides the same storage, identity, relay/resource and file services as the website. Optional `requires`, `relays`, and `servers` settings live in `napplet.json`. It works independently of the platform checkout after creation; existing generated projects retain their bundled runtime.
+Open <http://localhost:4173> and point your existing coding agent at the new project. It contains HTML source, a Git repository, MIT licensing, and agent instructions. The installed CLI supplies the shared preview runtime. The preview automatically reloads saved changes, injects the same pinned shim and NAP-SHELL handshake, and provides the same storage, identity, relay/resource and file services as the website. Optional `requires`, `relays`, and `servers` settings live in `napplet.json`. It works independently of the platform checkout after creation; existing generated projects retain their bundled runtime.
 
 ## Creator identity
 
