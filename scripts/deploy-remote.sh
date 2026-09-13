@@ -239,13 +239,13 @@ grasp_ready() {
   expected=$(cd "$1"; "$(release_bun "$1")" -e 'import { graspVersion } from "./scripts/grasp-build"; console.log(await graspVersion())')
   for attempt in {1..60}; do
     response=$(curl -fsS --max-time 2 -H 'Accept: application/nostr+json' http://127.0.0.1:19349/ 2>/dev/null) || response=''
-    if [[ "$response" == *"\"version\":\"$expected\""* && "$response" == *"\"name\":\"Napplet Space Git ($domain)\""* ]]; then return 0; fi
+    if "$bun_bin" "$release_dir/scripts/deploy-state.ts" grasp "$expected" "Napplet Space Git ($domain)" <<< "$response"; then return 0; fi
     sleep 1
   done
   return 1
 }
 
-previous=$(readlink -f "$app_root/current" 2>/dev/null || true)
+previous=$("$bun_bin" "$release_dir/scripts/deploy-state.ts" previous "$app_root/current")
 smoke_pid=''
 activated=0
 caddy_changed=0
