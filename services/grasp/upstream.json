@@ -1,0 +1,10 @@
+{
+  "version": "3.0.2",
+  "commit": "cdda4a23fe5dede2411e18aaa8b82c1747c97ddf",
+  "repository": "https://relay.ngit.dev/npub15qydau2hjma6ngxkl2cyar74wzyjshvl65za5k5rl69264ar2exs5cyejr/ngit-grasp.git",
+  "stateEvent": "c3db2b89615bb51246ae78355cf1021437b5b7df344a1fe269f6c598f7bcabe4",
+  "author": "a008def15796fba9a0d6fab04e8fd57089285d9fd505da5a83fe8aad57a3564d",
+  "rust": "1.97.1",
+  "cargoLockSha256": "8a33e8cd4295de7a35244f68e0bb2be27affc52abcb0630ea783995b29d17247",
+  "specCommit": "f35b4f9a4ed2f0aaaf46926e4b1733c79e21b377"
+}
