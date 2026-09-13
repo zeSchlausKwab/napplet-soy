@@ -18,7 +18,12 @@ const hex = /^[a-f0-9]{64}$/;
 export const ruleTypes = ['pubkey', 'address', 'event', 'hash'] as const;
 export type RuleType = (typeof ruleTypes)[number];
 export function normalizeTarget(type: RuleType, input: string) {
-  let target = input.trim().replace(/^nostr:/, '');
+  // Trailing spaces can be part of a valid d tag. Preserve an explicit address;
+  // trim transport identifiers before decoding them, not the decoded identity.
+  let target = (/^(?:nostr:)?(?:35129|15129):/.test(input) ? input : input.trim()).replace(
+    /^nostr:/,
+    '',
+  );
   if (type === 'pubkey' && target.startsWith('npub1')) {
     const value = nip19.decode(target);
     if (value.type !== 'npub') throw new Error('Expected an npub.');

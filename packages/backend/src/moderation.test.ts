@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { PrivateKeySigner } from 'applesauce-signers/signers/private-key-signer';
 import type { EventTemplate } from 'nostr-tools';
 import fixtures from '../data/catalog.json';
-import { sha256 } from '../../protocol/src';
+import { sha256, encodeAddress } from '../../protocol/src';
 import { adminResponse } from './admin-response';
 import {
   blocked,
@@ -138,6 +138,14 @@ test('signed policy changes survive reload, reject replay/stale updates, and aud
   expect((await adminResponse(request(await signed(undo), undo))).status).toBe(200);
   expect(readPolicy().rules).toHaveLength(0);
   expect(readPolicy().audit).toHaveLength(2);
+});
+test('naddr blocks preserve exact identifiers including trailing whitespace and root identities', () => {
+  for (const [kind, identifier] of [[35129, 'with space '], [15129, '']] as const) {
+    const target = encodeAddress({ kind, pubkey: fixture.pubkey, identifier });
+    updatePolicy({ ...action(), target }, actor, String(kind).padStart(64, '0'));
+    initializePolicy(process.env.SPACE_MODERATION_FILE!);
+    expect(blocked('address', `${kind}:${fixture.pubkey}:${identifier}`)).toBe(true);
+  }
 });
 test('blocking a napplet closes gallery, named/address/snapshot, source, player and cached preview paths', async () => {
   expect(await playableManifest(fixture.current.id)).not.toBeNull();
