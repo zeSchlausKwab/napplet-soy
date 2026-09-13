@@ -140,7 +140,10 @@ test('signed policy changes survive reload, reject replay/stale updates, and aud
   expect(readPolicy().audit).toHaveLength(2);
 });
 test('naddr blocks preserve exact identifiers including trailing whitespace and root identities', () => {
-  for (const [kind, identifier] of [[35129, 'with space '], [15129, '']] as const) {
+  for (const [kind, identifier] of [
+    [35129, 'with space '],
+    [15129, ''],
+  ] as const) {
     const target = encodeAddress({ kind, pubkey: fixture.pubkey, identifier });
     updatePolicy({ ...action(), target }, actor, String(kind).padStart(64, '0'));
     initializePolicy(process.env.SPACE_MODERATION_FILE!);
@@ -168,6 +171,14 @@ test('blocking a napplet closes gallery, named/address/snapshot, source, player 
   expect((await previewResponse(fixture.snapshot.id, new Request(imageURL))).status).toBe(404);
   updatePolicy({ ...action(), action: 'unblock' }, actor, 'b'.repeat(64));
   expect(await playableManifest(fixture.current.id)).not.toBeNull();
+});
+test('blocking one event preserves an unblocked snapshot that shares its artifact', async () => {
+  updatePolicy({ ...action(), type: 'event', target: fixture.current.id }, actor, '1'.repeat(64));
+  expect(await playableManifest(fixture.current.id)).toBeNull();
+  expect(await playableManifest(fixture.snapshot.id)).not.toBeNull();
+  expect(await artifact(fixture.artifactHash)).not.toBeNull();
+  updatePolicy({ ...action(), type: 'event', target: fixture.snapshot.id }, actor, '2'.repeat(64));
+  expect(await artifact(fixture.artifactHash)).toBeNull();
 });
 test('author and hash rules apply to new manifests, snapshot links are author-bound, unreadable policy fails closed', async () => {
   updatePolicy({ ...action(), type: 'pubkey', target: fixture.pubkey }, actor, 'c'.repeat(64));

@@ -101,7 +101,8 @@ export async function artifact(hash: string) {
     return (await indexedArtifact(hash)) ?? publicArtifact(hash);
   if (
     !records.some(
-      (n) => n.artifactHash === hash && !manifestBlocked(n.current) && !manifestBlocked(n.snapshot),
+      (n) =>
+        n.artifactHash === hash && (!manifestBlocked(n.current) || !manifestBlocked(n.snapshot)),
     )
   )
     return null;
