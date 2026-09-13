@@ -147,6 +147,10 @@ install -d -o napplet -g napplet "$release_dir"
 tar -xzf "$archive" -C "$release_dir" --no-same-owner
 rm "$archive"
 chown -R napplet:napplet "$release_dir"
+# SSH can start in /root, which the service user cannot traverse. Bun 1.3.8
+# exposes an empty process.env from that directory, losing ports and policy.
+# Use the service-owned release for every following application command.
+cd "$release_dir"
 # A release retains its runtime when switching profiles or rolling back.
 install -d -o napplet -g napplet -m 755 "$release_dir/bin"
 ln -s "$bun_bin" "$release_dir/bin/bun"
