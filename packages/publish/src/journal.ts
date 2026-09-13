@@ -78,6 +78,14 @@ export const jobSchema = z
       .strict(),
     mirrors: z.record(z.string(), z.boolean()),
     status: z.enum(['prepared', 'announced_pending_index']),
+    website: z
+      .object({
+        checkedAt: z.number().int().nonnegative(),
+        ready: z.boolean(),
+        reason: z.enum(['ready', 'pending', 'unavailable', 'superseded']),
+      })
+      .strict()
+      .optional(),
     error: z
       .object({
         code: z.string().max(80),

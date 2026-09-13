@@ -60,6 +60,7 @@ async function fixture() {
       )
       .reduce<SignedEvent | null>((best, e) => (!best || newer(e, best) ? e : best), null);
   const deps: NonNullable<PublishOptions['dependencies']> = {
+    website: async () => ({ checkedAt: Date.now(), ready: false, reason: 'pending' }),
     relays: {
       latest,
       ensure: async (url, event) => {
@@ -156,6 +157,30 @@ test('dry-run inspects explicit source and targets without signing, contacting s
     expect(f.writes).toHaveLength(0);
     expect(await Bun.file(join(f.project, '.napplet-space/local/index.json')).exists()).toBe(false);
     expect(await publicationStatus(f.project, 'local')).toEqual({ status: 'not_started' });
+  } finally {
+    await f.close();
+  }
+});
+test('confirmed website readiness is journaled after relay receipts, and local status does not contact services', async () => {
+  const f = await fixture();
+  try {
+    f.deps.website = async (job) => {
+      expect(Object.values((await f.load()).receipts).every(Boolean)).toBe(true);
+      expect(job.current?.id).toBeTruthy();
+      expect(job.snapshot?.id).toBeTruthy();
+      return { checkedAt: Date.now(), ready: true, reason: 'ready' };
+    };
+    const published = await publishProject(f.options);
+    expect(published.status).toBe('indexed');
+    expect(published).toMatchObject({ websiteReady: true, websiteStatus: 'ready' });
+    f.deps.website = async () => {
+      throw new Error('status must remain local');
+    };
+    expect(await publicationStatus(f.project, 'local')).toMatchObject({
+      status: 'indexed',
+      websiteReady: true,
+    });
+    expect((await f.load()).website?.checkedAt).toBeGreaterThan(0);
   } finally {
     await f.close();
   }

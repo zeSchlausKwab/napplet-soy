@@ -24,6 +24,7 @@ import { Journal, type PublishJob } from './journal';
 import { freezeSource, inspectProject, regularFile, type PublishPlan } from './project';
 import { PublicationRelays } from './relay';
 import { ownedBlobs, verifiedBlob } from './blobs';
+import { confirmWebsite } from './website';
 
 export { PublishError } from './config';
 type RelayOperations = Pick<PublicationRelays, 'latest' | 'ensure' | 'close'>;
@@ -35,6 +36,7 @@ type Dependencies = {
   verified?: typeof verifiedBlob;
   // A checkpoint hook supports deterministic crash tests without production flags.
   checkpoint?: (job: PublishJob) => Promise<void>;
+  website?: typeof confirmWebsite;
 };
 export type PublishOptions = {
   directory: string;
@@ -58,7 +60,7 @@ function result(job: PublishJob, unchanged = false) {
   };
   const naddr = encodeAddress(identity, [job.plan.targets.relay, ...job.plan.targets.mirrors]);
   return {
-    status: job.status,
+    status: job.website?.ready ? ('indexed' as const) : job.status,
     unchanged,
     jobId: job.id,
     creator: job.plan.pubkey,
@@ -72,17 +74,35 @@ function result(job: PublishJob, unchanged = false) {
     // These are portable route candidates until the website has indexed the events.
     url: `${job.plan.targets.site}/n/${naddr}`,
     snapshotUrl: job.snapshot ? `${job.plan.targets.site}/r/${job.snapshot.id}` : null,
-    websiteReady: false,
+    websiteReady: job.website?.ready ?? false,
+    websiteCheckedAt: job.website?.checkedAt ?? null,
+    websiteStatus: job.website?.reason ?? 'pending',
     mirrors: job.mirrors,
     receipts: job.receipts,
     error: job.error ?? null,
   };
 }
-export async function publicationStatus(directory: string, network: Network) {
+export async function publicationStatus(
+  directory: string,
+  network: Network,
+  options: {
+    refresh?: boolean;
+    signal?: AbortSignal;
+  } = {},
+) {
   const journal = new Journal(await realpath(directory), network);
-  const index = await journal.index();
-  const id = index.active ?? index.latest;
-  return id ? result(await journal.load(id)) : { status: 'not_started' as const };
+  const read = async () => {
+    const index = await journal.index();
+    const id = index.active ?? index.latest;
+    if (!id) return { status: 'not_started' as const };
+    const job = await journal.load(id);
+    if (options.refresh && job.status === 'announced_pending_index') {
+      job.website = await confirmWebsite(job, { signal: options.signal });
+      await journal.save(job);
+    }
+    return result(job);
+  };
+  return options.refresh ? journal.lock(read) : read();
 }
 async function verifyFrozen(journal: Journal, job: PublishJob) {
   const directory = journal.directory(job.id);
@@ -518,6 +538,9 @@ export async function publishProject(options: PublishOptions) {
         delete job.error;
         await save();
         await journal.select(null, job.id);
+        progress('website');
+        job.website = await (deps.website ?? confirmWebsite)(job, { signal: options.signal });
+        await save();
         return result(job, completed);
       } catch (error) {
         const safe =

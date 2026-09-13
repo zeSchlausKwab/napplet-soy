@@ -27,6 +27,8 @@ module.exports = {
         SPACE_SITE_ORIGIN: process.env.SPACE_SITE_ORIGIN || '',
         SPACE_PUBLICDEV: process.env.SPACE_PUBLICDEV || '0',
         SPACE_PUBLICDEV_DIR: process.env.SPACE_PUBLICDEV_DIR || '',
+        SPACE_INDEX_DIR: process.env.SPACE_INDEX_DIR || '',
+        SPACE_INDEX_RELAYS: process.env.SPACE_INDEX_RELAYS || '',
       },
     },
   ],

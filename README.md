@@ -96,7 +96,7 @@ bun run napplet status --project local-experiment --network local
 bun run napplet publish --project local-experiment --network local --resume
 ```
 
-The current result is `announced_pending_index`: the relay and storage are verified, while website indexing and named routes remain ahead. Keep `.napplet-space` with the project for retry history. Public destinations can be configured, but the intended production defaults have not been deployed or verified here. See [publishing commands, source scope and recovery](docs/PUBLISHING.md).
+Publication returns `indexed` once the website confirms the exact current/snapshot pair and verified artifact. If the website is still catching up, it returns `announced_pending_index`; use `bun run napplet status --project local-experiment --network local --refresh` to check again without signing or publishing. Keep `.napplet-space` for retry history. Authenticated named routes remain ahead, and production defaults have not been deployed here. See [publishing and recovery](docs/PUBLISHING.md) and [persistent indexing](docs/INDEXING.md).
 
 ## Deploy to a VPS
 
@@ -126,12 +126,12 @@ bun run test:browser
 TEST_ORIGIN=http://localhost:8080 bun run test:browser
 ```
 
-`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Dev startup writes fixture events, blobs and Git source only to literal-loopback services; public relays and storage never receive fixtures. The CLI now connects creator source, artifact publication and relay discovery; persistent website indexing remains ahead. Fixtures use the same manifest validation and runtime policy as relay imports. The local posters are bundled illustrations. Relay imports resolve linked NIP-89 pictures and Zapstore screenshots/icons, cache safe raster images for gallery/player/OG previews, and fall back to generated cards when unavailable. See [linked previews](docs/PREVIEWS.md) for formats and limits.
+`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Dev startup writes fixture events, blobs and Git source only to literal-loopback services; public relays and storage never receive fixtures. The CLI now connects creator source, artifact publication and relay discovery; persistent website indexing confirms portable current and snapshot routes. Fixtures use the same manifest validation and runtime policy as relay imports. The local posters are bundled illustrations. Relay imports resolve linked NIP-89 pictures and Zapstore screenshots/icons, cache safe raster images for gallery/player/OG previews, and fall back to generated cards when unavailable. See [linked previews](docs/PREVIEWS.md) for formats and limits.
 
 Our publishing contract is standard NIP-5D manifests, public relays, retrievable Blossom bytes, and open source by default. Additional Space metadata and named routes are optional overlays. Publishing is not complete until an independent client discovers and runs a release without the Space API; see [the interoperability contract](docs/PROTOCOL.md).
 
 ## What is still ahead
 
-The default site reads validated bundled fixtures; publicdev adds a bounded relay-discovered catalog. There is no persistent community index or complete public publishing flow yet. Postgres/workers, production naming claims, comments/likes/zaps, and the public one-line installer remain planned. The player supports the single-HTML profile and the documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
+The site merges bundled examples, a persistent SQLite relay index and the optional publicdev collection by Nostr identity. Its separate PM2 worker verifies manifests, downloads artifacts and resolves linked previews. Authenticated naming claims, full catalog pagination, comments/likes/zaps, and the public installer remain planned. The player supports the single-HTML profile and documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
 
-The deployment script deploys this foundation, including the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), and [GRASP source hosting](docs/GRASP.md). The next slice must connect CLI-published relay events → persistent website indexing → named playable link through the operator services described in [PLAN.md](PLAN.md).
+The deployment script includes the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), [GRASP source hosting](docs/GRASP.md), and [persistent website index](docs/INDEXING.md). The next slice adds authenticated creator handles and named links over existing portable identities.

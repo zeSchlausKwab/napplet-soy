@@ -5,6 +5,7 @@ import { examples, examplePoster } from '../../examples/artifact';
 import { previewImage } from './previews';
 import { sha256 } from '../../protocol/src/artifact';
 import { OG_VERSION } from './public-model';
+import { indexedRevision } from './indexed-catalog';
 type Preview = {
   title: string;
   description: string;
@@ -73,6 +74,7 @@ export async function ogImage(id: string) {
   // Resolve on every request so an old process cache cannot enable publicdev content.
   const n =
     (await resolveNapplet({ type: 'snapshot', id })) ??
+    (await indexedRevision(id)) ??
     (await readPublicCatalog())?.entries.find((entry) => entry.revisionId === id);
   if (!n) return null;
   const cover = await previewImage(id);

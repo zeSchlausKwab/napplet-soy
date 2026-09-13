@@ -30,7 +30,7 @@ apt-get update -qq
 apt-get install -y -qq ca-certificates curl unzip tar xz-utils nodejs npm build-essential git pkg-config libssl-dev
 id napplet >/dev/null 2>&1 || useradd --system --create-home --home-dir "$state_root" --shell /usr/sbin/nologin napplet
 install -d -m 755 "$app_root/bin" "$app_root/tools" "$app_root/releases" "$app_root/shared" /etc/napplet-space
-install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom" "$state_root/grasp"
+install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom" "$state_root/grasp" "$state_root/index"
 
 case "$(uname -m)" in
   x86_64) rust_target=x86_64-unknown-linux-gnu; rust_sha=88f28fa9af20594179f85d6df67078dfd6fa93e2f6da5e1e9b0ac4997988ca4f; bun_asset=bun-linux-x64-baseline.zip; caddy_arch=amd64; go_sha=2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613 ;;
@@ -90,6 +90,10 @@ fi
 export PATH="$rust_root/bin:$go_root/go/bin:$app_root/bin:/usr/bin:/bin"
 export SPACE_SITE_ORIGIN="https://$domain"
 export SPACE_PUBLICDEV=0 SPACE_PUBLICDEV_DIR=''
+export SPACE_INDEX_DIR="$state_root/index"
+export SPACE_INDEX_RELAYS="${SPACE_INDEX_RELAYS:-ws://127.0.0.1:19347/relay}"
+export SPACE_INDEX_HINTS="${SPACE_INDEX_HINTS:-wss://$domain/relay}"
+export SPACE_INDEX_LOCAL_BLOSSOM=''
 # GRASP migrations are not reversible by switching binaries. Pin changes need a
 # separately rehearsed migration/restore procedure; ordinary deploys cannot do it.
 grasp_commit=$(node -p "require(process.argv[1]).commit" "$release_dir/services/grasp/upstream.json")
@@ -131,6 +135,18 @@ start_grasp() {
   local source_release=$1
   runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_GRASP_BIN="$source_release/bin/ngit-grasp" SPACE_GRASP_DATA="$state_root/grasp" SPACE_GRASP_ORIGIN="https://$git_domain" SPACE_GRASP_LOCAL=0 SPACE_GRASP_INSTANCE="$domain" PATH="$PATH" node "$pm2_bin" start "$source_release/infra/grasp.ecosystem.config.cjs" --update-env
 }
+start_indexer() {
+  local source_release=$1
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$source_release" SPACE_RELEASE_ID="$(basename "$source_release")" SPACE_SERVICE_PREFIX=napplet PATH="$PATH" node "$pm2_bin" start "$source_release/infra/indexer.ecosystem.config.cjs" --update-env
+}
+indexer_ready() {
+  local source_release=$1
+  for attempt in {1..60}; do
+    if runuser -u napplet -- env SPACE_RELEASE_ID="$(basename "$source_release")" "$app_root/bin/bun" "$source_release/scripts/index-health.ts"; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
 grasp_ready() {
   local expected response
   expected=$(cd "$1"; "$app_root/bin/bun" -e 'import { graspVersion } from "./scripts/grasp-build"; console.log(await graspVersion())')
@@ -171,6 +187,8 @@ rollback() {
       if [[ -f "$previous/infra/blossom.ecosystem.config.cjs" ]]; then start_blossom "$previous" || true; fi
       pm2_run delete napplet-grasp || true
       if [[ -f "$previous/infra/grasp.ecosystem.config.cjs" ]]; then start_grasp "$previous" || true; fi
+      pm2_run delete napplet-indexer || true
+      if [[ -f "$previous/infra/indexer.ecosystem.config.cjs" ]]; then start_indexer "$previous" || true; fi
       pm2_run delete napplet-web || true
       runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$previous" SPACE_RELEASE_ID="$(basename "$previous")" PATH="$PATH" node "$pm2_bin" start "$previous/infra/ecosystem.config.cjs" --update-env || true
     else
@@ -178,6 +196,7 @@ rollback() {
       pm2_run delete napplet-relay || true
       pm2_run delete napplet-blossom || true
       pm2_run delete napplet-grasp || true
+      pm2_run delete napplet-indexer || true
       rm -f "$app_root/current"
     fi
     pm2_run save --force || true
@@ -241,6 +260,9 @@ printf '%s\n' "$grasp_commit" > "$state_root/grasp/upstream.commit"
 chown napplet:napplet "$state_root/grasp/upstream.commit"
 start_grasp "$release_dir"
 grasp_ready "$release_dir"
+pm2_run delete napplet-indexer || true
+start_indexer "$release_dir"
+indexer_ready "$release_dir"
 pm2_run delete napplet-web || true
 runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$release_dir" SPACE_RELEASE_ID="$release_id" PATH="$PATH" node "$pm2_bin" start "$release_dir/infra/ecosystem.config.cjs" --update-env
 healthy=0

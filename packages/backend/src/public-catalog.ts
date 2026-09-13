@@ -9,6 +9,8 @@ import { decodeAddress, identityAddress } from '../../protocol/src';
 import type { Lookup } from './catalog';
 import { missingDomains } from '../../runtime/src/capabilities';
 import { validatedPreview } from '../../protocol/src/preview';
+import { indexedEntries, indexedLookup, indexStore, indexHealth } from './indexed-catalog';
+import { manifestKey, newerManifest } from './index-store';
 
 // Set by the dev launcher only. No request, hostname, or URL parameter can enable this mode.
 export function publicDirectory() {
@@ -51,18 +53,61 @@ export async function readPublicCatalog() {
   }
 }
 export async function resolvePublicNapplet(input: Lookup) {
+  const indexed = await indexedLookup(input);
   const entries = (await readPublicCatalog())?.entries ?? [];
   if (input.type === 'named') return null;
   if (input.type === 'snapshot')
-    return entries.find((n) => n.manifest.kind === 5129 && n.revisionId === input.id) ?? null;
+    return indexed.known
+      ? indexed.entry
+      : (entries.find(
+          (n) =>
+            n.manifest.kind === 5129 &&
+            n.revisionId === input.id &&
+            !indexStore()?.removed(n.manifest),
+        ) ?? null);
   try {
     const address = identityAddress(decodeAddress(input.naddr));
-    return (
-      entries.find((n) => n.naddr && identityAddress(decodeAddress(n.naddr)) === address) ?? null
+    const cached = entries.find(
+      (n) => n.naddr && identityAddress(decodeAddress(n.naddr)) === address,
     );
+    if (cached && indexStore()?.removed(cached.manifest)) return indexed.entry;
+    const row = indexStore()?.row(address);
+    return cached && (!row || newerManifest(cached.manifest, JSON.parse(row.event)))
+      ? cached
+      : indexed.entry;
   } catch {
     return null;
   }
+}
+/** Merge relay collections by Nostr identity; provenance never defines a category. */
+export async function communityEntries() {
+  const candidates = [...((await readPublicCatalog())?.entries ?? []), ...(await indexedEntries())];
+  const winners = new Map<string, (typeof candidates)[number]>();
+  for (const entry of candidates) {
+    const key = manifestKey(entry.manifest);
+    const previous = winners.get(key);
+    if (
+      !previous ||
+      newerManifest(entry.manifest, previous.manifest) ||
+      entry.revisionId === previous.revisionId
+    )
+      winners.set(key, entry);
+  }
+  // Invalid newest packages are tombstones too; a cached older package cannot resurrect them.
+  for (const [key, candidate] of winners) {
+    const row = indexStore()?.row(key);
+    if (
+      indexStore()?.removed(candidate.manifest) ||
+      (row && newerManifest(JSON.parse(row.event), candidate.manifest))
+    )
+      winners.delete(key);
+  }
+  return [...winners.values()].filter((entry) => {
+    if (entry.manifest.kind !== 5129) return true;
+    const address = entry.manifest.tags.find((t) => t[0] === 'a')?.[1];
+    // Keep snapshot URLs, but show one gallery card when its own author's current exists.
+    return !address || address.split(':')[1] !== entry.pubkey || !winners.has(address);
+  });
 }
 export async function publicArtifact(hash: string) {
   const directory = publicDirectory();
@@ -78,6 +123,7 @@ export async function publicArtifact(hash: string) {
 export async function catalogStatus() {
   const cache = await readPublicCatalog();
   return {
+    index: indexHealth(),
     publicdev: !!publicDirectory(),
     publicCount: cache?.entries.length ?? 0,
     fetchedAt: cache?.fetchedAt ?? null,

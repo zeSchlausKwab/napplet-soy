@@ -23,6 +23,7 @@ The command runs local checks, uploads an allowlisted archive of the working sou
 | `/var/lib/napplet-space/relay` | Durable signed relay events and rebuildable Bleve index |
 | `/var/lib/napplet-space/blossom` | Content-addressed blob bytes and SQLite descriptors/ownership |
 | `/var/lib/napplet-space/grasp` | Git objects, repository relay LMDB, private operator identity and migration state |
+| `/var/lib/napplet-space/index` | SQLite website projections, cursors/deletions, verified artifacts and normalized previews |
 | `/opt/napplet-space/shared/server.env` | Optional operator-maintained runtime/public build configuration; never uploaded |
 | `/var/lib/napplet-space/pm2` | Dedicated PM2 process list, logs, and PID state |
 | `/var/lib/napplet-space/caddy` | Caddy certificate/account data |
@@ -58,7 +59,7 @@ Protect `shared/server.env` as operator configuration. It is sourced by the depl
 
 `bun run dev:prod` uses the same PM2 ecosystem and Bun production entry as the VPS deployment and a checksum-verified Caddy 2.10.2. Its PM2 state and downloaded tools stay under `.local`. Default local HTTP avoids changing the OS trust store; local HTTPS can use Caddy's internal CA, which needs separate trust setup. Local PM2 starts both app and proxy; on the VPS systemd owns Caddy and PM2 owns Bun. The same actual server implementations handle requests in both environments.
 
-Deployment includes the [managed relay](RELAY.md), [Blossom storage](BLOSSOM.md), and [GRASP source hosting](GRASP.md), using the same builds, backends and PM2 definitions as local development. All start with no fixtures. The community database and index/preview workers have not been provisioned or tested. Add their shared local/production definitions during the next publishing slice. These services run natively; no container integration is claimed.
+Deployment includes the [managed relay](RELAY.md), [Blossom storage](BLOSSOM.md), [GRASP source hosting](GRASP.md), and [persistent index/preview worker](INDEXING.md), using the same implementations and PM2 definitions as local development. All start with no fixtures. The index reads the managed relay internally and advertises its public WSS address; configure additional `SPACE_INDEX_RELAYS` and `SPACE_INDEX_HINTS` in `shared/server.env`. The worker's release heartbeat is checked during activation and its process is included in rollback. Services run natively. VPS execution and reboot recovery for this slice have not been tested.
 
 ## Share previews and optional ContextVM
 

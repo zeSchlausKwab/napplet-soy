@@ -16,7 +16,7 @@ const help = `Usage:
   bun run napplet account use <npub-or-account-id>
   bun run napplet account export <new-recovery-file> [--passphrase-stdin]
   bun run napplet publish [--project <folder>] [--dry-run | --resume]
-  bun run napplet status [--project <folder>]
+  bun run napplet status [--project <folder>] [--refresh]
 
 All commands accept --network public|local and --json.
 Create reuses your selected account. Connect accepts a hidden bunker link.
@@ -66,6 +66,7 @@ try {
         project: { type: 'string' },
         'dry-run': { type: 'boolean' },
         resume: { type: 'boolean' },
+        refresh: { type: 'boolean' },
         relay: { type: 'string' },
         blossom: { type: 'string' },
         grasp: { type: 'string' },
@@ -120,6 +121,7 @@ try {
     values.project ||
     values['dry-run'] ||
     values.resume ||
+    values.refresh ||
     values.relay ||
     values.blossom ||
     values.grasp ||
@@ -173,7 +175,7 @@ try {
       );
     else
       console.log(
-        `\nYour napplet is ready at ${directory}\n\n  cd ${action}\n  bun run dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nUse the platform CLI publish --project <folder> to publish. Website indexing is still under construction.`,
+        `\nYour napplet is ready at ${directory}\n\n  cd ${action}\n  bun run dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nUse the platform CLI publish --project <folder> to publish.`,
       );
   } else if (command === 'publish' || command === 'status') {
     if (
@@ -182,6 +184,7 @@ try {
       values.identity ||
       values.stdin ||
       values['passphrase-stdin'] ||
+      (command === 'publish' && values.refresh) ||
       (command === 'status' &&
         (values['dry-run'] ||
           values.resume ||
@@ -204,7 +207,10 @@ try {
     };
     const result =
       command === 'status'
-        ? await publicationStatus(values.project ?? process.cwd(), network)
+        ? await publicationStatus(values.project ?? process.cwd(), network, {
+            refresh: values.refresh,
+            signal: controller.signal,
+          })
         : await publishProject({
             directory: values.project ?? process.cwd(),
             network,
@@ -231,7 +237,7 @@ try {
       );
     else {
       console.log(
-        `${result.unchanged ? 'Existing publication' : 'Publication'}: ${result.status}\nSource commit: ${result.sourceCommit}\nNapplet: ${result.naddr}\nSnapshot: ${result.snapshotId ?? 'pending'}\nWebsite indexing is pending; the route is not yet confirmed: ${result.url}`,
+        `${result.unchanged ? 'Existing publication' : 'Publication'}: ${result.status}\nSource commit: ${result.sourceCommit}\nNapplet: ${result.naddr}\nSnapshot: ${result.snapshotId ?? 'pending'}\n${result.websiteReady ? `Website confirmed at ${new Date(result.websiteCheckedAt!).toISOString()}: ${result.url}\nPinned snapshot: ${result.snapshotUrl}` : `Website ${result.websiteStatus}; the route is not yet confirmed: ${result.url}`}`,
       );
       if (result.error) console.log(`${result.error.code}: ${result.error.message}`);
     }

@@ -1,0 +1,49 @@
+# Persistent relay indexing
+
+The website now ingests ordinary signed napplets through an independent, read-only Applesauce worker. Publication does not call a privileged import endpoint. Any author publishing a supported manifest to an indexed relay follows the same path into the gallery, address route, snapshot route, artifact delivery, and linked/generated previews.
+
+## Operation
+
+`bun run dev` and `bun run dev:prod` start `napplet-local-indexer` under the checkout's PM2 instance. State lives at `.local/services/index`. The VPS script starts `napplet-indexer` with durable state at `/var/lib/napplet-space/index`, checks its release/heartbeat before completing activation, and includes the process in rollback. Caddy needs no new origin or port. No VPS deployment or reboot has been performed as part of this implementation.
+
+The worker and web server share **SQLite in WAL mode**, using the same schema locally and on the VPS. This revises the earlier Postgres proposal: one writer and read-only web processes fit the current single-VPS deployment without another database service. Signed Nostr events remain the protocol records; SQLite contains their website projection. Horizontal deployment would require a shared projection store or replication design.
+
+| Setting | Meaning |
+| --- | --- |
+| `SPACE_INDEX_DIR` | Required worker state directory; web readers use the same directory |
+| `SPACE_INDEX_RELAYS` | 1–8 comma-separated read destinations; WSS or explicitly configured loopback WS |
+| `SPACE_INDEX_HINTS` | Optional portable relay hints, defaulting to read destinations |
+| `SPACE_INDEX_LOCAL_BLOSSOM` | Dev-only exact numeric loopback HTTP origin for retrieving `/hash` |
+| `SPACE_RELEASE_ID` | Worker heartbeat release, checked during activation |
+
+Production reads its managed relay internally by default and advertises `wss://<domain>/relay` in portable links. Operators can add discovery relays in `shared/server.env`. Publicdev remains an optional read-only external relay collection; it merges by Nostr identity with the managed index. No fixture key or signing credentials enter the worker.
+
+## Admission, catch-up and storage
+
+The worker verifies signatures, applies NIP-01 timestamp/ID replacement ordering, then validates the authoritative NIP-5D single-HTML profile. A newer invalid package is retained as the winning record and prevents an older valid package from reappearing as current. Kind-5129 snapshots remain independently addressable; matching author/address snapshots do not create duplicate gallery cards. Authenticated NIP-09 event/address deletions are retained, including before target arrival, and NIP-40 expiration prevents serving a manifest. Unsupported required host domains stay gated.
+
+Queries are bounded and read-only: kinds 5, 35129, 15129 and 5129; 200 events per page; descending timestamp pages with overlap. Completed per-relay/kind cursors overlap ten minutes on the next pass. A full scan runs hourly to recover older/backdated arrivals. The worker pauses five seconds between rounds. It never advances a failed or saturated cursor. More than 200 matching events at the same second requires a future relay reconciliation strategy; health reports incomplete catch-up rather than silently skipping that second. Relays that silently return less than the requested history cannot prove completeness.
+
+Twelve due manifests are processed per round, with bounded downloads and retry times. Executable bytes must match the signed SHA-256 hash, stay under 10 MiB, and decode as UTF-8 before becoming ready. Downloads follow signed hints with the existing public DNS/IP policy and no redirects. The explicitly configured dev Blossom origin also acts as a local cache for any author's signed hash, including fixtures without hints. No manifest can choose another local URL or port.
+
+The executable cache is capped at 1 GiB and reclaims unreferenced hashes. Optional normalized raster previews use the existing descriptor/signature/image checks, refresh every fifteen minutes and have a 256 MiB disk cap. A missing/evicted image falls back to the generated OG card. The index admits up to 10,000 winning manifests/snapshots and 10,000 deletion targets; reaching capacity is reported in health and stops cursor advancement. Pinned history is retained, so capacity needs operator attention rather than silently dropping old releases. The gallery currently considers the newest 200 indexed events plus the publicdev collection; full pagination/search across the persistent history remains ahead.
+
+`GET /api/health` exposes index heartbeat, release, relay hints and catch-up errors. Pages read stored projections and artifacts without opening relay connections or downloading executable code. Unknown addresses still return the existing not-found response; request-triggered resolution/pending routes and a separate index-outage page remain planned.
+
+## Publication confirmation
+
+After source, uploads and primary relay readbacks succeed, the CLI checks `GET /api/publications?address=<naddr>&current=<event-id>&snapshot=<event-id>` for up to 45 seconds. This is a website receipt, not a Nostr extension or a requirement for other clients. The endpoint reads the index only; it accepts no uploads, signer proof or work queue instructions.
+
+A ready receipt requires a recent successful worker heartbeat, the exact current winner and snapshot, their validated release relationship, supported capabilities, and a cached artifact whose bytes still match the hash. The CLI verifies the returned signed events and exact IDs/hash. An arbitrary HTTP 200 or another release is insufficient. Readiness confirms that the site can serve the verified package; it does not certify third-party napplet behavior or availability forever.
+
+The result becomes `indexed` with `websiteReady: true` and `websiteCheckedAt`; otherwise publication remains `announced_pending_index`. Website downtime does not undo relay publication. `status` reports the last journaled check locally. `status --refresh` repeats only the read-only website check, without opening a signer or republishing. For example:
+
+```sh
+bun run napplet status --project ./my-creation --network local --refresh
+```
+
+## Verification and remaining work
+
+`bun run check` covers replacement ordering, invalid winners, deletion/expiry, corrupted blobs, retries, process ownership, paging failures and receipt verification. `bun run test:index` builds the website and runs isolated native Khatru and Blossom services, the independent worker process, production SSR and Chromium sandbox playback. It also checks snapshot availability while the worker is stopped and recovery after restart.
+
+Authenticated creator handles/named-route claims are next. Existing example aliases follow their Nostr identities, but new publications currently get portable `/n/<naddr>` and `/r/<snapshot-id>` routes. Public installer distribution, creator-authored media descriptors, source/remix UX, broad client interoperability checks, and larger-scale reconciliation remain separate work.

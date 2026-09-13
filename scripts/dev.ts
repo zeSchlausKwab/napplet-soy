@@ -62,6 +62,9 @@ const env = {
     process.env.SPACE_SITE_ORIGIN || (command === 'production' ? site : `http://localhost:${port}`),
   SPACE_PUBLICDEV: publicdev ? '1' : '0',
   SPACE_PUBLICDEV_DIR: publicdev ? resolve(local, 'publicdev') : '',
+  SPACE_INDEX_DIR: resolve(local, 'services/index'),
+  SPACE_INDEX_RELAYS: localRelayUrl,
+  SPACE_INDEX_LOCAL_BLOSSOM: localBlossomOrigin,
 };
 async function prepare() {
   await startRelay();
@@ -94,6 +97,14 @@ async function prepare() {
     if ('error' in result)
       console.warn(`Public catalog: ${result.error}. Local examples remain available.`);
   }
+  // The same persistent worker runs under PM2 in development and on the VPS.
+  const stop = Bun.spawn(['node', pm2, 'delete', 'napplet-local-indexer'], {
+    env,
+    stdout: 'ignore',
+    stderr: 'ignore',
+  });
+  await stop.exited;
+  await run(['node', pm2, 'start', 'infra/indexer.ecosystem.config.cjs', '--update-env']);
 }
 async function run(args: string[]) {
   const child = Bun.spawn(args, { cwd: root, env, stdout: 'inherit', stderr: 'inherit' });

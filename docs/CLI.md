@@ -1,6 +1,6 @@
 # Creator CLI — proposed v1 behavior
 
-Status: product/engineering proposal, updated 2026-09-13. Local `new` scaffolding, shared NAP preview, OS-backed creator accounts, NIP-46 bunker connections and encrypted recovery are implemented. The resumable single-HTML publisher and status/dry-run commands are implemented. The public installer, website indexing/naming and broader build/remix workflow below remain planned. `napplet-space` is a working command name, avoiding collision with the existing upstream `napplet` binary.
+Status: product/engineering proposal, updated 2026-09-13. Local `new` scaffolding, shared NAP preview, OS-backed creator accounts, NIP-46 bunker connections and encrypted recovery are implemented. The resumable single-HTML publisher and status/dry-run commands are implemented. The public installer, authenticated naming and broader build/remix workflow below remain planned. `napplet-space` is a working command name, avoiding collision with the existing upstream `napplet` binary.
 
 Interoperability is a release requirement: publish ordinary NIP-5D manifests with public Blossom `server` hints, a standard `source` reference, and required NAP domains to publicly reachable relays. Use a real creator identity, never the bundled test key. Our own relay is a publication destination, not a requirement that other clients call the Space API. Publish to interoperable default discovery relays too, and include relay hints in portable links. Optional cover/source details and website aliases must not be required to discover or run the napplet. See [PROTOCOL.md](PROTOCOL.md).
 
@@ -16,7 +16,7 @@ Creator accounts are available through `account create`, `show`, `list`, `use`, 
 
 Use `--network local` for separate account metadata and keychain credentials; its bunker transport accepts only literal-loopback WS destinations. Default public mode accepts WSS signer relays. `account connect` accepts a bunker URL at a hidden prompt; `account import` accepts an nsec or encrypted NIP-49 key. Explicit stdin options support automation without putting secrets in argv. `--json` returns public account data or an error with `code` and `message`. Detailed storage, recovery, tests and current limits: [IDENTITY.md](IDENTITY.md).
 
-The implemented publication flow and its boundaries are documented in [PUBLISHING.md](PUBLISHING.md). It creates a dedicated public release history from explicit files rather than committing or uploading the entire working repository. Successful relay publication returns `announced_pending_index`; a printed site route is not yet confirmed. The sections below retain the broader proposed workflow where it goes beyond this implementation.
+The implemented publication flow and its boundaries are documented in [PUBLISHING.md](PUBLISHING.md). It creates a dedicated public release history from explicit files rather than committing or uploading the entire working repository. The independent website index confirms portable routes as `indexed`; otherwise successful relay publication remains `announced_pending_index`. Use `status --refresh` to check the site again without signing or republishing. The sections below retain the broader proposed workflow where it goes beyond this implementation.
 
 ## 1. The quick path
 

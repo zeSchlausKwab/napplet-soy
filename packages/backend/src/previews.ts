@@ -1,9 +1,16 @@
 import { readPublicCatalog, publicDirectory } from './public-catalog';
 import { cachedPreviewBytes } from './preview-images';
+import { indexedRevision, indexStore } from './indexed-catalog';
 
 /** Only normalized images attached to an indexed manifest can be served. No request-time fetch. */
 export async function previewImage(id: string) {
   if (!/^[a-f0-9]{64}$/.test(id)) return null;
+  const indexed = await indexedRevision(id);
+  const store = indexStore();
+  if (indexed?.preview && store) {
+    const bytes = await cachedPreviewBytes(store.directory, indexed.preview);
+    if (bytes) return bytes;
+  }
   const directory = publicDirectory();
   if (!directory) return null;
   const entry = (await readPublicCatalog())?.entries.find((n) => n.revisionId === id);

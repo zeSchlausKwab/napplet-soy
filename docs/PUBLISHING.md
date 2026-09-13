@@ -1,6 +1,6 @@
 # Publishing a creation
 
-The CLI now connects creator accounts, Git/GRASP, Blossom and NIP-5D publication. It supports the existing single-HTML starter and keeps a durable journal for retries. The website's persistent index and name registry are the next slice: successful relay publication currently returns `announced_pending_index`, with `websiteReady: false`. A printed website route is a candidate, not a confirmed playable page.
+The CLI connects creator accounts, Git/GRASP, Blossom and NIP-5D publication, with a durable retry journal. The website's [persistent relay index](INDEXING.md) now confirms address and snapshot routes. A confirmed publication returns `indexed`, `websiteReady: true` and a check timestamp; a website that is unavailable or still catching up leaves the successful relay publication at `announced_pending_index`. Authenticated named-route claims remain ahead.
 
 ## Commands available from this checkout
 
@@ -54,7 +54,7 @@ The archive is Git's tar of the exact frozen commit and contains the selected re
 4. Publish Git source and all retained release refs, using a lease on the main branch. Verify Git refs and signed source metadata.
 5. Check Blossom ownership and bytes. Reuse verified owned blobs; otherwise issue a scoped signed upload and independently verify retrieval.
 6. Publish the snapshot first, then the current manifest. Require each event to be queryable. A lost acknowledgement leaves the same signed event available for retry.
-7. Attempt optional mirrors and return relay publication evidence with website indexing pending.
+7. Attempt optional mirrors, then check the website's exact current/snapshot projection and verified artifact. Save confirmed or pending website status without changing the signed publication.
 
 Repeating the same release rechecks storage/relay evidence, repairs missing blobs/events and retries unavailable mirrors without creating another snapshot or source commit. `unchanged` means the release identity and bytes were reused, even if missing remote data needed repair. A change in source, title, topics or required domains creates a new release; identical HTML alone does not make metadata changes a no-op.
 

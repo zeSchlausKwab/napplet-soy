@@ -133,7 +133,8 @@ async function stack() {
         relay: `${relay.replace('http:', 'ws:')}/relay`,
         grasp,
         blossom: `http://127.0.0.1:${blossom.server.port}`,
-        site: 'http://localhost:8080',
+        // No ambient dev website may affect this storage/publication-only test.
+        site: 'http://127.0.0.1:1',
         mirrors: [],
       },
       close,

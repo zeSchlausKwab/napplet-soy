@@ -25,7 +25,27 @@ export const Route = createFileRoute('/')({
       getGallery({ data: { tag: '', q: '', sort: 'curated' } }),
       getPublicCatalog(),
     ]);
-    const catalog = [...local, ...publicCatalog.entries];
+    const cards = local.filter(
+      (n) =>
+        !publicCatalog.entries.some(
+          (entry) =>
+            entry.manifest.kind === 35129 &&
+            entry.pubkey === n.pubkey &&
+            entry.manifest.tags.some((t) => t[0] === 'd' && t[1] === n.identifier) &&
+            (entry.manifest.created_at > n.createdAt ||
+              (entry.manifest.created_at === n.createdAt && entry.revisionId < n.currentId)),
+        ),
+    );
+    const curated = new Set(cards.map((n) => `35129:${n.pubkey}:${n.identifier}`));
+    const catalog = [
+      ...cards,
+      ...publicCatalog.entries.filter(
+        (n) =>
+          !curated.has(
+            `${n.manifest.kind}:${n.pubkey}:${n.manifest.tags.find((t) => t[0] === 'd')?.[1] ?? ''}`,
+          ),
+      ),
+    ];
     const napplets = catalog.filter((n) => matchesGallery(n, deps));
     if (deps.sort === 'new')
       napplets.sort(
