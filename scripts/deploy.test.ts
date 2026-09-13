@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { validateBlossomDomain, validateTarget } from './deploy';
+import { validateBlossomDomain, validateGitDomain, validateTarget } from './deploy';
 test('deployment accepts explicit SSH targets and DNS domains', () => {
   expect(validateTarget('root@203.0.113.10', 'napplet.example')).toEqual({
     host: 'root@203.0.113.10',
@@ -36,4 +36,20 @@ test('Blossom deploys on a separate validated hostname', () => {
     '*.example',
   ])
     expect(() => validateBlossomDomain('napplet.example', value)).toThrow();
+});
+test('GRASP requires a third validated root hostname', () => {
+  expect(validateGitDomain('napplet.example', 'blossom.napplet.example')).toBe(
+    'git.napplet.example',
+  );
+  expect(validateGitDomain('napplet.example', 'files.example', 'source.example')).toBe(
+    'source.example',
+  );
+  for (const value of [
+    'napplet.example',
+    'files.example',
+    'https://source.example',
+    'x.example;id',
+    '*.example',
+  ])
+    expect(() => validateGitDomain('napplet.example', 'files.example', value)).toThrow();
 });

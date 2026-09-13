@@ -10,6 +10,23 @@ The deployment build makes three checksum-guarded changes: lock the working dire
 
 See the [GRASP protocol](https://ngit.dev/protocol/grasp) and [NIP-34](https://github.com/nostr-protocol/nips/blob/master/34.md). This service is separate from the Khatru gallery/social relay because GRASP couples Git availability to repository-event admission.
 
+## Shared local/VPS service
+
+| Profile | Public endpoint | Native listener | Persistent working directory |
+| --- | --- | --- | --- |
+| Both local dev modes | `http://127.0.0.1:8082` / `ws://127.0.0.1:8082/` | `127.0.0.1:19349` | `.local/services/grasp` |
+| VPS | `https://git.<domain>` / `wss://git.<domain>/` | `127.0.0.1:19349` | `/var/lib/napplet-space/grasp` |
+
+`infra/grasp.ecosystem.config.cjs` runs one native process with this working directory. Bun tests/dev tooling and Node/PM2 load the same `services/grasp/config.cjs`. The local profile uses a separate key and literal-loopback connections; the production profile keeps upstream non-global target protections. Sync+ and default user-index/fallback relays are disabled in both profiles. A production operator can explicitly configure a trusted bootstrap relay through upstream settings. Caddy limits request bodies to 50 MiB, Git limits receive-pack input to 50 MiB, and Caddy blocks `/metrics`.
+
+```sh
+bun run grasp:build  # cached pinned native build
+bun run grasp:seed   # reconcile local example source, after dev startup
+bun run test:grasp   # isolated native Git/Nostr process tests
+```
+
+Both `dev` and `dev:prod` start Caddy before seeding so Git URLs remain identical between modes. Build/configuration changes restart the managed local service; unchanged startup preserves it. A warm six-repository reconciliation measured 1.2 seconds with zero publications. `--git-domain source.example` overrides the VPS Git hostname; it must differ from both the website and Blossom hostname.
+
 ## Source publication adapter
 
 `packages/grasp/src/client.ts` uses an Applesauce-compatible signer. It prepares a kind-30617 announcement with the repository identifier, HTTPS clone URL, relay URL and earliest unique commit, followed by kind-30618 authorizing a commit at `refs/heads/main`. Metadata is signed and checked before network activity. The adapter accepts a committed, clean repository with one root and publishes its selected commit as `main`; multi-branch/tag management is left to a full ngit client.
@@ -20,12 +37,12 @@ Publish those events to GRASP, push the authorized Git objects, then verify both
 
 ## Verification
 
-`bun test tests/services/grasp.test.ts` starts the actual pinned native service in a temporary directory. It checks signed creation and updates, independent Git cloning, refusal of unauthorized tips and forged signatures, idempotent fixture seeding, exclusive process ownership, and recovery after graceful termination and SIGKILL. Local mode generates its own private operator key even when production credentials are present in the parent environment. The tests do not publish to public relays.
+`bun test tests/services/grasp.test.ts` starts the actual pinned native service in a temporary directory. It checks signed creation and updates, independent Git cloning, refusal of unauthorized tips and forged signatures, idempotent fixture seeding, exclusive process ownership, recovery after graceful termination and SIGKILL, and production-profile startup/CORS. Local mode generates its own private operator key even when production credentials are present in the parent environment. The tests do not publish to public relays.
 
 ## Operations
 
 Keep the entire working directory together: Git storage, relay LMDB, `.relay-owner.nsec`, migration/checkpoint files and the process lock all belong to this service. The key is generated with mode 0600. Stop the service before copying the state for backup; preserve permissions. Never place service keys in the source tree, release archive, PM2 arguments or logs.
 
-ngit-grasp 3.x has storage migrations. A binary rollback is not a database downgrade. Before changing the pinned upstream version, stop writes and back up the complete state; rehearse migration and restore on a copy. Monitor disk usage: request/pack limits are not a total storage quota. Peer synchronization, Git object expansion and repeated public repositories also consume storage. This integration does not yet provide operator quotas or abuse-management tools.
+ngit-grasp 3.x has storage migrations. A binary rollback is not a database downgrade. The VPS script records `upstream.commit` in the state directory and rejects automatic pin changes. Before changing the pinned upstream version, stop writes and back up the complete state; rehearse migration and restore on a copy before updating the guard. Monitor disk usage: request/pack limits are not a total storage quota. Peer synchronization, Git object expansion and repeated public repositories also consume storage. This integration does not yet provide operator quotas or abuse-management tools.
 
 Local builds require Git, a C compiler and Rust 1.97.1 on PATH; Linux also needs `pkg-config` and OpenSSL development headers. Build artifacts and dependencies are cached under `.local/grasp-build`. No VPS deployment has been executed yet.

@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { mkdir, rename } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -15,40 +16,18 @@ import { readBounded } from '../packages/blossom/src/client';
 const root = resolve(import.meta.dir, '..');
 export const localGraspOrigin = 'http://127.0.0.1:8082';
 export const localGraspInstance = createHash('sha256').update(root).digest('hex').slice(0, 16);
-export function graspEnvironment(input: {
+type GraspConfiguration = {
   origin: string;
   directory: string;
   local: boolean;
   instance: string;
   bind?: string;
-}) {
-  const origin = graspOrigin(input.origin, input.local);
-  return {
-    PATH: process.env.PATH ?? '/usr/bin:/bin',
-    SPACE_GRASP_LOCAL_ONLY: input.local ? '1' : '0',
-    NGIT_DOMAIN: new URL(origin).host,
-    NGIT_BASE_PATH: '/',
-    NGIT_BIND_ADDRESS: input.bind ?? '127.0.0.1:19349',
-    NGIT_GIT_DATA_PATH: resolve(input.directory, 'git'),
-    NGIT_RELAY_DATA_PATH: resolve(input.directory, 'relay'),
-    NGIT_DATABASE_BACKEND: 'lmdb',
-    NGIT_RELAY_NAME: `Napplet Space Git (${input.instance})`,
-    NGIT_RELAY_DESCRIPTION: 'Open source napplet repositories, authorized by signed Nostr state.',
-    NGIT_USER_INDEX_RELAYS: '',
-    NGIT_SYNC_PLUS_FALLBACK_RELAYS: '',
-    NGIT_SYNC_PLUS_ENABLED: 'false',
-    NGIT_LOG_LEVEL: 'info',
-    NGIT_MAX_CONNECTIONS: '256',
-    NGIT_RELAY_MAX_SUBSCRIPTIONS: '50',
-    NGIT_RELAY_FILTER_LIMIT: '200',
-    // Applied by Git itself as well as the public Caddy body limit.
-    GIT_CONFIG_COUNT: '1',
-    GIT_CONFIG_KEY_0: 'receive.maxInputSize',
-    GIT_CONFIG_VALUE_0: String(50 * 1024 * 1024),
-    GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: '/dev/null',
-    GIT_TERMINAL_PROMPT: '0',
-  };
+};
+const runtimeEnvironment = createRequire(import.meta.url)('../services/grasp/config.cjs') as (
+  input: GraspConfiguration,
+) => Record<string, string>;
+export function graspEnvironment(input: GraspConfiguration) {
+  return runtimeEnvironment({ ...input, origin: graspOrigin(input.origin, input.local) });
 }
 export async function graspHealth(origin: string) {
   try {

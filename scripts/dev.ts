@@ -1,6 +1,8 @@
 import { chmod, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
+import { buildGrasp, graspBinary, graspVersion } from './grasp-build';
+import { graspHealth, localGraspOrigin, localGraspInstance, seedLocalGrasp } from './grasp';
 import { seedExamples } from './seed';
 import { refreshPublicCatalog } from './publicdev';
 import {
@@ -46,6 +48,12 @@ const env = {
   SPACE_BLOSSOM_LOCAL: '1',
   SPACE_BLOSSOM_DATA: resolve(local, 'services/blossom'),
   SPACE_BLOSSOM_INSTANCE: localBlossomInstance,
+  SPACE_GRASP_BIN: graspBinary,
+  SPACE_GRASP_BIND: '127.0.0.1:19349',
+  SPACE_GRASP_ORIGIN: localGraspOrigin,
+  SPACE_GRASP_LOCAL: '1',
+  SPACE_GRASP_DATA: resolve(local, 'services/grasp'),
+  SPACE_GRASP_INSTANCE: localGraspInstance,
   SPACE_SITE_ADDRESS: site,
   SPACE_WEB_PORT: port,
   XDG_DATA_HOME: resolve(local, 'caddy/data'),
@@ -58,6 +66,8 @@ const env = {
 async function prepare() {
   await startRelay();
   await startBlossom();
+  await startGrasp();
+  await startProxy();
   const seed = await seedExamples();
   console.log(
     `Local examples: ${seed.count} checked, ${seed.writes} files updated (${seed.milliseconds} ms).`,
@@ -69,6 +79,10 @@ async function prepare() {
   const relaySeed = await seedLocalRelay();
   console.log(
     `Local relay: ${relaySeed.events} signed events checked, ${relaySeed.published} published (${relaySeed.milliseconds} ms).`,
+  );
+  const sourceSeed = await seedLocalGrasp();
+  console.log(
+    `Local Git: ${sourceSeed.repositories} repositories checked, ${sourceSeed.published} published (${sourceSeed.milliseconds} ms).`,
   );
   if (publicdev) {
     const result = await refreshPublicCatalog(env.SPACE_PUBLICDEV_DIR, {
@@ -155,6 +169,83 @@ async function startBlossom() {
     'Blossom did not become ready. Check .local/pm2/logs/napplet-local-blossom-error.log.',
   );
 }
+async function startGrasp() {
+  await buildGrasp();
+  const version = await graspVersion();
+  const name = `Napplet Space Git (${localGraspInstance})`;
+  const configuration = createHash('sha256')
+    .update(await Bun.file(resolve(root, 'services/grasp/config.cjs')).text())
+    .update(await Bun.file(resolve(root, 'infra/grasp.ecosystem.config.cjs')).text())
+    .update(JSON.stringify([env.SPACE_GRASP_ORIGIN, env.SPACE_GRASP_BIND, env.SPACE_GRASP_DATA]))
+    .digest('hex');
+  const marker = Bun.file(resolve(env.SPACE_GRASP_DATA, 'local.configuration'));
+  const health = await graspHealth('http://127.0.0.1:19349');
+  if (health && health.name !== name)
+    throw new Error('Port 19349 belongs to another GRASP instance; stop that checkout first.');
+  if (
+    health?.version === version &&
+    (await marker.exists()) &&
+    (await marker.text()) === configuration
+  )
+    return;
+  await mkdir(env.SPACE_GRASP_DATA, { recursive: true, mode: 0o700 });
+  const stop = Bun.spawn(['node', pm2, 'delete', 'napplet-local-grasp'], {
+    env,
+    stdout: 'ignore',
+    stderr: 'ignore',
+  });
+  await stop.exited;
+  await run(['node', pm2, 'start', 'infra/grasp.ecosystem.config.cjs', '--update-env']);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const result = await graspHealth('http://127.0.0.1:19349');
+    if (result?.version === version && result.name === name) {
+      await Bun.write(marker, configuration);
+      return;
+    }
+    await Bun.sleep(500);
+  }
+  throw new Error(
+    'GRASP did not become ready. Check .local/pm2/logs/napplet-local-grasp-error.log.',
+  );
+}
+async function startProxy() {
+  await installCaddy();
+  // Replace only this project's proxy, so changed origins/ports take effect.
+  {
+    const stop = Bun.spawn(['node', pm2, 'delete', 'napplet-local-caddy'], {
+      env,
+      stdout: 'ignore',
+      stderr: 'ignore',
+    });
+    await stop.exited;
+  }
+  await run([
+    'node',
+    pm2,
+    'start',
+    caddy,
+    '--name',
+    'napplet-local-caddy',
+    '--interpreter',
+    'none',
+    '--',
+    'run',
+    '--config',
+    resolve(root, 'infra/Caddyfile'),
+    '--adapter',
+    'caddyfile',
+  ]);
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const result = await graspHealth(localGraspOrigin);
+    if (
+      result?.name === `Napplet Space Git (${localGraspInstance})` &&
+      result.version === (await graspVersion())
+    )
+      return;
+    await Bun.sleep(500);
+  }
+  throw new Error('The local Caddy Git origin did not become ready. Check .local/pm2/logs.');
+}
 async function fetchBytes(url: string) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Download failed: ${url}`);
@@ -193,6 +284,9 @@ async function doctor() {
   );
   console.log(
     `Blossom: ${(await blossomHealth()) ? `ready at ${localBlossomOrigin}` : 'not running; use bun run dev or dev:prod'}`,
+  );
+  console.log(
+    `Git/GRASP: ${(await graspHealth(localGraspOrigin)) ? `ready at ${localGraspOrigin}` : 'not running; use bun run dev or dev:prod'}`,
   );
   try {
     const result = await fetch(`${site}/api/health`, { signal: AbortSignal.timeout(3000) });
@@ -233,6 +327,7 @@ try {
       await installCaddy();
       await buildRelay();
       await buildBlossom();
+      await buildGrasp();
       await doctor();
       break;
     case 'doctor':
@@ -244,7 +339,6 @@ try {
       break;
     case 'production':
       await prepare();
-      await installCaddy();
       await run(['bun', 'run', 'build']);
       // PM2 reload retains the old executable/cwd when an ecosystem definition changes.
       {
@@ -256,31 +350,6 @@ try {
         await stop.exited;
       }
       await run(['node', pm2, 'start', 'infra/ecosystem.config.cjs', '--update-env']);
-      // Replace only this project's proxy, so changed origins/ports take effect.
-      {
-        const stop = Bun.spawn(['node', pm2, 'delete', 'napplet-local-caddy'], {
-          env,
-          stdout: 'ignore',
-          stderr: 'ignore',
-        });
-        await stop.exited;
-      }
-      await run([
-        'node',
-        pm2,
-        'start',
-        caddy,
-        '--name',
-        'napplet-local-caddy',
-        '--interpreter',
-        'none',
-        '--',
-        'run',
-        '--config',
-        resolve(root, 'infra/Caddyfile'),
-        '--adapter',
-        'caddyfile',
-      ]);
       await run(['node', pm2, 'save']);
       {
         let ready = false;

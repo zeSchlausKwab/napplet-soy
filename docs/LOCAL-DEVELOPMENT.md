@@ -1,8 +1,8 @@
 # Local development and production parity
 
-Implementation update (2026-09-13): the [managed Khatru/LMDB/Bleve relay](RELAY.md) and [Bun Blossom storage](BLOSSOM.md) run under PM2 in both dev modes, seeded through signed protocol requests. The VPS script builds the same services; neither needs Docker. Dev startup skips unchanged events/blobs and repairs missing bytes. Blossom uses direct loopback port 19348 in both modes and a separate Caddy origin at `http://127.0.0.1:8081` in dev:prod. Production uses a separate HTTPS hostname. The full topology below remains a design target. See [PUBLIC-DEVELOPMENT.md](PUBLIC-DEVELOPMENT.md) for relay-only publicdev and SSR/PNG previews, and [CONTEXTVM.md](CONTEXTVM.md) for the multiplayer service boundary. Remaining infrastructure and extensions below are still a plan. Public clients accept ordinary named/root/snapshot manifests without requiring Space extensions.
+Implementation update (2026-09-13): the [managed Khatru/LMDB/Bleve relay](RELAY.md), [Bun Blossom storage](BLOSSOM.md), and pinned [ngit-grasp source hosting](GRASP.md) run natively under PM2 in both dev modes. Caddy also runs in both modes, exposing the website at localhost:8080, Blossom at 127.0.0.1:8081, and Git/its root Nostr relay at 127.0.0.1:8082. Dev startup checks fixtures through signed relay, Blossom and Git/Nostr requests. Warm Git reconciliation takes about 1.2 seconds without new publications. The same native services, PM2 definitions and shared GRASP configuration are used by the VPS script. Local GRASP ignores inherited operator keys/dotenv, disables index/default peer publication and admits only literal-loopback event-directed connections. The community database, index/preview workers, local HTTPS and the complete creator publication transaction below remain a design target. See [PUBLIC-DEVELOPMENT.md](PUBLIC-DEVELOPMENT.md) for read-only relay discovery and [CONTEXTVM.md](CONTEXTVM.md) for multiplayer.
 
-Status: required direction with partial implementation, 2026-09-11. The user subsequently requested Caddy and PM2 for VPS deployment. The current web foundation runs directly under Bun for HMR and under PM2 + Caddy for production-build checks; see [README.md](../README.md) and [DEPLOYMENT.md](DEPLOYMENT.md) for implemented commands. The full GRASP/Blossom/relay/database/worker topology described below remains a design target, not an existing stack. Compose is a candidate for those external services, while the Bun app now deploys under PM2.
+Status: required direction with partial implementation, 2026-09-11. The user subsequently requested Caddy and PM2 for VPS deployment. The current web foundation runs directly under Bun for HMR and under PM2 + Caddy for production-build checks; see [README.md](../README.md) and [DEPLOYMENT.md](DEPLOYMENT.md) for implemented commands. The database/worker and local HTTPS topology described below remains a design target. The implemented backing services deploy directly under PM2, without containers.
 
 ## 1. Developer experience
 
@@ -13,26 +13,29 @@ bun run dev:setup   # first use: prerequisites, local origins/TLS, isolated conf
 bun run dev         # complete local stack, app hot reload, readiness checks
 bun run dev:prod    # complete stack using production application builds
 bun run dev:doctor # meaningful health, hostname, TLS, and endpoint diagnostics
-bun run dev:down    # stop containers while preserving state
+bun run dev:down    # stop this checkout’s PM2 services while preserving state
 ```
 
-`dev` should converge an existing installation and be safe to rerun. It starts real GRASP, Blossom, social relay, Postgres, index worker, preview worker, web server, and reverse proxy. The web service serves both SSR and API endpoints. The dev overlay runs our editable services with watch/reload; upstream services use pinned images. `dev:prod` uses the production Dockerfile target and startup commands with local data and origins. Each invocation reports its origin, selected mode, and readiness.
+`dev` should converge an existing installation and be safe to rerun. It starts real GRASP, Blossom, social relay, Postgres, index worker, preview worker, web server, and reverse proxy. The web service serves both SSR and API endpoints. The dev overlay runs our editable services with watch/reload; implemented upstream services use pinned native builds. `dev:prod` uses the production Bun build and PM2 startup commands with local data and origins. Each invocation reports its origin, selected mode, and readiness.
 
 Ordinary napplet creators still use the lightweight `napplet-space dev` command; they do not need this platform stack. Platform contributors use the full stack to exercise publishing and discovery end to end.
 
 ## 2. Shared deployment definition
 
+Implemented definitions:
+
 ```text
-infra/compose.yaml        shared topology, networks, health checks, persistent data
-infra/compose.local.yaml  local origins, certificates, loopback ports, fixture profile
-infra/compose.dev.yaml    source mounts, watch commands, Vite HMR
-infra/compose.prod.yaml   deployment origins, secrets, restart/resource policies
-infra/images.lock        pinned upstream images and supported architectures
-infra/config/            shared generated service configuration templates
-infra/fixtures/          source projects, test identities, signed-event recipes
+infra/Caddyfile                    local web, blob and Git origins
+infra/*.ecosystem.config.cjs       shared PM2 service definitions
+services/relay                    pinned Khatru/LMDB/Bleve service
+services/blossom                  Bun blob service
+services/grasp/upstream.json       native ngit-grasp and compiler pins
+services/grasp/config.cjs          shared Node/Bun runtime configuration
+scripts/dev.ts                    local readiness and fixture reconciliation
+scripts/deploy-remote.sh          VPS prerequisites, build, activation/recovery
 ```
 
-Scripts select overlays explicitly; avoid an implicitly loaded override changing a production run. Docker Compose supports a shared definition with environment-specific overlays. Validate each merged configuration in CI. [Compose in production](https://docs.docker.com/compose/how-tos/production/), [merging Compose files](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/).
+State is outside release directories. Local HTTP and public HTTPS use the same service protocols and backends. Postgres/workers and trusted local HTTPS still need shared definitions and integration checks.
 
 | Must match | Permitted environment differences |
 | --- | --- |

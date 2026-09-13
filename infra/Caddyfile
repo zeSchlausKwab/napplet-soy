@@ -2,6 +2,18 @@
 	admin off
 }
 
+# GRASP requires Git smart HTTP and the repository relay at one root origin.
+http://127.0.0.1:8082 {
+	bind 127.0.0.1
+	header -Server
+	request_body {
+		max_size 52428800
+	}
+	@private path /metrics /metrics/*
+	respond @private 404
+	reverse_proxy 127.0.0.1:19349
+}
+
 # Blob bytes have a separate origin and the root paths required by Blossom.
 http://127.0.0.1:8081 {
 	bind 127.0.0.1

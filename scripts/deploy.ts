@@ -20,6 +20,12 @@ export function validateBlossomDomain(domain: string, input = `blossom.${domain}
     throw new Error('--blossom-domain must be separate from the website hostname.');
   return input;
 }
+export function validateGitDomain(domain: string, blossom: string, input = `git.${domain}`) {
+  validateTarget('validation', input);
+  if (input === domain || input === blossom)
+    throw new Error('--git-domain must be separate from the website and Blossom hostnames.');
+  return input;
+}
 async function run(args: string[], stdin?: string) {
   const child = Bun.spawn(args, {
     stdout: 'inherit',
@@ -35,18 +41,20 @@ if (import.meta.main) {
       host: { type: 'string' },
       domain: { type: 'string' },
       'blossom-domain': { type: 'string' },
+      'git-domain': { type: 'string' },
       help: { type: 'boolean' },
     },
   });
   if (values.help) {
     console.log(
-      'Usage: bun run deploy --host root@your-vps --domain napplet.example [--blossom-domain blobs.example]\n\nFor a dedicated Debian/Ubuntu VPS with systemd and root or passwordless sudo.\nPoint both the website and Blossom hostname (default blossom.<domain>) to this VPS.\nInstalls pinned Bun, Caddy and PM2; uploads source without secrets; checks and activates a release.',
+      'Usage: bun run deploy --host root@your-vps --domain napplet.example [--blossom-domain blobs.example] [--git-domain source.example]\n\nFor a dedicated Debian/Ubuntu VPS with systemd and root or passwordless sudo.\nPoint the website, blossom.<domain> and git.<domain> hostnames to this VPS.\nInstalls pinned Bun, Caddy, PM2, Go and Rust; uploads source without secrets; checks and activates a release.',
     );
     process.exit(0);
   }
   try {
     const { host, domain } = validateTarget(values.host, values.domain);
     const blossomDomain = validateBlossomDomain(domain, values['blossom-domain']);
+    const gitDomain = validateGitDomain(domain, blossomDomain, values['git-domain']);
     const release = `${new Date().toISOString().replace(/[-:TZ.]/g, '')}-${process.pid}`;
     const staging = await mkdtemp(join(tmpdir(), 'napplet-deploy-'));
     const archive = join(staging, `napplet-${release}.tar.gz`);
@@ -54,6 +62,7 @@ if (import.meta.main) {
       await run(['bun', 'run', 'check']);
       await run(['bun', 'run', 'test:relay']);
       await run(['bun', 'run', 'test:blossom']);
+      await run(['bun', 'run', 'test:grasp']);
       await run([
         'tar',
         '--exclude=node_modules',
@@ -83,12 +92,13 @@ if (import.meta.main) {
         [
           'ssh',
           host,
-          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain}; fi`,
+          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain}; fi`,
         ],
         script,
       );
       console.log(`\nRelease ${release} is running behind Caddy at https://${domain}`);
       console.log(`Blossom storage: https://${blossomDomain}`);
+      console.log(`Git source hosting: https://${gitDomain}`);
     } finally {
       await rm(staging, { recursive: true, force: true });
     }

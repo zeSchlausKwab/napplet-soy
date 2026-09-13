@@ -5,9 +5,11 @@ set -Eeuo pipefail
 release_id=${1:?release id required}
 domain=${2:?domain required}
 blossom_domain=${3:-blossom.$domain}
+git_domain=${4:-git.$domain}
 [[ "$release_id" =~ ^[0-9]+-[0-9]+$ ]] || exit 2
 [[ "$domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ ]] || exit 2
 [[ "$blossom_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$blossom_domain" != "$domain" ]] || exit 2
+[[ "$git_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$git_domain" != "$domain" && "$git_domain" != "$blossom_domain" ]] || exit 2
 [[ $EUID -eq 0 ]] || { echo 'Root or passwordless sudo is required.' >&2; exit 1; }
 command -v apt-get >/dev/null || { echo 'This script supports Debian/Ubuntu VPS hosts.' >&2; exit 1; }
 [[ -d /run/systemd/system ]] || { echo 'A running systemd host is required.' >&2; exit 1; }
@@ -22,16 +24,17 @@ bun_version=1.3.11
 caddy_version=2.10.2
 pm2_version=7.0.4
 go_version=1.25.0
+rust_version=1.97.1
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq ca-certificates curl unzip tar xz-utils nodejs npm build-essential git
+apt-get install -y -qq ca-certificates curl unzip tar xz-utils nodejs npm build-essential git pkg-config libssl-dev
 id napplet >/dev/null 2>&1 || useradd --system --create-home --home-dir "$state_root" --shell /usr/sbin/nologin napplet
 install -d -m 755 "$app_root/bin" "$app_root/tools" "$app_root/releases" "$app_root/shared" /etc/napplet-space
-install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom"
+install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom" "$state_root/grasp"
 
 case "$(uname -m)" in
-  x86_64) bun_asset=bun-linux-x64-baseline.zip; caddy_arch=amd64; go_sha=2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613 ;;
-  aarch64|arm64) bun_asset=bun-linux-aarch64.zip; caddy_arch=arm64; go_sha=05de75d6994a2783699815ee553bd5a9327d8b79991de36e38b66862782f54ae ;;
+  x86_64) rust_target=x86_64-unknown-linux-gnu; rust_sha=88f28fa9af20594179f85d6df67078dfd6fa93e2f6da5e1e9b0ac4997988ca4f; bun_asset=bun-linux-x64-baseline.zip; caddy_arch=amd64; go_sha=2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613 ;;
+  aarch64|arm64) rust_target=aarch64-unknown-linux-gnu; rust_sha=9a7a2c336b4787f1b72f6bab7c35d5b7af2fd03cbd39b4fc721466a70d402a7d; bun_asset=bun-linux-aarch64.zip; caddy_arch=arm64; go_sha=05de75d6994a2783699815ee553bd5a9327d8b79991de36e38b66862782f54ae ;;
   *) echo 'Supported VPS architectures: x86_64 and arm64.' >&2; exit 1 ;;
 esac
 tool_staging=$(mktemp -d)
@@ -58,6 +61,14 @@ if [[ ! -x "$go_root/go/bin/go" ]] || [[ "$("$go_root/go/bin/go" version)" != "g
   install -d "$go_root"
   tar -xzf "$tool_staging/$go_asset" -C "$go_root"
 fi
+# Standalone pinned Rust distribution; do not replace the host's Rust installation.
+rust_root="$app_root/tools/rust$rust_version"
+if [[ ! -x "$rust_root/bin/rustc" ]] || [[ "$("$rust_root/bin/rustc" --version)" != "rustc $rust_version "* ]]; then
+  rust_asset="rust-$rust_version-$rust_target.tar.xz"
+  curl -fsSL "https://static.rust-lang.org/dist/$rust_asset" -o "$tool_staging/$rust_asset"
+  (cd "$tool_staging"; printf '%s  %s\n' "$rust_sha" "$rust_asset" | sha256sum -c -; tar -xJf "$rust_asset")
+  "$tool_staging/${rust_asset%.tar.xz}/install.sh" --prefix="$rust_root" --components="rustc,cargo,rust-std-$rust_target" --disable-ldconfig
+fi
 if [[ ! -f "$app_root/tools/node_modules/pm2/package.json" ]] || [[ "$(node -p "require('$app_root/tools/node_modules/pm2/package.json').version")" != "$pm2_version" ]]; then
   npm install --prefix "$app_root/tools" --no-audit --no-fund "pm2@$pm2_version"
 fi
@@ -76,10 +87,17 @@ if [[ -f "$app_root/shared/server.env" ]]; then
   source "$app_root/shared/server.env"
   set +a
 fi
-export PATH="$go_root/go/bin:$app_root/bin:/usr/bin:/bin"
+export PATH="$rust_root/bin:$go_root/go/bin:$app_root/bin:/usr/bin:/bin"
 export SPACE_SITE_ORIGIN="https://$domain"
 export SPACE_PUBLICDEV=0 SPACE_PUBLICDEV_DIR=''
-runuser -u napplet -- bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
+# GRASP migrations are not reversible by switching binaries. Pin changes need a
+# separately rehearsed migration/restore procedure; ordinary deploys cannot do it.
+grasp_commit=$(node -p "require(process.argv[1]).commit" "$release_dir/services/grasp/upstream.json")
+if [[ -f "$state_root/grasp/upstream.commit" ]] && [[ "$(cat "$state_root/grasp/upstream.commit")" != "$grasp_commit" ]]; then
+  echo 'GRASP upstream pin changed. Stop here: migrate/restore its full state separately before deployment.' >&2
+  exit 1
+fi
+runuser -u napplet -- bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
 
 start_relay() {
   local source_release=$1
@@ -104,6 +122,21 @@ blossom_ready() {
   for attempt in {1..30}; do
     response=$(curl -fsS --max-time 2 http://127.0.0.1:19348/health 2>/dev/null) || response=''
     if [[ "$response" == *"\"build\":\"$expected\""* && "$response" == *"\"instance\":\"$domain\""* ]]; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+
+start_grasp() {
+  local source_release=$1
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_GRASP_BIN="$source_release/bin/ngit-grasp" SPACE_GRASP_DATA="$state_root/grasp" SPACE_GRASP_ORIGIN="https://$git_domain" SPACE_GRASP_LOCAL=0 SPACE_GRASP_INSTANCE="$domain" PATH="$PATH" node "$pm2_bin" start "$source_release/infra/grasp.ecosystem.config.cjs" --update-env
+}
+grasp_ready() {
+  local expected response
+  expected=$(cd "$1"; "$app_root/bin/bun" -e 'import { graspVersion } from "./scripts/grasp-build"; console.log(await graspVersion())')
+  for attempt in {1..60}; do
+    response=$(curl -fsS --max-time 2 -H 'Accept: application/nostr+json' http://127.0.0.1:19349/ 2>/dev/null) || response=''
+    if [[ "$response" == *"\"version\":\"$expected\""* && "$response" == *"\"name\":\"Napplet Space Git ($domain)\""* ]]; then return 0; fi
     sleep 1
   done
   return 1
@@ -136,12 +169,15 @@ rollback() {
       if [[ -f "$previous/infra/relay.ecosystem.config.cjs" ]]; then start_relay "$previous" || true; fi
       pm2_run delete napplet-blossom || true
       if [[ -f "$previous/infra/blossom.ecosystem.config.cjs" ]]; then start_blossom "$previous" || true; fi
+      pm2_run delete napplet-grasp || true
+      if [[ -f "$previous/infra/grasp.ecosystem.config.cjs" ]]; then start_grasp "$previous" || true; fi
       pm2_run delete napplet-web || true
       runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$previous" SPACE_RELEASE_ID="$(basename "$previous")" PATH="$PATH" node "$pm2_bin" start "$previous/infra/ecosystem.config.cjs" --update-env || true
     else
       pm2_run delete napplet-web || true
       pm2_run delete napplet-relay || true
       pm2_run delete napplet-blossom || true
+      pm2_run delete napplet-grasp || true
       rm -f "$app_root/current"
     fi
     pm2_run save --force || true
@@ -180,6 +216,15 @@ $blossom_domain {
   header -Server
   reverse_proxy 127.0.0.1:19348
 }
+$git_domain {
+  header -Server
+  request_body {
+    max_size 52428800
+  }
+  @private path /metrics /metrics/*
+  respond @private 404
+  reverse_proxy 127.0.0.1:19349
+}
 CADDY
 "$app_root/bin/caddy" validate --config "$app_root/shared/Caddyfile.next" --adapter caddyfile
 ln -sfn "$release_dir" "$app_root/current.next"
@@ -191,6 +236,11 @@ relay_ready "$release_dir"
 pm2_run delete napplet-blossom || true
 start_blossom "$release_dir"
 blossom_ready "$release_dir"
+pm2_run delete napplet-grasp || true
+printf '%s\n' "$grasp_commit" > "$state_root/grasp/upstream.commit"
+chown napplet:napplet "$state_root/grasp/upstream.commit"
+start_grasp "$release_dir"
+grasp_ready "$release_dir"
 pm2_run delete napplet-web || true
 runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$release_dir" SPACE_RELEASE_ID="$release_id" PATH="$PATH" node "$pm2_bin" start "$release_dir/infra/ecosystem.config.cjs" --update-env
 healthy=0
@@ -246,4 +296,4 @@ systemctl enable napplet-space napplet-space-caddy
 if systemctl is-active --quiet napplet-space-caddy; then systemctl reload napplet-space-caddy; else systemctl start napplet-space-caddy; fi
 systemctl is-active --quiet napplet-space-caddy
 trap - ERR
-echo "Activated $release_id for https://$domain with Blossom at https://$blossom_domain. Caddy will obtain certificates when both DNS names resolve and ports 80/443 are reachable."
+echo "Activated $release_id for https://$domain with Blossom at https://$blossom_domain and Git at https://$git_domain. Caddy will obtain certificates when all three DNS names resolve and ports 80/443 are reachable."

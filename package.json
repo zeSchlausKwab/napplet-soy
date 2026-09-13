@@ -28,7 +28,10 @@
     "blossom:build": "bun scripts/blossom.ts build",
     "blossom:seed": "bun scripts/blossom.ts seed",
     "test:relay": "bun scripts/relay-go.ts test -race ./... && bun test tests/services/relay.test.ts",
-    "test:blossom": "bun test tests/services/blossom*.test.ts"
+    "test:blossom": "bun test tests/services/blossom*.test.ts",
+    "grasp:build": "bun scripts/grasp-build.ts",
+    "grasp:seed": "bun scripts/grasp.ts",
+    "test:grasp": "bun test tests/services/grasp.test.ts"
   },
   "dependencies": {
     "@contextvm/sdk": "0.13.16",

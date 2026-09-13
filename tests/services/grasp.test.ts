@@ -25,24 +25,28 @@ let boundPort = 0;
 const owner = new PrivateKeySigner();
 let operatorKey: string;
 let logs = '';
-async function start() {
-  const state = join(directory, 'state');
+async function start(local = true) {
+  const state = join(directory, local ? 'state' : 'production-state');
   await mkdir(state, { recursive: true });
   child = Bun.spawn([graspBinary], {
     cwd: state,
     env: {
       ...graspEnvironment({
-        origin: `http://127.0.0.1:${boundPort || 1}`,
+        origin: local ? `http://127.0.0.1:${boundPort || 1}` : 'https://git.napplet.example',
         directory: state,
-        local: true,
+        local,
         instance: 'test',
         bind: `127.0.0.1:${boundPort}`,
       }),
-      NGIT_DOMAIN: boundPort ? `127.0.0.1:${boundPort}` : '',
+      NGIT_DOMAIN: local ? (boundPort ? `127.0.0.1:${boundPort}` : '') : 'git.napplet.example',
       // Local mode must not adopt credentials or network defaults from a production shell.
-      NGIT_RELAY_OWNER_NSEC: 'invalid-production-value-must-be-ignored',
-      NGIT_USER_INDEX_RELAYS: 'wss://must-not-contact.invalid',
-      NGIT_SYNC_PLUS_ENABLED: 'true',
+      ...(local
+        ? {
+            NGIT_RELAY_OWNER_NSEC: 'invalid-production-value-must-be-ignored',
+            NGIT_USER_INDEX_RELAYS: 'wss://must-not-contact.invalid',
+            NGIT_SYNC_PLUS_ENABLED: 'true',
+          }
+        : {}),
     },
     stdout: 'pipe',
     stderr: 'pipe',
@@ -259,4 +263,19 @@ test('local source profiles reject remote targets and signer/target substitution
   } finally {
     pool.close();
   }
+});
+test('the production service profile starts with an HTTPS identity and no default index publication', async () => {
+  await stop();
+  await start(false);
+  const health = await graspHealth(origin);
+  expect(health?.version).toBe(await graspVersion());
+  expect(health?.name).toBe('Napplet Space Git (test)');
+  expect(health?.pubkey).not.toBe(operatorKey);
+  expect(logs).not.toContain('Bootstrap relay configured');
+  const response = await fetch(`${origin}/`, {
+    method: 'OPTIONS',
+    headers: { Origin: 'https://napplet.example', 'Access-Control-Request-Method': 'POST' },
+  });
+  expect(response.status).toBe(204);
+  expect(response.headers.get('access-control-allow-origin')).toBe('*');
 });

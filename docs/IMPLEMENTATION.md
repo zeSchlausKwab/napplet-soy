@@ -28,7 +28,7 @@ Protocol/runtime/CLI/deployment-input tests and Chromium tests cover signatures,
 
 Local PM2 checks exposed its Bun `require()` wrapper incompatibility with top-level await; the ecosystem now executes the Bun binary directly. PM2 also retains old executable/cwd settings on reload, so activation explicitly recreates the dedicated application process. React 19.3.0 triggered a Bun 1.3.11 CommonJS loader error when importing its production SSR renderer; React/React DOM are pinned to the verified 19.2.4 pair. Candidate smoke checks and the standalone server explicitly use production mode so this class of difference is tested before activation.
 
-No VPS has been contacted or deployed to. Shell syntax and argument validation are tested; remote apt installation, Linux systemd behavior, certificate issuance, actual reboot recovery, and remote rollback remain unverified. The implemented relay and Blossom services run natively; GRASP and the community database are not provisioned.
+No VPS has been contacted or deployed to. Shell syntax and argument validation are tested; remote apt installation, Linux systemd behavior, certificate issuance, actual reboot recovery, and remote rollback remain unverified. The relay, Blossom and GRASP services run natively under PM2; the community database is not provisioned.
 
 ## Next vertical slice
 
@@ -86,7 +86,7 @@ Validation for this repair: type checking and **62 unit/integration tests passed
 
 Khatru/LMDB/Bleve now runs as a persistent PM2 process in both local modes and is wired into the VPS build/activation/rollback script. Dev startup reconciles the 12 signed example events over Applesauce; repeated seeds skip writes and publicdev never becomes a fixture destination. Caddy exposes ordinary WebSocket and NIP-11 traffic at `/relay`. Build reuse, health, process ownership and graceful shutdown are implemented. See [RELAY.md](RELAY.md) for exact pins, two checksum-guarded upstream fixes, search semantics, bounds and verification.
 
-This completed the relay portion of the publishing slice. Blossom storage followed as recorded below. GRASP/ngit source provisioning, creator keys, persistent website indexing/naming and CLI publication remain unfinished. No VPS has been contacted.
+This completed the relay portion of the publishing slice. Blossom storage followed as recorded below. GRASP source hosting followed as recorded below. Creator keys, persistent website indexing/naming and CLI publication remain unfinished. No VPS has been contacted.
 
 ## Managed Blossom foundation
 
@@ -96,6 +96,17 @@ Both dev modes now start Blossom, verify six fixture blobs through its API, and 
 
 Service tests cover real HTTP authorization, ownership and deletion, hash mismatch, ranges, cursors, concurrent quotas, idempotent seeding, file repair and process locking. The bundled service survives SIGTERM and SIGKILL. A real local relay round trip discovers a signed NIP-5D manifest through Applesauce and retrieves its exact bytes using its standard Blossom server hint.
 
-This is still a publication component: fixture manifests in the ordinary catalog/relay do not yet advertise these running services, and normal website indexing still uses existing catalogs. GRASP/creator identity/CLI publication and persistent index/naming integration remain next. No VPS or public-relay publication was attempted.
+This is still a publication component: fixture manifests in the ordinary catalog/relay do not yet advertise these running services, and normal website indexing still uses existing catalogs. GRASP followed as recorded below; creator identity/CLI publication and persistent index/naming integration remain next. No VPS or public-relay publication was attempted.
 
 Validation: 64 application tests, 15 Blossom HTTP/process tests, 10 Go race tests and four relay process tests passed. Two Chromium checks passed through Caddy: the new cross-origin upload/read/delete flow and the existing relay-discovered Rubik Cube playback/OG flow. Type checking, the production build/startup, Caddy configuration validation and VPS shell syntax passed. The local stack is running with publicdev and 93 relay-discovered entries; a warm six-blob verification took 64 ms with no uploads.
+
+
+## Managed GRASP foundation
+
+Pinned ngit-grasp v3.0.2 now provides source hosting, using standard kind-30617 repository announcements, kind-30618 branch-state authorization and Git smart HTTP. The shared Applesauce publication adapter checks signatures and selected targets, pushes an authorized commit, and verifies queryable metadata plus Git refs before reporting success. Service identity, repository authorization and Git objects survive process restarts. The build has checksum-guarded process ownership, local isolation and build-identification changes; see [GRASP.md](GRASP.md).
+
+Both dev modes run the same native service and Caddy Git origin, then reconcile six fixture source repositories. The VPS script installs checksum-pinned Rust, builds/tests GRASP, gives it a third hostname, persists state outside releases and manages activation/recovery under PM2. An upstream-pin guard prevents automatic migrations/downgrades through ordinary deployments. Creator keys never enter the Git subprocess. Publicdev remains read-only and is not a seed destination.
+
+Validation: **67 application tests, eight native GRASP process tests and the Chromium relay-discovery/Rubik Cube/OG check passed**. Type checking, the production web build/startup, local and generated VPS Caddy configuration validation, and deployment shell syntax passed. Independent Git cloning through Caddy produced bytes matching the signed Soft orbit fixture. HMR startup through the same Caddy proxy also retained all 93 publicdev entries. A warm six-repository seed check took 1.2 seconds with zero publications. No VPS, remote TLS, ngit CLI version matrix or actual reboot was tested.
+
+This completes the source-hosting component, committed separately from its stack wiring. Next is creator identity and the resumable CLI transaction connecting Git, Blossom and NIP-5D publication, followed by persistent discovery/indexing and named-route assignment. Existing gallery manifests still use the bundled catalog; the complete independent-client publishing acceptance test remains ahead.

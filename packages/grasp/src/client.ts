@@ -147,13 +147,14 @@ export async function prepareSource(input: {
   const createdAt = input.createdAt ?? Math.floor(Date.now() / 1000);
   async function sign(kind: number, tags: string[][]) {
     const template = { kind, created_at: createdAt, content: '', tags };
+    const requestedTags = JSON.stringify(tags);
     const event = verifiedEvent(await input.signer.signEvent(template));
     if (
       event.pubkey !== pubkey ||
       event.kind !== kind ||
       event.created_at !== createdAt ||
       event.content !== '' ||
-      JSON.stringify(event.tags) !== JSON.stringify(tags)
+      JSON.stringify(event.tags) !== requestedTags
     )
       throw new Error('Signer changed the source authorization');
     return event;
