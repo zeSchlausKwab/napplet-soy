@@ -42,11 +42,21 @@ test.beforeAll(async () => {
   );
   config.relays = [`ws://127.0.0.1:${(relay.address() as { port: number }).port}/`];
   await writeFile(join(project, 'napplet.json'), JSON.stringify(config));
-  child = spawn('bun', ['dev.ts'], {
-    cwd: project,
-    env: { PATH: process.env.PATH, PORT: '0' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  child = spawn(
+    'bun',
+    [
+      fileURLToPath(new URL('../../apps/cli/src/index.ts', import.meta.url)),
+      'dev',
+      '--no-open',
+      '--port',
+      '0',
+    ],
+    {
+      cwd: project,
+      env: { PATH: process.env.PATH, PORT: '0' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
   origin = await new Promise<string>((resolve, reject) => {
     let output = '';
     const timeout = setTimeout(() => reject(new Error(`Preview did not start: ${output}`)), 10000);

@@ -1,3 +1,4 @@
+import { cliTestVault } from './cli-test-vault';
 import { expect, test } from 'bun:test';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -281,13 +282,18 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
     const accounts = new Accounts(
       'local',
       join(accountHome, 'accounts/local'),
-      new NativeVault('space.napplet.creator.local'),
+      cliTestVault('space.napplet.creator.local'),
     );
-    const cli = new URL('../../apps/cli/src/index.ts', import.meta.url).pathname;
+    const cli = process.env.SPACE_TEST_CLI
+      ? [process.env.SPACE_TEST_CLI]
+      : [process.execPath, new URL('../../apps/cli/src/index.ts', import.meta.url).pathname];
     const run = async (args: string[]) => {
-      const child = Bun.spawn([process.execPath, cli, ...args, '--network', 'local', '--json'], {
+      const child = Bun.spawn([...cli, ...args, '--network', 'local', '--json'], {
         cwd: services.directory,
-        env: { PATH: process.env.PATH, SPACE_ACCOUNT_HOME: accountHome },
+        env: {
+          PATH: process.env.SPACE_TEST_CLI ? '/usr/bin:/bin' : process.env.PATH,
+          SPACE_ACCOUNT_HOME: accountHome,
+        },
         stdin: 'ignore',
         stdout: 'pipe',
         stderr: 'pipe',
@@ -350,10 +356,19 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
         ].join('\n'),
       );
       const crashing = Bun.spawn(
-        [process.execPath, worker, created.directory, JSON.stringify(services.targets)],
+        [
+          process.env.SPACE_TEST_CLI || process.execPath,
+          worker,
+          created.directory,
+          JSON.stringify(services.targets),
+        ],
         {
           cwd: services.directory,
-          env: { PATH: process.env.PATH, SPACE_ACCOUNT_HOME: accountHome },
+          env: {
+            BUN_BE_BUN: process.env.SPACE_TEST_CLI ? '1' : undefined,
+            PATH: process.env.SPACE_TEST_CLI ? '/usr/bin:/bin' : process.env.PATH,
+            SPACE_ACCOUNT_HOME: accountHome,
+          },
           stdin: 'ignore',
           stdout: 'pipe',
           stderr: 'pipe',
@@ -363,11 +378,11 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
       const reader = crashing.stdout.getReader();
       try {
         const output = await reader.read();
+        if (output.done) throw new Error(await new Response(crashing.stderr).text());
         expect(new TextDecoder().decode(output.value)).toContain('checkpoint');
         const competing = Bun.spawn(
           [
-            process.execPath,
-            cli,
+            ...cli,
             'publish',
             '--project',
             created.directory,
@@ -378,7 +393,10 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
           ],
           {
             cwd: services.directory,
-            env: { PATH: process.env.PATH, SPACE_ACCOUNT_HOME: accountHome },
+            env: {
+              PATH: process.env.SPACE_TEST_CLI ? '/usr/bin:/bin' : process.env.PATH,
+              SPACE_ACCOUNT_HOME: accountHome,
+            },
             stdin: 'ignore',
             stdout: 'pipe',
             stderr: 'pipe',

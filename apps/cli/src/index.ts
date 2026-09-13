@@ -7,6 +7,9 @@ import { AccountError, type Network } from '../../../packages/identity/src/signe
 import { ask, hiddenInput as readHiddenInput, secretStdin } from './input';
 import { publishProject, publicationStatus, PublishError } from '../../../packages/publish/src';
 import { checkPublication } from './publish-check';
+import { preview, checkProject, doctor } from './local';
+import { installBrowser } from './browser';
+import { commandName, version } from './distribution';
 
 const help = `Usage:
   bun run napplet new <folder> [--template soft-orbit] [--identity create|connect|later]
@@ -17,6 +20,11 @@ const help = `Usage:
   bun run napplet account export <new-recovery-file> [--passphrase-stdin]
   bun run napplet publish [--project <folder>] [--dry-run | --resume]
   bun run napplet status [--project <folder>] [--refresh]
+  bun run napplet dev [--project <folder>] [--port 4173] [--no-open]
+  bun run napplet check [--project <folder>]
+  bun run napplet browser install
+  bun run napplet doctor
+  bun run napplet --version
 
 All commands accept --network public|local and --json.
 Create reuses your selected account. Connect accepts a hidden bunker link.
@@ -25,7 +33,11 @@ provide the key on line 1 and, for an encrypted key, its passphrase on line 2.
 Export writes a passphrase-encrypted NIP-49 file outside Git projects.
 Publish targets: --relay <url> --blossom <origin> --grasp <origin> --site <origin>
 and optional repeated --mirror <url>. Local mode defaults to the dev services.
-Secrets never belong in command arguments. Website indexing is still under construction.`;
+Secrets never belong in command arguments. Check/publish download a cached Chromium
+browser when needed. Git and an unlocked OS credential store are needed to publish.`.replaceAll(
+  'bun run napplet',
+  commandName,
+);
 let json = process.argv.slice(2).includes('--json');
 let createdProject: string | undefined;
 const controller = new AbortController();
@@ -63,6 +75,9 @@ try {
         'passphrase-stdin': { type: 'boolean' },
         json: { type: 'boolean' },
         help: { type: 'boolean' },
+        version: { type: 'boolean' },
+        port: { type: 'string' },
+        'no-open': { type: 'boolean' },
         project: { type: 'string' },
         'dry-run': { type: 'boolean' },
         resume: { type: 'boolean' },
@@ -82,6 +97,10 @@ try {
   }
   const { values, positionals } = parsed;
   json = !!values.json;
+  if (values.version) {
+    console.log(json ? JSON.stringify({ version }) : `napplet-space ${version}`);
+    process.exit(0);
+  }
   if (values.help || !positionals.length) {
     console.log(help);
     process.exit(0);
@@ -118,7 +137,6 @@ try {
   };
   const [command, action, argument, ...extra] = positionals;
   const publishingOptions =
-    values.project ||
     values['dry-run'] ||
     values.resume ||
     values.refresh ||
@@ -129,6 +147,14 @@ try {
     values.mirror;
   if (!['publish', 'status'].includes(command) && publishingOptions)
     throw new AccountError('USAGE', 'Publication options are only valid for publish/status.');
+  if (
+    (values.project && !['publish', 'status', 'dev', 'check'].includes(command)) ||
+    ((values.port || values['no-open']) && command !== 'dev')
+  )
+    throw new AccountError(
+      'USAGE',
+      'Use --project with dev/check/publish/status; --port and --no-open with dev.',
+    );
   if (command === 'new') {
     if (
       !action ||
@@ -175,8 +201,50 @@ try {
       );
     else
       console.log(
-        `\nYour napplet is ready at ${directory}\n\n  cd ${action}\n  bun run dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nUse the platform CLI publish --project <folder> to publish.`,
+        `\nYour napplet is ready at ${directory}\n\n  cd ${action}\n  napplet-space dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nRun napplet-space publish to share it.`,
       );
+  } else if (['dev', 'check', 'doctor', 'browser'].includes(command)) {
+    if (
+      values.template ||
+      values.identity ||
+      values.stdin ||
+      values['passphrase-stdin'] ||
+      argument ||
+      extra.length ||
+      (command === 'browser' ? action !== 'install' : !!action)
+    )
+      throw new AccountError('USAGE', 'Use dev, check, doctor, or browser install.');
+    if (command === 'dev') {
+      const port = Number(values.port ?? 4173);
+      if (
+        !/^\d+$/.test(values.port ?? '4173') ||
+        !Number.isInteger(port) ||
+        port < 0 ||
+        port > 65535
+      )
+        throw new AccountError('USAGE', 'Choose a port from 0 to 65535.');
+      await preview(
+        values.project ?? process.cwd(),
+        port,
+        !values['no-open'],
+        json,
+        controller.signal,
+      );
+    } else {
+      const result =
+        command === 'check'
+          ? await checkProject(values.project ?? process.cwd(), network)
+          : command === 'doctor'
+            ? await doctor()
+            : (await installBrowser(), { browser: 'ready' });
+      console.log(
+        json
+          ? JSON.stringify(result)
+          : Object.entries(result)
+              .map(([key, value]) => `${key}: ${value}`)
+              .join('\n'),
+      );
+    }
   } else if (command === 'publish' || command === 'status') {
     if (
       action ||

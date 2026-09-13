@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createResourceResponder } from '../../../../packages/backend/src/resource-response';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../../../packages/protocol/src/artifact';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
+import type { PreviewAssets } from './assets';
 
 const relayUrl = z
   .string()
@@ -34,6 +35,7 @@ export function startPreviewServer(
   root: URL,
   port = Number(process.env.PORT ?? 4173),
   announce = true,
+  assets?: PreviewAssets,
 ) {
   async function revision() {
     // BunFile caches stat/size: create fresh handles after every editor save.
@@ -90,11 +92,11 @@ export function startPreviewServer(
             });
         }
         if (url.pathname === '/runtime.js')
-          return new Response(Bun.file(new URL('.napplet/client.js', root)), {
+          return new Response(assets?.client ?? Bun.file(new URL('.napplet/client.js', root)), {
             headers: { ...noStore, 'Content-Type': 'text/javascript; charset=utf-8' },
           });
         if (url.pathname === '/')
-          return new Response(Bun.file(new URL('.napplet/preview.html', root)), {
+          return new Response(assets?.html ?? Bun.file(new URL('.napplet/preview.html', root)), {
             headers: {
               ...noStore,
               'Content-Type': 'text/html; charset=utf-8',

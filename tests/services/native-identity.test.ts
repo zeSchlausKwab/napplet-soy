@@ -1,3 +1,4 @@
+import { cliTestVault } from './cli-test-vault';
 import { expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -10,13 +11,18 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
   'native keychain survives CLI processes, two projects reuse one creator, and encrypted recovery restores it',
   async () => {
     const directory = await mkdtemp(join(tmpdir(), 'napplet-native-key-'));
-    const vault = new NativeVault('space.napplet.creator.local');
+    const vault = cliTestVault('space.napplet.creator.local');
     const accounts = new Accounts('local', join(directory, 'accounts/local'), vault);
-    const cli = new URL('../../apps/cli/src/index.ts', import.meta.url).pathname;
+    const cli = process.env.SPACE_TEST_CLI
+      ? [process.env.SPACE_TEST_CLI]
+      : [process.execPath, new URL('../../apps/cli/src/index.ts', import.meta.url).pathname];
     async function run(args: string[], input?: string) {
-      const child = Bun.spawn([process.execPath, cli, ...args, '--network', 'local', '--json'], {
+      const child = Bun.spawn([...cli, ...args, '--network', 'local', '--json'], {
         cwd: directory,
-        env: { PATH: process.env.PATH, SPACE_ACCOUNT_HOME: directory },
+        env: {
+          PATH: process.env.SPACE_TEST_CLI ? '/usr/bin:/bin' : process.env.PATH,
+          SPACE_ACCOUNT_HOME: directory,
+        },
         stdout: 'pipe',
         stderr: 'pipe',
         stdin: input === undefined ? 'ignore' : new Blob([input]),
@@ -47,7 +53,7 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
           pubkey: account.pubkey,
           network: 'local',
         });
-        for (const file of ['napplet.json', '.napplet/client.js', '.napplet/server.js'])
+        for (const file of ['napplet.json', 'index.html', 'AGENTS.md', 'package.json'])
           expect(await Bun.file(join(directory, folder, file)).text()).not.toContain(
             JSON.parse((await vault.get(account.id))!).key,
           );

@@ -1,31 +1,33 @@
-import { chromium } from '@playwright/test';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { preparePreviewRuntimeIsolated } from './preview/bundle';
+import { previewAssets } from './preview/assets';
+import { browserEngine, installBrowser } from './browser';
 import { startPreviewServer } from './preview/server';
 import { PublishError } from '../../../packages/publish/src/config';
+import { AccountError } from '../../../packages/identity/src/signer';
 import { RUNTIME_PROFILE } from '../../../packages/runtime/src/capabilities';
 
 /** Execute only the frozen HTML in our current sandbox. Never run a project's build/preview scripts. */
 export async function checkPublication(contents: Map<string, Uint8Array>) {
   const directory = await mkdtemp(join(tmpdir(), 'napplet-publish-check-'));
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+  let browser: import('@playwright/test').Browser | undefined;
   let server: ReturnType<typeof startPreviewServer> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await mkdir(join(directory, '.napplet'));
     for (const path of ['index.html', 'napplet.json'])
       await Bun.write(join(directory, path), contents.get(path)!);
-    await preparePreviewRuntimeIsolated(directory);
-    server = startPreviewServer(pathToFileURL(directory + '/'), 0, false);
+    server = startPreviewServer(pathToFileURL(directory + '/'), 0, false, await previewAssets());
+    await installBrowser();
     try {
+      const { chromium } = await browserEngine();
       browser = await chromium.launch({ headless: true });
     } catch {
       throw new PublishError(
         'BROWSER_REQUIRED',
-        'Install the check browser with bunx playwright install chromium in the platform checkout, then retry.',
+        'The check browser could not start. Run napplet-space doctor; Linux needs the Chromium system libraries. Browser setup is available with napplet-space browser install.',
       );
     }
     const page = await browser.newPage();
@@ -70,7 +72,7 @@ export async function checkPublication(contents: Map<string, Uint8Array>) {
       throw new Error();
     return { profile: RUNTIME_PROFILE, browser: browser.version() };
   } catch (error) {
-    if (error instanceof PublishError) throw error;
+    if (error instanceof AccountError) throw error;
     throw new PublishError(
       'BROWSER_CHECK',
       'The frozen creation failed the shared sandbox startup check. Run the local preview and fix script or handshake errors before publishing.',

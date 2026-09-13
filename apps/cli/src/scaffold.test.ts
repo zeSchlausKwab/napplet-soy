@@ -42,7 +42,8 @@ test('scaffolds a standalone Git project with shared restricted preview', async 
     'animation',
   ]);
   expect(await Bun.file(join(path, 'AGENTS.md')).text()).toContain('No CDN');
-  expect(await Bun.file(join(path, '.napplet/client.js')).exists()).toBe(true);
+  expect(await Bun.file(join(path, 'dev.ts')).exists()).toBe(false);
+  expect((await Bun.file(join(path, 'package.json')).json()).scripts.dev).toBe('napplet-space dev');
   const process = Bun.spawn(['git', '-C', path, 'rev-parse', '--is-inside-work-tree'], {
     stdout: 'pipe',
   });
@@ -64,12 +65,22 @@ test('generated preview runs independently and enforces the shared runtime polic
   const reservation = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: () => new Response('') });
   const port = reservation.port;
   reservation.stop(true);
-  const process = Bun.spawn(['bun', 'dev.ts'], {
-    cwd: path,
-    env: { PATH: String(Bun.env.PATH ?? ''), PORT: String(port) },
-    stdout: 'ignore',
-    stderr: 'pipe',
-  });
+  const process = Bun.spawn(
+    [
+      'bun',
+      new URL('./index.ts', import.meta.url).pathname,
+      'dev',
+      '--no-open',
+      '--port',
+      String(port),
+    ],
+    {
+      cwd: path,
+      env: { PATH: String(Bun.env.PATH ?? ''), PORT: String(port) },
+      stdout: 'ignore',
+      stderr: 'pipe',
+    },
+  );
   try {
     let ready = false;
     for (let attempt = 0; attempt < 40; attempt++) {
