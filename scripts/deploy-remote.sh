@@ -167,6 +167,7 @@ if [[ -f "$app_root/shared/server.env" ]]; then
 fi
 export PATH="$release_dir/bin:$rust_root/bin:$go_root/go/bin:$app_root/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export SPACE_SITE_ORIGIN="https://$domain"
+export SPACE_CLI_DOWNLOAD_DIR="${SPACE_CLI_DOWNLOAD_DIR:-$app_root/downloads/cli}"
 export PORT="$web_port"
 export SPACE_ADMIN_PUBKEYS="${SPACE_ADMIN_PUBKEYS:-$admin_pubkey}"
 export SPACE_MODERATION_FILE="$state_root/moderation/policy.json"

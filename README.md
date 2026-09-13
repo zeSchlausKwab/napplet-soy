@@ -42,7 +42,7 @@ Start the platform dev stack first to provide the relay. The server creates a pe
 
 ## Make a local napplet
 
-From this repository:
+No platform checkout, Bun or Node installation is needed:
 
 ```sh
 curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet --template soft-orbit
@@ -51,7 +51,7 @@ cd my-napplet
 napplet-space dev
 ```
 
-Open <http://localhost:4173> and point your existing coding agent at the new project. It contains HTML source, a Git repository, MIT licensing, agent instructions, and a bundled copy of the shared preview runtime. The preview automatically reloads saved changes, injects the same pinned shim and NAP-SHELL handshake, and provides the same storage, identity, relay/resource and file services as the website. Optional `requires`, `relays`, and `servers` settings live in `napplet.json`. It works independently of the platform checkout after creation; existing generated projects retain their bundled runtime.
+Open <http://localhost:4173> and point your existing coding agent at the new project. It contains HTML source, a Git repository, MIT licensing, agent instructions. The installed CLI supplies the shared preview runtime. The preview automatically reloads saved changes, injects the same pinned shim and NAP-SHELL handshake, and provides the same storage, identity, relay/resource and file services as the website. Optional `requires`, `relays`, and `servers` settings live in `napplet.json`. It works independently of the platform checkout after creation; existing generated projects retain their bundled runtime.
 
 ## Creator identity
 
