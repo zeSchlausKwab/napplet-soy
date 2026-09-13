@@ -9,6 +9,8 @@ git_domain=${4:-git.$domain}
 proxy_mode=${5:-dedicated}
 web_port=${6:-3000}
 admin_pubkey=${7:?admin public key required}
+runtime_profile=${8:-standard}
+[[ "$runtime_profile" == standard || "$runtime_profile" == legacy-x64 ]] || exit 2
 [[ "$proxy_mode" == dedicated || "$proxy_mode" == shared ]] || exit 2
 [[ "$web_port" =~ ^[0-9]{4,5}$ && "$web_port" -ge 1024 && "$web_port" -le 65534 ]] || exit 2
 [[ "$admin_pubkey" =~ ^[a-f0-9]{64}$ ]] || exit 2
@@ -24,7 +26,7 @@ smoke_port=$((web_port+1))
 if ! declare -F napplet_check_cpu >/dev/null; then
   source "$(dirname "${BASH_SOURCE[0]}")/deploy-cpu-check.sh"
 fi
-napplet_check_cpu
+napplet_check_cpu "$(uname -s)" "$(uname -m)" /proc/cpuinfo "$runtime_profile"
 command -v apt-get >/dev/null || { echo 'This script supports Debian/Ubuntu VPS hosts.' >&2; exit 1; }
 [[ -d /run/systemd/system ]] || { echo 'A running systemd host is required.' >&2; exit 1; }
 exec 9>/var/lock/napplet-space-deploy.lock
@@ -69,12 +71,17 @@ if [[ ! -L "$app_root/current" ]] && [[ -n "$(ss -H -ltn "( sport = :$web_port o
   echo 'A required application port is occupied; no changes made.' >&2; exit 1
 fi
 bun_version=1.3.11
+[[ "$runtime_profile" != legacy-x64 ]] || bun_version=1.3.8
+bun_bin="$app_root/tools/bun$bun_version/bin/bun"
 caddy_version=2.10.2
 pm2_version=7.0.4
 go_version=1.25.0
 rust_version=1.97.1
 export DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l
 packages=(ca-certificates curl unzip tar xz-utils build-essential git pkg-config libssl-dev)
+if [[ "$runtime_profile" == legacy-x64 ]]; then
+  packages+=(meson ninja-build libglib2.0-dev libexpat1-dev libjpeg-dev libpng-dev libwebp-dev libexif-dev liblcms2-dev)
+fi
 if ! command -v node >/dev/null || ! command -v npm >/dev/null; then packages+=(nodejs npm); fi
 missing=()
 for package in "${packages[@]}"; do
@@ -84,6 +91,9 @@ if [[ ${#missing[@]} -gt 0 ]]; then apt-get update -qq; apt-get install -y -qq -
 id napplet >/dev/null 2>&1 || useradd --system --create-home --home-dir "$state_root" --shell /usr/sbin/nologin napplet
 install -d -m 755 "$app_root/bin" "$app_root/tools" "$app_root/releases" "$app_root/shared" /etc/napplet-space
 install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom" "$state_root/grasp" "$state_root/index" "$state_root/moderation"
+if [[ "$runtime_profile" == legacy-x64 ]]; then
+  install -d -o napplet -g napplet -m 755 "$app_root/tools/legacy-images"
+fi
 
 case "$(uname -m)" in
   x86_64) rust_target=x86_64-unknown-linux-gnu; rust_sha=88f28fa9af20594179f85d6df67078dfd6fa93e2f6da5e1e9b0ac4997988ca4f; bun_asset=bun-linux-x64-baseline.zip; caddy_arch=amd64; go_sha=2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613 ;;
@@ -92,12 +102,16 @@ case "$(uname -m)" in
 esac
 tool_staging=$(mktemp -d)
 trap 'rm -rf "$tool_staging"' EXIT
-if [[ ! -x "$app_root/bin/bun" ]] || [[ "$("$app_root/bin/bun" --version)" != "$bun_version" ]]; then
+if [[ ! -x "$bun_bin" ]] || [[ "$("$bun_bin" --version)" != "$bun_version" ]]; then
   curl -fsSL "https://github.com/oven-sh/bun/releases/download/bun-v$bun_version/$bun_asset" -o "$tool_staging/$bun_asset"
   curl -fsSL "https://github.com/oven-sh/bun/releases/download/bun-v$bun_version/SHASUMS256.txt" -o "$tool_staging/bun-checksums"
   (cd "$tool_staging"; awk -v asset="$bun_asset" '$2 == asset {print}' bun-checksums > bun-selected; test -s bun-selected; sha256sum -c bun-selected; unzip -q "$bun_asset")
-  install -m 755 "$tool_staging/${bun_asset%.zip}/bun" "$app_root/bin/bun"
+  install -d -m 755 "$(dirname "$bun_bin")"
+  install -m 755 "$tool_staging/${bun_asset%.zip}/bun" "$bun_bin"
 fi
+# --version does not initialize JavaScriptCore. Exercise real JavaScript before
+# installing further toolchains or starting a costly build on a shared host.
+systemd-run --quiet --wait --pipe --collect --unit="napplet-runtime-$release_id" -p MemoryMax=768M -p MemorySwapMax=0 -p CPUQuota=100% -p RuntimeMaxSec=15s -p TimeoutStopSec=2s -p LimitCORE=0 -p User=napplet -p WorkingDirectory="$state_root" -- "$bun_bin" -e 'console.log("Bun runtime ready:", Bun.version)'
 caddy_asset="caddy_${caddy_version}_linux_${caddy_arch}.tar.gz"
 if [[ "$proxy_mode" == dedicated ]] && { [[ ! -x "$app_root/bin/caddy" ]] || [[ "$("$app_root/bin/caddy" version)" != "v$caddy_version "* ]]; }; then
   curl -fsSL "https://github.com/caddyserver/caddy/releases/download/v$caddy_version/$caddy_asset" -o "$tool_staging/$caddy_asset"
@@ -133,6 +147,13 @@ install -d -o napplet -g napplet "$release_dir"
 tar -xzf "$archive" -C "$release_dir" --no-same-owner
 rm "$archive"
 chown -R napplet:napplet "$release_dir"
+# A release retains its runtime when switching profiles or rolling back.
+install -d -o napplet -g napplet -m 755 "$release_dir/bin"
+ln -s "$bun_bin" "$release_dir/bin/bun"
+printf '%s\n' "$runtime_profile" > "$release_dir/runtime-profile"
+release_bun() {
+  if [[ -x "$1/bin/bun" ]]; then printf '%s\n' "$1/bin/bun"; else printf '%s\n' "$app_root/bin/bun"; fi
+}
 # Runtime secrets belong in shared/server.env, outside the uploaded repository.
 # VITE_* values are public build configuration and must never contain credentials.
 if [[ -f "$app_root/shared/server.env" ]]; then
@@ -140,7 +161,7 @@ if [[ -f "$app_root/shared/server.env" ]]; then
   source "$app_root/shared/server.env"
   set +a
 fi
-export PATH="$rust_root/bin:$go_root/go/bin:$app_root/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH="$release_dir/bin:$rust_root/bin:$go_root/go/bin:$app_root/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export SPACE_SITE_ORIGIN="https://$domain"
 export PORT="$web_port"
 export SPACE_ADMIN_PUBKEYS="${SPACE_ADMIN_PUBKEYS:-$admin_pubkey}"
@@ -161,13 +182,13 @@ if [[ -f "$state_root/grasp/upstream.commit" ]] && [[ "$(cat "$state_root/grasp/
   echo 'GRASP upstream pin changed. Stop here: migrate/restore its full state separately before deployment.' >&2
   exit 1
 fi
-systemd-run --scope --quiet --unit="napplet-build-$release_id" -p MemoryMax=3G -p CPUQuota=200% -p TasksMax=512 runuser -u napplet -- env -u SPACE_MODERATION_FILE -u SPACE_ADMIN_PUBKEYS -u SPACE_INDEX_DIR GOMAXPROCS=2 GOFLAGS=-p=2 CARGO_BUILD_JOBS=2 nice -n 10 bash -ec 'cd "$1"; "$2" install --frozen-lockfile; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$app_root/bin/bun"
+systemd-run --scope --quiet --unit="napplet-build-$release_id" -p MemoryMax=3G -p CPUQuota=200% -p TasksMax=512 runuser -u napplet -- env -u SPACE_MODERATION_FILE -u SPACE_ADMIN_PUBKEYS -u SPACE_INDEX_DIR GOMAXPROCS=2 GOFLAGS=-p=2 CARGO_BUILD_JOBS=2 nice -n 10 bash -ec 'cd "$1"; "$2" install --frozen-lockfile; if [[ "$3" == legacy-x64 ]]; then bash scripts/legacy-images.sh "$1" "$4"; fi; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$bun_bin" "$runtime_profile" "$app_root/tools/legacy-images"
 
-runuser -u napplet -- "$app_root/bin/bun" "$release_dir/scripts/moderation-init.ts" "$SPACE_MODERATION_FILE"
+runuser -u napplet -- "$bun_bin" "$release_dir/scripts/moderation-init.ts" "$SPACE_MODERATION_FILE"
 
 start_relay() {
   local source_release=$1
-  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_RELAY_BIND=127.0.0.1:19347 SPACE_RELAY_BIN="$source_release/bin/napplet-relay" SPACE_RELAY_DATA="$state_root/relay" SPACE_RELAY_ORIGIN="https://$domain/relay" SPACE_RELAY_INSTANCE="$domain" PATH="$PATH" node "$pm2_bin" start "$source_release/infra/relay.ecosystem.config.cjs" --update-env
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_RELAY_BIND=127.0.0.1:19347 SPACE_RELAY_BIN="$source_release/bin/napplet-relay" SPACE_RELAY_DATA="$state_root/relay" SPACE_RELAY_ORIGIN="https://$domain/relay" SPACE_RELAY_INSTANCE="$domain" PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/relay.ecosystem.config.cjs" --update-env
 }
 relay_ready() {
   local expected
@@ -180,7 +201,7 @@ relay_ready() {
 }
 start_blossom() {
   local source_release=$1
-  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_BLOSSOM_PORT=19348 SPACE_BLOSSOM_BUNDLE="$source_release/bin/blossom.js" SPACE_BLOSSOM_DATA="$state_root/blossom" SPACE_BLOSSOM_ORIGIN="https://$blossom_domain" SPACE_BLOSSOM_LOCAL=0 SPACE_BLOSSOM_INSTANCE="$domain" PATH="$PATH" node "$pm2_bin" start "$source_release/infra/blossom.ecosystem.config.cjs" --update-env
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$source_release")" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_BLOSSOM_PORT=19348 SPACE_BLOSSOM_BUNDLE="$source_release/bin/blossom.js" SPACE_BLOSSOM_DATA="$state_root/blossom" SPACE_BLOSSOM_ORIGIN="https://$blossom_domain" SPACE_BLOSSOM_LOCAL=0 SPACE_BLOSSOM_INSTANCE="$domain" PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/blossom.ecosystem.config.cjs" --update-env
 }
 blossom_ready() {
   local expected response
@@ -195,23 +216,23 @@ blossom_ready() {
 
 start_grasp() {
   local source_release=$1
-  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_GRASP_BIN="$source_release/bin/ngit-grasp" SPACE_GRASP_DATA="$state_root/grasp" SPACE_GRASP_ORIGIN="https://$git_domain" SPACE_GRASP_LOCAL=0 SPACE_GRASP_INSTANCE="$domain" PATH="$PATH" node "$pm2_bin" start "$source_release/infra/grasp.ecosystem.config.cjs" --update-env
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_GRASP_BIN="$source_release/bin/ngit-grasp" SPACE_GRASP_DATA="$state_root/grasp" SPACE_GRASP_ORIGIN="https://$git_domain" SPACE_GRASP_LOCAL=0 SPACE_GRASP_INSTANCE="$domain" PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/grasp.ecosystem.config.cjs" --update-env
 }
 start_indexer() {
   local source_release=$1
-  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$source_release" SPACE_RELEASE_ID="$(basename "$source_release")" SPACE_SERVICE_PREFIX=napplet PATH="$PATH" node "$pm2_bin" start "$source_release/infra/indexer.ecosystem.config.cjs" --update-env
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$source_release")" SPACE_RELEASE_DIR="$source_release" SPACE_RELEASE_ID="$(basename "$source_release")" SPACE_SERVICE_PREFIX=napplet PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/indexer.ecosystem.config.cjs" --update-env
 }
 indexer_ready() {
   local source_release=$1
   for attempt in {1..60}; do
-    if runuser -u napplet -- env SPACE_RELEASE_ID="$(basename "$source_release")" "$app_root/bin/bun" "$source_release/scripts/index-health.ts"; then return 0; fi
+    if runuser -u napplet -- env SPACE_RELEASE_ID="$(basename "$source_release")" "$(release_bun "$source_release")" "$source_release/scripts/index-health.ts"; then return 0; fi
     sleep 1
   done
   return 1
 }
 grasp_ready() {
   local expected response
-  expected=$(cd "$1"; "$app_root/bin/bun" -e 'import { graspVersion } from "./scripts/grasp-build"; console.log(await graspVersion())')
+  expected=$(cd "$1"; "$(release_bun "$1")" -e 'import { graspVersion } from "./scripts/grasp-build"; console.log(await graspVersion())')
   for attempt in {1..60}; do
     response=$(curl -fsS --max-time 2 -H 'Accept: application/nostr+json' http://127.0.0.1:19349/ 2>/dev/null) || response=''
     if [[ "$response" == *"\"version\":\"$expected\""* && "$response" == *"\"name\":\"Napplet Space Git ($domain)\""* ]]; then return 0; fi
@@ -265,7 +286,7 @@ rollback() {
       pm2_run delete napplet-indexer || true
       if [[ -f "$previous/infra/indexer.ecosystem.config.cjs" ]]; then start_indexer "$previous" || true; fi
       pm2_run delete napplet-web || true
-      runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$previous" SPACE_RELEASE_ID="$(basename "$previous")" PATH="$PATH" node "$pm2_bin" start "$previous/infra/ecosystem.config.cjs" --update-env || true
+      runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$previous")" SPACE_RELEASE_DIR="$previous" SPACE_RELEASE_ID="$(basename "$previous")" PATH="$previous/bin:$PATH" node "$pm2_bin" start "$previous/infra/ecosystem.config.cjs" --update-env || true
     else
       pm2_run delete napplet-web || true
       pm2_run delete napplet-relay || true
@@ -282,7 +303,7 @@ rollback() {
 trap rollback ERR
 
 # Test the new production build before touching the active process.
-runuser -u napplet -- env NODE_ENV=production PORT="$smoke_port" HOST=127.0.0.1 SPACE_RELEASE_ID="$release_id" "$app_root/bin/bun" "$release_dir/apps/web/server.ts" > "$release_dir/smoke.log" 2>&1 &
+runuser -u napplet -- env NODE_ENV=production PORT="$smoke_port" HOST=127.0.0.1 SPACE_RELEASE_ID="$release_id" "$bun_bin" "$release_dir/apps/web/server.ts" > "$release_dir/smoke.log" 2>&1 &
 smoke_pid=$!
 healthy=0
 for attempt in {1..30}; do
@@ -330,7 +351,7 @@ if [[ "$proxy_mode" == shared ]]; then
   cp -p /etc/caddy/Caddyfile "$app_root/shared/Caddyfile.host.previous"
   chmod 600 "$app_root/shared/Caddyfile.host.previous"
   shared_parent_hash=$(sha256sum /etc/caddy/Caddyfile | cut -d ' ' -f1)
-  "$app_root/bin/bun" "$release_dir/scripts/shared-caddy.ts" /etc/caddy/Caddyfile /etc/napplet-space/Caddyfile "$app_root/shared/Caddyfile.next" "$shared_candidate"
+  "$bun_bin" "$release_dir/scripts/shared-caddy.ts" /etc/caddy/Caddyfile /etc/napplet-space/Caddyfile "$app_root/shared/Caddyfile.next" "$shared_candidate"
   runuser -u caddy -- /usr/bin/caddy validate --config "$shared_candidate" --adapter caddyfile
 else
   "$app_root/bin/caddy" validate --config "$app_root/shared/Caddyfile.next" --adapter caddyfile
@@ -353,7 +374,7 @@ pm2_run delete napplet-indexer || true
 start_indexer "$release_dir"
 indexer_ready "$release_dir"
 pm2_run delete napplet-web || true
-runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$app_root/bin/bun" SPACE_RELEASE_DIR="$release_dir" SPACE_RELEASE_ID="$release_id" PATH="$PATH" node "$pm2_bin" start "$release_dir/infra/ecosystem.config.cjs" --update-env
+runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$bun_bin" SPACE_RELEASE_DIR="$release_dir" SPACE_RELEASE_ID="$release_id" PATH="$PATH" node "$pm2_bin" start "$release_dir/infra/ecosystem.config.cjs" --update-env
 healthy=0
 for attempt in {1..30}; do
   if curl -fsS --max-time 2 http://127.0.0.1:$web_port/api/health 2>/dev/null | grep -Fq "\"release\":\"$release_id\""; then healthy=1; break; fi
@@ -404,7 +425,7 @@ fi
 if [[ "$had_caddy_config" == 1 ]]; then cp /etc/napplet-space/Caddyfile "$app_root/shared/Caddyfile.previous"; fi
 if [[ "$proxy_mode" == shared ]]; then
   [[ "$(sha256sum /etc/caddy/Caddyfile | cut -d ' ' -f1)" == "$shared_parent_hash" ]] || { echo 'Caddy changed during deployment; refusing to overwrite it.' >&2; false; }
-  "$app_root/bin/bun" "$release_dir/scripts/shared-caddy.ts" /etc/caddy/Caddyfile /etc/napplet-space/Caddyfile /etc/napplet-space/Caddyfile "$shared_candidate"
+  "$bun_bin" "$release_dir/scripts/shared-caddy.ts" /etc/caddy/Caddyfile /etc/napplet-space/Caddyfile /etc/napplet-space/Caddyfile "$shared_candidate"
   shared_active_hash=$(sha256sum "$shared_candidate" | cut -d ' ' -f1)
   # Write the fragment first; the first installation is unreachable until its import is activated.
   caddy_changed=1

@@ -6,9 +6,22 @@ napplet_check_cpu() {
   local kernel=${1:-$(uname -s)}
   local architecture=${2:-$(uname -m)}
   local cpuinfo=${3:-/proc/cpuinfo}
+  local profile=${4:-standard}
+  if [[ "$profile" != standard && "$profile" != legacy-x64 ]]; then
+    echo 'Unknown deployment runtime profile.' >&2
+    return 1
+  fi
   if [[ "$kernel" != Linux ]]; then
     echo 'Deployment requires a Linux VPS.' >&2
     return 1
+  fi
+  if [[ "$profile" == legacy-x64 ]]; then
+    if [[ "$architecture" != x86_64 ]]; then
+      echo 'The legacy CPU profile is only available for Linux x86_64.' >&2
+      return 1
+    fi
+    echo 'Legacy CPU profile: Bun 1.3.8 and source-built image libraries; runtime checks are required.'
+    return 0
   fi
   case "$architecture" in
     x86_64)

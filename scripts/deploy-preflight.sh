@@ -12,7 +12,7 @@ printf '\nBun CPU requirement\n'
 if ! declare -F napplet_check_cpu >/dev/null; then
   source "$(dirname "${BASH_SOURCE[0]}")/deploy-cpu-check.sh"
 fi
-napplet_check_cpu || true # Inventory remains useful even when deployment is blocked.
+napplet_check_cpu "$(uname -s)" "$(uname -m)" /proc/cpuinfo "${napplet_runtime_profile:-standard}" || true # Continue inventory even when blocked.
 printf 'Login: '; id
 printf '\nCapacity\n'
 getconf _NPROCESSORS_ONLN

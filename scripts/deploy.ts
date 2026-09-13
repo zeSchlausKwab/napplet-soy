@@ -58,13 +58,14 @@ if (import.meta.main) {
       'shared-caddy': { type: 'boolean' },
       'web-port': { type: 'string' },
       'admin-pubkey': { type: 'string' },
+      'legacy-cpu': { type: 'boolean' },
       preflight: { type: 'boolean' },
       help: { type: 'boolean' },
     },
   });
   if (values.help) {
     console.log(
-      'Usage: bun run deploy --host root@your-vps --domain napplet.example --admin-pubkey npub-or-hex [--shared-caddy] [--web-port 3040] [--preflight]\n\n--shared-caddy reuses the stock caddy.service and /etc/caddy/Caddyfile, preserving existing sites. Other proxies need explicit integration. The default web port is 3040 when sharing, 3000 otherwise; the next port is used for candidate checks.\n--preflight reports capacity, listening ports and service details without changing anything.\nPoint the website, www, blossom and git hostnames to this VPS. Root or passwordless sudo and systemd on Debian/Ubuntu are required.',
+      'Usage: bun run deploy --host root@your-vps --domain napplet.example --admin-pubkey npub-or-hex [--shared-caddy] [--web-port 3040] [--legacy-cpu] [--preflight]\n\n--shared-caddy reuses the stock caddy.service and /etc/caddy/Caddyfile, preserving existing sites. Other proxies need explicit integration. The default web port is 3040 when sharing, 3000 otherwise; the next port is used for candidate checks.\n--legacy-cpu selects Bun 1.3.8 and source-built image libraries for older Linux x64 virtual CPUs. All runtime and application checks still run.\n--preflight reports capacity, listening ports and service details without changing anything.\nPoint the website, www, blossom and git hostnames to this VPS. Root or passwordless sudo and systemd on Debian/Ubuntu are required.',
     );
     process.exit(0);
   }
@@ -81,6 +82,7 @@ if (import.meta.main) {
       'StrictHostKeyChecking=yes',
     ];
     const cpuCheck = await Bun.file(new URL('./deploy-cpu-check.sh', import.meta.url)).text();
+    const runtimeProfile = values['legacy-cpu'] ? 'legacy-x64' : 'standard';
     if (values.preflight) {
       await run(
         [
@@ -89,7 +91,7 @@ if (import.meta.main) {
           host,
           'if [ "$(id -u)" = 0 ]; then exec bash -s; else exec sudo -n bash -s; fi',
         ],
-        `${cpuCheck}\n${await Bun.file(new URL('./deploy-preflight.sh', import.meta.url)).text()}`,
+        `${cpuCheck}\nnapplet_runtime_profile=${runtimeProfile}\n${await Bun.file(new URL('./deploy-preflight.sh', import.meta.url)).text()}`,
       );
       process.exit(0);
     }
@@ -105,7 +107,7 @@ if (import.meta.main) {
         host,
         'if [ "$(id -u)" = 0 ]; then exec bash -s; else exec sudo -n bash -s; fi',
       ],
-      `${cpuCheck}\nnapplet_check_cpu\n`,
+      `${cpuCheck}\nnapplet_check_cpu "$(uname -s)" "$(uname -m)" /proc/cpuinfo ${runtimeProfile}\n`,
     );
     const release = `${new Date().toISOString().replace(/[-:TZ.]/g, '')}-${process.pid}`;
     const staging = await mkdtemp(join(tmpdir(), 'napplet-deploy-'));
@@ -146,7 +148,7 @@ if (import.meta.main) {
           'ssh',
           ...sshOptions,
           host,
-          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin}; fi`,
+          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin} ${runtimeProfile}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin} ${runtimeProfile}; fi`,
         ],
         `${cpuCheck}\n${script}`,
       );

@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-async function check(kernel: string, architecture: string, cpuinfo: string) {
+async function check(kernel: string, architecture: string, cpuinfo: string, profile = 'standard') {
   const directory = await mkdtemp(join(tmpdir(), 'napplet-deploy-cpu-'));
   try {
     const path = join(directory, 'cpuinfo');
@@ -12,12 +12,13 @@ async function check(kernel: string, architecture: string, cpuinfo: string) {
       [
         'bash',
         '-c',
-        'source "$1"; napplet_check_cpu "$2" "$3" "$4"',
+        'source "$1"; napplet_check_cpu "$2" "$3" "$4" "$5"',
         'cpu-check',
         new URL('./deploy-cpu-check.sh', import.meta.url).pathname,
         kernel,
         architecture,
         path,
+        profile,
       ],
       { stdout: 'pipe', stderr: 'pipe' },
     );
@@ -40,6 +41,15 @@ test('deployment rejects legacy QEMU CPUs before trying to execute Bun', async (
   expect(result.code).toBe(1);
   expect(result.error).toContain('SSE4.2');
   expect(result.error).toContain('VPS provider');
+});
+
+test('legacy CPU support is explicit and restricted to the tested Linux x64 profile', async () => {
+  const legacy = 'flags : fpu sse sse2 pni cx16 hypervisor\n';
+  expect((await check('Linux', 'x86_64', legacy, 'legacy-x64')).code).toBe(0);
+  expect((await check('Linux', 'x86_64', legacy)).code).toBe(1);
+  expect((await check('Linux', 'arm64', '', 'legacy-x64')).code).toBe(1);
+  expect((await check('Darwin', 'x86_64', legacy, 'legacy-x64')).code).toBe(1);
+  expect((await check('Linux', 'x86_64', legacy, 'unchecked')).code).toBe(1);
 });
 
 test('CPU check accepts baseline x64 without AVX and Linux arm64', async () => {

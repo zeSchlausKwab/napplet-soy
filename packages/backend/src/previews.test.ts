@@ -117,6 +117,27 @@ test('previews are decoded into bounded PNGs; SVG, invalid images, oversized bod
   await expect(normalizePreview(bomb)).rejects.toThrow();
 });
 
+test('preview codecs preserve JPEG orientation and normalize WebP and GIF on compatibility builds', async () => {
+  const jpeg = await sharp(await raster())
+    .jpeg()
+    .withMetadata({ orientation: 6 })
+    .toBuffer();
+  const rotated = await normalizePreview(jpeg);
+  expect([rotated.width, rotated.height]).toEqual([30, 48]);
+  const webp = await normalizePreview(
+    await sharp(await raster())
+      .webp()
+      .toBuffer(),
+  );
+  expect([webp.width, webp.height]).toEqual([48, 30]);
+  const gif = await normalizePreview(
+    Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'),
+  );
+  expect([gif.width, gif.height]).toEqual([1, 1]);
+  for (const result of [rotated, webp, gif])
+    expect((await sharp(result.data).metadata()).format).toBe('png');
+});
+
 test('linked screenshots reach cached gallery/player covers and OG images, with safe missing-file fallback', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'space-linked-preview-'));
   const oldEnv = {

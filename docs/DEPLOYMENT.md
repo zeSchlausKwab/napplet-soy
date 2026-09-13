@@ -1,6 +1,6 @@
 # VPS deployment with Caddy and PM2
 
-Updated 2026-09-13. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. The first live deployment is blocked by the VPS CPU profile; no Napplet release has been activated. See the deployment record below.
+Updated 2026-09-13. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. The standard runtime profile is incompatible with the first VPS's CPU profile. An explicit compatibility profile is being validated; see the deployment record below.
 
 ## One command
 
@@ -9,6 +9,8 @@ bun run deploy --host your-vps --domain napplet.soy --preflight
 bun run deploy --host root@your-vps --domain napplet.example --admin-pubkey <npub-or-hex>
 # On an inspected stock Caddy host:
 bun run deploy --host root@your-vps --domain napplet.soy --shared-caddy --web-port 3040 --admin-pubkey <npub-or-hex>
+# Temporary compatibility profile for the existing Namecheap VPS:
+bun run deploy --host root@your-vps --domain napplet.soy --shared-caddy --web-port 3040 --legacy-cpu --admin-pubkey <npub-or-hex>
 ```
 
 `--preflight` is read-only: it reports OS, CPU compatibility, capacity, listening ports, proxy services and container names/images/ports without installing software or exposing environment values. Inventory continues when the CPU requirement fails so other diagnostics remain available. Actual deployment checks unattended access and CPU compatibility before local checks or uploads, and checks the CPU again before remote changes. SSH and SCP use batch mode and strict saved-host-key verification. Establish key access first; an SSH config alias can select a different login, port or identity. An existing proxy on ports 80/443 or occupied application ports stops a first dedicated-host deployment before package/service changes. Shared mode supports the stock `/usr/bin/caddy` systemd service with `/etc/caddy/Caddyfile`. It keeps the existing binary and service, validates the combined configuration, adds one import of Napplet’s fragment, then reloads gracefully. Custom unit overrides, conflicting hostnames and other proxies require explicit integration.
@@ -27,8 +29,10 @@ The command runs local checks, uploads an allowlisted archive of the working sou
 | --- | --- |
 | `/opt/napplet-space/releases/<id>` | Source and production build for one release |
 | `/opt/napplet-space/current` | Active release symlink |
-| `/opt/napplet-space/bin` | Bun 1.3.11; Caddy 2.10.2 in dedicated mode only, verified against upstream checksums |
+| `/opt/napplet-space/bin` | Caddy 2.10.2 in dedicated mode only, verified against upstream checksums; may retain an unused Bun from older deploys |
 | `/opt/napplet-space/tools` | PM2 7.0.4 and checksum-pinned Go 1.25.0 and Rust 1.97.1 |
+| `/opt/napplet-space/tools/bun<version>/bin/bun` | Checksum-verified runtime; each release's `bin/bun` symlink retains its selected version for rollback |
+| `/opt/napplet-space/tools/legacy-images` | Compatibility libvips builds, stored by version and build-script fingerprint |
 | `/var/lib/napplet-space/relay` | Durable signed relay events and rebuildable Bleve index |
 | `/var/lib/napplet-space/blossom` | Content-addressed blob bytes and SQLite descriptors/ownership |
 | `/var/lib/napplet-space/grasp` | Git objects, repository relay LMDB, private operator identity and migration state |
@@ -64,6 +68,14 @@ sudo -u napplet env PM2_HOME=/var/lib/napplet-space/pm2 \
 ```
 
 Protect `shared/server.env` as operator configuration. It is sourced by the deploy script; only administrators should be able to edit it. Values beginning with `VITE_` are compiled into the browser and must be public. Deployment defaults `VITE_NOSTR_RELAYS` to this instance’s managed relay. `SPACE_ADMIN_PUBKEYS` in `shared/server.env` overrides the deploy flag; otherwise the supplied public key is used. Admin setup and scope are documented in [MODERATION.md](MODERATION.md). The web server has no creator private keys. The separate ContextVM starter stores its service key outside source; see [CONTEXTVM.md](CONTEXTVM.md).
+
+## Temporary legacy CPU profile
+
+`--legacy-cpu` is an explicit Linux x86_64 deployment profile. It selects the verified Bun 1.3.8 baseline runtime and builds the current Sharp 0.35.4 against checksum-pinned libvips 8.18.6 using generic x86_64 compiler flags. It does not downgrade image-library source versions, remove screenshots or bypass image byte/pixel limits. The documented upstream Bun CPU support requirement still exceeds this VPS's advertised flags, so the profile is a tested workaround for this host rather than an upstream support guarantee.
+
+The build enables PNG, JPEG, WebP and GIF decoding plus EXIF/color support. Optional libvips integrations are disabled; the app still rejects non-raster input before invoking the decoder. libvips and Sharp are installed in Napplet's own directories, without changing system library paths or another application's runtime. Builds stay within the existing 3 GiB/two-CPU deployment scope. Expect slower first-time builds and potentially slower image normalization; normalized previews are cached.
+
+All ordinary checks still run, plus libvips's own test suite and a codec smoke check. Bun executes a small JavaScript program under a separate 768 MiB/15-second limit before further toolchain installation or builds. A release retains its own runtime symlink, so selecting the normal profile later does not change the runtime used by a rollback release. To return to the standard profile after the CPU is fixed, rerun deployment without `--legacy-cpu`; keep the prior release and its compatibility library directory while it remains a rollback candidate.
 
 ## Local parity and remaining services
 
