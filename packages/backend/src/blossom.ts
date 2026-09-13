@@ -123,7 +123,9 @@ export async function downloadArtifact(servers: string[], hash: string, signal: 
       const bytes = await fetchPublicBlob(
         server,
         hash,
-        AbortSignal.any([signal, AbortSignal.timeout(3000)]),
+        // Near-limit (10 MiB) packages need more than three seconds on a VPS.
+        // The caller's overall deadline still bounds mirror fallback work.
+        AbortSignal.any([signal, AbortSignal.timeout(8000)]),
       );
       if ((await sha256(bytes)) !== hash) continue;
       new TextDecoder('utf-8', { fatal: true }).decode(bytes);

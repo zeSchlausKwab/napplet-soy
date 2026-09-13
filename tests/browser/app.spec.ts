@@ -4,7 +4,9 @@ import records from '../../packages/backend/data/catalog.json' with { type: 'jso
 // The gallery can grow through relay discovery while these fixture assertions
 // continue to check deterministic filtering and navigation behavior.
 const fixtureCards = (page: Page) =>
-  page.locator('.napplet-card').filter({ has: page.locator('a[href="/@space-lab"]') });
+  page
+    .locator('.napplet-card')
+    .filter({ has: page.getByRole('link', { name: 's @space-lab', exact: true }) });
 
 test('gallery SSR, filtering, navigation and browser history', async ({ page, request }) => {
   const errors: string[] = [];

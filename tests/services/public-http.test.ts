@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { fetchPublicBytes } from '../../packages/backend/src/blossom';
+import { downloadArtifact, fetchPublicBytes } from '../../packages/backend/src/blossom';
 import { fetchPublicBytesInNode } from '../../packages/backend/src/public-http-node';
 import { sha256 } from '../../packages/protocol/src';
 
@@ -27,4 +27,19 @@ test.skipIf(process.env.SPACE_TEST_PUBLIC_HTTP !== '1')(
     ).rejects.toThrow();
   },
   60000,
+);
+
+test.skipIf(process.env.SPACE_TEST_PUBLIC_HTTP !== '1')(
+  'near-limit public packages fit the production download deadline',
+  async () => {
+    const hash = '174a50a0f0b83d0b11893fb9442e0c55e5b5f6a444704578a56399d233aef055';
+    const bytes = await downloadArtifact(
+      ['https://blossom.bimcvp.com'],
+      hash,
+      AbortSignal.timeout(12000),
+    );
+    expect(bytes.length).toBe(9246415);
+    expect(await sha256(bytes)).toBe(hash);
+  },
+  15000,
 );
