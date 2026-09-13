@@ -1,0 +1,550 @@
+import { join } from 'node:path';
+import { realpath } from 'node:fs/promises';
+import { Accounts } from '../../identity/src/accounts';
+import {
+  AccountError,
+  checkPubkey,
+  type CreatorSigner,
+  type Network,
+} from '../../identity/src/signer';
+import {
+  aggregateHash,
+  encodeAddress,
+  identityAddress,
+  sha256,
+  verifiedEvent,
+  type SignedEvent,
+} from '../../protocol/src';
+import { validateRelease } from '../../protocol/src/manifest';
+import { prepareSource, publishSource, sourceGit, sourceUrls } from '../../grasp/src/client';
+import { uploadBlob } from '../../blossom/src/client';
+import type { EventTemplate } from 'nostr-tools';
+import { PublishError, projectSchema, resolveTargets, type Targets } from './config';
+import { Journal, type PublishJob } from './journal';
+import { freezeSource, inspectProject, regularFile, type PublishPlan } from './project';
+import { PublicationRelays } from './relay';
+import { ownedBlobs, verifiedBlob } from './blobs';
+
+export { PublishError } from './config';
+type RelayOperations = Pick<PublicationRelays, 'latest' | 'ensure' | 'close'>;
+type Dependencies = {
+  relays?: RelayOperations;
+  source?: typeof publishSource;
+  upload?: typeof uploadBlob;
+  owned?: typeof ownedBlobs;
+  verified?: typeof verifiedBlob;
+  // A checkpoint hook supports deterministic crash tests without production flags.
+  checkpoint?: (job: PublishJob) => Promise<void>;
+};
+export type PublishOptions = {
+  directory: string;
+  network: Network;
+  targets?: Partial<Targets>;
+  dryRun?: boolean;
+  resume?: boolean;
+  accounts?: Pick<Accounts, 'current' | 'signer'>;
+  check: (contents: Map<string, Uint8Array>) => Promise<{ profile: string; browser: string }>;
+  signal?: AbortSignal;
+  onAuth?: (url: string) => Promise<void>;
+  progress?: (stage: string) => void;
+  summary?: (plan: PublishPlan) => void;
+  dependencies?: Dependencies;
+};
+function result(job: PublishJob, unchanged = false) {
+  const identity = {
+    kind: 35129 as const,
+    pubkey: job.plan.pubkey,
+    identifier: job.plan.identifier,
+  };
+  const naddr = encodeAddress(identity, [job.plan.targets.relay, ...job.plan.targets.mirrors]);
+  return {
+    status: job.status,
+    unchanged,
+    jobId: job.id,
+    creator: job.plan.pubkey,
+    identifier: job.plan.identifier,
+    sourceCommit: job.commit,
+    sourceArchive: `${job.plan.targets.blossom}/${job.archiveHash}`,
+    artifactHash: job.plan.artifactHash,
+    naddr,
+    snapshotId: job.snapshot?.id ?? null,
+    currentId: job.current?.id ?? null,
+    // These are portable route candidates until the website has indexed the events.
+    url: `${job.plan.targets.site}/n/${naddr}`,
+    snapshotUrl: job.snapshot ? `${job.plan.targets.site}/r/${job.snapshot.id}` : null,
+    websiteReady: false,
+    mirrors: job.mirrors,
+    receipts: job.receipts,
+    error: job.error ?? null,
+  };
+}
+export async function publicationStatus(directory: string, network: Network) {
+  const journal = new Journal(await realpath(directory), network);
+  const index = await journal.index();
+  const id = index.active ?? index.latest;
+  return id ? result(await journal.load(id)) : { status: 'not_started' as const };
+}
+async function verifyFrozen(journal: Journal, job: PublishJob) {
+  const directory = journal.directory(job.id);
+  const inspected = await inspectProject(
+    join(directory, 'source'),
+    job.plan.network,
+    job.plan.pubkey,
+    job.plan.targets,
+  );
+  if (
+    inspected.fingerprint !== job.fingerprint ||
+    JSON.stringify(inspected.plan) !== JSON.stringify(job.plan) ||
+    (await sourceGit(join(directory, 'source'), ['rev-parse', 'HEAD'])) !== job.commit ||
+    (await sourceGit(join(directory, 'source'), ['status', '--porcelain']))
+  )
+    throw new PublishError(
+      'FROZEN_SOURCE_CHANGED',
+      'The saved release source is damaged or changed. Restore its journal backup before resuming.',
+    );
+  const archive = await regularFile(directory, 'source.tar', 50 * 1024 * 1024);
+  if (archive.length !== job.archiveBytes || (await sha256(archive)) !== job.archiveHash)
+    throw new PublishError(
+      'FROZEN_SOURCE_CHANGED',
+      'The saved source archive is damaged. Restore its journal backup before resuming.',
+    );
+  return { ...inspected, archive };
+}
+export async function publishProject(options: PublishOptions) {
+  const accounts = options.accounts ?? new Accounts(options.network);
+  const account = await accounts.current();
+  if (!account)
+    throw new PublishError(
+      'ACCOUNT_REQUIRED',
+      'Set up a creator with account create or account connect first.',
+    );
+  checkPubkey(account.pubkey, options.network);
+  if (options.dryRun) {
+    if (options.resume)
+      throw new PublishError(
+        'PUBLISH_OPTIONS',
+        'Use status to inspect a saved publication; dry-run checks the current source.',
+      );
+    const { plan, fingerprint } = await inspectProject(
+      options.directory,
+      options.network,
+      account.pubkey,
+      options.targets,
+    );
+    return {
+      status: 'dry_run' as const,
+      fingerprint,
+      plan,
+      checksPending: [
+        'sandbox startup',
+        'remote current version',
+        'Git/Blossom/relay availability',
+      ],
+    };
+  }
+  const root = await realpath(options.directory);
+  const journal = new Journal(root, options.network);
+  const deps = options.dependencies ?? {};
+  const relays = deps.relays ?? new PublicationRelays(options.signal);
+  let signer: CreatorSigner | undefined,
+    stage = 'check';
+  const progress = (next: string) => {
+    if (options.signal?.aborted)
+      throw new PublishError(
+        'PUBLISH_CANCELLED',
+        'Publication cancelled. Resume the saved job with publish --resume.',
+        stage,
+        true,
+      );
+    stage = next;
+    options.progress?.(next);
+  };
+  try {
+    return await journal.lock(async () => {
+      const index = await journal.index();
+      let job = index.active ? await journal.load(index.active) : null;
+      const previous = index.latest ? await journal.load(index.latest) : null;
+      if (options.resume && !job) {
+        if (!previous)
+          throw new PublishError(
+            'PUBLISH_MISSING',
+            'No saved publication exists. Run publish first.',
+          );
+        job = previous;
+      }
+      try {
+        if (!options.resume) {
+          const inspected = await inspectProject(
+            root,
+            options.network,
+            account.pubkey,
+            options.targets,
+          );
+          if (job && job.fingerprint !== inspected.fingerprint)
+            throw new PublishError(
+              'PUBLISH_PENDING',
+              'A different release is pending. Use publish --resume to finish its frozen source, then publish your new edits.',
+            );
+          if (!job && previous?.fingerprint === inspected.fingerprint) job = previous;
+          if (!job) {
+            if (previous) {
+              if (
+                previous.plan.pubkey !== account.pubkey ||
+                previous.plan.identifier !== inspected.plan.identifier ||
+                JSON.stringify(previous.plan.targets) !== JSON.stringify(inspected.plan.targets)
+              )
+                throw new PublishError(
+                  'PUBLISH_IDENTITY',
+                  'The publication identity or destinations changed. Use a separate project for a new identity; saved releases retain their original destinations.',
+                );
+              await verifyFrozen(journal, previous);
+            }
+            const plan = inspected.plan;
+            options.summary?.(plan);
+            const source = sourceUrls(
+              plan.targets.grasp,
+              account.pubkey,
+              plan.identifier,
+              options.network === 'local',
+            );
+            progress('check');
+            const [current, sourceState, announcement] = await Promise.all([
+              relays.latest(plan.targets.relay, account.pubkey, plan.identifier, 35129),
+              relays.latest(source.relay, account.pubkey, plan.identifier, 30618),
+              relays.latest(source.relay, account.pubkey, plan.identifier, 30617),
+            ]);
+            if (
+              (current?.id ?? null) !== (previous?.current?.id ?? null) ||
+              (sourceState?.id ?? null) !== (previous?.source?.state.id ?? null) ||
+              (announcement?.id ?? null) !== (previous?.source?.announcement.id ?? null)
+            )
+              throw new PublishError(
+                'REMOTE_CONFLICT',
+                'A remote release or source state differs from this journal. Restore the current journal or choose a new napplet identifier; stale releases are never forced over it.',
+              );
+            const now = Math.floor(Date.now() / 1000);
+            const createdAt = Math.max(
+              now,
+              ...[current, sourceState, announcement].map((e) => (e ? e.created_at + 1 : 0)),
+            );
+            if (createdAt > now + 60)
+              throw new PublishError(
+                'CLOCK_SKEW',
+                'The last publication is ahead of this clock. Correct the clock before publishing.',
+              );
+            progress('sandbox');
+            const check = await options.check(inspected.contents);
+            if (
+              (await inspectProject(root, options.network, account.pubkey, options.targets))
+                .fingerprint !== inspected.fingerprint
+            )
+              throw new PublishError(
+                'PROJECT_CHANGED',
+                'Source changed during the sandbox check. Run publish again to check the new revision.',
+              );
+            const id = await sha256(
+              JSON.stringify({
+                fingerprint: inspected.fingerprint,
+                parent: previous?.id ?? null,
+                createdAt,
+              }),
+            );
+            progress('freeze');
+            const frozen = await freezeSource(
+              journal.directory(id),
+              inspected.contents,
+              createdAt,
+              previous
+                ? {
+                    directory: join(journal.directory(previous.id), 'source'),
+                    commit: previous.commit,
+                  }
+                : undefined,
+            );
+            const releaseRefs = {
+              ...previous?.releaseRefs,
+              [`refs/tags/release-${id.slice(0, 16)}`]: frozen.commit,
+            };
+            if (Object.keys(releaseRefs).length > 128)
+              throw new PublishError(
+                'RELEASE_LIMIT',
+                'This initial publisher retains up to 128 releases per repository. No refs were removed.',
+              );
+            job = {
+              version: 1,
+              id,
+              fingerprint: inspected.fingerprint,
+              plan,
+              createdAt,
+              parent: previous?.id ?? null,
+              baseCurrent: current?.id ?? null,
+              baseSource: sourceState?.id ?? null,
+              baseAnnouncement: announcement?.id ?? null,
+              ...frozen,
+              check,
+              releaseRefs,
+              status: 'prepared',
+              mirrors: {},
+              receipts: {
+                source: false,
+                artifact: false,
+                archive: false,
+                snapshot: false,
+                current: false,
+              },
+            };
+            await journal.save(job);
+            await journal.select(id, index.latest);
+            await deps.checkpoint?.(job);
+          }
+        }
+        if (!job) throw new PublishError('PUBLISH_MISSING', 'No publication was prepared.');
+        if (job.plan.pubkey !== account.pubkey)
+          throw new PublishError(
+            'CREATOR_MISMATCH',
+            'Select the creator that owns this saved publication.',
+          );
+        const frozen = await verifyFrozen(journal, job);
+        const resumedTargets = resolveTargets(
+          projectSchema.parse(
+            JSON.parse(new TextDecoder().decode(frozen.contents.get('napplet.json')!)),
+          ),
+          options.network,
+          { ...job.plan.targets, ...options.targets },
+        );
+        if (JSON.stringify(resumedTargets) !== JSON.stringify(job.plan.targets))
+          throw new PublishError(
+            'PUBLISH_TARGET',
+            'A saved publication cannot be resumed against different destinations.',
+          );
+        const currentJob = job;
+        const save = async () => {
+          await journal.save(currentJob);
+          await deps.checkpoint?.(currentJob);
+        };
+        const guard = async () => {
+          progress('check');
+          const source = sourceUrls(
+            currentJob.plan.targets.grasp,
+            account.pubkey,
+            currentJob.plan.identifier,
+            options.network === 'local',
+          );
+          for (const [url, kind, base, own] of [
+            [currentJob.plan.targets.relay, 35129, currentJob.baseCurrent, currentJob.current?.id],
+            [source.relay, 30618, currentJob.baseSource, currentJob.source?.state.id],
+            [source.relay, 30617, currentJob.baseAnnouncement, currentJob.source?.announcement.id],
+          ] as const) {
+            const newest = await relays.latest(
+              url,
+              account.pubkey,
+              currentJob.plan.identifier,
+              kind,
+            );
+            if (newest && newest.id !== base && newest.id !== own)
+              throw new PublishError(
+                'REMOTE_CONFLICT',
+                'The remote napplet or repository has changed. This saved release will not overwrite it.',
+              );
+          }
+        };
+        await guard();
+        const completed = job.status === 'announced_pending_index';
+        signer = await accounts.signer({ signal: options.signal, onAuth: options.onAuth });
+        if ((await signer.getPublicKey()) !== account.pubkey)
+          throw new PublishError(
+            'CREATOR_MISMATCH',
+            'The signer changed identity. Reconnect it explicitly.',
+          );
+        progress('sign');
+        const directory = join(journal.directory(job.id), 'source');
+        job.source = await prepareSource({
+          directory,
+          identifier: job.plan.identifier,
+          title: job.plan.title,
+          origin: job.plan.targets.grasp,
+          local: options.network === 'local',
+          createdAt: job.createdAt,
+          releaseRefs: job.releaseRefs,
+          signer: job.source
+            ? {
+                getPublicKey: async () => job!.plan.pubkey,
+                signEvent: async (template) =>
+                  template.kind === 30617 ? job!.source!.announcement : job!.source!.state,
+              }
+            : signer!,
+        });
+        if (!completed) await save();
+        const tags = [
+          ['path', '/index.html', job.plan.artifactHash],
+          [
+            'x',
+            await aggregateHash([{ path: '/index.html', hash: job.plan.artifactHash }]),
+            'aggregate',
+          ],
+          ['title', job.plan.title],
+          ...(job.plan.description ? [['description', job.plan.description]] : []),
+          ...job.plan.servers.map((s) => ['server', s]),
+          ...job.plan.requires.map((r) => ['requires', r]),
+          ...job.plan.topics.map((t) => ['t', t]),
+          [
+            'source',
+            sourceUrls(
+              job.plan.targets.grasp,
+              account.pubkey,
+              job.plan.identifier,
+              options.network === 'local',
+            ).portable,
+          ],
+          ['source-commit', job.commit],
+          ['source-archive', `${job.plan.targets.blossom}/${job.archiveHash}`],
+        ];
+        const sign = async (template: EventTemplate, existing?: SignedEvent) => {
+          const event = verifiedEvent(existing ?? (await signer!.signEvent(template)));
+          if (
+            event.pubkey !== account.pubkey ||
+            event.kind !== template.kind ||
+            event.content !== template.content ||
+            event.created_at !== template.created_at ||
+            JSON.stringify(event.tags) !== JSON.stringify(template.tags)
+          )
+            throw new PublishError(
+              'JOURNAL_SIGNATURE',
+              'Saved signing data does not match this frozen release.',
+            );
+          return event;
+        };
+        job.snapshot = await sign(
+          {
+            kind: 5129,
+            created_at: job.createdAt,
+            content: '',
+            tags: [
+              ...tags,
+              [
+                'a',
+                identityAddress({
+                  kind: 35129,
+                  pubkey: account.pubkey,
+                  identifier: job.plan.identifier,
+                }),
+              ],
+            ],
+          },
+          job.snapshot,
+        );
+        if (!completed) await save();
+        job.current = await sign(
+          {
+            kind: 35129,
+            created_at: job.createdAt,
+            content: '',
+            tags: [...tags, ['d', job.plan.identifier]],
+          },
+          job.current,
+        );
+        await validateRelease(job.current, job.snapshot);
+        if (!completed) await save();
+        await guard();
+        progress('source');
+        await (deps.source ?? publishSource)({
+          directory,
+          origin: job.plan.targets.grasp,
+          local: options.network === 'local',
+          publication: job.source,
+          expectedCommit:
+            previous?.id === job.parent
+              ? previous.commit
+              : job.parent
+                ? (await journal.load(job.parent)).commit
+                : null,
+        });
+        job.receipts.source = true;
+        await save();
+        progress('upload');
+        const owned = await (deps.owned ?? ownedBlobs)(
+          job.plan.targets.blossom,
+          account.pubkey,
+          signer!,
+          options.signal,
+        );
+        for (const [kind, bytes, hash, type] of [
+          ['artifact', frozen.contents.get('index.html')!, job.plan.artifactHash, 'text/html'],
+          ['archive', frozen.archive, job.archiveHash, 'application/x-tar'],
+        ] as const) {
+          if (
+            !owned.has(hash) ||
+            !(await (deps.verified ?? verifiedBlob)(
+              job.plan.targets.blossom,
+              hash,
+              bytes.length,
+              options.signal,
+            ))
+          )
+            await (deps.upload ?? uploadBlob)({
+              origin: job.plan.targets.blossom,
+              bytes,
+              type,
+              signer: signer!,
+              local: options.network === 'local',
+              signal: options.signal,
+            });
+          job.receipts[kind] = true;
+          await save();
+        }
+        await guard();
+        progress('snapshot');
+        await relays.ensure(job.plan.targets.relay, job.snapshot);
+        job.receipts.snapshot = true;
+        await save();
+        await guard();
+        progress('current');
+        await relays.ensure(job.plan.targets.relay, job.current);
+        job.receipts.current = true;
+        await save();
+        await guard();
+        for (const mirror of job.plan.targets.mirrors) {
+          progress('mirror');
+          try {
+            await relays.ensure(mirror, job.snapshot);
+            await relays.ensure(mirror, job.current);
+            job.mirrors[mirror] = true;
+          } catch {
+            job.mirrors[mirror] = false;
+          }
+          await save();
+        }
+        job.status = 'announced_pending_index';
+        delete job.error;
+        await save();
+        await journal.select(null, job.id);
+        return result(job, completed);
+      } catch (error) {
+        const safe =
+          error instanceof PublishError
+            ? error
+            : error instanceof AccountError
+              ? new PublishError(error.code, error.message, stage, true)
+              : new PublishError(
+                  'PUBLISH_FAILED',
+                  `Publication stopped during ${stage}. Check the selected services and retry with publish --resume; saved source and signed events are retained.`,
+                  stage,
+                  true,
+                );
+        if (job) {
+          job.error = {
+            code: safe.code,
+            stage: safe.stage,
+            message: safe.message,
+            retryable: safe.retryable,
+          };
+          await journal.save(job).catch(() => {});
+        }
+        throw safe;
+      }
+    });
+  } finally {
+    await signer?.close();
+    relays.close();
+  }
+}

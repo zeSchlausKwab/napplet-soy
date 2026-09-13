@@ -129,6 +129,7 @@ export async function prepareSource(input: {
   signer: SourceSigner;
   local?: boolean;
   createdAt?: number;
+  releaseRefs?: Record<string, string>;
 }) {
   const origin = graspOrigin(input.origin, input.local);
   const pubkey = await input.signer.getPublicKey();
@@ -145,6 +146,15 @@ export async function prepareSource(input: {
   if (await sourceGit(input.directory, ['status', '--porcelain']))
     throw new Error('Commit source changes before preparing a publication');
   const createdAt = input.createdAt ?? Math.floor(Date.now() / 1000);
+  const releaseRefs = Object.entries(input.releaseRefs ?? {});
+  if (
+    releaseRefs.length > 128 ||
+    releaseRefs.some(
+      ([ref, commit]) =>
+        !/^refs\/tags\/release-[a-f0-9]{16}$/.test(ref) || !commitPattern.test(commit),
+    )
+  )
+    throw new Error('Invalid release refs');
   async function sign(kind: number, tags: string[][]) {
     const template = { kind, created_at: createdAt, content: '', tags };
     const requestedTags = JSON.stringify(tags);
@@ -171,6 +181,7 @@ export async function prepareSource(input: {
     state: await sign(30618, [
       ['d', input.identifier],
       ['refs/heads/main', commit],
+      ...releaseRefs,
       ['HEAD', 'ref: refs/heads/main'],
     ]),
   } satisfies SourcePublication;
@@ -202,16 +213,33 @@ function publicationIdentity(publication: SourcePublication, origin: string, loc
   if (
     !commitPattern.test(commit) ||
     single(state, 'HEAD', 2) !== 'ref: refs/heads/main' ||
-    state.tags.some((t) => t[0].startsWith('refs/') && t[0] !== 'refs/heads/main')
+    state.tags.filter((t) => t[0].startsWith('refs/')).length > 129 ||
+    state.tags.some(
+      (t) =>
+        t[0].startsWith('refs/') &&
+        t[0] !== 'refs/heads/main' &&
+        (!/^refs\/tags\/release-[a-f0-9]{16}$/.test(t[0]) ||
+          t.length !== 2 ||
+          !commitPattern.test(t[1])),
+    ) ||
+    new Set(state.tags.filter((t) => t[0].startsWith('refs/')).map((t) => t[0])).size !==
+      state.tags.filter((t) => t[0].startsWith('refs/')).length
   )
     throw new Error('Source adapter supports one explicit main branch');
-  return { announcement, state, commit, ...urls };
+  return {
+    announcement,
+    state,
+    commit,
+    refs: state.tags.filter((t) => t[0].startsWith('refs/')),
+    ...urls,
+  };
 }
 export async function publishSource(input: {
   directory: string;
   origin: string;
   publication: SourcePublication;
   local?: boolean;
+  expectedCommit?: string | null;
 }) {
   const identity = publicationIdentity(input.publication, input.origin, input.local ?? false);
   await sourceGit(input.directory, ['cat-file', '-e', `${identity.commit}^{commit}`]);
@@ -228,12 +256,32 @@ export async function publishSource(input: {
         )
       ).map(verifiedEvent);
     const have = new Set((await read()).map((e) => e.id));
-    const refs = await sourceGit(input.directory, [
+    const remoteRefs = await sourceGit(input.directory, [
       'ls-remote',
       identity.clone,
-      'refs/heads/main',
+      ...identity.refs.map(([ref]) => ref),
     ]).catch(() => '');
-    if (ids.every((id) => have.has(id)) && refs.split(/\s/)[0] === identity.commit)
+    const refsMatch = (text: string) => {
+      const refs = new Map(
+        text
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => line.split(/\s+/).reverse() as [string, string]),
+      );
+      return identity.refs.every(([ref, commit]) => refs.get(ref) === commit);
+    };
+    const head =
+      remoteRefs
+        .split('\n')
+        .find((line) => line.endsWith('\trefs/heads/main'))
+        ?.split(/\s/)[0] ?? null;
+    if (
+      input.expectedCommit !== undefined &&
+      head !== input.expectedCommit &&
+      head !== identity.commit
+    )
+      throw new Error('Source branch changed since publication preparation');
+    if (ids.every((id) => have.has(id)) && refsMatch(remoteRefs))
       return { ...identity, changed: false };
     for (const event of [identity.announcement, identity.state]) {
       if (have.has(event.id)) continue;
@@ -247,10 +295,12 @@ export async function publishSource(input: {
     // State may be accepted into GRASP purgatory until this exact commit is received.
     await sourceGit(input.directory, [
       'push',
-      '--force',
+      ...(input.expectedCommit === undefined
+        ? ['--force']
+        : [`--force-with-lease=refs/heads/main:${head ?? ''}`]),
       '--no-verify',
       identity.clone,
-      `${identity.commit}:refs/heads/main`,
+      ...identity.refs.map(([ref, commit]) => `${commit}:${ref}`),
     ]);
     for (let attempt = 0; attempt < 30; attempt++) {
       const returned = new Set((await read()).map((e) => e.id));
@@ -258,10 +308,9 @@ export async function publishSource(input: {
         const refs = await sourceGit(input.directory, [
           'ls-remote',
           identity.clone,
-          'refs/heads/main',
+          ...identity.refs.map(([ref]) => ref),
         ]);
-        if (refs.split(/\s/)[0] !== identity.commit)
-          throw new Error('GRASP served a different commit after publication');
+        if (!refsMatch(refs)) throw new Error('GRASP served a different commit after publication');
         return { ...identity, changed: true };
       }
       await Bun.sleep(100);

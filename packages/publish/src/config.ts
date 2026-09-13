@@ -1,0 +1,146 @@
+import { z } from 'zod';
+import { AccountError, type Network } from '../../identity/src/signer';
+import { normalizeTopic } from '../../protocol/src/topics';
+import ipaddr from 'ipaddr.js';
+
+export class PublishError extends AccountError {
+  constructor(
+    code: string,
+    message: string,
+    public stage = 'check',
+    public retryable = false,
+  ) {
+    super(code, message);
+  }
+}
+const identifier = z.string().regex(/^[a-z0-9][a-z0-9-]{0,11}[a-z0-9]$|^[a-z0-9]$/);
+export const sourceDefaults = [
+  'index.html',
+  'napplet.json',
+  'LICENSE',
+  'README.md',
+  'AGENTS.md',
+  'CLAUDE.md',
+  'dev.ts',
+  'package.json',
+  '.gitignore',
+  '.napplet/server.js',
+  '.napplet/client.js',
+  '.napplet/preview.html',
+];
+export const targetsSchema = z
+  .object({
+    relay: z.string().max(256),
+    blossom: z.string().max(256),
+    grasp: z.string().max(256),
+    site: z.string().max(256),
+    mirrors: z.array(z.string().max(256)).max(3),
+  })
+  .strict();
+export type Targets = z.infer<typeof targetsSchema>;
+export const projectSchema = z
+  .object({
+    schema: z.literal('space-local-project/v1'),
+    name: z.string().min(1).max(160),
+    title: z.string().min(1).max(160).optional(),
+    description: z.string().max(1000).default(''),
+    entry: z.literal('index.html'),
+    previewId: z.uuid(),
+    identifier: identifier.optional(),
+    template: z.string().optional(),
+    license: z.string().min(1).max(100),
+    requires: z
+      .array(z.string().regex(/^[a-z][a-z0-9-]{0,39}$/))
+      .max(32)
+      .default([]),
+    topics: z.array(z.string().max(256)).max(32).default([]),
+    relays: z.array(z.string().max(256)).max(8).default([]),
+    servers: z.array(z.string().max(256)).max(8).default([]),
+    creator: z
+      .object({ pubkey: z.string().regex(/^[a-f0-9]{64}$/), network: z.enum(['local', 'public']) })
+      .strict()
+      .optional(),
+    publish: targetsSchema
+      .partial()
+      .extend({ files: z.array(z.string().max(200)).min(3).max(128).optional() })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type Project = z.infer<typeof projectSchema>;
+export function resolveTargets(
+  project: Project,
+  network: Network,
+  overrides: Partial<Targets> = {},
+): Targets {
+  const defaults: Targets =
+    network === 'local'
+      ? {
+          relay: 'ws://127.0.0.1:19347/relay',
+          blossom: 'http://127.0.0.1:8081',
+          grasp: 'http://127.0.0.1:8082',
+          site: 'http://localhost:8080',
+          mirrors: [],
+        }
+      : {
+          relay: 'wss://napplet.space/relay',
+          blossom: 'https://blossom.napplet.space',
+          grasp: 'https://git.napplet.space',
+          site: 'https://napplet.space',
+          mirrors: ['wss://relay.damus.io', 'wss://nos.lol'],
+        };
+  const { files: _, ...configured } = project.publish ?? {};
+  const targets = targetsSchema.parse({ ...defaults, ...configured, ...overrides });
+  const endpoint = (value: string, relay = false, site = false) => {
+    const u = new URL(value);
+    const loopback = ['127.0.0.1', '[::1]', ...(site ? ['localhost'] : [])].includes(u.hostname);
+    const literal = u.hostname.replace(/^\[|\]$/g, '');
+    const privateHost =
+      u.hostname === 'localhost' ||
+      u.hostname.endsWith('.localhost') ||
+      u.hostname.endsWith('.local') ||
+      (ipaddr.isValid(literal) && ipaddr.process(literal).range() !== 'unicast');
+    if (
+      u.username ||
+      u.password ||
+      u.hash ||
+      u.search ||
+      (!relay && u.pathname !== '/') ||
+      (network === 'local'
+        ? !loopback || u.protocol !== (relay ? 'ws:' : 'http:')
+        : u.protocol !== (relay ? 'wss:' : 'https:') || privateHost)
+    )
+      throw new Error();
+    return relay ? u.href : u.origin;
+  };
+  try {
+    targets.relay = endpoint(targets.relay, true);
+    targets.mirrors = [...new Set(targets.mirrors.map((r) => endpoint(r, true)))].filter(
+      (r) => r !== targets.relay,
+    );
+    targets.blossom = endpoint(targets.blossom);
+    targets.grasp = endpoint(targets.grasp);
+    targets.site = endpoint(targets.site, false, true);
+    // Runtime hints must respect the selected network as well. They are never publication targets.
+    project.relays.forEach((r) => endpoint(r, true));
+    project.servers.forEach((r) => endpoint(r));
+    return targets;
+  } catch {
+    throw new PublishError(
+      'PUBLISH_TARGET',
+      'Use HTTPS/WSS public targets, or literal-loopback HTTP/WS targets with --network local.',
+    );
+  }
+}
+export function projectIdentity(project: Project) {
+  return project.identifier ?? `n-${project.previewId.replaceAll('-', '').slice(0, 11)}`;
+}
+export function projectTopics(project: Project) {
+  const topics = project.topics.map(normalizeTopic);
+  if (topics.some((t) => !t))
+    throw new PublishError(
+      'PROJECT_TOPICS',
+      'Use nonempty topics without whitespace, control characters or embedded # characters.',
+    );
+  return [...new Set(topics)];
+}
