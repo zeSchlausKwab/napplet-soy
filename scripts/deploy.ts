@@ -38,6 +38,17 @@ export function validateGitDomain(domain: string, blossom: string, input = `git.
     throw new Error('--git-domain must be separate from the website and Blossom hostnames.');
   return input;
 }
+export function validateRelayDomain(
+  domain: string,
+  blossom: string,
+  git: string,
+  input = `relay.${domain}`,
+) {
+  validateTarget('validation', input);
+  if ([domain, `www.${domain}`, blossom, git].includes(input))
+    throw new Error('--relay-domain must be separate from the other service hostnames.');
+  return input;
+}
 async function run(args: string[], stdin?: string) {
   const child = Bun.spawn(args, {
     env: { ...process.env, COPYFILE_DISABLE: '1' },
@@ -55,6 +66,7 @@ if (import.meta.main) {
       domain: { type: 'string' },
       'blossom-domain': { type: 'string' },
       'git-domain': { type: 'string' },
+      'relay-domain': { type: 'string' },
       'shared-caddy': { type: 'boolean' },
       'web-port': { type: 'string' },
       'admin-pubkey': { type: 'string' },
@@ -65,7 +77,7 @@ if (import.meta.main) {
   });
   if (values.help) {
     console.log(
-      'Usage: bun run deploy --host root@your-vps --domain napplet.example --admin-pubkey npub-or-hex [--shared-caddy] [--web-port 3040] [--legacy-cpu] [--preflight]\n\n--shared-caddy reuses the stock caddy.service and /etc/caddy/Caddyfile, preserving existing sites. Other proxies need explicit integration. The default web port is 3040 when sharing, 3000 otherwise; the next port is used for candidate checks.\n--legacy-cpu selects Bun 1.3.8 and source-built image libraries for older Linux x64 virtual CPUs. All runtime and application checks still run.\n--preflight reports capacity, listening ports and service details without changing anything.\nPoint the website, www, blossom and git hostnames to this VPS. Root or passwordless sudo and systemd on Debian/Ubuntu are required.',
+      'Usage: bun run deploy --host root@your-vps --domain napplet.example --admin-pubkey npub-or-hex [--shared-caddy] [--web-port 3040] [--legacy-cpu] [--preflight]\n\n--shared-caddy reuses the stock caddy.service and /etc/caddy/Caddyfile, preserving existing sites. Other proxies need explicit integration. The default web port is 3040 when sharing, 3000 otherwise; the next port is used for candidate checks.\n--legacy-cpu selects Bun 1.3.8 and source-built image libraries for older Linux x64 virtual CPUs. All runtime and application checks still run.\n--preflight reports capacity, listening ports and service details without changing anything.\nPoint the website, www, relay, blossom and git hostnames to this VPS. Root or passwordless sudo and systemd on Debian/Ubuntu are required.',
     );
     process.exit(0);
   }
@@ -73,6 +85,12 @@ if (import.meta.main) {
     const { host, domain } = validateTarget(values.host, values.domain);
     const blossomDomain = validateBlossomDomain(domain, values['blossom-domain']);
     const gitDomain = validateGitDomain(domain, blossomDomain, values['git-domain']);
+    const relayDomain = validateRelayDomain(
+      domain,
+      blossomDomain,
+      gitDomain,
+      values['relay-domain'],
+    );
     const sshOptions = [
       '-o',
       'BatchMode=yes',
@@ -148,12 +166,13 @@ if (import.meta.main) {
           'ssh',
           ...sshOptions,
           host,
-          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin} ${runtimeProfile}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin} ${runtimeProfile}; fi`,
+          `if [ "$(id -u)" = 0 ]; then exec bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin} ${runtimeProfile} ${relayDomain}; else exec sudo -n bash -s -- ${release} ${domain} ${blossomDomain} ${gitDomain} ${values['shared-caddy'] ? 'shared' : 'dedicated'} ${webPort} ${admin} ${runtimeProfile} ${relayDomain}; fi`,
         ],
         `${cpuCheck}\n${script}`,
       );
       console.log(`\nRelease ${release} is running behind Caddy at https://${domain}`);
       console.log(`Blossom storage: https://${blossomDomain}`);
+      console.log(`Nostr relay: wss://${relayDomain}`);
       console.log(`Git source hosting: https://${gitDomain}`);
     } finally {
       await rm(staging, { recursive: true, force: true });

@@ -3,7 +3,7 @@ import { Database } from 'bun:sqlite';
 import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import type { Filter } from 'nostr-tools';
+import { matchFilter, type Filter } from 'nostr-tools';
 import { PublicationRelays } from '../../publish/src/relay';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../protocol/src';
 import { validateManifest } from '../../protocol/src/manifest';
@@ -13,6 +13,17 @@ import { downloadArtifact } from './blossom';
 import { discoverPreviewMetadata } from './preview-discovery';
 import { indexPreviewImages } from './preview-images';
 import { IndexStore, indexedProjection } from './index-store';
+import { DiscoveryQueue, targetBlocked } from './discovery-queue';
+import { decodeAddress, type SignedEvent } from '../../protocol/src';
+import type { DiscoveryTarget } from '../../protocol/src/discovery';
+import { discoverFromHints } from './preview-discovery';
+
+type HydrateOptions = {
+  download?: typeof downloadArtifact;
+  metadata?: typeof discoverPreviewMetadata;
+  now?: number;
+  keys?: string[];
+};
 
 export type IndexConfig = {
   directory: string;
@@ -116,6 +127,7 @@ export async function indexDownload(
 export class IndexWorker {
   readonly store: IndexStore;
   private lock: Database;
+  private hydrating: Promise<unknown> = Promise.resolve();
   constructor(readonly config: IndexConfig) {
     this.store = new IndexStore(config.directory, true);
     this.lock = new Database(join(config.directory, 'writer.sqlite'), { create: true });
@@ -198,14 +210,12 @@ export class IndexWorker {
     }
     return errors;
   }
-  async hydrate(
-    signal: AbortSignal,
-    options: {
-      download?: typeof downloadArtifact;
-      metadata?: typeof discoverPreviewMetadata;
-      now?: number;
-    } = {},
-  ) {
+  hydrate(signal: AbortSignal, options: HydrateOptions = {}) {
+    const task = this.hydrating.catch(() => {}).then(() => this.hydrateUnlocked(signal, options));
+    this.hydrating = task;
+    return task;
+  }
+  private async hydrateUnlocked(signal: AbortSignal, options: HydrateOptions = {}) {
     const now = options.now ?? Date.now();
     const profile = `${RUNTIME_PROFILE}:${PREVIEW_PROFILE}`;
     const changed = this.store.state<string>('profile') !== profile;
@@ -213,8 +223,10 @@ export class IndexWorker {
     const directory = join(this.config.directory, 'artifacts');
     await mkdir(directory, { recursive: true });
     const queue = await Promise.all(
-      this.store
-        .due(now)
+      (options.keys
+        ? options.keys.flatMap((key) => this.store.row(key) ?? [])
+        : this.store.due(now)
+      )
         .filter((row) => !manifestBlocked(JSON.parse(row.event)))
         .map(async (row) => ({
           row,
@@ -241,7 +253,7 @@ export class IndexWorker {
         this.store.project(row.id, null, now + 3600000, now + 3600000);
         continue;
       }
-      const needsArtifact = changed || row.retry_at <= now;
+      const needsArtifact = !!options.keys || changed || row.retry_at <= now;
       if (needsArtifact && !missingDomains(entry.domains).length) {
         try {
           const file = Bun.file(join(directory, `${entry.artifactHash}.html`));
@@ -288,7 +300,9 @@ export class IndexWorker {
         row.preview_at,
       );
     }
-    const previews = queue.filter(({ entry, row }) => entry && (changed || row.preview_at <= now));
+    const previews = queue.filter(
+      ({ entry, row }) => entry && (!!options.keys || changed || row.preview_at <= now),
+    );
     if (previews.length && !signal.aborted) {
       try {
         const previewSignal = AbortSignal.any([signal, AbortSignal.timeout(15000)]);
@@ -324,12 +338,121 @@ export class IndexWorker {
     this.store.setState('profile', profile);
     return capacity ? ['Artifact cache capacity reached (1 GiB)'] : [];
   }
+  async discover(
+    target: DiscoveryTarget,
+    signal: AbortSignal,
+    options: {
+      read?: PublicationRelays['read'];
+      hints?: typeof discoverFromHints;
+      hydrate?: HydrateOptions;
+    } = {},
+  ) {
+    if (targetBlocked(target)) return 'missing' as const;
+    const transport = new PublicationRelays(signal);
+    const read = options.read ?? ((url, filter) => transport.read(url, filter, 2000));
+    const filter: Filter =
+      target.type === 'snapshot'
+        ? { kinds: [5129], ids: [target.id], limit: 4 }
+        : (() => {
+            const identity = decodeAddress(target.naddr);
+            return {
+              kinds: [identity.kind],
+              authors: [identity.pubkey],
+              ...(identity.kind === 35129 ? { '#d': [identity.identifier] } : {}),
+              limit: 4,
+            };
+          })();
+    let completed = false;
+    const query = async (filters: Filter[]) => {
+      const events: SignedEvent[] = [];
+      const hints = target.hints.filter((h) => !this.config.relays.includes(h));
+      await Promise.all([
+        ...this.config.relays.map(async (relay) => {
+          for (const f of filters)
+            try {
+              events.push(...(await read(relay, f)));
+              completed = true;
+            } catch {
+              /* Other relays may answer. */
+            }
+        }),
+        (async () => {
+          try {
+            const result = await (options.hints ?? discoverFromHints)(hints, filters, signal);
+            events.push(...result.events);
+            completed ||= result.complete;
+          } catch {
+            /* Optional hint failed. */
+          }
+        })(),
+      ]);
+      return events;
+    };
+    try {
+      const events = await query([filter]);
+      for (const event of events) {
+        // The injected/read transport is not an admission authority.
+        if (event.kind !== 5 && matchFilter(filter, event)) {
+          try {
+            this.store.admit(event);
+          } catch {
+            /* Signature, replacement and capacity checks. */
+          }
+        }
+      }
+      const row = this.store.row(target.key);
+      if (!row) return completed ? ('missing' as const) : ('failed' as const);
+      const event = JSON.parse(row.event) as SignedEvent;
+      const deletions: Filter[] = [
+        { kinds: [5], authors: [event.pubkey], '#e': [event.id], limit: 64 },
+      ];
+      if (target.type === 'address')
+        deletions.push({ kinds: [5], authors: [event.pubkey], '#a': [target.key], limit: 64 });
+      for (const deletion of await query(deletions))
+        try {
+          if (deletion.kind === 5) this.store.admit(deletion);
+        } catch {
+          /* Invalid deletion. */
+        }
+      if (manifestBlocked(event) || this.store.removed(event)) return 'missing' as const;
+      await this.hydrate(signal, { ...options.hydrate, keys: [target.key] });
+      return 'found' as const;
+    } finally {
+      transport.close();
+    }
+  }
+  private async discoveryLoop(signal: AbortSignal) {
+    const queue = new DiscoveryQueue(this.config.directory);
+    try {
+      while (!signal.aborted) {
+        const job = queue.take();
+        if (job) {
+          try {
+            queue.finish(
+              job.key,
+              await this.discover(
+                JSON.parse(job.target),
+                AbortSignal.any([signal, AbortSignal.timeout(45000)]),
+              ),
+            );
+          } catch {
+            queue.finish(job.key, 'failed');
+          }
+        } else await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    } finally {
+      queue.close();
+    }
+  }
   async run(signal: AbortSignal) {
+    const stop = new AbortController();
+    signal = AbortSignal.any([signal, stop.signal]);
     const relays = new PublicationRelays(signal);
+    const discovery = this.discoveryLoop(signal);
     try {
       while (!signal.aborted) {
         const errors = await this.collect(relays.read.bind(relays));
-        errors.push(...(await this.hydrate(signal)));
+        errors.push(...(await this.hydrate(AbortSignal.any([signal, AbortSignal.timeout(15000)]))));
         this.store.setState('health', {
           checkedAt: Date.now(),
           release: this.config.release,
@@ -348,7 +471,9 @@ export class IndexWorker {
         });
       }
     } finally {
+      stop.abort();
       relays.close();
+      await discovery;
     }
   }
 }

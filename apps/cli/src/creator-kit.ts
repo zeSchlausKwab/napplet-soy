@@ -52,7 +52,7 @@ the project. Read it before publishing and tell the creator the effective target
 New projects expose publish.networks.public and publish.networks.local explicitly:
 relay is the primary manifest/descriptor relay, blossom receives the HTML, source
 archive and preview image, grasp is the NIP-34 Git service, and site displays the
-result. The defaults use wss://napplet.soy/relay, https://blossom.napplet.soy,
+result. The defaults use wss://relay.napplet.soy, https://blossom.napplet.soy,
 https://git.napplet.soy and https://napplet.soy. Edit those fields to choose services.
 CLI --relay/--blossom/--grasp/--site overrides apply only to that publication.
 The optional mirrors array receives extra descriptor/manifest copies only after

@@ -419,3 +419,21 @@ rejection, www permanent redirect and Git metrics protection passed. The other s
 this deployment and remain visible in index diagnostics; managed-relay, nos.lol and
 Primal discovery remain configured. No test comments, payments, name claims or
 creator publications were sent to the public instance.
+
+## Relay subdomain and discovery rollout
+
+New deployments default to `wss://relay.<domain>`; override with `--relay-domain`.
+Point its A/AAAA records at the VPS. Caddy serves the same relay process at the
+subdomain root and obtains its TLS certificate. The original `/relay` endpoint
+remains a compatibility alias for signed historical hints and older CLI projects.
+New CLI 0.4.1 projects/remixes and unconfigured projects use `wss://relay.napplet.soy`.
+Explicit project destinations and signed events are preserved. To change an existing
+project's pinned destination, edit `napplet.json` → `publish.networks.public.relay`.
+
+Index transport can use the internal loopback relay while portable hints and the
+browser default use the public subdomain. Custom operator relay lists remain
+configurable. Shared-Caddy preflight checks hostname ownership even when adding a
+hostname to an existing Napplet deployment.
+
+The same rollout adds [paged/inline discovery and cold-link OG](DISCOVERY.md), plus
+[daily state backups and an offline restore command](RECOVERY.md).

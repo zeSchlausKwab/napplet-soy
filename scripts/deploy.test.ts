@@ -4,8 +4,25 @@ import {
   validateGitDomain,
   validateTarget,
   validateWebPort,
+  validateRelayDomain,
 } from './deploy';
 import { sharedCaddyCandidate } from './shared-caddy';
+test('relay defaults to its own hostname and cannot replace another site', () => {
+  expect(validateRelayDomain('napplet.example', 'files.example', 'git.example')).toBe(
+    'relay.napplet.example',
+  );
+  for (const value of [
+    'napplet.example',
+    'www.napplet.example',
+    'files.example',
+    'git.example',
+    'wss://relay.example',
+    'x.example;id',
+  ])
+    expect(() =>
+      validateRelayDomain('napplet.example', 'files.example', 'git.example', value),
+    ).toThrow();
+});
 test('shared deployment preserves existing configuration and updates only its own import', () => {
   const original =
     '{\n email admin@example.com\n}\nexisting.example {\n reverse_proxy localhost:3000\n}\n';

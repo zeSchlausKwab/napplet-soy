@@ -26,7 +26,7 @@ async function configuration(env: Record<string, string> = {}) {
 test('production queries the managed relay and the same public discovery relays as publicdev', async () => {
   expect(await configuration()).toEqual({
     relays: ['ws://127.0.0.1:19347/relay', ...defaults],
-    hints: ['wss://napplet.example/relay', ...defaults],
+    hints: ['wss://relay.napplet.example', ...defaults],
   });
 });
 test('explicit operator relay lists remain authoritative and derive matching portable hints', async () => {

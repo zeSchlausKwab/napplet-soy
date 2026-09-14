@@ -15,6 +15,15 @@ test('gallery SSR, filtering, navigation and browser history', async ({ page, re
   await expect(page.getByLabel('Sort napplets')).toHaveValue('new');
   await expect(page.locator('iframe')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Public napplets' })).toHaveCount(0);
+  expect(await page.locator('.napplet-card').count()).toBeLessThanOrEqual(24);
+  const nextPage = page.getByRole('link', { name: 'Next →', exact: true });
+  if (await nextPage.isVisible()) {
+    await nextPage.click();
+    await expect(page).toHaveURL(/page=2/);
+    await expect(page.locator('.napplet-card').first()).toBeVisible();
+    await page.getByRole('link', { name: '← Previous', exact: true }).click();
+    await expect(page.locator('.napplet-card').first()).toBeVisible();
+  }
   await page.screenshot({
     path: '.local/gallery-desktop.png',
     fullPage: true,
@@ -32,7 +41,7 @@ test('gallery SSR, filtering, navigation and browser history', async ({ page, re
   const card = page.locator('.napplet-card').first();
   await expect(card).toBeVisible();
   const title = (await card.locator('.card-heading a').textContent())!;
-  await card.locator('.card-preview').click();
+  await card.locator('.card-heading a').click();
   await expect(page.locator('h1')).toContainText(title);
   await page.goBack();
   await expect(page.getByRole('button', { name: label, exact: true })).toHaveAttribute(

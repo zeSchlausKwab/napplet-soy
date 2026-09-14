@@ -18,7 +18,9 @@ const targets = {
   'linux-arm64': 'bun-linux-arm64',
   'linux-x64': 'bun-linux-x64-baseline',
 };
-const { values } = parseArgs({ options: { target: { type: 'string' } } });
+const { values } = parseArgs({
+  options: { target: { type: 'string' }, 'clean-staging': { type: 'boolean' } },
+});
 const selected = values.target ? values.target.split(',') : Object.keys(targets);
 if (selected.some((t) => !(t in targets)))
   throw new Error('Choose darwin-arm64,darwin-x64,linux-arm64,linux-x64.');
@@ -126,5 +128,6 @@ for (const platform of selected) {
     .digest('hex');
   await writeFile(`${archive}.sha256`, `${checksum}  ${name}.tar.gz\n`);
   console.log(`${platform}: ${Math.round(Bun.file(archive).size / 1024 / 1024)} MiB · ${checksum}`);
+  if (values['clean-staging']) await rm(directory, { recursive: true, force: true });
 }
 console.log(`CLI ${version} artifacts: ${output}`);

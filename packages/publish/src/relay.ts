@@ -9,7 +9,7 @@ export const newer = (a: SignedEvent, b: SignedEvent) =>
 export class PublicationRelays {
   private pool = new RelayPool();
   constructor(private signal?: AbortSignal) {}
-  async read(url: string, filter: Filter): Promise<SignedEvent[]> {
+  async read(url: string, filter: Filter, timeoutMs = 8000): Promise<SignedEvent[]> {
     if (this.signal?.aborted)
       throw new PublishError('PUBLISH_CANCELLED', 'Publication cancelled.', 'check', true);
     return new Promise((resolve, reject) => {
@@ -36,7 +36,7 @@ export class PublicationRelays {
               true,
             ),
           ),
-        8000,
+        Math.max(250, Math.min(8000, timeoutMs)),
       );
       this.signal?.addEventListener('abort', aborted, { once: true });
       subscription = this.pool

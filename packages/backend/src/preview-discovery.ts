@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { appReferences } from '../../protocol/src/preview';
 import { verifiedEvent, type SignedEvent } from '../../protocol/src';
+import type { Filter } from 'nostr-tools';
 
 let bundle: Promise<Blob> | undefined;
 async function workerBundle() {
@@ -27,6 +28,28 @@ export async function discoverPreviewMetadata(
 ) {
   const linked = manifests.filter((manifest) => appReferences(manifest).length).slice(0, 100);
   if (!linked.length || signal.aborted) return [];
+  const result = await relayWorker({ manifests: linked, relays }, signal);
+  return verifiedResults(result);
+}
+function verifiedResults(result: unknown) {
+  if (!Array.isArray(result) || result.length > 400) return [];
+  return result.flatMap((event) => {
+    try {
+      return [verifiedEvent(event)];
+    } catch {
+      return [];
+    }
+  });
+}
+export async function discoverFromHints(relays: string[], filters: Filter[], signal: AbortSignal) {
+  if (!relays.length || signal.aborted) return { events: [], complete: false };
+  const result = (await relayWorker(
+    { relays: relays.slice(0, 4), filters: filters.slice(0, 3) },
+    signal,
+  )) as { events?: unknown; complete?: boolean };
+  return { events: verifiedResults(result?.events), complete: result?.complete === true };
+}
+async function relayWorker(payload: unknown, signal: AbortSignal): Promise<unknown> {
   const workerRoot = new URL('../../../.local/preview-workers/', import.meta.url).pathname;
   await mkdir(workerRoot, { recursive: true });
   const directory = await mkdtemp(resolve(workerRoot, 'query-'));
@@ -44,7 +67,7 @@ export async function discoverPreviewMetadata(
     const timeout = setTimeout(stop, 17000);
     signal.addEventListener('abort', stop, { once: true });
     try {
-      child.stdin.write(JSON.stringify({ manifests: linked, relays }));
+      child.stdin.write(JSON.stringify(payload));
       child.stdin.end();
       const reader = child.stdout.getReader();
       const chunks: Uint8Array[] = [];
@@ -64,14 +87,7 @@ export async function discoverPreviewMetadata(
       if (signal.aborted) return [];
       if (code !== 0) throw new Error(`Metadata worker exited with status ${code}`);
       const result: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-      if (!Array.isArray(result) || result.length > 400) return [];
-      return result.flatMap((event) => {
-        try {
-          return [verifiedEvent(event)];
-        } catch {
-          return [];
-        }
-      });
+      return result;
     } finally {
       clearTimeout(timeout);
       signal.removeEventListener('abort', stop);

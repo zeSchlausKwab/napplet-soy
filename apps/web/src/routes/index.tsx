@@ -6,10 +6,10 @@ import {
   type SearchSchemaInput,
 } from '@tanstack/react-router';
 import { ArrowDown, ArrowUpRight, Eye, Search, Shuffle, Sparkles, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { gallerySearchSchema, type GallerySearch } from '../../../../packages/protocol/src';
-import { matchesGallery, topicFacets } from '../../../../packages/protocol/src/topics';
-import { getPublicCatalog } from '@/lib/catalog.functions';
+import { discoveryTarget } from '../../../../packages/protocol/src/discovery';
+import { getBrowseGallery } from '@/lib/catalog.functions';
 import { NappletCard } from '@/components/napplet-card';
 import { useNostr } from '@/components/nostr-provider';
 import { Button } from '@/components/ui/button';
@@ -19,37 +19,27 @@ export const Route = createFileRoute('/')({
   validateSearch: (input: SearchSchemaInput & Partial<GallerySearch>) =>
     gallerySearchSchema.parse(input),
   search: {
-    middlewares: [stripSearchParams({ tag: '', sort: 'new', q: '', unavailable: false })],
+    middlewares: [stripSearchParams({ tag: '', sort: 'new', q: '', unavailable: false, page: 1 })],
   },
   loaderDeps: ({ search }) => search,
-  loader: async ({ deps }) => {
-    const publicCatalog = await getPublicCatalog();
-    const catalog = publicCatalog.entries.filter((n) => deps.sort !== 'featured' || n.featured);
-    const playable = (n: (typeof catalog)[number]) => n.availability === 'ready';
-    const visibleCatalog = deps.unavailable ? catalog : catalog.filter(playable);
-    const napplets = visibleCatalog.filter((n) => matchesGallery(n, deps));
-    napplets.sort(
-      (a, b) =>
-        b.manifest.created_at - a.manifest.created_at || a.revisionId.localeCompare(b.revisionId),
-    );
-    return {
-      napplets,
-      topics: topicFacets(visibleCatalog),
-      total: visibleCatalog.length,
-      unavailableCount: catalog.filter((n) => !playable(n) && matchesGallery(n, deps)).length,
-      status: publicCatalog.status,
-    };
-  },
+  loader: ({ deps }) => getBrowseGallery({ data: deps }),
   component: Gallery,
 });
 function Gallery() {
   const { ready } = useNostr();
-  const { napplets, topics, total, unavailableCount, status } = Route.useLoaderData();
+  const { napplets, topics, total, unavailableCount, status, page, pages, matches } =
+    Route.useLoaderData();
   const [showAllTags, setShowAllTags] = useState(false);
+  const [active, setActive] = useState<string | null>(null);
+  const [lookupError, setLookupError] = useState('');
   const search = Route.useSearch(),
     navigate = useNavigate({ from: '/' });
   const update = (patch: Partial<GallerySearch>) =>
-    void navigate({ search: (prev) => ({ ...prev, ...patch }), resetScroll: false });
+    void navigate({ search: (prev) => ({ ...prev, page: 1, ...patch }), resetScroll: false });
+  useEffect(
+    () => setActive(null),
+    [search.q, search.tag, search.sort, search.page, search.unavailable],
+  );
   const visibleTopics = topics.slice(0, 5);
   if (search.tag && !visibleTopics.some(({ topic }) => topic === search.tag))
     visibleTopics.push(
@@ -123,7 +113,7 @@ function Gallery() {
         <div className="explore-top">
           <div>
             <h2>
-              The playground <span>{String(napplets.length).padStart(2, '0')}</span>
+              The playground <span>{String(matches).padStart(2, '0')}</span>
             </h2>
             <p>Follow a tag. Find your kind of weird.</p>
             {status.publicdev && !status.fetchedAt && (
@@ -171,7 +161,15 @@ function Gallery() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                update({ q: String(new FormData(e.currentTarget).get('q') ?? '') });
+                const value = String(new FormData(e.currentTarget).get('q') ?? '').trim();
+                setLookupError('');
+                if (/^(nostr:|naddr1|note1|nevent1|https?:\/\/)/i.test(value)) {
+                  try {
+                    void navigate({ to: discoveryTarget(value).path });
+                  } catch {
+                    setLookupError('Paste a napplet naddr or a portable napplet link.');
+                  }
+                } else update({ q: value.slice(0, 100) });
               }}
               className="search-field"
             >
@@ -179,7 +177,8 @@ function Gallery() {
               <input
                 aria-label="Search napplets"
                 name="q"
-                placeholder="Find a little something…"
+                placeholder="Search or paste a napplet link…"
+                maxLength={4096}
                 defaultValue={search.q}
                 key={search.q}
               />
@@ -190,6 +189,7 @@ function Gallery() {
               )}
             </form>
             <select
+              disabled={!ready}
               aria-label="Sort napplets"
               value={search.sort === 'curated' ? 'new' : search.sort}
               onChange={(e) => update({ sort: e.target.value as GallerySearch['sort'] })}
@@ -225,11 +225,50 @@ function Gallery() {
             </div>
           </div>
         )}
+        {lookupError && <p role="alert">{lookupError}</p>}
         <div className="napplet-grid">
           {napplets.map((n, index) => (
-            <NappletCard key={n.revisionId} napplet={n} index={index} />
+            <NappletCard
+              key={n.revisionId}
+              napplet={n}
+              index={index}
+              playing={active === n.revisionId}
+              onPlay={() => setActive(n.revisionId)}
+              onStop={() => setActive(null)}
+            />
           ))}
         </div>
+        {pages > 1 && (
+          <nav className="gallery-pagination" aria-label="Gallery pages">
+            {page > 1 ? (
+              <Link
+                to="/"
+                search={{ ...search, page: page - 1 }}
+                hash="explore"
+                className="pagination-link"
+              >
+                ← Previous
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span>
+              Page {page} of {pages} · {matches} napplets
+            </span>
+            {page < pages ? (
+              <Link
+                to="/"
+                search={{ ...search, page: page + 1 }}
+                hash="explore"
+                className="pagination-link"
+              >
+                Next →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </nav>
+        )}
         {!napplets.length && (
           <div className="empty-results">
             <h3>

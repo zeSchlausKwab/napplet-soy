@@ -10,6 +10,7 @@ proxy_mode=${5:-dedicated}
 web_port=${6:-3000}
 admin_pubkey=${7:?admin public key required}
 runtime_profile=${8:-standard}
+relay_domain=${9:-relay.$domain}
 [[ "$runtime_profile" == standard || "$runtime_profile" == legacy-x64 ]] || exit 2
 [[ "$proxy_mode" == dedicated || "$proxy_mode" == shared ]] || exit 2
 [[ "$web_port" =~ ^[0-9]{4,5}$ && "$web_port" -ge 1024 && "$web_port" -le 65534 ]] || exit 2
@@ -20,6 +21,7 @@ smoke_port=$((web_port+1))
 [[ "$domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ ]] || exit 2
 [[ "$blossom_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$blossom_domain" != "$domain" ]] || exit 2
 [[ "$git_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$git_domain" != "$domain" && "$git_domain" != "$blossom_domain" ]] || exit 2
+[[ "$relay_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$relay_domain" != "$domain" && "$relay_domain" != "www.$domain" && "$relay_domain" != "$blossom_domain" && "$relay_domain" != "$git_domain" ]] || exit 2
 [[ $EUID -eq 0 ]] || { echo 'Root or passwordless sudo is required.' >&2; exit 1; }
 # deploy.ts sends the shared helper before this script over stdin. Also support
 # direct invocation from a checkout; enforce the same guard before any writes.
@@ -43,8 +45,12 @@ if [[ "$proxy_mode" == shared ]]; then
   systemctl is-active --quiet caddy
   systemctl show caddy -p ExecStart --value | grep -Fq '/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile'
   [[ -z "$(systemctl show caddy -p DropInPaths --value)" ]] || { echo 'Inspect custom Caddy unit overrides before using shared mode.' >&2; exit 1; }
-  if ! grep -Fxq 'import /etc/napplet-space/Caddyfile' /etc/caddy/Caddyfile; then
-    /usr/bin/caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null | python3 -c '
+  # Inspect the host configuration without our owned fragment, also on upgrades
+  # which add a hostname. Never take a hostname from another site's block.
+  host_check="/etc/caddy/.napplet-host-preflight-$$"
+  sed '\|^import /etc/napplet-space/Caddyfile$|d' /etc/caddy/Caddyfile > "$host_check"
+  chmod 644 "$host_check"
+  if ! /usr/bin/caddy adapt --config "$host_check" --adapter caddyfile 2>/dev/null | python3 -c '
 import json,sys
 names=set(sys.argv[1:]); found=set()
 def walk(x):
@@ -56,8 +62,11 @@ def walk(x):
   for v in x: walk(v)
 walk(json.load(sys.stdin))
 if found: sys.exit("A requested hostname already belongs to the existing Caddy configuration.")
-' "$domain" "www.$domain" "$blossom_domain" "$git_domain"
+' "$domain" "www.$domain" "$blossom_domain" "$git_domain" "$relay_domain"; then
+    rm -f "$host_check"
+    exit 1
   fi
+  rm -f "$host_check"
 elif [[ -n "$(ss -H -ltn '( sport = :80 or sport = :443 )')" ]]; then
   if ! systemctl is-active --quiet napplet-space-caddy || [[ ! -f /etc/napplet-space/Caddyfile ]] || ! grep -Fxq "$domain {" /etc/napplet-space/Caddyfile; then
     echo 'An existing site owns HTTP/HTTPS. Run --preflight and use an inspected shared proxy; no changes made.' >&2; exit 1
@@ -171,7 +180,7 @@ export SPACE_CLI_DOWNLOAD_DIR="${SPACE_CLI_DOWNLOAD_DIR:-$app_root/downloads/cli
 export PORT="$web_port"
 export SPACE_ADMIN_PUBKEYS="${SPACE_ADMIN_PUBKEYS:-$admin_pubkey}"
 export SPACE_MODERATION_FILE="$state_root/moderation/policy.json"
-export VITE_NOSTR_RELAYS="${VITE_NOSTR_RELAYS:-wss://$domain/relay}"
+export VITE_NOSTR_RELAYS="${VITE_NOSTR_RELAYS:-wss://$relay_domain}"
 # Store only public deployment identity; operator secrets stay in server.env.
 printf '%s\n' "$SPACE_ADMIN_PUBKEYS" > "$app_root/shared/admin-pubkeys"
 chmod 600 "$app_root/shared/admin-pubkeys"
@@ -179,7 +188,7 @@ export SPACE_PUBLICDEV=0 SPACE_PUBLICDEV_DIR=''
 export SPACE_INDEX_DIR="$state_root/index"
 export SPACE_COMMUNITY_DIR="$state_root/community"
 source "$release_dir/scripts/index-env.sh"
-napplet_index_env "$domain" "$release_dir/packages/nostr/discovery-relays.json"
+napplet_index_env "$domain" "$release_dir/packages/nostr/discovery-relays.json" "$relay_domain"
 export SPACE_INDEX_LOCAL_BLOSSOM=''
 # GRASP migrations are not reversible by switching binaries. Pin changes need a
 # separately rehearsed migration/restore procedure; ordinary deploys cannot do it.
@@ -194,7 +203,7 @@ runuser -u napplet -- "$bun_bin" "$release_dir/scripts/moderation-init.ts" "$SPA
 
 start_relay() {
   local source_release=$1
-  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_RELAY_BIND=127.0.0.1:19347 SPACE_RELAY_BIN="$source_release/bin/napplet-relay" SPACE_RELAY_DATA="$state_root/relay" SPACE_RELAY_ORIGIN="https://$domain/relay" SPACE_RELAY_INSTANCE="$domain" PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/relay.ecosystem.config.cjs" --update-env
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_RELAY_BIND=127.0.0.1:19347 SPACE_RELAY_BIN="$source_release/bin/napplet-relay" SPACE_RELAY_DATA="$state_root/relay" SPACE_RELAY_ORIGIN="https://$relay_domain" SPACE_RELAY_INSTANCE="$domain" PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/relay.ecosystem.config.cjs" --update-env
 }
 relay_ready() {
   local expected
@@ -336,6 +345,10 @@ $domain {
 www.$domain {
   redir https://$domain{uri} permanent
 }
+$relay_domain {
+  header -Server
+  reverse_proxy 127.0.0.1:19347
+}
 $blossom_domain {
   header -Server
   reverse_proxy 127.0.0.1:19348
@@ -454,4 +467,5 @@ if [[ "$proxy_mode" == dedicated ]]; then
 fi
 printf '%s\n' "$proxy_mode:$web_port" > "$app_root/shared/deploy-profile"
 trap - ERR
+bash "$release_dir/scripts/backup-install.sh"
 echo "Activated $release_id for https://$domain with Blossom at https://$blossom_domain and Git at https://$git_domain. HTTPS certificate issuance depends on DNS and network reachability."

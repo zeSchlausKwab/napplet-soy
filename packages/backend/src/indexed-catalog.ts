@@ -38,17 +38,44 @@ function relays() {
 export async function indexedEntries() {
   const store = indexStore();
   if (!store) return [];
+  const hints = relays();
+  const scope = `${store.directory}:${hints.join(',')}`;
+  if (projectionScope !== scope) {
+    projectionCache.clear();
+    projectionScope = scope;
+  }
+  const retained = new Set<string>();
   const entries = await Promise.all(
-    store
-      .recent()
-      .map((row) =>
-        store.removed(JSON.parse(row.event)) || manifestBlocked(JSON.parse(row.event))
-          ? null
-          : indexedProjection(row, relays()),
-      ),
+    store.rows().map((row) => {
+      retained.add(row.id);
+      const event = JSON.parse(row.event);
+      if (store.removed(event) || manifestBlocked(event)) return null;
+      const old = projectionCache.get(row.id);
+      if (old?.event === row.event && old.projection === row.projection && old.key === row.key)
+        return old.entry;
+      const entry = indexedProjection(row, hints);
+      projectionCache.set(row.id, {
+        event: row.event,
+        projection: row.projection,
+        key: row.key,
+        entry,
+      });
+      return entry;
+    }),
   );
+  for (const id of projectionCache.keys()) if (!retained.has(id)) projectionCache.delete(id);
   return entries.filter((entry) => entry !== null);
 }
+let projectionScope = '';
+const projectionCache = new Map<
+  string,
+  {
+    event: string;
+    projection: string | null;
+    key: string;
+    entry: ReturnType<typeof indexedProjection>;
+  }
+>();
 export function lookupKey(input: Lookup) {
   if (input.type === 'named') return null;
   if (input.type === 'snapshot') return /^[a-f0-9]{64}$/.test(input.id) ? input.id : null;

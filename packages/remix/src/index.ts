@@ -106,7 +106,7 @@ export async function loadRemix(reference: string, network: Network, signal: Abo
     const destinations =
       network === 'local'
         ? ['ws://127.0.0.1:19347/relay']
-        : [...new Set([...hints, 'wss://napplet.soy/relay', ...discoveryRelays])]
+        : [...new Set([...hints, 'wss://relay.napplet.soy', ...discoveryRelays])]
             .filter((r) => {
               try {
                 previewRelayUrl(r);

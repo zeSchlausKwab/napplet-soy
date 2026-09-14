@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Expand, LoaderCircle, Play, RotateCcw, Square } from 'lucide-react';
+import { Expand, Minimize, LoaderCircle, Play, RotateCcw, Square } from 'lucide-react';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
 import { loadArtifact, PLAYER_SANDBOX } from '../../../../packages/runtime/src';
@@ -36,9 +36,15 @@ function FileExports({ files }: { files: ExportFile[] }) {
 export function Player({
   napplet,
   pinned = false,
+  autoPlay = false,
+  compact = false,
+  onStop,
 }: {
   napplet: Napplet | PublicNapplet;
   pinned?: boolean;
+  autoPlay?: boolean;
+  compact?: boolean;
+  onStop?: () => void;
 }) {
   const external = 'provenance' in napplet;
   const manifest = external ? napplet.manifest : pinned ? napplet.snapshot : napplet.current;
@@ -52,12 +58,33 @@ export function Player({
     currentPubkey.current = pubkey;
     host.current?.updateIdentity(pubkey);
   }, [pubkey]);
-  const [playing, setPlaying] = useState(false),
+  const [playing, setPlaying] = useState(autoPlay),
     [doc, setDoc] = useState(''),
     [release, setRelease] = useState<Awaited<ReturnType<typeof preparePlayback>> | null>(null),
     [error, setError] = useState(''),
     [revision, setRevision] = useState(0);
   const frame = useRef<HTMLDivElement>(null);
+  const wrapper = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const changed = () => setFullscreen(document.fullscreenElement === wrapper.current);
+    document.addEventListener('fullscreenchange', changed);
+    return () => document.removeEventListener('fullscreenchange', changed);
+  }, []);
+  useEffect(() => {
+    if (!expanded) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpanded(false);
+    };
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener('keydown', escape);
+    };
+  }, [expanded]);
   const bindFrame = useCallback(
     (node: HTMLIFrameElement | null) => {
       host.current?.close();
@@ -100,7 +127,10 @@ export function Player({
     return () => controller.abort();
   }, [playing, releaseId, revision]);
   return (
-    <div className="player-wrap">
+    <div
+      ref={wrapper}
+      className={`player-wrap${compact ? ' player-compact' : ''}${expanded ? ' player-expanded' : ''}`}
+    >
       <div ref={frame} className="player-stage">
         {!playing ? (
           <button
@@ -225,21 +255,35 @@ export function Player({
             size="icon"
             disabled={!playing}
             aria-label="Stop napplet"
-            onClick={() => setPlaying(false)}
+            onClick={() => {
+              setPlaying(false);
+              setExpanded(false);
+              onStop?.();
+            }}
           >
             <Square size={16} />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Fullscreen"
-            onClick={() => {
-              void frame.current
-                ?.requestFullscreen()
-                .catch(() => setError('Fullscreen is unavailable in this browser.'));
+            aria-label={fullscreen || expanded ? 'Exit fullscreen' : 'Fullscreen'}
+            onClick={async () => {
+              if (fullscreen) {
+                await document.exitFullscreen();
+                return;
+              }
+              if (expanded) {
+                setExpanded(false);
+                return;
+              }
+              try {
+                await wrapper.current!.requestFullscreen();
+              } catch {
+                setExpanded(true);
+              }
             }}
           >
-            <Expand size={17} />
+            {fullscreen || expanded ? <Minimize size={17} /> : <Expand size={17} />}
           </Button>
         </div>
       </div>

@@ -97,7 +97,7 @@ export function defaultTargets(network: Network): Targets {
         mirrors: [],
       }
     : {
-        relay: 'wss://napplet.soy/relay',
+        relay: 'wss://relay.napplet.soy',
         blossom: 'https://blossom.napplet.soy',
         grasp: 'https://git.napplet.soy',
         site: 'https://napplet.soy',

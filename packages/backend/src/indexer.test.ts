@@ -14,6 +14,7 @@ import { IndexWorker, indexConfig } from './index-worker';
 import { manifestKey, indexedProjection } from './index-store';
 import { indexedLookup, indexStore, indexedArtifact } from './indexed-catalog';
 import { communityEntries } from './public-catalog';
+import { browseGallery } from './gallery';
 import { publicationResponse } from './publication-response';
 import { confirmWebsite } from '../../publish/src/website';
 
@@ -67,6 +68,32 @@ const hydrate = (w: IndexWorker, bytes: Uint8Array, now?: number) =>
     metadata: async () => [],
     now,
   });
+test('gallery search reaches records older than the previous 200-event window', async () => {
+  const w = await setup(),
+    r = await release();
+  for (let i = 0; i < 205; i++)
+    w.store.admit(
+      finalizeEvent(
+        {
+          ...r.current,
+          created_at: r.current.created_at - i,
+          tags: r.current.tags
+            .filter((t) => !['d', 'title'].includes(t[0]))
+            .concat([
+              ['d', `item-${i}`],
+              ['title', i === 204 ? 'Oldest rare creation' : `Creation ${i}`],
+            ]),
+        },
+        r.secret,
+      ),
+    );
+  const result = await browseGallery({ q: 'Oldest rare', tag: '', sort: 'new', unavailable: true });
+  expect(result.matches).toBe(1);
+  expect(result.napplets[0].title).toBe('Oldest rare creation');
+  expect(
+    (await browseGallery({ q: '', tag: '', sort: 'new', unavailable: true, page: 9 })).napplets,
+  ).toHaveLength(13);
+});
 test('ordinary signed current and snapshot become playable, survive restart, and form one gallery card', async () => {
   let w = await setup();
   const r = await release();

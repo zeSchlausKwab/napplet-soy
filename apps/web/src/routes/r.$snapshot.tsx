@@ -1,26 +1,46 @@
 import { PublicDetail } from '@/components/public-detail';
 import { nappletHead } from '@/lib/napplet-head';
 import { createFileRoute, notFound, Outlet, useMatchRoute } from '@tanstack/react-router';
-import { getNapplet } from '@/lib/catalog.functions';
+import { getDiscoveredNapplet } from '@/lib/catalog.functions';
+import { DiscoveryState } from '@/components/discovery-state';
 import { Detail } from '@/components/detail';
 export const Route = createFileRoute('/r/$snapshot')({
   loader: async ({ params }) => {
     if (!/^[a-f0-9]{64}$/.test(params.snapshot)) throw notFound();
-    const napplet = await getNapplet({ data: { type: 'snapshot', id: params.snapshot } });
-    if (!napplet) throw notFound();
-    return napplet;
+    const result = await getDiscoveredNapplet({ data: { type: 'snapshot', id: params.snapshot } });
+    if (!result.napplet && !result.discovery) throw notFound();
+    return result;
   },
-  head: ({ loaderData }) =>
-    nappletHead(
-      loaderData,
-      `/r/${loaderData && 'provenance' in loaderData ? loaderData.revisionId : loaderData?.snapshot.id}`,
-      loaderData && 'provenance' in loaderData ? loaderData.revisionId : loaderData?.snapshot.id,
-    ),
+  pendingMs: 200,
+  pendingComponent: DiscoveryState,
+  head: ({ loaderData }) => {
+    const n = loaderData?.napplet;
+    return n
+      ? nappletHead(
+          n,
+          `/r/${'provenance' in n ? n.revisionId : n.snapshot.id}`,
+          'provenance' in n ? n.revisionId : n.snapshot.id,
+        )
+      : {
+          meta: [
+            { title: 'Discovering a napplet — napplet.soy' },
+            { name: 'robots', content: 'noindex' },
+          ],
+        };
+  },
   component: Release,
 });
 function Release() {
   const match = useMatchRoute();
-  const n = Route.useLoaderData();
+  const { napplet: n, discovery, message } = Route.useLoaderData();
+  if (
+    !n ||
+    (discovery &&
+      ['queued', 'searching'].includes(discovery) &&
+      'availability' in n &&
+      n.availability !== 'ready')
+  )
+    return <DiscoveryState state={discovery ?? 'failed'} message={message} />;
   return match({
     to: '/r/$snapshot/source',
     params: { snapshot: 'provenance' in n ? n.revisionId : n.snapshot.id },

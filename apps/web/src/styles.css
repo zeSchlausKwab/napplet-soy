@@ -1547,3 +1547,93 @@ pre:focus-visible {
 .zap-invoice { display: grid; gap: .8rem; min-width: 0; }
 .zap-invoice textarea { width: 100%; height: 100px; padding: .75rem; border: 1px solid var(--border); border-radius: .5rem; font-family: 'DM Mono', monospace; font-size: .7rem; resize: vertical; }
 @media(max-width: 620px) { .social-heading { align-items: flex-start; } .comment-submit,.social-connect { flex-direction: column; align-items: flex-start; } .detail-actions { flex-wrap: wrap; } }
+
+/* The same player stays mounted while a gallery creation expands. */
+.napplet-card.is-playing {
+  animation: none;
+}
+.napplet-card .player-compact {
+  height: auto;
+  aspect-ratio: 720 / 450;
+  display: flex;
+  flex-direction: column;
+}
+.player-compact .player-stage {
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+.player-compact .player-controls {
+  flex: none;
+  padding: 4px 10px;
+  min-height: 40px;
+}
+.player-compact .player-controls > span {
+  font-size: 10px;
+}
+.player-wrap:fullscreen,
+.player-wrap.player-expanded {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  aspect-ratio: auto;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  background: var(--background, #f5f3eb);
+  z-index: 80;
+}
+.player-wrap:fullscreen .player-stage,
+.player-expanded .player-stage {
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+.player-wrap:fullscreen iframe,
+.player-expanded iframe {
+  width: 100%;
+  height: 100%;
+}
+.player-wrap:fullscreen .player-controls,
+.player-expanded .player-controls {
+  flex: none;
+}
+.gallery-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+.pagination-link {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 16px;
+}
+.discovery-state {
+  max-width: 640px;
+  margin: 80px auto;
+  padding: 32px;
+}
+.discovery-state p {
+  color: var(--muted-foreground);
+  margin: 16px 0 24px;
+}
+@media (max-width: 600px) {
+  .gallery-pagination {
+    gap: 8px;
+    font-size: 12px;
+  }
+  .pagination-link {
+    padding: 10px;
+  }
+}
+@media (max-width: 700px) {
+  .napplet-card.is-playing { grid-column: 1 / -1; }
+  .player-compact .player-controls > span { white-space: nowrap; }
+}
