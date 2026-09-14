@@ -83,5 +83,6 @@ export const gallerySearchSchema = z.object({
   tag: z.string().max(256).transform(normalizeTopic).catch(''),
   sort: z.enum(['curated', 'new']).catch('curated'),
   q: z.string().max(100).catch(''),
+  unavailable: z.boolean().optional().catch(undefined),
 });
 export type GallerySearch = z.infer<typeof gallerySearchSchema>;

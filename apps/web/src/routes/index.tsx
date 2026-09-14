@@ -5,7 +5,7 @@ import {
   stripSearchParams,
   type SearchSchemaInput,
 } from '@tanstack/react-router';
-import { ArrowDown, ArrowUpRight, Search, Shuffle, Sparkles, X } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, Eye, Search, Shuffle, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { gallerySearchSchema, type GallerySearch } from '../../../../packages/protocol/src';
 import { matchesGallery, topicFacets } from '../../../../packages/protocol/src/topics';
@@ -18,7 +18,9 @@ import { publicLink } from '../../../../packages/backend/src/public-model';
 export const Route = createFileRoute('/')({
   validateSearch: (input: SearchSchemaInput & Partial<GallerySearch>) =>
     gallerySearchSchema.parse(input),
-  search: { middlewares: [stripSearchParams({ tag: '', sort: 'curated', q: '' })] },
+  search: {
+    middlewares: [stripSearchParams({ tag: '', sort: 'curated', q: '', unavailable: false })],
+  },
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
     const [local, publicCatalog] = await Promise.all([
@@ -46,7 +48,10 @@ export const Route = createFileRoute('/')({
           ),
       ),
     ];
-    const napplets = catalog.filter((n) => matchesGallery(n, deps));
+    const playable = (n: (typeof catalog)[number]) =>
+      !('availability' in n) || n.availability === 'ready';
+    const visibleCatalog = deps.unavailable ? catalog : catalog.filter(playable);
+    const napplets = visibleCatalog.filter((n) => matchesGallery(n, deps));
     if (deps.sort === 'new')
       napplets.sort(
         (a, b) =>
@@ -55,8 +60,9 @@ export const Route = createFileRoute('/')({
       );
     return {
       napplets,
-      topics: topicFacets(catalog),
-      total: catalog.length,
+      topics: topicFacets(visibleCatalog),
+      total: visibleCatalog.length,
+      unavailableCount: catalog.filter((n) => !playable(n) && matchesGallery(n, deps)).length,
       status: publicCatalog.status,
     };
   },
@@ -64,7 +70,7 @@ export const Route = createFileRoute('/')({
 });
 function Gallery() {
   const { ready } = useNostr();
-  const { napplets, topics, total, status } = Route.useLoaderData();
+  const { napplets, topics, total, unavailableCount, status } = Route.useLoaderData();
   const [showAllTags, setShowAllTags] = useState(false);
   const search = Route.useSearch(),
     navigate = useNavigate({ from: '/' });
@@ -225,6 +231,19 @@ function Gallery() {
               <option value="new">Newest</option>
             </select>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="availability-toggle"
+            disabled={!ready}
+            aria-pressed={search.unavailable === true}
+            title="Include napplets that need more capabilities or whose download is unavailable"
+            onClick={() => update({ unavailable: search.unavailable ? undefined : true })}
+          >
+            <Eye size={14} />
+            Show unavailable
+            {unavailableCount > 0 && <span>({unavailableCount})</span>}
+          </Button>
         </div>
         {showAllTags && (
           <div className="topic-panel" id="all-topics">
@@ -251,9 +270,13 @@ function Gallery() {
         {!napplets.length && (
           <div className="empty-results">
             <h3>No little wonders found.</h3>
-            <p>Try a different word or open up the filters.</p>
+            <p>
+              {!search.unavailable && unavailableCount > 0
+                ? `${unavailableCount} matching ${unavailableCount === 1 ? 'napplet is' : 'napplets are'} unavailable. Use “Show unavailable” to include them.`
+                : 'Try a different word or open up the filters.'}
+            </p>
             <Button variant="outline" onClick={() => update({ q: '', tag: '' })}>
-              Show everything
+              Clear search and tag
             </Button>
           </div>
         )}

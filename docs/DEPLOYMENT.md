@@ -1,5 +1,8 @@
 # VPS deployment with Caddy and PM2
 
+Deployment is operator-run. Routine changes are verified and committed locally;
+do not deploy or upload releases unless the user explicitly requests deployment.
+
 Updated 2026-09-14. **[napplet.soy](https://napplet.soy) is live**, using the temporary legacy CPU profile on the existing Namecheap VPS. Caddy issued valid Let's Encrypt certificates for the website, www, Blossom and Git; the other site remains available. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. See the deployment record below for verification and the compatibility workaround.
 
 ## One command

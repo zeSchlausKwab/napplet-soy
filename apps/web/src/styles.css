@@ -316,6 +316,14 @@ pre:focus-visible {
   margin: 28px 0 24px;
   align-items: center;
 }
+.availability-toggle {
+  font-size: 11px;
+  background: transparent;
+}
+.availability-toggle[aria-pressed='true'] {
+  background: #ebece0;
+  border-color: #969987;
+}
 .topic-tabs {
   display: flex;
   min-width: 0;
