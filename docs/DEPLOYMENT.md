@@ -289,3 +289,28 @@ Live checks covered the default create command and CLI guide, HTTP/HTTPS and www
 redirects, admin authentication, both relay WebSockets/NIP-11 endpoints, Blossom,
 blocked Git metrics, and the existing `schlaustronics.com` site. No test creations
 were published to public relays.
+
+## Prepared locally: community features and CLI 0.3.0
+
+This checkout adds signed permanent `/@handle/slug` claims, pinned-source remixes,
+Nostr comments/replies, likes/unlikes and the LNURL zap flow. Community state lives
+in the persistent `community` directory; it must survive application rollbacks.
+
+CLI 0.3.0 archives have been built locally for macOS/Linux on ARM64 and x64. Their
+source revision, sizes and checksums are in
+`apps/cli/distribution/release-0.3.0.json`. The archives remain in `.local/cli/0.3.0`.
+The native macOS package and piped installer passed their local tests. Linux and
+Intel macOS targets were built but were not executed on those operating systems.
+
+No artifacts have been uploaded and no VPS deployment was performed for this
+change. Because the website installer now advertises 0.3.0, release the CLI first:
+
+```sh
+bun run cli:release --host root@159.198.46.2
+```
+
+Then run your normal website deployment command. Existing installed CLI users
+rerun the website installer to receive 0.3.0. See [community behavior and limits](COMMUNITY.md)
+and [remix provenance](REMIXING.md) before rollout. Zap invoice validation uses
+signed fixtures, and the browser wallet was simulated; no Lightning payment was
+sent during these checks.
