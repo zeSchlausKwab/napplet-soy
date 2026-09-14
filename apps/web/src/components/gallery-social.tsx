@@ -94,10 +94,7 @@ export function GallerySocialProvider({
       ),
     );
     setPending(null);
-    setMessage({
-      id: item.napplet.revisionId,
-      text: item.event.kind === 5 ? 'Like removed.' : 'Liked.',
-    });
+    setMessage(null);
     setRevision((v) => v + 1);
   };
   const like = async (napplet: PublicNapplet) => {

@@ -215,10 +215,12 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
     await card.getByRole('button', { name: /^Like / }).click();
     await page.getByRole('button', { name: 'Retry like', exact: true }).click();
     await card.getByRole('button', { name: /^Unlike .*2 likes/ }).waitFor();
+    expect(await card.getByText('Liked.', { exact: true }).count()).toBe(0);
     expect(attempts[0]).toBe(attempts[1]);
     expect(accountSignatures).toBe(1);
     await card.getByRole('button', { name: /^Unlike / }).click();
     await card.getByRole('button', { name: /^Like .*1 likes/ }).waitFor();
+    expect(await card.getByText('Like removed.', { exact: true }).count()).toBe(0);
     // One canonical comment destination from every copy of a card; hydration focuses the field.
     await card.getByRole('link', { name: /^Comment on / }).click();
     await page.getByLabel('Leave a little note').waitFor();
