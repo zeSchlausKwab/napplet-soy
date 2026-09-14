@@ -1,11 +1,9 @@
-import { manifestFeatured } from '../../../../packages/moderation/src/policy';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { gallerySearchSchema } from '../../../../packages/protocol/src';
 import { artifact, gallery, resolveNapplet } from '../../../../packages/backend/src/catalog';
 import {
   catalogStatus,
-  communityEntries,
   resolvePublicNapplet,
 } from '../../../../packages/backend/src/public-catalog';
 import { siteOrigin } from '../../../../packages/backend/src/site-origin';
@@ -117,13 +115,6 @@ export const getDiscoveredNapplet = createServerFn({ method: 'GET' })
       queue.close();
     }
   });
-export const getPublicCatalog = createServerFn({ method: 'GET' }).handler(async () => ({
-  status: await catalogStatus(),
-  entries: (await communityEntries()).map((entry) => ({
-    ...entry,
-    featured: manifestFeatured(entry.manifest),
-  })),
-}));
 export const getSource = createServerFn({ method: 'GET' })
   .validator(z.string().regex(/^[a-f0-9]{64}$/))
   .handler(async ({ data }) => {
