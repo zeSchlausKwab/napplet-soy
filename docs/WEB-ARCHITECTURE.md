@@ -37,7 +37,8 @@ creation page, CLI help and remix dialog share a command builder. The walkthroug
 is a checked-in, offline-rendered MP4 with a poster, captions and transcript. Native
 controls load video only on demand; no Remotion runtime ships to the browser. Static
 public files support single byte ranges so video seeking works through the Bun server.
-See [Onboarding](ONBOARDING.md) for regeneration, request boundaries and local verification.
+See [Onboarding](ONBOARDING.md) for regeneration, request boundaries and verification.
+A06 and the About route are deployed in `20260914192251320-98168` on 2026-09-14.
 
 ## 2. Bun server and application boundaries
 
@@ -65,7 +66,7 @@ Route loaders call a server function or API boundary that resolves identifiers a
 | `/r/<snapshot-event-id>/source` | Exact source revision of that release |
 | `/n/<naddr>/play`, `/r/<event-id>/play`, `/@alice/plasma-pet/play` | Immersive presentation of the same identity/release; deployed 2026-09-14 |
 | `/settings` | Creator/account preferences |
-| `/about` | Server-rendered guide, stack and resources; locally implemented 2026-09-14 |
+| `/about` | Server-rendered guide, stack and resources; deployed 2026-09-14 |
 | `/api/v1/*` | CLI/public data/status and authenticated account endpoints |
 
 These are ordinary path routes, with no hash router. Direct requests and refreshes go through the same resolver and return proper HTTP status codes. TanStack Router handles subsequent navigation and route loading.

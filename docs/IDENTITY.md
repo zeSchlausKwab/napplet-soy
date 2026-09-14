@@ -107,7 +107,10 @@ Anonymous zaps use a separate ephemeral key per invoice, never the selected sign
 
 ### Browser key generation and recovery
 
-Implemented and verified locally on 2026-09-14; not deployed yet. In the login chooser, **Create
+Deployed and verified on 2026-09-14 in `20260914192251320-98168`; see the
+[release record](DEPLOYMENT.md#onboarding-about-and-key-recovery-release--2026-09-14).
+Live generation, encrypted backup and same-key recovery were checked using a temporary
+browser identity. In the login chooser, **Create
 identity** generates a key using the browser's cryptographic random source. Only
 its public identity is shown. The new key does not replace a connected account
 until the user prepares a recovery backup, saves the file or encrypted text,

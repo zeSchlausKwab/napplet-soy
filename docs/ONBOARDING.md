@@ -26,7 +26,9 @@ No autoplay or loop, including under reduced motion. The hero links to the walkt
 on `/create` without JavaScript; with JavaScript it opens a dialog. Closing the dialog
 unmounts playback. The hero's right column remains available for A07's featured work.
 
-Implemented and verified locally on 2026-09-14; not deployed. A07's featured rotation follows.
+Deployed and verified on 2026-09-14 in **`20260914192251320-98168`**. See the
+[release record](DEPLOYMENT.md#onboarding-about-and-key-recovery-release--2026-09-14).
+A07's featured rotation follows.
 The final 30-second MP4 is 2,711,233 bytes (2.59 MiB); the WebP poster is 22,336 bytes.
 
 ## Maintaining the guide
@@ -76,4 +78,10 @@ This enables native video seeking and does not change napplet artifact verificat
 - Scene stills and desktop/mobile UI captures were visually inspected. Local evidence:
   `.local/onboarding-check.log`, `.local/onboarding-installer.log`,
   `.local/onboarding-native.log`, `.local/onboarding-render.log`, `.local/onboarding/`
-  and `.local/walkthrough/`. No new real publication or deployment was performed.
+  and `.local/walkthrough/`. Local verification did not publish or deploy.
+
+The user subsequently requested deployment. The same onboarding checks passed against
+public HTTPS, including no video fetch until Play, captions, seeking through Caddy,
+no-JavaScript browsing, copy fallback and closing/focus behavior. All 13 public
+app/runtime/installer browser regressions also passed. Live evidence is under
+`.local/onboarding-deploy/`; CLI 0.5.0 and its four release archives are unchanged.

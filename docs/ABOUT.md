@@ -1,6 +1,7 @@
 # About and resources
 
-Implemented and verified locally on 2026-09-14; not deployed. Project repository
+Deployed and verified on 2026-09-14 in `20260914192251320-98168`;
+see the [release record](DEPLOYMENT.md#onboarding-about-and-key-recovery-release--2026-09-14). Project repository
 links are deferred by the user until the repositories exist. `/about` is a TanStack
 file route with server-rendered content and
 page-specific title, description and Open Graph text. The header question-mark

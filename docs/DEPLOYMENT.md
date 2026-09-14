@@ -5,8 +5,8 @@ do not deploy or upload releases unless the user explicitly requests deployment.
 
 Updated 2026-09-14. **[napplet.soy](https://napplet.soy) is live**, using the temporary legacy CPU profile on the existing Namecheap VPS. Caddy issued valid Let's Encrypt certificates for the website, www, Blossom and Git; the other site remains available. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. See the deployment record below for verification and the compatibility workaround.
 
-Latest verified release: **`20260914171728494-21459`**; see the
-[immersive player and social controls record](#immersive-player-and-social-controls-release--2026-09-14).
+Latest verified release: **`20260914192251320-98168`**; see the
+[onboarding, About and key recovery record](#onboarding-about-and-key-recovery-release--2026-09-14).
 
 ## One command
 
@@ -660,3 +660,53 @@ configuration hashes match the pre-deploy values:
 No DNS changes or reboot were needed. Logs, the focused live browser script and
 screenshots are retained in `.local/immersive-deploy/`. AGENDA A02/A17 and their
 feature documents now record this deployment; A05 remains the next planned slice.
+
+## Onboarding, About and key recovery release — 2026-09-14
+
+Active release: **`20260914192251320-98168`**, source through **`45e09c1`**.
+Previous release `20260914171728494-21459` remains available for rollback. The user
+explicitly requested deployment. The existing shared-Caddy, web-port 3040, legacy
+CPU and administrator configuration was used; no DNS changes or reboot occurred.
+
+This release includes the account-free onboarding hero and 30-second Remotion film
+(A06), About/resources route (A05), and browser key generation with encrypted NIP-49
+backup/recovery (A04). Repository links remain deferred until the user creates those
+repositories. The website uses checked-in video assets; deployment does not render
+Remotion. CLI **0.5.0** and all four native archives are unchanged.
+
+Deployment passed typechecking and **185 repository tests** on both machines,
+Go race checks, **four relay**, **16 Blossom** and **eight GRASP** service tests.
+It built the production services and website, checked the candidate, then activated
+it. The legacy host's GRASP dependency build took about four minutes, followed by
+its production build; both websites remained reachable during that work.
+
+Public verification passed:
+
+- The exact HTTPS release ID, managed and legacy relay NIP-11/read subscriptions,
+  GRASP NIP-11, Blossom health, unauthenticated admin 401, installer version,
+  and all four CLI artifact sizes and checksum files.
+- Hero command visibility at 320×568, 390×844, 768×1024 and 1365×900; no horizontal
+  overflow; no-JavaScript route/transcript; clipboard success/fallback; no video
+  request until Play; five caption cues, 30-second duration and seeking through
+  Caddy; Escape cleanup and focus return. The video is 2,711,233 bytes and its poster
+  22,336 bytes, matching the verified local assets.
+- About SSR, mobile layout and resources; browser identity generation, backup
+  acknowledgement, encrypted downloads, repeat export, same-key recovery, wrong
+  passphrase rejection, cancellation, refresh and disconnect. This used a temporary
+  browser identity; no personal credentials, social events or payments were submitted.
+- **All 13 public app/runtime/installer browser regression tests**, including gallery
+  navigation, sandbox/hash enforcement, source routes, OG previews, fullscreen
+  settings, scoped storage, exports and identity changes.
+
+The final discovery report was fresh, non-stale and error-free. Pre-deploy Damus
+query errors were absent in this report. All five Napplet PM2 processes were online
+with zero restarts; Caddy was active and Napplet startup registration remained enabled.
+Both shared proxy configuration hashes match the pre-deploy values:
+
+- Parent: `be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f`.
+- Napplet fragment: `ef99cf551dca7c36d7ab82b6075c36bd537034f19e402d63648784b9d65e3c5e`.
+
+`schlaustronics.com` returned HTTPS 200 during the build and after activation.
+Live screenshots were inspected. Logs, focused live browser scripts and captures
+are retained under `.local/onboarding-deploy/`. A04/A05/A06 and their feature docs
+now record this deployment; A07's featured hero rotation is next.
