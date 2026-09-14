@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'bun:test';
+import { afterEach, beforeEach, expect, setSystemTime, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -35,6 +35,7 @@ beforeEach(async () => {
   initializePolicy(process.env.SPACE_MODERATION_FILE);
 });
 afterEach(async () => {
+  setSystemTime();
   for (const name of [
     'SPACE_MODERATION_FILE',
     'SPACE_ADMIN_PUBKEYS',
@@ -78,6 +79,8 @@ function request(token?: string, body?: string, url = 'https://napplet.example/a
   });
 }
 test('admin access requires an allowlisted signature and binds URL, method, time and payload', async () => {
+  // Signing and verification must use the same second at the +30-second boundary.
+  setSystemTime(new Date('2026-09-14T12:00:00Z'));
   const body = JSON.stringify(action());
   expect((await adminResponse(request())).status).toBe(401);
   expect((await adminResponse(request(await signed(undefined, undefined, outsider)))).status).toBe(
