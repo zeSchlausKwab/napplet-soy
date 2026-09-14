@@ -316,7 +316,6 @@ and [remix provenance](REMIXING.md) before rollout. Zap invoice validation uses
 signed fixtures, and the browser wallet was simulated; no Lightning payment was
 sent during these checks.
 
-
 ## Prepared locally: preview authoring and CLI 0.3.1
 
 The current source fixes generated player covers, adds automatic sandbox PNG
@@ -341,10 +340,36 @@ an older binary must rerun the deployed installer before using the new config
 fields. A subsequent napplet publish supplies the preview; existing publications
 are never rewritten merely by deploying this site or installing the CLI.
 
-
 Validation: 142 main tests and type checking, two gallery/player browser checks,
 and three local capture/service tests passed. The macOS ARM64 packaged binary
 also passed scaffold/config/screenshot/check with Bun and Node removed from PATH.
 Other platform binaries were built, not executed on this machine. The optional
 native-keychain publication test was skipped; local service tests used a temporary
 creator and verified signed descriptor readback independently.
+
+### Creator listing preview and community update — CLI 0.4.0
+
+The CLI archives are prepared locally under `.local/cli/0.4.0`. This update includes
+Play/Listing views and screenshot capture in local dev. The website adds
+install-and-remix commands, comment likes and zaps, and administrator Featured
+selections. Newest is the default; examples enter the gallery through ordinary
+discovery rather than being automatically prepended. Local dev seeding still works.
+
+Release the new CLI downloads **before** deploying the website's updated installer:
+
+```sh
+bun run cli:release --host root@159.198.46.2
+# Then run the usual website deployment command with your existing VPS options.
+```
+
+After deployment, creators rerun the installer, restart `napplet-space dev`, and
+run `napplet-space skills update` in existing projects. No account migration is
+needed. The existing administrator pubkey controls Featured through `/admin`;
+there are no default selections and no new private key or environment variable.
+Old moderation policies load with an empty Featured collection. Existing naddr
+routes remain valid; readable aliases are claimed once by their author on the site.
+
+Verification covers the unit suite, local website/browser flows, local screenshot
+capture and native macOS CLI/installer flows. Invoices and wallets used signed
+fixtures or mocks. No live payment, creator publication, CLI upload or deployment
+was performed by these checks.

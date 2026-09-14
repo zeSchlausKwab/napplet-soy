@@ -128,6 +128,7 @@ test('production SSR, signed named routes and social actions work through a real
     await page.getByRole('button', { name: 'Remix this', exact: true }).click();
     expect(await page.locator('.remix-command').count()).toBe(2);
     expect(await page.locator('.remix-command').first().textContent()).toContain('sh -s -- remix');
+    expect(await page.locator('.remix-command').first().textContent()).toContain('--network local');
     expect(await page.locator('.remix-command').first().textContent()).toContain(
       `/r/${fixture.snapshot.id}`,
     );

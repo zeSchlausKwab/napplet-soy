@@ -3,13 +3,13 @@ set -eu
 
 # Napplet Space creator CLI. Inspect this script before running it if you prefer.
 # Downloads are immutable by version; the archive is verified before extraction.
-version=0.3.1
+version=0.4.0
 base=${NAPPLET_DOWNLOAD_BASE:-https://napplet.soy/cli/download}
 install_root=${NAPPLET_INSTALL_DIR:-"$HOME/.local/share/napplet-space"}
 bin_dir=${NAPPLET_BIN_DIR:-"$HOME/.local/bin"}
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 case "${1:-}" in
-  --help) printf '%s\n' 'Install: curl -fsSL https://napplet.soy/install.sh | sh' 'Create:  curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet' 'Requires macOS or glibc Linux, curl, tar, and SHA-256 tools. Git is needed to create/publish.' 'Optional: NAPPLET_INSTALL_DIR and NAPPLET_BIN_DIR (absolute paths). No sudo or shell-profile edits.'; exit 0 ;;
+  --help) printf '%s\n' 'Install: curl -fsSL https://napplet.soy/install.sh | sh' 'Create:  curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet' 'Remix:   curl -fsSL https://napplet.soy/install.sh | sh -s -- remix https://napplet.soy/r/REVISION_ID my-remix' 'Requires macOS or glibc Linux, curl, tar, and SHA-256 tools. Git is needed to create/publish.' 'Optional: NAPPLET_INSTALL_DIR and NAPPLET_BIN_DIR (absolute paths). No sudo or shell-profile edits.'; exit 0 ;;
 esac
 case "$install_root:$bin_dir" in /*:/*) ;; *) fail 'Installation directories must be absolute paths.' ;; esac
 case "$base" in https://*|http://127.0.0.1:*|http://localhost:*) ;; *) fail 'Downloads require HTTPS (or loopback for local testing).' ;; esac

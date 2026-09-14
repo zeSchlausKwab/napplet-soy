@@ -53,6 +53,49 @@ test.skipIf(!process.env.SPACE_TEST_CLI)(
       expect([metadata.width, metadata.height]).toEqual([1200, 750]);
       expect((await run('config', '--project', project)).preview.image).toBe('preview.png');
       expect((await run('check', '--project', project)).previewBytes).toBeGreaterThan(0);
+      const dev = Bun.spawn(
+        [
+          cli,
+          'dev',
+          '--project',
+          project,
+          '--network',
+          'local',
+          '--no-open',
+          '--port',
+          '0',
+          '--json',
+        ],
+        {
+          cwd: root,
+          env: { PATH: '/usr/bin:/bin', HOME: homedir() },
+          stdin: 'ignore',
+          stdout: 'pipe',
+          stderr: 'pipe',
+        },
+      );
+      const timeout = setTimeout(() => dev.kill('SIGKILL'), 15000);
+      try {
+        const reader = dev.stdout.getReader();
+        let output = '';
+        while (!output.includes('\n')) {
+          const { value, done } = await reader.read();
+          if (done) throw new Error('Preview exited before announcing its URL.');
+          output += new TextDecoder().decode(value);
+        }
+        reader.releaseLock();
+        const { url } = JSON.parse(output.split('\n')[0]);
+        const listing = await (await fetch(new URL('listing', url))).json();
+        expect(listing.title).toBe(saved.title ?? saved.name);
+        expect(listing.network).toBe('local');
+        expect(listing.image.width).toBe(1200);
+        expect(listing.captureAvailable).toBe(true);
+        expect(await (await fetch(url)).text()).toContain('id="view-listing"');
+      } finally {
+        clearTimeout(timeout);
+        dev.kill();
+        await dev.exited;
+      }
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -53,6 +53,10 @@ function CliHelp() {
           <span>03</span>
           <h2>A check before sharing</h2>
           <p>
+            In the dev preview, switch to Listing to inspect the screenshot, title, description,
+            tags and upload destinations. Capture a screenshot there before sharing.
+          </p>
+          <p>
             The first check or publication downloads a pinned Chromium browser into your cache.
             Future checks reuse it. Use <code>napplet-space check</code> without publishing.
           </p>

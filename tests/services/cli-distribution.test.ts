@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import release from '../../apps/cli/distribution/version.json';
 import { cliDownload } from '../../packages/backend/src/cli-download';
+import { finalizeEvent, generateSecretKey } from 'nostr-tools';
+import { sha256 } from '../../packages/protocol/src';
 
 const enabled = process.env.SPACE_TEST_CLI === undefined ? test.skip : test;
 const root = await mkdtemp(join(tmpdir(), 'napplet-distribution-test-'));
@@ -82,10 +84,28 @@ enabled(
   async () => {
     process.env.SPACE_CLI_DOWNLOAD_DIR = resolve(import.meta.dir, '../../.local/cli');
     let corrupt = false;
+    const html = '<!doctype html><p>Exact remix starting point</p>';
+    const hash = await sha256(html);
+    const manifest = finalizeEvent(
+      {
+        kind: 35129,
+        created_at: 1,
+        content: '',
+        tags: [
+          ['d', 'original'],
+          ['path', '/index.html', hash],
+          ['title', 'Original'],
+        ],
+      },
+      generateSecretKey(),
+    );
     const server = Bun.serve({
       hostname: '127.0.0.1',
       port: 0,
       fetch(request) {
+        const path = new URL(request.url).pathname;
+        if (path === '/api/manifest') return Response.json({ manifest });
+        if (path === `/api/artifacts/${hash}`) return new Response(html);
         const [version, name] = new URL(request.url).pathname.split('/').slice(-2);
         return corrupt && name?.endsWith('.tar.gz')
           ? new Response('corrupted')
@@ -113,6 +133,31 @@ enabled(
       const command = join(env.NAPPLET_BIN_DIR, 'napplet-space');
       const destination = await readlink(command);
       expect((await run([command, '--version'])).stdout).toContain(release.version);
+      const remixed = await run(
+        [
+          '/bin/sh',
+          source,
+          'remix',
+          `${server.url}r/${manifest.id}`,
+          'installed-remix',
+          '--network',
+          'local',
+          '--identity',
+          'later',
+          '--json',
+        ],
+        root,
+        {
+          ...local,
+          NAPPLET_INSTALL_DIR: join(root, 'fresh-remix-install'),
+          NAPPLET_BIN_DIR: join(root, 'fresh-remix-bin'),
+        },
+      );
+      expect(remixed.code, remixed.stdout + remixed.stderr).toBe(0);
+      expect(
+        (await Bun.file(join(root, 'installed-remix/napplet.json')).json()).remix.revision,
+      ).toBe(manifest.id);
+      expect(await Bun.file(join(root, 'installed-remix/index.html')).text()).toBe(html);
       corrupt = true;
       const bad = await run(['/bin/sh', source], root, local);
       expect(bad.code).toBe(1);

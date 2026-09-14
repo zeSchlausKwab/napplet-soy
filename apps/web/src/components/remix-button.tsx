@@ -17,16 +17,19 @@ export function RemixButton({ revision, title }: { revision: string; title: stri
   useEffect(() => setOrigin(location.origin), []);
   const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
   const source = quote(`${origin}/r/${revision}`);
+  const network = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(origin).hostname)
+    ? ' --network local'
+    : '';
   const commands = [
     {
       id: 'install',
       label: 'Install and remix',
-      command: `curl -fsSL https://napplet.soy/install.sh | sh -s -- remix ${source} my-remix`,
+      command: `curl -fsSL https://napplet.soy/install.sh | sh -s -- remix ${source} my-remix${network}`,
     },
     {
       id: 'installed',
       label: 'Already have the CLI?',
-      command: `napplet-space remix ${source} my-remix`,
+      command: `napplet-space remix ${source} my-remix${network}`,
     },
   ];
   return (
