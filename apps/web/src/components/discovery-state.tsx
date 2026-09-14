@@ -2,6 +2,7 @@ import { Link, useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { Button } from './ui/button';
+import { usePlayRoute } from '@/lib/use-play-route';
 
 export function DiscoveryState({
   state = 'searching',
@@ -13,6 +14,7 @@ export function DiscoveryState({
   poll?: boolean;
 }) {
   const router = useRouter();
+  const play = usePlayRoute();
   const [attempt, setAttempt] = useState(0);
   const pending = ['queued', 'searching'].includes(state) && attempt < 12;
   useEffect(() => {
@@ -53,7 +55,9 @@ export function DiscoveryState({
         </Button>
       )}
       <p>
-        <Link to="/">Back to the playground →</Link>
+        <Link to={play.immersive ? play.detailPath : '/'}>
+          {play.immersive ? 'Back to details →' : 'Back to the playground →'}
+        </Link>
       </p>
     </section>
   );

@@ -11,8 +11,10 @@ import { missingDomains } from '../../../../packages/runtime/src/capabilities';
 import { NameButton } from './name-button';
 import { SocialPanel } from './social-panel';
 import { RemixButton } from './remix-button';
+import { usePlayRoute } from '@/lib/use-play-route';
 
 export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
+  const play = usePlayRoute();
   const store = useEventStore();
   const [copied, setCopied] = useState('');
   useEffect(() => {
@@ -36,6 +38,18 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
           <p>{napplet.creator}</p>
         </div>
         <div className="detail-actions">
+          <Button variant="outline" asChild>
+            <Link
+              to={
+                play.immersive && napplet.availability !== 'ready' ? play.detailPath : play.playPath
+              }
+              resetScroll={false}
+            >
+              {play.immersive && napplet.availability !== 'ready'
+                ? 'Back to details'
+                : 'Open player'}
+            </Link>
+          </Button>
           {napplet.naddr && <NameButton naddr={napplet.naddr} author={napplet.pubkey} />}
           <RemixButton revision={napplet.revisionId} title={napplet.title} />
           <Button
@@ -57,7 +71,14 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
       </div>
       {copied && <p role="status">{copied}</p>}
       {napplet.availability === 'ready' ? (
-        <Player key={napplet.revisionId} napplet={napplet} />
+        <Player
+          key={napplet.revisionId}
+          napplet={napplet}
+          immersive={play.immersive}
+          detailPath={play.detailPath}
+          onEnter={play.enter}
+          onExit={play.exit}
+        />
       ) : (
         <div className="public-preview">
           <img src={publicPoster(napplet)} alt="" />

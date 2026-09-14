@@ -10,8 +10,10 @@ import type { Napplet } from '../../../../packages/backend/src/catalog';
 import { NameButton } from './name-button';
 import { SocialPanel } from './social-panel';
 import { RemixButton } from './remix-button';
+import { usePlayRoute } from '@/lib/use-play-route';
 
 export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?: boolean }) {
+  const play = usePlayRoute();
   const store = useEventStore();
   const [copied, setCopied] = useState('');
   useEffect(() => {
@@ -45,6 +47,11 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
           </Link>
         </div>
         <div className="detail-actions">
+          <Button variant="outline" asChild>
+            <Link to={play.playPath} resetScroll={false}>
+              Open player
+            </Link>
+          </Button>
           {napplet.naddr && <NameButton naddr={napplet.naddr} author={napplet.pubkey} />}
           <Button variant="outline" onClick={copy}>
             {copied ? <Check size={16} /> : <Copy size={16} />}Share
@@ -57,7 +64,15 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
           {copied}
         </p>
       )}
-      <Player key={napplet.snapshot.id} napplet={napplet} pinned={pinned} />
+      <Player
+        key={napplet.snapshot.id}
+        napplet={napplet}
+        pinned={pinned}
+        immersive={play.immersive}
+        detailPath={play.detailPath}
+        onEnter={play.enter}
+        onExit={play.exit}
+      />
       <div className="detail-info">
         <div>
           <h2>A little about this one</h2>

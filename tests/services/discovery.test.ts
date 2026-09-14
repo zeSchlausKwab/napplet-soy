@@ -131,10 +131,11 @@ test('cold portable links discover signed manifests, provide SSR OG and play inl
         pubkey: manifests[i].pubkey,
         identifier: `cold-${i}`,
       });
-      const response = await fetch(`${site}/n/${naddr}`);
+      const response = await fetch(`${site}/n/${naddr}/play`);
       const html = await response.text();
       expect(response.status).toBe(200);
       expect(html).toContain(`property="og:title" content="Cold arrival ${i}"`);
+      expect(html).toContain('player-expanded');
       expect(html).toContain(`https://share.example/api/og/${manifests[i].id}`);
       const image = await fetch(`${site}/api/og/${manifests[i].id}`);
       expect(image.status).toBe(200);
@@ -145,17 +146,25 @@ test('cold portable links discover signed manifests, provide SSR OG and play inl
     const page = await browser.newPage({ viewport: { width: 1365, height: 1000 } });
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(site);
     await page.locator('.napplet-card').first().locator('.card-preview').click();
     await page.frameLocator('iframe').locator('button').click();
     expect(await page.locator('iframe').count()).toBe(1);
     const frame = page.frames().find((f) => f !== page.mainFrame())!;
     expect(await frame.locator('button').textContent()).toBe('1');
+    await page.getByLabel('Fullscreen', { exact: true }).scrollIntoViewIfNeeded();
     const scroll = await page.evaluate(() => scrollY);
     await page.getByLabel('Fullscreen', { exact: true }).click();
+    await page.waitForFunction(() => !!document.fullscreenElement);
     await page.getByLabel('Exit fullscreen', { exact: true }).waitFor();
     expect(await frame.locator('button').textContent()).toBe('1');
     await page.getByLabel('Exit fullscreen', { exact: true }).click();
+    await page.waitForFunction(() => !document.fullscreenElement);
+    // Native fullscreen exits into CSS expansion; the next exit restores the gallery.
+    if (await page.locator('.player-expanded').count())
+      await page.getByLabel('Exit fullscreen', { exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('.player-expanded'));
     expect(await frame.locator('button').textContent()).toBe('1');
     expect(await page.evaluate(() => scrollY)).toBe(scroll);
     await page.locator('.napplet-card').nth(1).locator('.card-preview').click();

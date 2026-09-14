@@ -27,9 +27,12 @@ import { Route as ApiSourceRouteImport } from './routes/api.source'
 import { Route as ApiZapsRouteImport } from './routes/api.zaps'
 import { Route as NNaddrRouteImport } from './routes/n.$naddr'
 import { Route as RSnapshotRouteImport } from './routes/r.$snapshot'
+import { Route as CreatorSlugPlayRouteImport } from './routes/$creator.$slug.play'
 import { Route as ApiArtifactsHashRouteImport } from './routes/api.artifacts.$hash'
 import { Route as ApiOgIdRouteImport } from './routes/api.og.$id'
 import { Route as ApiPreviewsIdRouteImport } from './routes/api.previews.$id'
+import { Route as NNaddrPlayRouteImport } from './routes/n.$naddr.play'
+import { Route as RSnapshotPlayRouteImport } from './routes/r.$snapshot.play'
 import { Route as RSnapshotSourceRouteImport } from './routes/r.$snapshot.source'
 import { Route as CliDownloadVersionFileRouteImport } from './routes/cli.download.$version.$file'
 
@@ -123,6 +126,11 @@ const RSnapshotRoute = RSnapshotRouteImport.update({
   path: '/r/$snapshot',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreatorSlugPlayRoute = CreatorSlugPlayRouteImport.update({
+  id: '/play',
+  path: '/play',
+  getParentRoute: () => CreatorSlugRoute,
+} as any)
 const ApiArtifactsHashRoute = ApiArtifactsHashRouteImport.update({
   id: '/api/artifacts/$hash',
   path: '/api/artifacts/$hash',
@@ -137,6 +145,16 @@ const ApiPreviewsIdRoute = ApiPreviewsIdRouteImport.update({
   id: '/api/previews/$id',
   path: '/api/previews/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const NNaddrPlayRoute = NNaddrPlayRouteImport.update({
+  id: '/play',
+  path: '/play',
+  getParentRoute: () => NNaddrRoute,
+} as any)
+const RSnapshotPlayRoute = RSnapshotPlayRouteImport.update({
+  id: '/play',
+  path: '/play',
+  getParentRoute: () => RSnapshotRoute,
 } as any)
 const RSnapshotSourceRoute = RSnapshotSourceRouteImport.update({
   id: '/source',
@@ -155,7 +173,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
-  '/$creator/$slug': typeof CreatorSlugRoute
+  '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
   '/api/gallery-social': typeof ApiGallerySocialRoute
   '/api/health': typeof ApiHealthRoute
@@ -166,11 +184,14 @@ export interface FileRoutesByFullPath {
   '/api/social': typeof ApiSocialRoute
   '/api/source': typeof ApiSourceRoute
   '/api/zaps': typeof ApiZapsRoute
-  '/n/$naddr': typeof NNaddrRoute
+  '/n/$naddr': typeof NNaddrRouteWithChildren
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
+  '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
+  '/n/$naddr/play': typeof NNaddrPlayRoute
+  '/r/$snapshot/play': typeof RSnapshotPlayRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
   '/cli/download/$version/$file': typeof CliDownloadVersionFileRoute
 }
@@ -180,7 +201,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
-  '/$creator/$slug': typeof CreatorSlugRoute
+  '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
   '/api/gallery-social': typeof ApiGallerySocialRoute
   '/api/health': typeof ApiHealthRoute
@@ -191,11 +212,14 @@ export interface FileRoutesByTo {
   '/api/social': typeof ApiSocialRoute
   '/api/source': typeof ApiSourceRoute
   '/api/zaps': typeof ApiZapsRoute
-  '/n/$naddr': typeof NNaddrRoute
+  '/n/$naddr': typeof NNaddrRouteWithChildren
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
+  '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
+  '/n/$naddr/play': typeof NNaddrPlayRoute
+  '/r/$snapshot/play': typeof RSnapshotPlayRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
   '/cli/download/$version/$file': typeof CliDownloadVersionFileRoute
 }
@@ -206,7 +230,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
-  '/$creator/$slug': typeof CreatorSlugRoute
+  '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
   '/api/gallery-social': typeof ApiGallerySocialRoute
   '/api/health': typeof ApiHealthRoute
@@ -217,11 +241,14 @@ export interface FileRoutesById {
   '/api/social': typeof ApiSocialRoute
   '/api/source': typeof ApiSourceRoute
   '/api/zaps': typeof ApiZapsRoute
-  '/n/$naddr': typeof NNaddrRoute
+  '/n/$naddr': typeof NNaddrRouteWithChildren
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
+  '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
+  '/n/$naddr/play': typeof NNaddrPlayRoute
+  '/r/$snapshot/play': typeof RSnapshotPlayRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
   '/cli/download/$version/$file': typeof CliDownloadVersionFileRoute
 }
@@ -246,9 +273,12 @@ export interface FileRouteTypes {
     | '/api/zaps'
     | '/n/$naddr'
     | '/r/$snapshot'
+    | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
     | '/api/og/$id'
     | '/api/previews/$id'
+    | '/n/$naddr/play'
+    | '/r/$snapshot/play'
     | '/r/$snapshot/source'
     | '/cli/download/$version/$file'
   fileRoutesByTo: FileRoutesByTo
@@ -271,9 +301,12 @@ export interface FileRouteTypes {
     | '/api/zaps'
     | '/n/$naddr'
     | '/r/$snapshot'
+    | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
     | '/api/og/$id'
     | '/api/previews/$id'
+    | '/n/$naddr/play'
+    | '/r/$snapshot/play'
     | '/r/$snapshot/source'
     | '/cli/download/$version/$file'
   id:
@@ -296,9 +329,12 @@ export interface FileRouteTypes {
     | '/api/zaps'
     | '/n/$naddr'
     | '/r/$snapshot'
+    | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
     | '/api/og/$id'
     | '/api/previews/$id'
+    | '/n/$naddr/play'
+    | '/r/$snapshot/play'
     | '/r/$snapshot/source'
     | '/cli/download/$version/$file'
   fileRoutesById: FileRoutesById
@@ -319,7 +355,7 @@ export interface RootRouteChildren {
   ApiSocialRoute: typeof ApiSocialRoute
   ApiSourceRoute: typeof ApiSourceRoute
   ApiZapsRoute: typeof ApiZapsRoute
-  NNaddrRoute: typeof NNaddrRoute
+  NNaddrRoute: typeof NNaddrRouteWithChildren
   RSnapshotRoute: typeof RSnapshotRouteWithChildren
   ApiArtifactsHashRoute: typeof ApiArtifactsHashRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
@@ -454,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RSnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$creator/$slug/play': {
+      id: '/$creator/$slug/play'
+      path: '/play'
+      fullPath: '/$creator/$slug/play'
+      preLoaderRoute: typeof CreatorSlugPlayRouteImport
+      parentRoute: typeof CreatorSlugRoute
+    }
     '/api/artifacts/$hash': {
       id: '/api/artifacts/$hash'
       path: '/api/artifacts/$hash'
@@ -475,6 +518,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPreviewsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/n/$naddr/play': {
+      id: '/n/$naddr/play'
+      path: '/play'
+      fullPath: '/n/$naddr/play'
+      preLoaderRoute: typeof NNaddrPlayRouteImport
+      parentRoute: typeof NNaddrRoute
+    }
+    '/r/$snapshot/play': {
+      id: '/r/$snapshot/play'
+      path: '/play'
+      fullPath: '/r/$snapshot/play'
+      preLoaderRoute: typeof RSnapshotPlayRouteImport
+      parentRoute: typeof RSnapshotRoute
+    }
     '/r/$snapshot/source': {
       id: '/r/$snapshot/source'
       path: '/source'
@@ -492,12 +549,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CreatorSlugRouteChildren {
+  CreatorSlugPlayRoute: typeof CreatorSlugPlayRoute
+}
+
+const CreatorSlugRouteChildren: CreatorSlugRouteChildren = {
+  CreatorSlugPlayRoute: CreatorSlugPlayRoute,
+}
+
+const CreatorSlugRouteWithChildren = CreatorSlugRoute._addFileChildren(
+  CreatorSlugRouteChildren,
+)
+
 interface CreatorRouteChildren {
-  CreatorSlugRoute: typeof CreatorSlugRoute
+  CreatorSlugRoute: typeof CreatorSlugRouteWithChildren
 }
 
 const CreatorRouteChildren: CreatorRouteChildren = {
-  CreatorSlugRoute: CreatorSlugRoute,
+  CreatorSlugRoute: CreatorSlugRouteWithChildren,
 }
 
 const CreatorRouteWithChildren =
@@ -513,11 +582,24 @@ const CliRouteChildren: CliRouteChildren = {
 
 const CliRouteWithChildren = CliRoute._addFileChildren(CliRouteChildren)
 
+interface NNaddrRouteChildren {
+  NNaddrPlayRoute: typeof NNaddrPlayRoute
+}
+
+const NNaddrRouteChildren: NNaddrRouteChildren = {
+  NNaddrPlayRoute: NNaddrPlayRoute,
+}
+
+const NNaddrRouteWithChildren =
+  NNaddrRoute._addFileChildren(NNaddrRouteChildren)
+
 interface RSnapshotRouteChildren {
+  RSnapshotPlayRoute: typeof RSnapshotPlayRoute
   RSnapshotSourceRoute: typeof RSnapshotSourceRoute
 }
 
 const RSnapshotRouteChildren: RSnapshotRouteChildren = {
+  RSnapshotPlayRoute: RSnapshotPlayRoute,
   RSnapshotSourceRoute: RSnapshotSourceRoute,
 }
 
@@ -541,7 +623,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialRoute: ApiSocialRoute,
   ApiSourceRoute: ApiSourceRoute,
   ApiZapsRoute: ApiZapsRoute,
-  NNaddrRoute: NNaddrRoute,
+  NNaddrRoute: NNaddrRouteWithChildren,
   RSnapshotRoute: RSnapshotRouteWithChildren,
   ApiArtifactsHashRoute: ApiArtifactsHashRoute,
   ApiOgIdRoute: ApiOgIdRoute,

@@ -44,6 +44,52 @@ Each resource is capped at 10 MiB. The host queues bursts with four simultaneous
 
 Relay access is through a frame-owned Applesauce pool. Filters, event counts, request concurrency, relay selection and subscription lifetime are bounded. Live subscriptions close after five minutes or 500 accepted events; the napplet receives a closure notification. Stopping/restarting or navigating away destroys the frame session, closes subscriptions and sockets, aborts resources and pending prompts, and revokes download URLs. Account changes preserve the iframe and its single SHELL handshake: old requests are cancelled, subscriptions close, resources abort, prompts/exports clear, and account-scoped storage/files are replaced before `identity.changed` is sent. Late results are suppressed. Shared saves remain available when returning to the same account; instance storage and virtual files start fresh. Napplets must listen to `identity.onChanged` to refresh their own in-memory account state.
 
+## Immersive links
+
+Implemented and verified locally on **2026-09-14**; this slice is not deployed yet.
+Append `/play` to a portable `/n/<naddr>`, pinned `/r/<event-id>` or named
+`/@<handle>/<slug>` URL. **Open player** on the detail page opens that presentation;
+the trusted bar can copy its link. The parent route keeps its canonical detail URL
+and server-rendered OG metadata. Cold links use the ordinary bounded discovery
+queue. Unsupported capabilities and unavailable or tampered downloads still prevent
+execution; optional metadata is not a playback requirement.
+
+A fresh link shows the poster in a full-viewport player. **Play in fullscreen**
+requests browser fullscreen synchronously with the gesture and then starts ordinary
+artifact verification. The same verified, opaque iframe runs beneath the trusted
+bar, configuration dialog, save/link prompts and download controls. Fullscreen is
+[subject to browser support and transient activation](https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen);
+rejection keeps the CSS-expanded player usable.
+
+Browser/system fullscreen exit returns to CSS expansion. **Back to details**, the
+second exit control, or Escape while host controls have focus returns to the detail
+view. A single native-exit Escape cannot also collapse the expanded player. Settings
+and save dialogs get their own Escape first; keystrokes inside the opaque iframe
+belong to the napplet, so the visible Back control is always available. Background
+branches become inert while expanded; focus and scrolling restore on exit.
+
+Entering from details pushes a history entry; Back/Forward changes only presentation.
+The explicit Back to details action replaces the play entry with its detail URL,
+including for a fresh external link; it never sends the visitor to an unknown
+previous site. A stopped player stays in its current presentation and offers Play
+again. Gallery expansion has the same two exit layers and returns to its card.
+
+For the same selected release, the parent detail component, iframe and NAP host stay
+mounted. Runtime state, instance storage, session files, settings and subscriptions
+survive these changes. Relay hints are captured when starting a release, so route
+data refreshes do not tear down a live host. A different release, Stop, Restart,
+reload, navigation to source or another creation/page still ends that session.
+This is not a site-wide background player or an additional protocol identity.
+
+Verification: `bun run typecheck`, `bun run test`, production build, and
+`bun test tests/services/immersive.test.ts tests/services/discovery.test.ts
+tests/services/source-browser.test.ts`; existing browser runtime regression checks
+also cover settings, account changes, exports and sandboxing. Mobile checks use
+Chromium touch emulation in portrait/landscape; a real-device Safari/iOS matrix
+remains a follow-up.
+This checkpoint passed all 181 repository tests, three service/browser integrations
+and 12 existing app/runtime browser tests, alongside typecheck and the production build.
+
 ## Verification
 
 Unit/integration coverage also covers unknown-message silence, successful public-key snapshots at quota, verified NIP-65 preferences independent of relay policy, and late-result suppression across account changes. Standalone CLI browser checks cover the same shim/services, local relay reads, resource mediation, save prompts/downloads, account changes, reloads, capability gating and tampered bytes. Unit/integration coverage exercises storage isolation and quotas, virtual file chunking/revisions/traversal/cancellation, resource scheme/IP/MIME checks, request origin binding, queued cancellation, and actual Applesauce WebSocket queries with forged/duplicate/nonmatching events. Browser tests exercise the published shim, handshake, persistent saves, denied publishing, forged host messages, file downloads and player cleanup.
