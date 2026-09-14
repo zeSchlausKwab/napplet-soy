@@ -116,6 +116,8 @@ test('portable and pinned source routes resolve; unknown addresses return 404', 
     expect(await response.text()).toContain(n.title);
   }
   await page.goto(`/r/${n.snapshot.id}/source`);
+  await expect(page.getByRole('heading', { name: 'Made of little things.' })).toBeVisible();
+  await page.getByRole('link', { name: 'Built HTML', exact: true }).click();
   await expect(page.locator('pre')).toContainText('<canvas');
   await expect(page.locator('iframe')).toHaveCount(0);
   const artifact = await request.get(`/api/artifacts/${n.artifactHash}`);
