@@ -25,23 +25,23 @@ The command runs local checks, uploads an allowlisted archive of the working sou
 
 ## Installed layout and service ownership
 
-| Location | Purpose |
-| --- | --- |
-| `/opt/napplet-space/releases/<id>` | Source and production build for one release |
-| `/opt/napplet-space/current` | Active release symlink |
-| `/opt/napplet-space/bin` | Caddy 2.10.2 in dedicated mode only, verified against upstream checksums; may retain an unused Bun from older deploys |
-| `/opt/napplet-space/tools` | PM2 7.0.4 and checksum-pinned Go 1.25.0 and Rust 1.97.1 |
-| `/opt/napplet-space/tools/bun<version>/bin/bun` | Checksum-verified runtime; each release's `bin/bun` symlink retains its selected version for rollback |
-| `/opt/napplet-space/tools/legacy-images` | Compatibility libvips builds, stored by version and build-script fingerprint |
-| `/var/lib/napplet-space/relay` | Durable signed relay events and rebuildable Bleve index |
-| `/var/lib/napplet-space/blossom` | Content-addressed blob bytes and SQLite descriptors/ownership |
-| `/var/lib/napplet-space/grasp` | Git objects, repository relay LMDB, private operator identity and migration state |
-| `/var/lib/napplet-space/moderation/policy.json` | Durable admin rules, replay receipts and audit trail |
-| `/var/lib/napplet-space/index` | SQLite website projections, cursors/deletions, verified artifacts and normalized previews |
-| `/opt/napplet-space/shared/server.env` | Optional operator-maintained runtime/public build configuration; never uploaded |
-| `/var/lib/napplet-space/pm2` | Dedicated PM2 process list, logs, and PID state |
-| `/var/lib/napplet-space/caddy` | Dedicated-mode Caddy certificate/account data; shared mode keeps the existing service's storage |
-| `/etc/napplet-space/Caddyfile` | This site's HTTPS/reverse-proxy configuration |
+| Location                                        | Purpose                                                                                                               |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `/opt/napplet-space/releases/<id>`              | Source and production build for one release                                                                           |
+| `/opt/napplet-space/current`                    | Active release symlink                                                                                                |
+| `/opt/napplet-space/bin`                        | Caddy 2.10.2 in dedicated mode only, verified against upstream checksums; may retain an unused Bun from older deploys |
+| `/opt/napplet-space/tools`                      | PM2 7.0.4 and checksum-pinned Go 1.25.0 and Rust 1.97.1                                                               |
+| `/opt/napplet-space/tools/bun<version>/bin/bun` | Checksum-verified runtime; each release's `bin/bun` symlink retains its selected version for rollback                 |
+| `/opt/napplet-space/tools/legacy-images`        | Compatibility libvips builds, stored by version and build-script fingerprint                                          |
+| `/var/lib/napplet-space/relay`                  | Durable signed relay events and rebuildable Bleve index                                                               |
+| `/var/lib/napplet-space/blossom`                | Content-addressed blob bytes and SQLite descriptors/ownership                                                         |
+| `/var/lib/napplet-space/grasp`                  | Git objects, repository relay LMDB, private operator identity and migration state                                     |
+| `/var/lib/napplet-space/moderation/policy.json` | Durable admin rules, replay receipts and audit trail                                                                  |
+| `/var/lib/napplet-space/index`                  | SQLite website projections, cursors/deletions, verified artifacts and normalized previews                             |
+| `/opt/napplet-space/shared/server.env`          | Optional operator-maintained runtime/public build configuration; never uploaded                                       |
+| `/var/lib/napplet-space/pm2`                    | Dedicated PM2 process list, logs, and PID state                                                                       |
+| `/var/lib/napplet-space/caddy`                  | Dedicated-mode Caddy certificate/account data; shared mode keeps the existing service's storage                       |
+| `/etc/napplet-space/Caddyfile`                  | This site's HTTPS/reverse-proxy configuration                                                                         |
 
 The `napplet` system account runs the application and, in dedicated mode, Caddy. Shared mode retains the existing Caddy account/service. The web server listens on the selected loopback port (3000 dedicated, 3040 shared by default); the native Khatru relay listens on loopback 19347 and Caddy exposes it at `wss://<domain>/relay`. A separate Bun Blossom process listens on loopback 19348; Caddy exposes its root endpoints at `https://<blossom-domain>`. Native ngit-grasp listens on loopback 19349; Caddy exposes both its repository relay and Git smart HTTP endpoints at `https://<git-domain>`. Git HTTP bodies and receive-pack input are limited to 50 MiB; this does not bound total disk use. Public `/metrics` access is blocked. PM2 uses one fork process per service; Node runs PM2 itself and the short-lived linked-preview metadata worker when a catalog refresh contains supported app references. The ordinary deployed profile still disables publicdev imports. systemd units `napplet-space` and `napplet-space-caddy` persist the services across reboots. Caddy receives only the capability needed to bind low ports. Existing global PM2 state is not used.
 
@@ -110,12 +110,12 @@ Deployment includes the [managed relay](RELAY.md), [Blossom storage](BLOSSOM.md)
 
 The operator identified the provider as Namecheap and noted that similar apps already run there. A controlled comparison confirmed that the original blanket conclusion, "this VPS cannot run Bun", was too broad:
 
-| Probe on the same VPS | Observed result |
-| --- | --- |
-| Existing `/root/.bun/bin/bun`, version 1.3.8, minimal JavaScript | Pass |
-| Napplet's isolated Bun 1.3.11, identical JavaScript/environment/resource limits | OOM kill at 768 MiB, before output |
-| Fresh upstream checksum-verified Bun 1.3.8 baseline, as the `napplet` user | Pass; binary hash matches the existing runtime |
-| Inactive release checks using the isolated 1.3.8 copy | Typecheck passes; 97 tests pass, 5 fail and one module-load error is reported, with Sharp failing its CPU compatibility check |
+| Probe on the same VPS                                                           | Observed result                                                                                                               |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Existing `/root/.bun/bin/bun`, version 1.3.8, minimal JavaScript                | Pass                                                                                                                          |
+| Napplet's isolated Bun 1.3.11, identical JavaScript/environment/resource limits | OOM kill at 768 MiB, before output                                                                                            |
+| Fresh upstream checksum-verified Bun 1.3.8 baseline, as the `napplet` user      | Pass; binary hash matches the existing runtime                                                                                |
+| Inactive release checks using the isolated 1.3.8 copy                           | Typecheck passes; 97 tests pass, 5 fail and one module-load error is reported, with Sharp failing its CPU compatibility check |
 
 The side-by-side probes used clean environments and separate systemd services limited to 768 MiB, one CPU, 12 seconds and no core dumps. The project check used 1536 MiB, two CPUs and a 90-second ceiling. The minimal command was `bun -e 'console.log("NAPPLET RUNTIME OK")'`. No active runtime was replaced and no existing application was restarted. The temporary diagnostic binary and PATH symlink were removed after the comparison.
 
@@ -145,7 +145,6 @@ Deployment sets `SPACE_SITE_ORIGIN=https://<domain>` for canonical and OG URLs a
 
 The separate `infra/cvm.ecosystem.config.cjs` can run the ContextVM starter under PM2 with explicit relay URLs and a persistent key path. Automated activation of that optional service and provisioning its relay remain part of the next operator-services slice; the web deployment does not silently start or announce it.
 
-
 ## Creator CLI downloads
 
 The standalone installer and `/cli` guide are served by the web application.
@@ -158,7 +157,6 @@ and `/opt/napplet-space/downloads/cli` in production. Set
 `SPACE_CLI_DOWNLOAD_DIR` to override the store. It contains only public versioned
 archives/checksums and remains outside application release/rollback directories.
 See [CLI guide](CLI.md) for native platform checks and requirements.
-
 
 ### Standalone CLI launch — 2026-09-13
 
@@ -250,3 +248,41 @@ and noninteractive setup. A fresh macOS pseudo-terminal then fetched the actual
 HTTPS installer and archive, waited at the creator prompt, and completed setup
 with `3` followed by Return. Both hosted websites remained reachable. No creator
 keys or public events were created by verification.
+
+## Upstream starter release — 2026-09-14
+
+Active release: `20260914071744622-83832`. Rollback release:
+`20260913202705982-26454`. Source: `7f8618d` (CLI/upstream integration) plus
+`aba78dd` (indexer readiness). CLI 0.2.0's immutable archives and exact upstream /
+toolchain pins are recorded in `apps/cli/distribution/release-0.2.0.json`.
+The public installer SHA-256 is
+`e6527867fba73f705134adb93ef7ea38e59f93edcd240f89b09e0833c0c8ad7e`.
+Older CLI 0.1.0 archives remain available.
+
+The release reuses unchanged native service binaries and dependencies, builds the
+website with the existing Bun 1.3.8 legacy CPU profile, and passes all 124 checks
+on the VPS before activation. The Caddy parent and Napplet fragment hashes remain
+`be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f` and
+`e5da7681ad68641e0e6d18c77463cb94a403615b5bcfe4b8ca01e3858736bfba`.
+
+An initial activation rolled back because the old readiness script demanded zero
+errors from every discovery relay. Readiness now requires an enabled, fresh
+indexer report bearing the candidate release ID; unavailable public relays remain
+visible in health reporting and do not prevent website deployment. Missing, stale
+or previous-release reports still fail. Native services retain their own readiness
+checks. Damus query timeouts were present during verification; other discovery
+relays remained configured and the index report was fresh.
+
+Verified the public HTTPS installer end to end with isolated account/install paths
+and global runtimes removed from PATH: checksum-verified CLI 0.2.0, default upstream
+scaffold, embedded skills, dependency install/build, sandbox check and preview.
+The packaged Mac CLI also passed delayed terminal input/cancellation and corrupt
+archive tests, upstream verification/conformance, storage and live rebuild checks.
+Linux ARM64/x64 created and verified the upstream starter in disposable Ubuntu
+containers without global runtimes; the macOS Intel binary started under Rosetta.
+Upstream conformance reported 5 pass / 0 fail / 5 documented skips.
+
+Live checks covered the default create command and CLI guide, HTTP/HTTPS and www
+redirects, admin authentication, both relay WebSockets/NIP-11 endpoints, Blossom,
+blocked Git metrics, and the existing `schlaustronics.com` site. No test creations
+were published to public relays.
