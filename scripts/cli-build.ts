@@ -1,5 +1,5 @@
 import { chmod, cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { previewAssets } from '../apps/cli/src/preview/assets';
 import boilerplate from '../apps/cli/vendor/boilerplate.json';
@@ -50,6 +50,10 @@ for (const platform of selected) {
   if (!build.success) throw new Error(build.logs.join('\n'));
   await chmod(join(directory, 'napplet-space'), 0o755);
   await cp(playwrightDirectory(), join(directory, 'lib/playwright-core'), {
+    recursive: true,
+    dereference: true,
+  });
+  await cp(dirname(Bun.resolveSync('ws/package.json', root)), join(directory, 'lib/ws'), {
     recursive: true,
     dereference: true,
   });

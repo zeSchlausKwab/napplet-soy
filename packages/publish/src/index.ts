@@ -404,6 +404,12 @@ export async function publishProject(options: PublishOptions) {
             'aggregate',
           ],
           ['title', job.plan.title],
+          ...(job.plan.remix
+            ? [
+                ['A', job.plan.remix.origin],
+                ['remix-version', job.plan.remix.revision],
+              ]
+            : []),
           ...(job.plan.description ? [['description', job.plan.description]] : []),
           ...job.plan.servers.map((s) => ['server', s]),
           ...job.plan.requires.map((r) => ['requires', r]),
@@ -460,7 +466,11 @@ export async function publishProject(options: PublishOptions) {
             kind: 35129,
             created_at: job.createdAt,
             content: '',
-            tags: [...tags, ['d', job.plan.identifier]],
+            tags: [
+              ...tags,
+              ['d', job.plan.identifier],
+              ...(job.plan.remix ? [['a', job.plan.remix.parent]] : []),
+            ],
           },
           job.current,
         );

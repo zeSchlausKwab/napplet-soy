@@ -7,6 +7,7 @@ import { TopicTags } from './topic-tags';
 import { Button } from './ui/button';
 import { publicPoster, type PublicNapplet } from '../../../../packages/backend/src/public-model';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
+import { RemixButton } from './remix-button';
 
 export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
   const store = useEventStore();
@@ -31,21 +32,24 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
           </h1>
           <p>{napplet.creator}</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(
-                `${location.origin}${napplet.naddr ? `/n/${napplet.naddr}` : `/r/${napplet.revisionId}`}`,
-              );
-              setCopied('Link copied');
-            } catch {
-              setCopied('Copy the address from your browser to share.');
-            }
-          }}
-        >
-          Share
-        </Button>
+        <div className="detail-actions">
+          <RemixButton revision={napplet.revisionId} title={napplet.title} />
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(
+                  `${location.origin}${napplet.naddr ? `/n/${napplet.naddr}` : `/r/${napplet.revisionId}`}`,
+                );
+                setCopied('Link copied');
+              } catch {
+                setCopied('Copy the address from your browser to share.');
+              }
+            }}
+          >
+            Share
+          </Button>
+        </div>
       </div>
       {copied && <p role="status">{copied}</p>}
       {napplet.availability === 'ready' ? (

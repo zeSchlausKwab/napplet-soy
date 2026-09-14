@@ -4,6 +4,7 @@ import { chmod, lstat, mkdir, open, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { eventSchema } from '../../protocol/src';
+import { remixSchema } from '../../protocol/src/remix';
 import type { Network } from '../../identity/src/signer';
 import { PublishError, targetsSchema } from './config';
 
@@ -42,6 +43,7 @@ const planSchema = z
       .int()
       .nonnegative()
       .max(40 * 1024 * 1024),
+    remix: remixSchema.optional(),
   })
   .strict();
 export const jobSchema = z

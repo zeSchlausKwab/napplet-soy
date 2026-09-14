@@ -11,8 +11,11 @@ import { appReferences, referenceAddress, latestMetadata } from '../../protocol/
 // Bun's built-in ws substitute ignores lookup/maxPayload. Load the pinned implementation
 // from its actual entry file so DNS checks run at connection time under both Bun and Node.
 const require = createRequire(import.meta.url);
+declare const NAPPLET_STANDALONE: boolean | undefined;
 const NodeWebSocket: typeof import('ws').WebSocket = require(
-  join(dirname(require.resolve('ws/package.json')), 'index.js'),
+  typeof NAPPLET_STANDALONE !== 'undefined' && NAPPLET_STANDALONE
+    ? join(dirname(process.execPath), 'lib/ws/index.js')
+    : join(dirname(require.resolve('ws/package.json')), 'index.js'),
 );
 export function previewRelayUrl(value: string) {
   const url = new URL(value);

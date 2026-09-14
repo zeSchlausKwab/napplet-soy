@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { Player } from './player';
 import { TopicTags } from './topic-tags';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
+import { RemixButton } from './remix-button';
 
 export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?: boolean }) {
   const store = useEventStore();
@@ -44,10 +45,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
           <Button variant="outline" onClick={copy}>
             {copied ? <Check size={16} /> : <Copy size={16} />}Share
           </Button>
-          <Link className="primary-link" to="/create" search={{ template: napplet.slug }}>
-            <GitFork size={16} />
-            Make it yours
-          </Link>
+          <RemixButton revision={napplet.snapshot.id} title={napplet.title} />
         </div>
       </div>
       {copied && (

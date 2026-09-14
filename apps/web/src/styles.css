@@ -320,6 +320,20 @@ pre:focus-visible {
   font-size: 11px;
   background: transparent;
 }
+.remix-command {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.remix-command code {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+}
 .availability-toggle[aria-pressed='true'] {
   background: #ebece0;
   border-color: #969987;

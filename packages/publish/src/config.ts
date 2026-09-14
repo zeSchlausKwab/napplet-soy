@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { AccountError, type Network } from '../../identity/src/signer';
 import { normalizeTopic } from '../../protocol/src/topics';
 import ipaddr from 'ipaddr.js';
+import { remixSchema } from '../../protocol/src/remix';
 
 export class PublishError extends AccountError {
   constructor(
@@ -48,6 +49,7 @@ export const projectSchema = z
     previewId: z.uuid(),
     identifier: identifier.optional(),
     template: z.string().optional(),
+    remix: remixSchema.optional(),
     license: z.string().min(1).max(100),
     requires: z
       .array(z.string().regex(/^[a-z][a-z0-9-]{0,39}$/))

@@ -12,9 +12,11 @@ import { installBrowser } from './browser';
 import { commandName, version } from './distribution';
 import { setupProject, buildProject, projectTool, installConformanceBrowser } from './toolchain';
 import { installCreatorSkills } from './creator-kit';
+import { loadRemix, createRemix } from '../../../packages/remix/src';
 
 const help = `Usage:
   bun run napplet new <folder> [--template boilerplate] [--identity create|connect|later] [--no-install]
+  bun run napplet remix <portable-link-or-nostr-id> <folder> [--identity create|connect|later]
   bun run napplet setup|build [--project <folder>]
   bun run napplet run <package-script> [arguments...]
   bun run napplet exec <project-tool> [arguments...]
@@ -171,7 +173,7 @@ try {
   if (!['publish', 'status'].includes(command) && publishingOptions)
     throw new AccountError('USAGE', 'Publication options are only valid for publish/status.');
   if (
-    (values['no-install'] && command !== 'new') ||
+    (values['no-install'] && !['new', 'remix'].includes(command)) ||
     (values.project &&
       !['publish', 'status', 'dev', 'check', 'setup', 'build', 'skills'].includes(command)) ||
     ((values.port || values['no-open']) && command !== 'dev')
@@ -180,10 +182,10 @@ try {
       'USAGE',
       'Use --project with dev/check/publish/status; --port and --no-open with dev.',
     );
-  if (command === 'new') {
+  if (command === 'new' || command === 'remix') {
     if (
       !action ||
-      argument ||
+      (command === 'new' ? !!argument : !argument || !!values.template) ||
       extra.length ||
       values.stdin ||
       values['passphrase-stdin'] ||
@@ -194,7 +196,21 @@ try {
         'Use new <folder> [--template name] [--identity create|connect|later].',
       );
     const template = values.template ?? 'boilerplate';
-    const directory = await scaffold(process.cwd(), action, template);
+    const folder = command === 'remix' ? argument! : action;
+    const remix =
+      command === 'remix'
+        ? await createRemix(
+            process.cwd(),
+            folder,
+            await loadRemix(
+              action,
+              network,
+              AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]),
+            ),
+          )
+        : undefined;
+    const directory = remix?.directory ?? (await scaffold(process.cwd(), folder, template));
+    if (remix) await installCreatorSkills(directory);
     createdProject = directory;
     let account = values.identity === 'later' ? null : await accounts.current();
     let identity = values.identity;
@@ -224,7 +240,7 @@ try {
     const backupFile = account?.type === 'local' ? await accounts.backup(account.id) : undefined;
     // Report recovery information before dependency setup, which may be interrupted or fail.
     if (backupFile && !json) console.log(backupNotice(backupFile));
-    if (template === 'boilerplate' && !values['no-install']) {
+    if (!remix && template === 'boilerplate' && !values['no-install']) {
       await setupProject(directory, controller.signal);
       await buildProject(directory, controller.signal);
     }
@@ -234,11 +250,12 @@ try {
           directory,
           account: account ? publicAccount(account, network) : null,
           ...(backupFile ? { backupFile } : {}),
+          ...(remix ? { remix } : {}),
         }),
       );
     else
       console.log(
-        `\nYour napplet is ready at ${directory}\n\n  cd ${action}\n  napplet-space dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nRun napplet-space publish to share it.`,
+        `\nYour napplet is ready at ${directory}\n\n  cd ${folder}\n${remix?.needsSetup ? '  napplet-space setup\n' : ''}  napplet-space dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nRun napplet-space publish to share it.`,
       );
   } else if (command === 'skills') {
     if (

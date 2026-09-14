@@ -161,6 +161,28 @@ test('dry-run inspects explicit source and targets without signing, contacting s
     await f.close();
   }
 });
+test('remix publication preserves standard ancestry while snapshots reference their own napplet', async () => {
+  const f = await fixture();
+  try {
+    const remix = {
+      parent: `35129:${'a'.repeat(64)}:parent`,
+      origin: `15129:${'b'.repeat(64)}:`,
+      revision: 'c'.repeat(64),
+    };
+    await Bun.write(join(f.project, 'napplet.json'), JSON.stringify({ ...f.config, remix }));
+    await publishProject(f.options);
+    const job = await f.load();
+    expect(job.current!.tags.filter((t) => t[0] === 'a')).toEqual([['a', remix.parent]]);
+    expect(job.current!.tags.filter((t) => t[0] === 'A')).toEqual([['A', remix.origin]]);
+    expect(job.snapshot!.tags.filter((t) => t[0] === 'a')).toEqual([
+      ['a', `35129:${f.creator.pubkey}:${job.plan.identifier}`],
+    ]);
+    expect(job.snapshot!.tags.filter((t) => t[0] === 'A')).toEqual([['A', remix.origin]]);
+    expect((await publishProject(f.options)).status).toBe('announced_pending_index');
+  } finally {
+    await f.close();
+  }
+});
 test('confirmed website readiness is journaled after relay receipts, and local status does not contact services', async () => {
   const f = await fixture();
   try {

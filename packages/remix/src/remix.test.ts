@@ -1,0 +1,134 @@
+import { test, expect } from 'bun:test';
+import { mkdtemp, rm, mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { PrivateKeySigner } from 'applesauce-signers/signers/private-key-signer';
+import { aggregateHash, sha256 } from '../../protocol/src';
+import { remixLineage } from '../../protocol/src/remix';
+import { createRemix, loadRemix } from './index';
+import { sourceArchive } from './archive';
+import { freezeSource } from '../../publish/src/project';
+
+test('remix downloads exact signed archive and makes a fresh project with source and credit intact', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'napplet-remix-'));
+  const artifact = new TextEncoder().encode('<!doctype html><p>Exact old version</p>');
+  const pub = await new PrivateKeySigner().getPublicKey();
+  const config = {
+    schema: 'space-local-project/v1',
+    name: 'Original',
+    entry: 'dist/index.html',
+    previewId: crypto.randomUUID(),
+    identifier: 'original',
+    license: 'MIT',
+    creator: { pubkey: pub, network: 'local' },
+    publish: { site: 'http://localhost:8080' },
+  };
+  const files = new Map(
+    Object.entries({
+      'index.html': '<p>Source entry</p>',
+      'dist/index.html': new TextDecoder().decode(artifact),
+      'src/main.ts': 'export const original = true;',
+      LICENSE: 'Original MIT license and credit',
+      'napplet.json': JSON.stringify(config),
+    }).map(([p, t]) => [p, new TextEncoder().encode(t)]),
+  );
+  const frozen = await freezeSource(join(root, 'frozen'), files, 1800000000);
+  const archive = await Bun.file(join(root, 'frozen/source.tar')).bytes();
+  let manifest: any;
+  const server = Bun.serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    fetch: (request) => {
+      const path = new URL(request.url).pathname;
+      return path === '/api/manifest'
+        ? Response.json({ manifest })
+        : new Response(path.endsWith(frozen.archiveHash) ? archive : artifact);
+    },
+  });
+  try {
+    const hash = await sha256(artifact);
+    manifest = await new PrivateKeySigner().signEvent({
+      kind: 35129,
+      created_at: 1,
+      content: '',
+      tags: [
+        ['d', 'original'],
+        ['path', '/index.html', hash],
+        ['x', await aggregateHash([{ path: '/index.html', hash }]), 'aggregate'],
+        ['source-archive', `${server.url}${frozen.archiveHash}`],
+        ['source-commit', frozen.commit],
+      ],
+    });
+    const loaded = await loadRemix(
+      `${server.url}r/${manifest.id}`,
+      'local',
+      AbortSignal.timeout(5000),
+    );
+    const result = await createRemix(root, 'my-remix', loaded);
+    const fresh = await Bun.file(join(result.directory, 'napplet.json')).json();
+    expect(fresh.creator).toBeUndefined();
+    expect(fresh.publish).toBeUndefined();
+    expect(fresh.identifier).not.toBe(config.identifier);
+    expect(fresh.previewId).not.toBe(config.previewId);
+    expect(fresh.remix.revision).toBe(manifest.id);
+    expect(await Bun.file(join(result.directory, 'src/main.ts')).text()).toBe(
+      'export const original = true;',
+    );
+    expect(await Bun.file(join(result.directory, 'LICENSE')).text()).toBe(
+      'Original MIT license and credit',
+    );
+    expect(await Bun.file(join(result.directory, 'README.md')).text()).toContain(manifest.id);
+    expect(await Bun.file(join(result.directory, 'dist/index.html')).bytes()).toEqual(artifact);
+    await expect(createRemix(root, 'my-remix', loaded)).rejects.toThrow();
+    const malformed = { ...loaded, artifact: new TextEncoder().encode('different version') };
+    await expect(createRemix(root, 'wrong-source', malformed)).rejects.toThrow('artifact');
+    expect((await remixLineage(manifest)).origin).toBe(`35129:${manifest.pubkey}:original`);
+    const snapshot = await new PrivateKeySigner().signEvent({
+      ...manifest,
+      kind: 5129,
+      tags: manifest.tags
+        .filter((t: string[]) => t[0] !== 'd')
+        .concat([['a', `35129:${manifest.pubkey}:original`]]),
+    });
+    await expect(remixLineage(snapshot)).rejects.toThrow('parent');
+  } finally {
+    server.stop(true);
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('source archive rejects traversal, symlinks, duplicates and invalid checksum before extraction', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'napplet-archive-'));
+  try {
+    await freezeSource(
+      root,
+      new Map([['index.html', new TextEncoder().encode('<p>hi</p>')]]),
+      1800000000,
+    );
+    const valid = await Bun.file(join(root, 'source.tar')).bytes();
+    expect(sourceArchive(valid).has('index.html')).toBe(true);
+    // Git's first record is its global pax header, followed by index.html.
+    const start = 1024;
+    for (const [name, type] of [
+      ['../escape', '0'],
+      ['index.html', '2'],
+      ['.git/config', '0'],
+      ['.env', '0'],
+    ]) {
+      const bytes = valid.slice(),
+        header = bytes.subarray(start, start + 512);
+      header.fill(0, 0, 100);
+      header.set(new TextEncoder().encode(name));
+      header[156] = type.charCodeAt(0);
+      header.fill(32, 148, 156);
+      const sum = [...header].reduce((a, b) => a + b, 0);
+      header.set(new TextEncoder().encode(sum.toString(8).padStart(6, '0') + '\0 '), 148);
+      expect(() => sourceArchive(bytes)).toThrow();
+    }
+    const broken = valid.slice();
+    broken[start] ^= 1;
+    expect(() => sourceArchive(broken)).toThrow('checksum');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

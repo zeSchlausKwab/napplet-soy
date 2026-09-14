@@ -198,6 +198,7 @@ export async function inspectProject(
     files,
     artifactHash: await sha256(html),
     sourceBytes: total,
+    ...(project.remix ? { remix: project.remix } : {}),
   };
   return { root, plan, contents, fingerprint: await sha256(JSON.stringify(plan)) };
 }
