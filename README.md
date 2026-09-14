@@ -8,9 +8,11 @@ is design history; it is not the current delivery checklist.
 
 This is the first working implementation slice: Bun + React + TanStack Start, shadcn/ui, and Applesauce. It includes six signed local examples, SSR and client navigation, named/Nostr/pinned URLs, hash-verified sandbox playback, source inspection, a standalone creator CLI, and Caddy/PM2 deployment tooling.
 
-Source milestone (2026-09-14): [napplet settings](docs/CONFIGURATION.md) now share a
-validated form across the website and CLI preview. See the [compatibility record](docs/COMPATIBILITY.md)
-for verified behavior and remaining launch work. This is not in the deployed 0.4.1 release yet.
+Released 2026-09-14 with CLI **0.5.0**: [napplet settings](docs/CONFIGURATION.md),
+gallery social actions/rankings, anonymous zap invoices, and [shared sign-in](docs/IDENTITY.md)
+through extensions, NIP-46 and memory-only key import. The CLI supports both bunker
+links and `account pair` QR onboarding. See [compatibility](docs/COMPATIBILITY.md)
+and [deployment evidence](docs/DEPLOYMENT.md) for verified behavior and remaining work.
 
 ## Start developing
 

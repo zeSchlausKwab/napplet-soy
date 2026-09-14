@@ -2,7 +2,8 @@
 
 Updated **2026-09-14**, agenda A12. This records the current implementation and
 evidence, not a declaration that every NAP is fully implemented. Configuration is
-verified in source/local production builds; the deployed CLI remains 0.4.1.
+verified in source/local production builds and public browser checks. CLI 0.5.0
+and website release `20260914142718446-76864` include the configuration host.
 
 ## Authority and pins
 

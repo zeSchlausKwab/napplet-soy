@@ -15,7 +15,7 @@ launch. The user's decision that the NIP-5D proposal has authority still applies
 | [NAP-CONFIG](https://github.com/napplet/naps/blob/448013e6d8cb8c75dce49576b3e7c0d46d960eac/naps/NAP-CONFIG.md)     | PR 14, open; head `448013e6d8cb8c75dce49576b3e7c0d46d960eac`                                       |
 | [NAP-CVM](https://github.com/napplet/naps/blob/ad68a938236e9230324e377cd005008a315ff402/naps/NAP-CVM.md)           | PR 31, open; head `ad68a938236e9230324e377cd005008a315ff402`                                       |
 | [Our protocol baseline](PROTOCOL.md#1-compatibility-baseline)                                                      | NIP-5D `24711d9`; existing kinds and immutable identity behavior                                   |
-| [Released CLI pins](../apps/cli/distribution/release-0.4.1.json)                                                   | Current boilerplate/skill/runtime release evidence                                                 |
+| [Released CLI pins](../apps/cli/distribution/release-0.5.0.json)                                                   | Current boilerplate/skill/runtime release evidence                                                 |
 
 Registry status is not a statement that our runtime implements a capability. Open
 proposal status is not itself a reason to reject the user's selected contract.

@@ -1,8 +1,8 @@
 # Napplet user settings
 
-Implemented in source on **2026-09-14** for agenda A11. Website production-build
-and local harness checks pass; this is not yet deployed or included in the published
-CLI 0.4.1. The implementation follows
+Released on **2026-09-14** for agenda A11 in CLI **0.5.0** and website release
+`20260914142718446-76864`. Local harness, production builds and public browser
+settings/fullscreen/reload/identity checks pass. The implementation follows
 [NAP-CONFIG at 448013e](https://github.com/napplet/naps/blob/448013e6d8cb8c75dce49576b3e7c0d46d960eac/naps/NAP-CONFIG.md).
 See [COMPATIBILITY.md](COMPATIBILITY.md) for upstream runner limitations.
 

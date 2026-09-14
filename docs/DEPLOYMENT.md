@@ -493,3 +493,55 @@ copy to this laptop because the archive includes production service keys and tha
 sensitive destination was not explicitly authorized. No off-VPS copy or automatic
 offsite replication was performed. See [recovery](RECOVERY.md) for operator copy and
 restore instructions.
+
+
+## Identity, configuration and social release — 2026-09-14
+
+Active release: `20260914142718446-76864`, source through `dd75e01`.
+The previous release `20260914121312140-13099` remains available for rollback.
+The user explicitly authorized this deployment after completing A03/A04. It also
+releases the previously verified A11 configuration and A17 gallery/social work.
+
+CLI **0.5.0** artifacts were uploaded and checksum-verified before the website
+installer was activated. [Release metadata](../apps/cli/distribution/release-0.5.0.json)
+records all four platform archives and their source revision. Existing installations
+can update with `curl -fsSL https://napplet.soy/install.sh | sh`; no Bun installation
+is required. `napplet-space account pair` provides a client-generated NIP-46 link
+and terminal QR; the existing hidden bunker flow remains available.
+
+The browser chooser supports extensions, both NIP-46 directions and private-key
+import after an explicit warning. Sessions are memory-only and clear on refresh or
+disconnect. The selected identity signs social, naming and administration requests.
+Signer transport defaults to `wss://relay.napplet.soy` and remains separate from
+publication targets. [Identity and recovery](IDENTITY.md) records permissions,
+reconnect behavior and remaining external-signer compatibility work.
+
+Validation: 177 repository tests and typechecking; Go race/relay, native Blossom
+and GRASP suites on the development machine and VPS; production browser checks
+for both NIP-46 flows, canceled pairing, key import, refresh and switching; encrypted
+relay tests for forged acknowledgements, signer substitution, exact signatures,
+permissions, timeouts and reconnect; and six packaged macOS installer/terminal
+checks, including QR generation and Ctrl+C cancellation. Existing gallery and
+detail-page social integration tests also pass. No personal credentials, social
+posts or Lightning payments were used for deployment validation.
+
+After activation, **12 public browser checks passed**: gallery/SSR/navigation,
+opaque sandbox playback, tamper rejection, portable/pinned/source routes, mobile
+layout and signer guidance, OG previews, config forms/fullscreen/reload, runtime
+storage/files, and identity changes in an existing frame. Public service checks
+confirmed installer version, all four download checksums/sizes, NIP-11, read-only
+WSS subscriptions on the relay subdomain and compatibility alias, Blossom health,
+unauthenticated admin 401, and a fresh indexer report with our relay plus external
+discovery relays and no reported errors.
+
+All five Napplet PM2 processes are online and Caddy is active. The deployment
+starts PM2 directly; `napplet-space.service` is enabled for boot and currently
+inactive, matching the existing startup arrangement. The shared Caddy hashes are
+unchanged:
+
+- Parent: `be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f`.
+- Napplet fragment: `ef99cf551dca7c36d7ab82b6075c36bd537034f19e402d63648784b9d65e3c5e`.
+
+`schlaustronics.com` continues to return HTTPS 200. The deployment retained the
+shared-Caddy, web-port 3040 and legacy CPU profile; no DNS changes or reboot were
+needed. Local verification records are under `.local/identity-check/`.
