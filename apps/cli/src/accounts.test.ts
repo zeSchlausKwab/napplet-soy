@@ -37,6 +37,45 @@ test('account show reports absence without provisioning a key or account files',
   expect(JSON.parse(result.stdout)).toEqual({ account: null });
   expect(result.saved).toBe(false);
 });
+test('pair reports a one-time connection URI, times out without credentials and rejects unrelated options', async () => {
+  const relay = Bun.serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    fetch: (req, server) => (server.upgrade(req) ? undefined : new Response()),
+    websocket: { message() {} },
+  });
+  try {
+    const result = await run([
+      'account',
+      'pair',
+      '--network',
+      'local',
+      '--signer-relay',
+      `ws://127.0.0.1:${relay.port}`,
+      '--timeout',
+      '1',
+    ]);
+    expect(result.code).toBe(1);
+    const lines = result.stdout
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    expect(new URL(lines[0].pairing.uri).protocol).toBe('nostrconnect:');
+    expect(lines[1].error.code).toBe('SIGNER_TIMEOUT');
+    expect(result.saved).toBe(false);
+    expect(result.stdout).not.toContain('clientKey');
+    for (const args of [
+      ['account', 'pair', '--timeout', '0'],
+      ['account', 'pair', '--relay', 'wss://example.test'],
+      ['account', 'show', '--signer-relay', 'wss://example.test'],
+    ]) {
+      const bad = await run(args);
+      expect(JSON.parse(bad.stdout).error.code).toBe('USAGE');
+    }
+  } finally {
+    relay.stop(true);
+  }
+});
 test('CLI rejects sensitive arguments and invalid stdin with structured errors that do not echo secrets', async () => {
   const secret = 'nsec1sensitive-input-must-not-appear';
   for (const [args, stdin, code] of [

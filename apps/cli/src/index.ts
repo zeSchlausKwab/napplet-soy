@@ -4,7 +4,11 @@ import { join } from 'node:path';
 import { nip19 } from 'nostr-tools';
 import { scaffold, ScaffoldInputError } from './scaffold';
 import { Accounts, type Account } from '../../../packages/identity/src/accounts';
-import { AccountError, type Network } from '../../../packages/identity/src/signer';
+import {
+  AccountError,
+  defaultSignerRelays,
+  type Network,
+} from '../../../packages/identity/src/signer';
 import { ask, hiddenInput as readHiddenInput, secretStdin } from './input';
 import { publishProject, publicationStatus, PublishError } from '../../../packages/publish/src';
 import { checkPublication } from './publish-check';
@@ -26,6 +30,7 @@ const help = `Usage:
   bun run napplet skills update [--project <folder>]
   bun run napplet account create|show|list|check|backup
   bun run napplet account connect [--stdin]
+  bun run napplet account pair [--signer-relay <url>] [--timeout <seconds>] [--open]
   bun run napplet account import [--stdin]
   bun run napplet account use <npub-or-account-id>
   bun run napplet account export <new-recovery-file> [--passphrase-stdin]
@@ -39,6 +44,8 @@ const help = `Usage:
 
 All commands accept --network public|local and --json.
 Create reuses your selected account. Connect accepts a hidden bunker link.
+Pair creates a nostrconnect link and QR to approve in your signer (120-second wait).
+Signer relays carry encrypted signing requests; they do not change publishing targets.
 Create and new save a private nsec backup outside Git projects and report its path.
 Account backup saves/reuses that file for an existing local creator. Keep it private.
 Import accepts a hidden nsec or encrypted NIP-49 recovery key. With --stdin,
@@ -112,6 +119,9 @@ try {
         grasp: { type: 'string' },
         site: { type: 'string' },
         mirror: { type: 'string', multiple: true },
+        'signer-relay': { type: 'string', multiple: true },
+        timeout: { type: 'string' },
+        open: { type: 'boolean' },
       },
     });
   } catch {
@@ -164,6 +174,11 @@ try {
     if (!json && backupFile) console.log(backupNotice(backupFile));
   };
   const [command, action, argument, ...extra] = positionals;
+  if (
+    (values['signer-relay'] || values.timeout || values.open) &&
+    !(command === 'account' && action === 'pair')
+  )
+    throw new AccountError('USAGE', 'Use --signer-relay, --timeout and --open with account pair.');
   const publishingOptions =
     values['dry-run'] ||
     values.resume ||
@@ -477,6 +492,48 @@ try {
       case 'connect':
         output(await connect());
         break;
+      case 'pair': {
+        const timeout = Number(values.timeout ?? 120);
+        if (!Number.isInteger(timeout) || timeout < 1 || timeout > 600 || (json && values.open))
+          throw new AccountError(
+            'USAGE',
+            'Pairing timeout must be 1–600 seconds; --open requires text output.',
+          );
+        const relays =
+          values['signer-relay'] ??
+          (network === 'local' ? ['ws://127.0.0.1:19347'] : defaultSignerRelays);
+        output(
+          await accounts.pair(relays, {
+            signal: controller.signal,
+            timeoutMs: timeout * 1000,
+            onAuth,
+            onPairing: async (uri) => {
+              if (json)
+                console.log(JSON.stringify({ pairing: { uri, relays, timeoutSeconds: timeout } }));
+              else {
+                console.log(
+                  `Open or paste this one-time link in your NIP-46 signer. Keep it private.\n${uri}\n`,
+                );
+                if (process.stdout.isTTY) {
+                  const qr = await import('qrcode');
+                  console.log(await qr.toString(uri, { type: 'terminal', small: true }));
+                }
+                console.log(`Waiting up to ${timeout} seconds for approval. Ctrl+C cancels.`);
+                if (values.open) {
+                  const opener = process.platform === 'darwin' ? 'open' : 'xdg-open';
+                  try {
+                    const child = Bun.spawn([opener, uri], { stdout: 'ignore', stderr: 'ignore' });
+                    void child.exited;
+                  } catch {
+                    console.log('Could not open your signer. Copy the link above.');
+                  }
+                }
+              }
+            },
+          }),
+        );
+        break;
+      }
       case 'import': {
         const lines = values.stdin
           ? await secretStdin()

@@ -12,6 +12,8 @@ import {
   bunkerCredential,
   checkPubkey,
   openCredential,
+  pairCredential,
+  type PairingOptions,
   type Credential,
   type Network,
 } from './signer';
@@ -414,9 +416,24 @@ export class Accounts {
     const credential = bunkerCredential(uri, this.network);
     const signer = await openCredential(credential, this.network, options);
     try {
+      // The bunker secret authorizes the first connection only. Future sessions
+      // authenticate with the client key already approved by the remote signer.
+      delete credential.secret;
       return await this.locked(async (index) =>
         this.save(index, credential, await signer.getPublicKey()),
       );
+    } finally {
+      await signer.close();
+    }
+  }
+  async pair(relays: string[], options: PairingOptions) {
+    const { credential, signer } = await pairCredential(relays, this.network, options);
+    try {
+      return await this.locked(async (index) => {
+        if (options.signal?.aborted)
+          throw new AccountError('SIGNER_CANCELLED', 'Pairing cancelled.');
+        return this.save(index, credential, await signer.getPublicKey());
+      });
     } finally {
       await signer.close();
     }

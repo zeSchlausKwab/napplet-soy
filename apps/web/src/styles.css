@@ -1677,3 +1677,73 @@ pre:focus-visible {
 .zap-dialog a[data-slot="button"][data-variant="default"] { color: #fffaf2; }
 .gallery-pending { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 40; width: min(680px, calc(100% - 2rem)); display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: .7rem; box-shadow: 0 8px 40px #27292120; }
 .gallery-pending p { flex: 1 1 260px; font-size: .8rem; }
+
+/* One sign-in surface across the shell and community actions. */
+.identity-dialog {
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+.identity-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.identity-current,
+.identity-form,
+.identity-field,
+.identity-pairing {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.identity-current {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.identity-field {
+  font-size: 0.875rem;
+  font-weight: 500;
+  gap: 0.4rem;
+}
+.identity-field input,
+.identity-pairing textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--background);
+  font: inherit;
+}
+.identity-pairing textarea {
+  font-family: monospace;
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}
+.identity-pairing {
+  text-align: center;
+}
+.identity-pairing .identity-methods {
+  justify-content: center;
+}
+.identity-warning {
+  padding: 1rem;
+  border: 1px solid #cc875d;
+  background: #fff0dc;
+  color: #5b351f;
+  border-radius: 0.65rem;
+  font-size: 0.875rem;
+}
+.identity-warning p {
+  margin-top: 0.5rem;
+}
+.identity-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.875rem;
+}
+.identity-consent input {
+  margin-top: 0.2rem;
+}

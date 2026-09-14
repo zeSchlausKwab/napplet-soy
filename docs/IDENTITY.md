@@ -18,7 +18,7 @@ New projects store only `creator: {pubkey, network}` in `napplet.json`. This is 
 
 ## Where credentials live
 
-The implementation uses [Bun's native Secrets API](https://bun.sh/docs/runtime/secrets), through a small `Vault` interface. Local keys and NIP-46 client credentials use the OS keychain, including any bunker pairing secret. Plain account metadata lives at `${XDG_CONFIG_HOME:-~/.config}/napplet-space/accounts/<network>/accounts.json`. `SPACE_ACCOUNT_HOME` overrides the `napplet-space` directory, but account state and recovery destinations are rejected inside Git trees, including symlinked paths.
+The implementation uses [Bun's native Secrets API](https://bun.sh/docs/runtime/secrets), through a small `Vault` interface. Local keys and NIP-46 client credentials use the OS keychain, without retaining consumed pairing secrets on new connections. Plain account metadata lives at `${XDG_CONFIG_HOME:-~/.config}/napplet-space/accounts/<network>/accounts.json`. `SPACE_ACCOUNT_HOME` overrides the `napplet-space` directory, but account state and recovery destinations are rejected inside Git trees, including symlinked paths.
 
 | State | Location |
 | --- | --- |
@@ -43,11 +43,65 @@ bun run napplet account connect
 
 Paste a `bunker://` link at the hidden prompt. Do not put it in command arguments: it can contain an authorization secret. The connection uses Applesauce 6.2.2 and [NIP-46](https://github.com/nostr-protocol/nips/blob/master/46.md), with encrypted kind-24133 relay traffic. The client queries `get_public_key` separately from the bunker transport pubkey and verifies the user key again whenever the session is reopened. A changed key requires an explicit account connection.
 
-The client requests `get_public_key` and signing permission for kinds 30617, 30618, 24242, 35129, 15129 and 5129. It verifies every returned signature, author and exact requested event contents. Other event kinds are rejected. Signer denial, cancellation and a 60-second response timeout close the session. The wrapper also clears outstanding RPC promises because the pinned SDK does not do this on close. SDK logging of plaintext RPC parameters is disabled for these sessions.
+The client requests `get_public_key` and signing permission for kinds 30617, 30618, 24242, 32267, 35129, 15129 and 5129. It verifies every returned signature, author and exact requested event contents. Other event kinds are rejected. Signer denial, cancellation and a 60-second response timeout close the session. The wrapper also clears outstanding RPC promises because the pinned SDK does not do this on close. SDK logging of plaintext RPC parameters is disabled for these sessions.
 
 Signer-provided authorization links are displayed only in an interactive terminal; they are validated HTTP(S) URLs and are not opened automatically. JSON/noninteractive mode reports that authorization must be completed in the signer. WSS relays are accepted in public mode. `--network local` accepts only literal-loopback WS relays, never public fallback destinations.
 
-Current scope is bunker-link pairing and reconnection. Client-generated `nostrconnect://` QR pairing, automatic relay switching, remote session revocation management and an external signer compatibility matrix remain ahead. Remote identities are backed up in their signer application, not exported as local creator keys.
+Client-generated pairing is available in CLI 0.5.0:
+
+```sh
+napplet-space account pair
+# Optional signer transport override and native app opening:
+napplet-space account pair --signer-relay wss://relay.napplet.soy --open
+napplet-space account check
+```
+
+The command displays a `nostrconnect://` URI and a terminal QR. Scan, paste, or open
+it in a NIP-46 signer and approve the connection within 120 seconds. `--timeout`
+accepts 1–600 seconds; Ctrl+C cancels without selecting an account. A retry creates
+a fresh client key and secret. Keep the one-time URI private. `--json` emits a
+pairing progress record containing that URI, then the final account or error;
+redirected text output omits the terminal QR. `--open` is opt-in and unavailable
+in JSON mode. The URI is intentionally supplied to the OS URL opener only when
+requested; no creator private key is passed to a process.
+
+The pairing secret is required before accepting the signer transport pubkey.
+A bare `ack` cannot claim a client-initiated session. New bunker connections discard
+the consumed secret after authorization; persisted client keys authenticate later
+sessions. Existing saved credentials remain readable. `account check` reconnects
+with the stored client key, and validates the same user before any publication.
+A revoked client must pair again in the signer application.
+
+Signer transport defaults to `wss://relay.napplet.soy` (local mode:
+`ws://127.0.0.1:19347`). `--signer-relay` can be repeated up to three times.
+It does not change `napplet.json` or publication relay/Blossom/Git destinations.
+Automatic relay negotiation, remote session revocation management and a wider
+external-signer compatibility matrix remain follow-ups. Remote identities are
+backed up in their signer application, not exported as local creator keys.
+
+## Website sign-in
+
+The shell and social prompts open the same account chooser. Choose a NIP-07
+extension, create a NIP-46 connection code/link, paste a `bunker://` link, or import
+an nsec/hex private key after acknowledging the warning. The selected account signs
+comments, likes, identified zaps, named links and admin authentication. Website
+remote permissions are limited to kinds 5, 7, 1111, 9734 and 27235 plus public-key
+lookup; creator publishing retains its separate scope. NIP-46 auth challenges are
+shown as validated links in the chooser, including during later signing requests.
+
+All browser identity sessions are memory-only. A refresh requires reconnecting;
+there is no localStorage/sessionStorage persistence or Remember me checkbox. Imported
+keys are cleared from the input immediately. Disconnect drops the session and
+wipes owned key bytes where possible; JavaScript/runtime copies cannot be guaranteed
+to be erased. Neither private keys nor NIP-46 client credentials go to our server
+or napplet frames. The relay carries encrypted kind-24133 envelopes.
+
+Connecting another account retains the old selection until the new one verifies.
+Cancellation, late approvals and late signatures cannot replace a newer identity.
+A failed remote signing request locks writing and offers Reconnect, which verifies
+the same user again. Refreshing or disconnecting discards that recovery state.
+Browsing is anonymous; signed-out visitors can still request anonymous zap invoices.
+Anonymous zaps use a separate ephemeral key per invoice, never the selected signer.
 
 ## Recovery and automation
 
@@ -95,4 +149,4 @@ Tests cover reuse, independent process access, two generated projects, encrypted
 
 The service integration test uses one reopened creator to publish source through native ngit-grasp, upload HTML through Blossom, and sign a standard manifest on Khatru. An independent Git clone and relay/Blossom reader recover the expected source and playable bytes. All test services and signing traffic are loopback-only.
 
-The [resumable publisher](PUBLISHING.md) now uses these components. The public installer, persistent gallery indexing/naming transaction and independent-client public publication acceptance remain ahead.
+The [resumable publisher](PUBLISHING.md) now uses these components. The standalone installer, gallery indexing and named routes are implemented; release evidence and remaining compatibility work are tracked in DEPLOYMENT.md and AGENDA.md.

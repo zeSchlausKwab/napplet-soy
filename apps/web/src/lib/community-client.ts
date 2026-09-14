@@ -1,4 +1,5 @@
-import { ExtensionSigner, PrivateKeySigner } from 'applesauce-signers';
+import { browserIdentity } from './browser-identity';
+import { PrivateKeySigner } from 'applesauce-signers';
 import { sha256, verifiedEvent, type SignedEvent } from '../../../../packages/protocol/src';
 export type Template = Pick<SignedEvent, 'kind' | 'created_at' | 'tags' | 'content'>;
 /** Fresh browser-memory identity for exactly one anonymous payment request. */
@@ -12,20 +13,9 @@ export async function signAnonymousZap(template: Template) {
   }
 }
 export async function signForAccount(pubkey: string, template: Template) {
-  const signer = new ExtensionSigner();
-  if ((await signer.getPublicKey()) !== pubkey)
-    throw new Error('Your signer account changed. Connect it again.');
-  const event = verifiedEvent(await signer.signEvent(template));
-  if (
-    event.pubkey !== pubkey ||
-    event.kind !== template.kind ||
-    event.created_at !== template.created_at ||
-    event.content !== template.content ||
-    JSON.stringify(event.tags) !== JSON.stringify(template.tags)
-  )
-    throw new Error('The signer changed the requested event.');
-  return event;
+  return browserIdentity().sign(pubkey, template);
 }
+
 export async function jsonResponse(response: Response) {
   const value = await response.json();
   if (!response.ok) throw new Error(value.error || 'Request failed.');

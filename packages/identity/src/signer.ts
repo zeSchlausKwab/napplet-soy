@@ -1,7 +1,8 @@
 import { PrivateKeySigner } from 'applesauce-signers/signers/private-key-signer';
 import { NostrConnectSigner } from 'applesauce-signers/signers/nostr-connect-signer';
 import { RelayPool } from 'applesauce-relay';
-import type { EventTemplate } from 'nostr-tools';
+import type { EventTemplate, NostrEvent } from 'nostr-tools';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
 import { verifiedEvent, type SignedEvent } from '../../protocol/src';
 
 export type Network = 'public' | 'local';
@@ -14,6 +15,47 @@ export class AccountError extends Error {
   }
 }
 export const publishingKinds = [30617, 30618, 24242, 32267, 35129, 15129, 5129];
+export const websiteKinds = [5, 7, 1111, 9734, 27235];
+export const defaultSignerRelays = ['wss://relay.napplet.soy'];
+export type SignerOptions = {
+  expectedPubkey?: string;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  onAuth?: (url: string) => Promise<void>;
+  kinds?: number[];
+};
+export type PairingOptions = SignerOptions & {
+  onPairing: (uri: string) => void | Promise<void>;
+  name?: string;
+  url?: string;
+};
+export function signerRelays(values: string[], network: Network) {
+  const relays = [...new Set(values)];
+  if (!relays.length || relays.length > 3)
+    throw new AccountError('INVALID_RELAY', 'Choose 1–3 signer relays.');
+  for (const relay of relays) {
+    let r: URL;
+    try {
+      r = new URL(relay);
+    } catch {
+      throw new AccountError('INVALID_RELAY', 'Invalid signer relay URL.');
+    }
+    if (
+      relay.length > 400 ||
+      r.username ||
+      r.password ||
+      r.hash ||
+      (network === 'local'
+        ? r.protocol !== 'ws:' || !['127.0.0.1', '[::1]'].includes(r.hostname)
+        : r.protocol !== 'wss:')
+    )
+      throw new AccountError(
+        'INVALID_RELAY',
+        'Use WSS signer relays (literal-loopback WS in local mode).',
+      );
+  }
+  return relays;
+}
 export type RemoteCredential = {
   type: 'remote';
   clientKey: string;
@@ -59,25 +101,11 @@ export function bunkerCredential(uri: string, network: Network): RemoteCredentia
     )
       throw new Error();
     const remote = checkPubkey(url.hostname, 'local');
-    const relays = [...new Set(url.searchParams.getAll('relay'))];
-    if (!relays.length || relays.length > 3) throw new Error();
-    for (const relay of relays) {
-      const r = new URL(relay);
-      if (
-        relay.length > 400 ||
-        r.username ||
-        r.password ||
-        r.hash ||
-        (network === 'local'
-          ? r.protocol !== 'ws:' || !['127.0.0.1', '[::1]'].includes(r.hostname)
-          : r.protocol !== 'wss:')
-      )
-        throw new Error();
-    }
+    const relays = signerRelays(url.searchParams.getAll('relay'), network);
     const secret = url.searchParams.get('secret') ?? undefined;
     if (secret && secret.length > 256) throw new Error();
     const key = new PrivateKeySigner();
-    const clientKey = Buffer.from(key.key).toString('hex');
+    const clientKey = bytesToHex(key.key);
     key.key.fill(0);
     return { type: 'remote', remote, relays, secret, clientKey };
   } catch {
@@ -91,11 +119,37 @@ export function bunkerCredential(uri: string, network: Network): RemoteCredentia
 // The pinned SDK does not reject outstanding RPC promises on close. Keep their
 // lifetime inside one CLI operation, and suppress its debug logging of RPC params.
 class Session extends NostrConnectSigner {
+  private ended = false;
   constructor(options: ConstructorParameters<typeof NostrConnectSigner>[0]) {
     super(options);
     this.log.enabled = false;
   }
+  override async handleEvent(event: NostrEvent) {
+    if (
+      this.ended ||
+      event.kind !== 24133 ||
+      !event.tags.some((t) => t[0] === 'p' && t[1] === this.clientPubkey)
+    )
+      return;
+    // NIP-46 requires the secret for client-initiated pairing. The SDK also
+    // accepts a bare ack, which would let any relay observer claim the session.
+    if (!this.remote) {
+      try {
+        if (!this.verifyEvent(event)) return;
+        const response = JSON.parse(
+          await (event.content.includes('?iv=')
+            ? this.signer.nip04!.decrypt(event.pubkey, event.content)
+            : this.signer.nip44!.decrypt(event.pubkey, event.content)),
+        );
+        if (this.ended || response.error || response.result !== this.connectSecret) return;
+      } catch {
+        return;
+      }
+    }
+    if (!this.ended) await super.handleEvent(event);
+  }
   override async close() {
+    this.ended = true;
     for (const request of this.requests.values()) {
       request.catch(() => {});
       request.reject(new AccountError('SIGNER_CLOSED', 'Signer session closed.'));
@@ -108,17 +162,28 @@ class Session extends NostrConnectSigner {
 export async function openCredential(
   credential: Credential,
   network: Network,
-  options: {
-    expectedPubkey?: string;
-    timeoutMs?: number;
-    signal?: AbortSignal;
-    onAuth?: (url: string) => Promise<void>;
-  } = {},
+  options: SignerOptions = {},
 ): Promise<CreatorSigner> {
+  return (await openSession(credential, network, options)).signer;
+}
+export async function pairCredential(relays: string[], network: Network, options: PairingOptions) {
+  signerRelays(relays, network);
+  const key = new PrivateKeySigner();
+  const clientKey = bytesToHex(key.key);
+  key.key.fill(0);
+  const result = await openSession({ type: 'pairing', clientKey, relays }, network, options);
+  return { signer: result.signer, credential: result.credential! };
+}
+async function openSession(
+  credential: Credential | { type: 'pairing'; clientKey: string; relays: string[] },
+  network: Network,
+  options: SignerOptions | PairingOptions,
+) {
+  const kinds = [...(options.kinds ?? publishingKinds)];
   const keyHex = credential.type === 'local' ? credential.key : credential.clientKey;
   if (!/^[a-f0-9]{64}$/.test(keyHex))
     throw new AccountError('INVALID_CREDENTIAL', 'Stored signer credential is invalid.');
-  const local = new PrivateKeySigner(Uint8Array.from(Buffer.from(keyHex, 'hex')));
+  const local = new PrivateKeySigner(hexToBytes(keyHex));
   let closed = false;
   let remote: Session | undefined;
   let pool: RelayPool | undefined;
@@ -130,8 +195,10 @@ export async function openCredential(
     local.key.fill(0);
   };
   const bounded = async <T>(operation: () => Promise<T>): Promise<T> => {
-    if (closed || options.signal?.aborted)
+    if (closed || options.signal?.aborted) {
+      await close();
       throw new AccountError('SIGNER_CLOSED', 'Signer session closed or cancelled.');
+    }
     let timer: ReturnType<typeof setTimeout>;
     let abort: () => void;
     try {
@@ -170,14 +237,13 @@ export async function openCredential(
     if (credential.type === 'local') pubkey = await local.getPublicKey();
     else {
       // Revalidate stored endpoints as well as newly pasted links.
-      const uri = new URL(`bunker://${credential.remote}`);
-      credential.relays.forEach((r) => uri.searchParams.append('relay', r));
-      if (credential.secret) uri.searchParams.set('secret', credential.secret);
-      bunkerCredential(uri.href, network);
+      signerRelays(credential.relays, network);
+      if (credential.type === 'remote') checkPubkey(credential.remote, 'local');
       pool = new RelayPool();
       remote = new Session({
         signer: local,
-        remote: credential.remote,
+        remote: credential.type === 'remote' ? credential.remote : undefined,
+        connectSecret: bytesToHex(crypto.getRandomValues(new Uint8Array(24))),
         relays: credential.relays,
         subscriptionMethod: (relays, filters) => pool!.subscription(relays, filters),
         publishMethod: async (relays, event) => {
@@ -207,17 +273,34 @@ export async function openCredential(
           await options.onAuth(parsed.href);
         },
       });
-      const ack = await bounded(() =>
-        remote!.connect(credential.secret, [
-          'get_public_key',
-          ...NostrConnectSigner.buildSigningPermissions(publishingKinds),
-        ]),
-      );
-      if (ack !== 'ack' && ack !== credential.secret)
-        throw new AccountError(
-          'INVALID_SIGNER',
-          'Remote signer returned an invalid connection acknowledgement.',
+      if (credential.type === 'pairing') {
+        const pairing = options as PairingOptions;
+        await bounded(async () => {
+          await remote!.open();
+          const waiting = remote!.waitForSigner();
+          waiting.catch(() => {});
+          await pairing.onPairing(
+            remote!.getNostrConnectURI({
+              name: pairing.name ?? 'Napplet Space',
+              url: pairing.url ?? 'https://napplet.soy',
+              permissions: ['get_public_key', ...NostrConnectSigner.buildSigningPermissions(kinds)],
+            }),
+          );
+          await waiting;
+        });
+      } else {
+        const ack = await bounded(() =>
+          remote!.connect(credential.secret, [
+            'get_public_key',
+            ...NostrConnectSigner.buildSigningPermissions(kinds),
+          ]),
         );
+        if (ack !== 'ack' && ack !== credential.secret)
+          throw new AccountError(
+            'INVALID_SIGNER',
+            'Remote signer returned an invalid connection acknowledgement.',
+          );
+      }
       // Never confuse the bunker transport identity with the actual user's key.
       pubkey = await bounded(() => remote!.getPublicKey());
     }
@@ -227,16 +310,16 @@ export async function openCredential(
         'IDENTITY_CHANGED',
         'The signer now represents a different creator. Connect that account explicitly.',
       );
-    return {
+    const signer: CreatorSigner = {
       getPublicKey: async () => {
         if (closed) throw new AccountError('SIGNER_CLOSED', 'Signer session closed.');
         return pubkey;
       },
       signEvent: async (event) => {
-        if (!publishingKinds.includes(event.kind))
+        if (!kinds.includes(event.kind))
           throw new AccountError(
             'SIGNING_SCOPE',
-            'This creator signer only signs source, Blossom and napplet publication events.',
+            'This event kind is outside the permissions for this session.',
           );
         const template = structuredClone({
           kind: event.kind,
@@ -258,12 +341,23 @@ export async function openCredential(
           )
             throw new AccountError(
               'SIGNER_CHANGED_EVENT',
-              'Signer changed the requested publication. Nothing was published.',
+              'Signer changed the requested event. Nothing was published.',
             );
           return result;
         });
       },
       close,
+    };
+    return {
+      signer,
+      credential: remote
+        ? {
+            type: 'remote' as const,
+            clientKey: keyHex,
+            remote: remote.remote!,
+            relays: [...remote.relays],
+          }
+        : undefined,
     };
   } catch (error) {
     await close();

@@ -1,3 +1,4 @@
+import { signForAccount } from '@/lib/community-client';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ShieldCheck, LoaderCircle, RefreshCw } from 'lucide-react';
@@ -42,10 +43,7 @@ function Admin() {
     setError('');
     setNotice('');
     try {
-      const { ExtensionSigner } = await import('applesauce-signers');
-      const signer = new ExtensionSigner();
-      const key = await signer.getPublicKey();
-      if (!pubkey || key !== pubkey)
+      if (!pubkey)
         throw new Error('Connect the administrator account using the Connect button first.');
       if (mutate && !visible) throw new Error('Load the current policy first.');
       const url = new URL('/api/admin', location.origin).href;
@@ -65,7 +63,7 @@ function Admin() {
           Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, '0')).join(''),
         ]);
       }
-      const event = await signer.signEvent({
+      const event = await signForAccount(pubkey, {
         kind: 27235,
         created_at: Math.floor(Date.now() / 1000),
         content: '',
@@ -86,7 +84,7 @@ function Admin() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Request failed.');
       setState(result);
-      setLoadedKey(key);
+      setLoadedKey(pubkey);
       if (mutate) {
         setNotice(
           {

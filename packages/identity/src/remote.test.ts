@@ -8,7 +8,8 @@ import { PrivateKeySigner } from 'applesauce-signers/signers/private-key-signer'
 import { NostrConnectProvider } from 'applesauce-signers/signers/nostr-connect-provider';
 import { RelayPool } from 'applesauce-relay';
 import { Accounts, type Vault } from './accounts';
-import { bunkerCredential, openCredential } from './signer';
+import { bunkerCredential, openCredential, pairCredential, websiteKinds } from './signer';
+import { BrowserIdentity } from '../../../apps/web/src/lib/browser-identity';
 
 async function environment() {
   const directory = await mkdtemp(join(tmpdir(), 'napplet-remote-'));
@@ -76,6 +77,8 @@ async function environment() {
     events,
     vault,
     values,
+    pool,
+    sockets,
     async close() {
       await provider.stop();
       pool.close();
@@ -169,3 +172,151 @@ test('local signer profile rejects public relay destinations before connecting',
     bunkerCredential(`bunker://${key}?relay=${encodeURIComponent('ws://127.0.0.1')}`, 'public'),
   ).toThrow();
 });
+
+test('client pairing ignores forged acknowledgements, persists a restartable client credential and scopes permissions', async () => {
+  const e = await environment();
+  try {
+    e.provider.bunkerSecret = undefined;
+    const accounts = new Accounts('local', e.directory, e.vault);
+    let permissions: string[] = [];
+    e.provider.onConnect = (_client, requested) => {
+      permissions = requested;
+      return true;
+    };
+    const attacker = new PrivateKeySigner();
+    const account = await accounts.pair([e.url], {
+      timeoutMs: 3000,
+      onPairing: async (uri) => {
+        const link = new URL(uri);
+        expect(link.protocol).toBe('nostrconnect:');
+        expect(link.searchParams.get('secret')!.length).toBeGreaterThanOrEqual(32);
+        for (const result of ['ack', 'incorrect secret']) {
+          const content = await attacker.nip44.encrypt(
+            link.hostname,
+            JSON.stringify({ id: 'forged', result }),
+          );
+          const event = await attacker.signEvent({
+            kind: 24133,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [['p', link.hostname]],
+            content,
+          });
+          await e.pool.publish([e.url], event);
+        }
+        await Bun.sleep(25);
+        await e.provider.handleNostrConnectURI(uri);
+      },
+    });
+    expect(account.pubkey).toBe(await e.creator.getPublicKey());
+    expect(permissions).toContain('sign_event:35129');
+    expect(permissions).not.toContain('sign_event:9734');
+    const stored = [...e.values.values()].map((v) => JSON.parse(v));
+    expect(stored[0].remote).toBe(await e.transport.getPublicKey());
+    expect(stored[0].secret).toBeUndefined();
+    const signer = await new Accounts('local', e.directory, e.vault).signer({ timeoutMs: 3000 });
+    try {
+      await expect(
+        signer.signEvent({ kind: 9734, created_at: 1, tags: [], content: '' }),
+      ).rejects.toMatchObject({ code: 'SIGNING_SCOPE' });
+      expect(
+        (await signer.signEvent({ kind: 35129, created_at: 1, tags: [], content: '' })).pubkey,
+      ).toBe(account.pubkey);
+    } finally {
+      await signer.close();
+    }
+  } finally {
+    await e.close();
+  }
+}, 10000);
+
+test('pairing timeout and cancellation leave no account, and retries use fresh client keys', async () => {
+  const e = await environment();
+  try {
+    const accounts = new Accounts('local', e.directory, e.vault);
+    const uris: string[] = [];
+    await expect(
+      accounts.pair([e.url], {
+        timeoutMs: 100,
+        onPairing: (uri) => {
+          uris.push(uri);
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'SIGNER_TIMEOUT' });
+    const controller = new AbortController();
+    await expect(
+      accounts.pair([e.url], {
+        signal: controller.signal,
+        onPairing: (uri) => {
+          uris.push(uri);
+          controller.abort();
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'SIGNER_CANCELLED' });
+    expect(await accounts.current()).toBeNull();
+    expect(e.values.size).toBe(0);
+    expect(new URL(uris[0]).hostname).not.toBe(new URL(uris[1]).hostname);
+    expect(new URL(uris[0]).searchParams.get('secret')).not.toBe(
+      new URL(uris[1]).searchParams.get('secret'),
+    );
+    await expect(
+      pairCredential(['wss://not-local.example'], 'local', { onPairing: () => {} }),
+    ).rejects.toMatchObject({ code: 'INVALID_RELAY' });
+  } finally {
+    await e.close();
+  }
+});
+
+test('browser identity scopes signatures, reconnects the same user, cancels pairing and rejects stale signatures after a switch', async () => {
+  const e = await environment();
+  const identity = new BrowserIdentity('local');
+  try {
+    const template = { kind: 7, created_at: 1, tags: [], content: '+' };
+    await identity.bunker(await e.provider.getBunkerURI());
+    const creator = await e.creator.getPublicKey();
+    expect(identity.state.pubkey).toBe(creator);
+    for (const kind of websiteKinds)
+      expect((await identity.sign(creator, { ...template, kind })).pubkey).toBe(creator);
+    await expect(identity.sign(creator, { ...template, kind: 35129 })).rejects.toThrow(
+      'permissions',
+    );
+    e.provider.onSignEvent = () => false;
+    await expect(identity.sign(creator, template)).rejects.toThrow('Reconnect');
+    expect(identity.state).toMatchObject({ pubkey: null, reconnect: true });
+    e.provider.onSignEvent = () => true;
+    await identity.reconnect();
+    expect(identity.state.pubkey).toBe(creator);
+    let release!: (value: boolean) => void;
+    let requested!: () => void;
+    const started = new Promise<void>((resolve) => {
+      requested = resolve;
+    });
+    e.provider.onSignEvent = () => {
+      requested();
+      return new Promise((resolve) => {
+        release = resolve;
+      });
+    };
+    const signing = identity.sign(creator, template);
+    const rejected = signing.then(
+      () => null,
+      (error) => error,
+    );
+    await started;
+    const replacement = new PrivateKeySigner();
+    await identity.importKey(Buffer.from(replacement.key).toString('hex'));
+    release(true);
+    expect((await rejected)?.message).toContain('Reconnect');
+    expect(identity.state.pubkey).toBe(await replacement.getPublicKey());
+    await expect(identity.sign(creator, template)).rejects.toThrow('correct account');
+    const pairing = identity.pair([e.url], () => {
+      identity.cancel();
+    });
+    await expect(pairing).rejects.toThrow();
+    expect(identity.state.pubkey).toBe(await replacement.getPublicKey());
+    identity.disconnect();
+    expect(identity.state).toEqual({ pubkey: null, method: null, reconnect: false });
+  } finally {
+    identity.disconnect();
+    await e.close();
+  }
+}, 15000);

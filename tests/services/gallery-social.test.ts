@@ -199,8 +199,7 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
     expect(invoiceRequests[0].pubkey).not.toBe(invoiceRequests[1].pubkey);
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
     await page.getByRole('button', { name: 'Connect browser extension', exact: true }).click();
-    await page.getByRole('button', { name: 'Disconnect from this app' }).waitFor();
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     const attempts: string[] = [];
     await page.route('**/api/social?*', async (route) => {

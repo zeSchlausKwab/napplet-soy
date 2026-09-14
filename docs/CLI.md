@@ -115,7 +115,7 @@ Use the pinned Bun 1.3.11 toolchain for builds:
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.4.1/napplet-space-darwin-arm64/napplet-space" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.5.0/napplet-space-darwin-arm64/napplet-space" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts
@@ -221,7 +221,7 @@ Readable links require a one-time claim on the website: connect the publishing a
 choose **Named link**, and claim `/@your-handle/your-slug`. Existing releases can do this
 now. Republish does not claim a name; a claimed name follows later releases automatically.
 
-## Napplet settings (next CLI release)
+## Napplet settings (CLI 0.5.0)
 
 New boilerplates include `config.schema.json` and an optional SDK settings example.
 The maintained Vite plugin embeds the schema in the built HTML. **Settings** in
@@ -230,7 +230,17 @@ the schema's property count/version. These are user preferences, separate from
 publication targets in `napplet.json`. See [CONFIGURATION.md](CONFIGURATION.md) for
 the authoring flow, supported subset, storage behavior and verification.
 
-This source milestone is not in the published 0.4.1 CLI yet. Existing projects are
+These settings are included in CLI 0.5.0. Existing projects are
 not modified by updating skills. They can adopt the documented schema/SDK pattern
 after updating to a CLI release that contains this host. The upstream conformance
 runner currently checks boot/degradation only; it does not exercise configuration.
+
+## Connect a remote creator (CLI 0.5.0)
+
+Use `napplet-space account pair` to display a connection link and QR for your
+NIP-46 signer. `--open` also opens the link in a registered signer app. Use
+`account connect` instead to paste a signer-provided `bunker://` link at a hidden
+prompt. Pairing defaults to our relay and supports a separate `--signer-relay`
+override; publishing targets in `napplet.json` are unchanged. Both flows store the
+approved client credential in the OS vault. See [identity](IDENTITY.md) for timeout,
+cancellation, permissions, recovery and the memory-only website sign-in choices.

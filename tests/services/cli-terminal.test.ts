@@ -8,6 +8,67 @@ import { cliDownload } from '../../packages/backend/src/cli-download';
 const enabled = process.env.SPACE_TEST_CLI === undefined ? test.skip : test;
 const installer = resolve(import.meta.dir, '../../apps/web/public/install.sh');
 
+enabled('native account pair displays a QR and cancels without selecting an identity', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'napplet-pair-terminal-'));
+  const relay = Bun.serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    fetch: (request, server) => (server.upgrade(request) ? undefined : new Response()),
+    websocket: { message() {} },
+  });
+  const version = (
+    await Bun.file(resolve(import.meta.dir, '../../apps/cli/distribution/version.json')).json()
+  ).version;
+  const binary =
+    process.env.SPACE_TEST_CLI === '1'
+      ? resolve(
+          import.meta.dir,
+          `../../.local/cli/${version}/napplet-space-${process.platform}-${process.arch}/napplet-space`,
+        )
+      : process.env.SPACE_TEST_CLI!;
+  let output = '';
+  const child = Bun.spawn(
+    [
+      binary,
+      'account',
+      'pair',
+      '--network',
+      'local',
+      '--signer-relay',
+      `ws://127.0.0.1:${relay.port}`,
+    ],
+    {
+      cwd: directory,
+      env: { PATH: '/usr/bin:/bin', SPACE_ACCOUNT_HOME: directory },
+      terminal: {
+        cols: 180,
+        data(_terminal, bytes) {
+          output += Buffer.from(bytes).toString();
+        },
+      },
+    },
+  );
+  const timeout = setTimeout(() => child.kill('SIGKILL'), 10000);
+  try {
+    const deadline = Date.now() + 7000;
+    while (!output.includes('Ctrl+C cancels.') && Date.now() < deadline && child.exitCode === null)
+      await Bun.sleep(20);
+    expect(output).toContain('nostrconnect://');
+    expect(output).toContain('Ctrl+C cancels.');
+    expect(output).toContain('\u001b['); // Terminal QR colour blocks.
+    child.terminal!.write('\u0003');
+    expect(await child.exited).toBe(1);
+    expect(output).toContain('SIGNER_CANCELLED');
+    expect(await Bun.file(join(directory, 'accounts/local/accounts.json')).exists()).toBe(false);
+  } finally {
+    clearTimeout(timeout);
+    child.kill();
+    child.terminal?.close();
+    relay.stop(true);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 async function interactiveInstall(cancel = false, redirectErrors = false) {
   const root = await mkdtemp(join(tmpdir(), 'napplet-terminal-test-'));
   const previousDownloads = process.env.SPACE_CLI_DOWNLOAD_DIR;

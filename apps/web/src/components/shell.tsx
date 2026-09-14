@@ -1,21 +1,11 @@
 import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, Asterisk, Check, LoaderCircle, Plus, Radio, X } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { ArrowUpRight, Asterisk, Check, Plus, Radio } from 'lucide-react';
+import { type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { useNostr } from './nostr-provider';
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { pubkey, ready, connect, disconnect, relayConfigured } = useNostr();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const { pubkey, ready, connect, relayConfigured } = useNostr();
   return (
     <div className="site-shell">
       <a href="#main" className="skip-link">
@@ -44,70 +34,16 @@ export function Shell({ children }: { children: ReactNode }) {
           <Link to="/create" className="make-link">
             <Plus size={16} /> Create a napplet
           </Link>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="connect-button" disabled={!ready}>
-                {pubkey ? (
-                  <>
-                    <Check size={14} />
-                    {pubkey.slice(0, 6)}…
-                  </>
-                ) : (
-                  'Connect'
-                )}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {pubkey ? 'Your Nostr identity' : 'Bring your Nostr identity'}
-                </DialogTitle>
-                <DialogDescription>
-                  Connect a Nostr browser extension. Your private key stays with your signer.
-                </DialogDescription>
-              </DialogHeader>
-              {pubkey ? (
-                <>
-                  <code className="public-key">{pubkey}</code>
-                  <Button variant="outline" onClick={disconnect}>
-                    <X size={14} />
-                    Disconnect from this app
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <p className="muted">
-                    Use a NIP-07 extension to connect an existing account. Remote signer pairing is
-                    coming in a later slice.
-                  </p>
-                  <Button
-                    disabled={busy}
-                    onClick={async () => {
-                      setBusy(true);
-                      setError('');
-                      try {
-                        await connect();
-                      } catch {
-                        setError(
-                          'Could not connect. Install or unlock a Nostr extension, then approve access and try again.',
-                        );
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                  >
-                    {busy && <LoaderCircle className="animate-spin" size={16} />}Connect browser
-                    extension
-                  </Button>
-                  {error && (
-                    <p role="alert" className="error-message">
-                      {error}
-                    </p>
-                  )}
-                </>
-              )}
-            </DialogContent>
-          </Dialog>
+          <Button variant="outline" className="connect-button" disabled={!ready} onClick={connect}>
+            {pubkey ? (
+              <>
+                <Check size={14} />
+                {pubkey.slice(0, 6)}…
+              </>
+            ) : (
+              'Connect'
+            )}
+          </Button>
         </div>
       </header>
       <main id="main">{children}</main>
