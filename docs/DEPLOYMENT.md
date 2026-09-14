@@ -325,11 +325,12 @@ The creator integration note now covers destinations and visual preview review.
 Impact Yard's saved published build was captured locally for inspection; its
 project and signed live listing were not modified.
 
-Version 0.3.1 uses new archives; do not replace the immutable 0.3.0 files with
-new bytes. Build/verify the current version before uploading, then deploy the site:
+Version 0.3.1 archives are built locally for macOS/Linux ARM64 and x64 at
+`.local/cli/0.3.1`; checksums and source revision are recorded in
+`apps/cli/distribution/release-0.3.1.json`. Do not replace older version archives
+with new bytes. Release these downloads before deploying the site:
 
 ```sh
-bun run cli:build
 bun run cli:release --host root@159.198.46.2
 # Then use the usual website deployment command.
 ```
@@ -339,3 +340,11 @@ not publish creator events, upload downloads, or change the VPS. Creators using
 an older binary must rerun the deployed installer before using the new config
 fields. A subsequent napplet publish supplies the preview; existing publications
 are never rewritten merely by deploying this site or installing the CLI.
+
+
+Validation: 142 main tests and type checking, two gallery/player browser checks,
+and three local capture/service tests passed. The macOS ARM64 packaged binary
+also passed scaffold/config/screenshot/check with Bun and Node removed from PATH.
+Other platform binaries were built, not executed on this machine. The optional
+native-keychain publication test was skipped; local service tests used a temporary
+creator and verified signed descriptor readback independently.
