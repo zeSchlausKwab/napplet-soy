@@ -15,6 +15,8 @@ import { GallerySocialProvider, SocialRankings } from '@/components/gallery-soci
 import { useNostr } from '@/components/nostr-provider';
 import { Button } from '@/components/ui/button';
 import { publicLink } from '../../../../packages/backend/src/public-model';
+import { StarterCommand } from '@/components/starter-command';
+import { WalkthroughDialog } from '@/components/creator-walkthrough';
 
 export const Route = createFileRoute('/')({
   validateSearch: (input: SearchSchemaInput & Partial<GallerySearch>) =>
@@ -62,7 +64,7 @@ function Gallery() {
   return (
     <GallerySocialProvider search={search}>
       <section className="hero">
-        <div>
+        <div className="hero-main">
           <div className="eyebrow">
             <span className="status-dot" /> A PLAYGROUND FOR THE INTERNET
           </div>
@@ -78,13 +80,22 @@ function Gallery() {
             </span>
             <span className="coral">.</span>
           </h1>
-          <p>
+          <p className="hero-intro">
             Tiny games. Happy accidents. Wonderfully unnecessary things.
             <br className="desktop-break" /> Made by people with an idea and an afternoon.
           </p>
-          <a className="browse-link" href="#explore">
-            Find your next rabbit hole <ArrowDown size={16} />
-          </a>
+          <p className="account-free-note">Create, remix and publish. No website account needed.</p>
+          <StarterCommand />
+          <p className="hero-command-note">
+            macOS &amp; Linux · Git required · No Bun or Node installation needed.{' '}
+            <Link to="/cli">Setup help ↗</Link>
+          </p>
+          <div className="hero-links">
+            <WalkthroughDialog />
+            <a className="browse-link" href="#explore">
+              Explore first <ArrowDown size={16} />
+            </a>
+          </div>
         </div>
         <div className="hero-side">
           <div className="orbit-doodle" aria-hidden="true">

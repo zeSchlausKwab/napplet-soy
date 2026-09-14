@@ -1,4 +1,5 @@
 import { resolve, sep } from 'node:path';
+import { staticFileResponse } from '../../packages/backend/src/static-file';
 
 process.env.NODE_ENV ??= 'production';
 process.env.SPACE_FONT_PATH ??= resolve(
@@ -33,15 +34,13 @@ const server = Bun.serve({
     ) {
       const file = Bun.file(filePath);
       if (await file.exists())
-        return new Response(request.method === 'HEAD' ? null : file, {
-          headers: {
-            'Content-Type': file.type,
-            'X-Content-Type-Options': 'nosniff',
-            'Cache-Control': path.startsWith('/assets/')
-              ? 'public, max-age=31536000, immutable'
-              : 'public, max-age=300',
-          },
-        });
+        return staticFileResponse(
+          request,
+          file,
+          path.startsWith('/assets/')
+            ? 'public, max-age=31536000, immutable'
+            : 'public, max-age=300',
+        );
     }
     const response = await app.fetch(request);
     response.headers.set('X-Content-Type-Options', 'nosniff');

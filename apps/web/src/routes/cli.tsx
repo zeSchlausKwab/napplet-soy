@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import release from '../../../cli/distribution/version.json';
+import { StarterCommand } from '@/components/starter-command';
 export const Route = createFileRoute('/cli')({ component: CliHelp });
 function CliHelp() {
   return (
@@ -12,9 +13,7 @@ function CliHelp() {
       <p className="create-intro">
         Install the creator CLI, open your favorite coding agent, and make something.
       </p>
-      <div className="terminal-box">
-        <code>curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet</code>
-      </div>
+      <StarterCommand />
       <p className="command-note">
         The installer checks the download’s SHA-256 checksum and installs in your home folder. It
         needs no sudo and leaves shell profiles alone. Follow its PATH instruction if needed, then

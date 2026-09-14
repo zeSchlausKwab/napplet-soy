@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { GitFork, Copy, Check } from 'lucide-react';
 import { Button } from './ui/button';
+import { remixCommand } from '@/lib/creator-commands';
 import {
   Dialog,
   DialogTrigger,
@@ -15,21 +16,17 @@ export function RemixButton({ revision, title }: { revision: string; title: stri
     [error, setError] = useState('');
   const [origin, setOrigin] = useState('https://napplet.soy');
   useEffect(() => setOrigin(location.origin), []);
-  const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
-  const source = quote(`${origin}/r/${revision}`);
-  const network = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(origin).hostname)
-    ? ' --network local'
-    : '';
+  const source = `${origin}/r/${revision}`;
   const commands = [
     {
       id: 'install',
       label: 'Install and remix',
-      command: `curl -fsSL https://napplet.soy/install.sh | sh -s -- remix ${source} my-remix${network}`,
+      command: remixCommand(source),
     },
     {
       id: 'installed',
       label: 'Already have the CLI?',
-      command: `napplet-space remix ${source} my-remix${network}`,
+      command: remixCommand(source, false),
     },
   ];
   return (
@@ -72,9 +69,9 @@ export function RemixButton({ revision, title }: { revision: string; title: stri
           </div>
         ))}
         <p className="muted">
-          No Bun or Node installation needed. Run a command in your terminal, then open the new
-          folder in your coding agent. Source and license files are preserved when the author
-          provides an archive; otherwise the verified HTML is your starting point.
+          No website account, Bun or Node installation needed. Run a command in your terminal, then
+          open the new folder in your coding agent. Source and license files are preserved when the
+          author provides an archive; otherwise the verified HTML is your starting point.
         </p>
         <a href="/cli">Install the CLI ↗</a>
         {error && <p role="status">{error}</p>}

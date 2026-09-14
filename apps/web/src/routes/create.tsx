@@ -1,8 +1,8 @@
 import { createFileRoute, type SearchSchemaInput } from '@tanstack/react-router';
 import { z } from 'zod';
-import { Check, Copy, Terminal, WandSparkles, ArrowUpRight } from 'lucide-react';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { WandSparkles, ArrowUpRight } from 'lucide-react';
+import { StarterCommand } from '@/components/starter-command';
+import { WalkthroughVideo } from '@/components/creator-walkthrough';
 export const Route = createFileRoute('/create')({
   validateSearch: (input: SearchSchemaInput & { template?: string }) =>
     z
@@ -24,9 +24,6 @@ export const Route = createFileRoute('/create')({
 });
 function Create() {
   const { template } = Route.useSearch();
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState('');
-  const command = `curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet${template === 'boilerplate' ? '' : ` --template ${template}`}`;
   return (
     <section className="create-page">
       <span className="eyebrow">FROM “WHAT IF” TO “LOOK AT THIS”</span>
@@ -40,34 +37,15 @@ function Create() {
         <br />
         open your favorite coding agent, and follow your curiosity.
       </p>
-      <div className="terminal-box">
-        <div>
-          <Terminal size={15} />
-          <span>IN YOUR TERMINAL</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Copy starter command"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(command);
-                setCopied(true);
-              } catch {
-                setError('Select the command below and copy it manually.');
-              }
-            }}
-          >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-          </Button>
-        </div>
-        <code>
-          <span>$</span> {command}
-        </code>
-      </div>
-      {error && <p role="status">{error}</p>}
+      <p className="account-free-note">Create, remix and publish. No website account needed.</p>
+      <StarterCommand template={template} />
       <p className="command-note">
         macOS and Linux. No Bun or Node installation needed. Git is required.
         <a href="/cli"> Installation help and downloads ↗</a>
+      </p>
+      <p className="command-note">
+        Publishing uses a Nostr identity. The CLI can create one or connect yours; you don’t need to
+        sign in here.
       </p>
       <div className="creation-steps">
         <article>
@@ -106,6 +84,12 @@ function Create() {
           Meet napplet <ArrowUpRight size={15} />
         </a>
       </div>
+      <section id="walkthrough" className="create-walkthrough" aria-labelledby="walkthrough-title">
+        <span className="eyebrow">AN IDEA HAS LEGS</span>
+        <h2 id="walkthrough-title">From “what if” to “your turn.”</h2>
+        <p>A 30-second tour. Your tools, your pace. No website sign-in.</p>
+        <WalkthroughVideo />
+      </section>
     </section>
   );
 }

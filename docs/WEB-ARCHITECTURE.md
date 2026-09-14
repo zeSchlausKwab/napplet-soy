@@ -31,6 +31,14 @@ SSR renders the surrounding site. Napplet HTML is never imported, evaluated, or 
 
 Anonymous public pages should contain useful content with JavaScript disabled. Playing, wallet connection, and signing require JavaScript. Social crawlers receive the title, description, and a verified/processed cover without running a napplet. There is no need for React Server Components in the initial implementation.
 
+A06 adds the actual starter command directly to the server-rendered hero, explicitly
+allowing creation, remixing and CLI publication without website sign-in. The hero,
+creation page, CLI help and remix dialog share a command builder. The walkthrough
+is a checked-in, offline-rendered MP4 with a poster, captions and transcript. Native
+controls load video only on demand; no Remotion runtime ships to the browser. Static
+public files support single byte ranges so video seeking works through the Bun server.
+See [Onboarding](ONBOARDING.md) for regeneration, request boundaries and local verification.
+
 ## 2. Bun server and application boundaries
 
 One `apps/web` deployment handles SSR, route data, and `/api/v1/*` resource endpoints. This refines the original proposal's separate `apps/api`: start with one web service and a separately running worker. Put shared backend operations in `packages/backend` so workers and server handlers can call them without HTTP requests to our own web server.
