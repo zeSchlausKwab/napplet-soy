@@ -26,9 +26,14 @@ PORT=3020 bun run dev:prod publicdev
 
 This discovers signed napplet manifests from Nostr relays through Applesauce and caches verified Blossom artifacts. Repeat starts reuse a 15-minute cache. Public entries resolve through naddr/snapshot routes; unsupported required capabilities are shown explicitly. No Nappelin/HTTP directory is used. See [public development and OG previews](docs/PUBLIC-DEVELOPMENT.md).
 
-Open a card marked **Ready to play**, then click **Play napplet**. The player now provides the upstream NAP shim, scoped saves, virtual file exports, verified resource loading, and Nostr reads. File exports appear below the player for download. Napplet-initiated writes remain disabled. Connecting or disconnecting in the host notifies the running napplet and isolates its account data. See the [public runtime capabilities and limits](docs/PUBLIC-RUNTIME.md).
+Click a playable card's preview to run it inline. Only one card runs at a time; fullscreen preserves its session, and scrolling it away stops it. Click its title for the detail page. The player provides the upstream NAP shim, scoped saves, virtual file exports, verified resource loading, and Nostr reads. File exports appear below the player for download. Napplet-initiated writes remain disabled. Connecting or disconnecting in the host notifies the running napplet and isolates its account data. See the [public runtime capabilities and limits](docs/PUBLIC-RUNTIME.md).
 
 Every napplet page includes server-rendered Open Graph metadata and a 1200×630 PNG preview. `SPACE_SITE_ORIGIN` controls absolute share URLs; the VPS script sets it from the deployment domain.
+
+The gallery searches and filters the full retained index, with 24 results per page.
+Paste a portable Nostr napplet link into search to discover a creation not yet
+indexed here. Cold links trigger a bounded relay lookup, including server-rendered
+share metadata once the signed manifest is available. See [discovery and OG](docs/DISCOVERY.md).
 
 ## ContextVM starter
 
@@ -110,14 +115,20 @@ Publication returns `indexed` once the website confirms the exact current/snapsh
 
 ## Deploy to a VPS
 
-Point your website hostname, `blossom.<website-hostname>` and `git.<website-hostname>` at a dedicated Debian/Ubuntu VPS with systemd, SSH access, and reachable ports 80/443:
+Point your website hostname, `relay.<website-hostname>`, `blossom.<website-hostname>` and `git.<website-hostname>` at a Debian/Ubuntu VPS with systemd, SSH access, and reachable ports 80/443:
 
 ```sh
 bun run deploy --host root@your-vps --domain napplet.example
-# Optional: --blossom-domain files.example --git-domain source.example
+# Optional: --relay-domain relay.example --blossom-domain files.example --git-domain source.example
+# Use --shared-caddy when sharing an existing Caddy installation with other sites.
 ```
 
 The script installs Bun, Caddy, PM2 and pinned Go/Rust toolchains, creates an unprivileged service account, uploads a source archive excluding local secrets and dependencies, builds on the VPS, tests a candidate release on a loopback port, and activates it under PM2. Caddy manages HTTPS, and systemd restores both services after a reboot. Failed activation attempts restore the previous release/configuration where available. See [deployment details](docs/DEPLOYMENT.md).
+
+The managed public relay is `wss://relay.napplet.soy`. The old `wss://napplet.soy/relay`
+address remains compatible with existing publications and project settings. CLI
+0.4.1 uses the subdomain by default. Deployment also installs daily verified state
+backups; see [backup and recovery](docs/RECOVERY.md) for restoration and off-VPS copies.
 
 ## Verify
 
@@ -142,7 +153,7 @@ Our publishing contract is standard NIP-5D manifests, public relays, retrievable
 
 ## What is still ahead
 
-The gallery merges the persistent SQLite relay index and optional publicdev collection by Nostr identity. Examples enter through the same discovery path as other creations; Featured is an explicit administrator selection. Its separate PM2 worker verifies manifests, downloads artifacts and resolves linked previews. Signed naming claims, comments, likes and zaps are implemented; full catalog pagination remains planned. The public installer now distributes standalone macOS/Linux creator packages. The player supports the single-HTML profile and documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
+The gallery merges the persistent SQLite relay index and optional publicdev collection by Nostr identity. Examples enter through the same discovery path as other creations; Featured is an explicit administrator selection. Its separate PM2 worker verifies manifests, downloads artifacts and resolves linked previews. Signed naming claims, comments, likes, zaps, full-index pagination and inline playback are implemented. The public installer distributes standalone macOS/Linux creator packages. The player supports the single-HTML profile and documented playback NAP domains. ContextVM's browser bridge, user-created site layouts, publishing permissions, and full upstream conformance remain ahead; composability is outside the current scope.
 
 The deployment script includes the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), [GRASP source hosting](docs/GRASP.md), and [persistent website index](docs/INDEXING.md). Creators can claim permanent `/@handle/slug` links, remix pinned source, and comment, like or zap from detail pages. See [remixing](docs/REMIXING.md) and [community actions and limits](docs/COMMUNITY.md).
 

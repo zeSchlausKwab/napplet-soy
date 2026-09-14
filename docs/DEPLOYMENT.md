@@ -437,3 +437,59 @@ hostname to an existing Napplet deployment.
 
 The same rollout adds [paged/inline discovery and cold-link OG](DISCOVERY.md), plus
 [daily state backups and an offline restore command](RECOVERY.md).
+
+## Live relay and discovery release — 2026-09-14
+
+Active release: `20260914121312140-13099`, source through `045269f`. Previous release
+`20260914110729417-3123` remains available. The operator requested this deployment;
+it used the existing shared-Caddy, port 3040, legacy CPU and administrator profile.
+CLI 0.4.1 downloads were uploaded and verified before website activation; all four
+platform artifacts are recorded in `apps/cli/distribution/release-0.4.1.json`.
+
+Caddy obtained a certificate for `relay.napplet.soy`. HTTPS NIP-11 and WSS read
+subscriptions pass at both `wss://relay.napplet.soy` and the historical
+`wss://napplet.soy/relay`, as well as the GRASP relay. Internal loopback relay reads
+also retain their `/relay` route. Each allowlisted alias has its own NIP-42 URL
+binding. Release markers preserve the appropriate relay origins and index hints
+during rollback to versions predating the subdomain.
+
+The shared parent Caddyfile is unchanged:
+`be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f`.
+Napplet's fragment changed to add its new hostname:
+`ef99cf551dca7c36d7ab82b6075c36bd537034f19e402d63648784b9d65e3c5e`.
+The other site, `schlaustronics.com`, still returns HTTPS 200. No DNS changes or
+VPS reboot were required. All five Napplet PM2 services and Caddy are healthy.
+
+Validation passed typechecking and 151 application tests, Go race/relay checks,
+the native relay/Blossom/GRASP deployment suites, the index and cold-discovery
+service tests, five packaged macOS CLI/installer tests, and eight browser checks
+against the public deployment. The cold-discovery fixture proves exact Nostr
+lookup from an empty catalog, signed SSR OG metadata and PNG delivery, delayed
+download navigation, single inline playback, fullscreen session continuity and
+mobile offscreen cleanup. It does not publish test events to public relays.
+
+Public rollout checks additionally exercised pagination (24 entries on page one,
+26 playable matches at verification), empty Featured selection, the user's Impact
+Yard remix screenshot and sandbox, fullscreen continuity, both remix commands,
+admin rejection, redirects and download availability. The standalone rollout
+probe initially clicked a stale page-two card during page-one navigation; waiting
+for page-one pagination content corrected the probe, with no application change.
+Managed-relay hints now use the subdomain. Existing Damus query timeout diagnostics
+remain visible; the index heartbeat is fresh and the other relays remain configured.
+No comments, payments, name claims or creator publications were sent by these checks.
+
+The first production backup is
+`/var/backups/napplet-space/napplet-20260914T122749Z.tar.gz` with its adjacent checksum.
+All 264 file hashes passed. A separate root-only restore directory on the VPS passed
+four SQLite `quick_check` checks and four Git `fsck --full` checks; the rehearsal
+directory was removed afterward. Production state was not replaced. The five
+services restarted successfully after the backup's brief copy pause, and public
+health checks passed again. The enabled timer next runs on September 15 around
+03:22 UTC, then daily with its configured jitter; fourteen verified archives are
+retained. This verifies archive restoration, not a complete rebuild onto a new VPS.
+
+Backups currently remain on the VPS. Automatic approval review declined the proposed
+copy to this laptop because the archive includes production service keys and that
+sensitive destination was not explicitly authorized. No off-VPS copy or automatic
+offsite replication was performed. See [recovery](RECOVERY.md) for operator copy and
+restore instructions.

@@ -13,14 +13,18 @@ bun run test:relay              # Go race checks + Applesauce process integratio
 bun run dev:down                # stop this checkout's PM2 processes; retain data
 ```
 
-Platform development requires Go 1.21+ with automatic toolchain downloads enabled and a C compiler. Xcode command-line tools provide the compiler on macOS; `build-essential` provides it on Debian/Ubuntu. The build runner selects Go **1.25.0** explicitly. The VPS script installs that version using pinned official SHA-256 checksums. Ordinary creators using an already generated napplet project still only need Bun and their coding tool.
+Platform development requires Go 1.21+ with automatic toolchain downloads enabled and a C compiler. Xcode command-line tools provide the compiler on macOS; `build-essential` provides it on Debian/Ubuntu. The build runner selects Go **1.25.0** explicitly. The VPS script installs that version using pinned official SHA-256 checksums. Ordinary creators can use the standalone CLI and their existing coding tool without installing Bun or Go.
 
-The direct local endpoint is `ws://127.0.0.1:19347/relay`. A production-build launch also exposes `ws://localhost:8080/relay` through Caddy. The VPS endpoint is `wss://<domain>/relay`, requiring no additional DNS record. NIP-42 accepts the configured public URL and the literal direct listener address; arbitrary forwarded headers cannot choose the authentication URL. NIP-11 is available at the corresponding HTTP(S) URL with `Accept: application/nostr+json`. Internal health is at `http://127.0.0.1:19347/health`; it reports service, build fingerprint, and instance identity. Health is only ready after the search rebuild finishes.
+The direct local endpoint is `ws://127.0.0.1:19347/relay`. A production-build launch also exposes `ws://localhost:8080/relay` through Caddy. The default VPS endpoint is `wss://relay.<domain>`, with its own DNS record and Caddy TLS certificate. The previous `wss://<domain>/relay` endpoint remains an explicitly configured alias. Both paths serve the same events. NIP-42 binds authentication to the selected configured public URL/alias or literal direct listener address (root and `/relay`); arbitrary forwarded headers cannot choose the authentication URL. NIP-11 is available at the corresponding HTTP(S) URL with `Accept: application/nostr+json`. Internal health is at `http://127.0.0.1:19347/health`; it reports service, build fingerprint, and instance identity. Health is only ready after the search rebuild finishes.
 
 Any Nostr client can query, for example:
 
 ```json
-["REQ", "gallery", {"kinds": [35129, 15129, 5129], "search": "\"lunar orbit\"", "#t": ["visuals"], "limit": 20}]
+[
+  "REQ",
+  "gallery",
+  { "kinds": [35129, 15129, 5129], "search": "\"lunar orbit\"", "#t": ["visuals"], "limit": 20 }
+]
 ```
 
 No Space hashtag, snapshot pointer, API key, or special event kind is required. Text search includes retained content, title/name, description/about, and topics. Words are combined with AND; double quotes select phrases. It uses Bleve's standard analyzer, not semantic search or a language-detection model. Ordinary author, kind, ID, time, and tag filters still apply. Results sort by descending timestamp then ascending event ID. NIP-50 extensions such as `language:` are not implemented. COUNT/NIP-45 and management/NIP-86 are not advertised or enabled.

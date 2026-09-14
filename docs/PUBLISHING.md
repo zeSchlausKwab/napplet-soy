@@ -22,9 +22,9 @@ An ordinary `publish` checks the current project. If a different unfinished rele
 | Profile | Primary relay                | Blossom                       | GRASP                     | Website route origin    |
 | ------- | ---------------------------- | ----------------------------- | ------------------------- | ----------------------- |
 | local   | `ws://127.0.0.1:19347/relay` | `http://127.0.0.1:8081`       | `http://127.0.0.1:8082`   | `http://localhost:8080` |
-| public  | `wss://napplet.soy/relay`    | `https://blossom.napplet.soy` | `https://git.napplet.soy` | `https://napplet.soy`   |
+| public  | `wss://relay.napplet.soy`    | `https://blossom.napplet.soy` | `https://git.napplet.soy` | `https://napplet.soy`   |
 
-Public defaults describe the intended deployment; they have not been deployed or tested here. Public mode additionally mirrors manifests to `wss://relay.damus.io` and `wss://nos.lol`. Local mode has no public mirrors or fallback. This implementation was verified exclusively against isolated local services, with no public event writes.
+The managed public defaults are deployed at napplet.soy. Public mode additionally mirrors manifests to `wss://relay.damus.io` and `wss://nos.lol`. Local mode has no public mirrors or fallback. Automated publication tests use isolated services; public deployment checks verify existing content without writing test publications. See the dated verification records in [deployment](DEPLOYMENT.md).
 
 Override destinations with `--relay`, `--blossom`, `--grasp`, `--site` and repeated `--mirror`. Alternatively put `relay`, `blossom`, `grasp`, `site` and `mirrors` in `napplet.json.publish`; an empty `mirrors` array disables mirrors. Flags take precedence over project settings and defaults. Persist custom defaults in the project if subsequent ordinary publishes should use them without flags. `--resume` uses the journal's original destinations; conflicting overrides are rejected.
 
@@ -86,8 +86,7 @@ bun run test:publish:native
 
 The deterministic tests cover interrupted uploads, lost relay acknowledgements, unchanged retries, metadata-only updates, modified working/frozen source, forged saved signatures, competing remote versions, concurrent processes, identity/target isolation, failed mirrors and repair of missing data. Native service tests use the actual Khatru/GRASP/Blossom implementations, the browser check, an independent Nostr wire reader, tar extraction and independent Git clone/fetch. An opt-in test drives the real CLI across processes with temporary native Keychain credentials.
 
-Still ahead: persistent website ingestion and confirmed playable links, authenticated names, public installer, automatic media descriptors, remix, additional build profiles, explicit journal adoption/conflict recovery, Linux/Windows native keystore acceptance, and publication/discovery in an external public client. No VPS or public hosting verification is claimed.
-
+Persistent website ingestion, confirmed playable links, authenticated names, the public installer, preview descriptors and remix are implemented. Additional build profiles, explicit journal adoption/conflict recovery, broader native keystore acceptance, and publication/discovery acceptance in an external public client remain separate work. See [the interoperability contract](PROTOCOL.md) and the dated [deployment verification](DEPLOYMENT.md).
 
 ## Visible project destinations and previews
 
@@ -101,7 +100,7 @@ include explicit public and local profiles:
   "publish": {
     "networks": {
       "public": {
-        "relay": "wss://napplet.soy/relay",
+        "relay": "wss://relay.napplet.soy",
         "blossom": "https://blossom.napplet.soy",
         "grasp": "https://git.napplet.soy",
         "site": "https://napplet.soy",
