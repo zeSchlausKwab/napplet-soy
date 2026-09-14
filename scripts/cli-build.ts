@@ -11,6 +11,14 @@ const root = resolve(import.meta.dir, '..');
 const version = (await Bun.file(join(root, 'apps/cli/distribution/version.json')).json())
   .version as string;
 if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Invalid CLI version');
+if (
+  !(await Bun.file(join(root, 'apps/web/public/install.sh')).text())
+    .split('\n')
+    .includes(`version=${version}`)
+)
+  throw new Error(
+    'Update the installer version to match distribution/version.json before building a release.',
+  );
 if (Bun.version !== '1.3.11') throw new Error('Build releases with pinned Bun 1.3.11.');
 const targets = {
   'darwin-arm64': 'bun-darwin-arm64',
