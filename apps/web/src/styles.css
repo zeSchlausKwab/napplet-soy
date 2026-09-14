@@ -1727,10 +1727,12 @@ pre:focus-visible {
 }
 
 /* Organic discovery shares the gallery's card, actions and single active player. */
-.card-social { display: flex; align-items: center; flex-wrap: wrap; gap: .15rem; margin: .6rem -.5rem .2rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.card-social { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: .15rem; margin: .6rem -.5rem .2rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .card-social [aria-pressed=true] { color: var(--primary); }
 .card-social button:disabled { opacity: .7; }
 .card-social .card-zap { margin-left: auto; }
+.card-social .card-share { min-width: 36px; padding-inline: .5rem; }
+.card-social .card-share:first-child { margin-left: auto; }
 .card-sats { font-size: .68rem; opacity: .8; }
 .card-social-feedback { font-size: .75rem; margin: .5rem 0; overflow-wrap: anywhere; }
 .social-discovery { margin: 0 0 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }

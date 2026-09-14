@@ -183,10 +183,21 @@ function GalleryPendingAction() {
 }
 
 const amount = (value: number | null | undefined) => (value == null ? '—' : value.toLocaleString());
-export function GalleryCardSocial({ napplet }: { napplet: PublicNapplet }) {
+export function GalleryCardSocial({
+  napplet,
+  children,
+}: {
+  napplet: PublicNapplet;
+  children: ReactNode;
+}) {
   const social = useContext(Context),
     { pubkey, ready } = useNostr();
-  if (!social) return null;
+  if (!social)
+    return (
+      <div className="card-social" role="group" aria-label={`Social actions for ${napplet.title}`}>
+        {children}
+      </div>
+    );
   const counts = social.data?.counts[napplet.revisionId];
   const feedback = social.message?.id === napplet.revisionId ? social.message.text : null;
   return (
@@ -253,6 +264,7 @@ export function GalleryCardSocial({ napplet }: { napplet: PublicNapplet }) {
             </Button>
           }
         />
+        {children}
       </div>
       {feedback && (
         <p className="card-social-feedback" role="status">

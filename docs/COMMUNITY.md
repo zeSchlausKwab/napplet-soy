@@ -76,6 +76,15 @@ canonical portable detail route with `#comments` and focuses the composer after 
 loads. A direct logged-out hash link focuses the sign-in control, retaining the focus
 intent after connecting. Comment likes and replies follow the same sign-in rule.
 
+Gallery and ranking cards also offer an icon-only **Share** control (implemented and
+verified locally on 2026-09-14; not deployed yet). It copies this site's portable
+`/n/<naddr>` detail URL, or `/r/<event-id>` for an entry without an address. Sharing
+does not require signing in or depend on social counts, and does not navigate or
+start playback. Success briefly changes the icon to a checkmark with a screen-reader
+announcement. If clipboard access is blocked, a dialog provides a selected, read-only
+URL for manual copying; closing it restores focus to the share button. Example cards
+use the same control. Local browser checks cover these paths and mobile card/rail fit.
+
 Most liked, Most zapped and Most commented are scroll-snap carousels with manual arrows,
 keyboard/touch scrolling and reduced-motion handling. They rank the full matching
 indexed collection, independently of the grid's current page, and obey the same

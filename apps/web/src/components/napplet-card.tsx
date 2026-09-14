@@ -3,6 +3,7 @@ import { ArrowUpRight, Play, Info } from 'lucide-react';
 import { TopicTags } from './topic-tags';
 import { Player } from './player';
 import { GalleryCardSocial } from './gallery-social';
+import { CardShare } from './card-share';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { NappletCard as Card } from '../../../../packages/backend/src/catalog';
 import {
@@ -43,6 +44,16 @@ export function NappletCard({
   }, [playing]);
   const external = 'provenance' in napplet;
   const playable = !external || napplet.availability === 'ready';
+  const share = (
+    <CardShare
+      title={napplet.title}
+      path={
+        napplet.naddr
+          ? `/n/${napplet.naddr}`
+          : `/r/${external ? napplet.revisionId : napplet.snapshotId}`
+      }
+    />
+  );
   const link = external
     ? publicLink(napplet)
     : {
@@ -119,7 +130,17 @@ export function NappletCard({
           )}
         </span>
       </div>
-      {external && <GalleryCardSocial napplet={napplet} />}
+      {external ? (
+        <GalleryCardSocial napplet={napplet}>{share}</GalleryCardSocial>
+      ) : (
+        <div
+          className="card-social"
+          role="group"
+          aria-label={`Social actions for ${napplet.title}`}
+        >
+          {share}
+        </div>
+      )}
       <TopicTags topics={napplet.topics.slice(0, 3)}>
         {napplet.topics.length > 3 && (
           <Link {...link} aria-label={`View all tags for ${napplet.title}`}>
