@@ -1,5 +1,45 @@
 # Upstream observations
 
+## Creator skills follow-up, 2026-09-14
+
+Inspected live Git checkouts of [napplet/boilerplate at cbbebe9](https://github.com/napplet/boilerplate/tree/cbbebe9bd56271277b054535c0a8d720a588f61d)
+and [napplet/napplet at 976ad05](https://github.com/napplet/napplet/tree/976ad0549c38f93d4ed418d3ea59a615a7e5fd7f).
+These supersede the earlier template observations below for creator guidance;
+no upstream installers, package scripts, or skills were executed or installed.
+
+- The current boilerplate vendors no skill bodies. Its AGENTS.md/README point to
+  `npx skills add napplet/napplet`; cached GitHub views can still show the older
+  `.codex/skills` directory. The live repository contains eight skills:
+  `napplet-make`, `napplet-design`, `napplet-ui`, `napplet-build`, `napplet-sdk`,
+  `napplet-test`, `napplet-port`, and `napplet-interop`.
+- This is a useful maintained source for authoring guidance, SDK examples,
+  sandbox boundaries, optional-domain checks, and conformance workflows.
+  Both repositories are MIT licensed; redistribution must retain attribution.
+- Their workflow assumes `napplet create/init/paja`, `.napplet/config.json`,
+  pnpm/Vite/TypeScript and a built `dist/index.html`. Our default workflow uses
+  `napplet-space new/dev/check/publish`, `napplet.json`, and editable single-file
+  HTML. Blindly copying the skills would teach commands and files we do not ship.
+- Our generated AGENTS.md currently requires `window.napplet.shell.ready()` and
+  teaches `shell.supports()`. These are additions in our runtime prelude, not
+  surfaces shipped by the upstream shim/SDK. Current upstream guidance uses
+  injected domain property presence. Remove those app-side dependencies when
+  adding skills and verify the resulting artifact in another runtime.
+- Package domains are not a claim about our host grants: for example, upstream
+  examples cover publishing and ContextVM, while our playback policy currently
+  denies social writes and does not expose the ContextVM bridge. Skills must
+  distinguish protocol guidance from the target host's supported operations.
+
+Recommended next implementation: ship a pinned, attributed skill bundle locally
+with each generated project, with explicit adaptations for our CLI commands and
+runtime profile. Provide an additive update path for existing projects, protect
+creator edits, and verify discovery by supported coding agents. Keep the fast
+single-file starter; consider the upstream TypeScript/Vite boilerplate as an
+optional template. Its compact productivity-app styling is guidance, not a
+protocol requirement for games, visual experiments, or memes. The skills feature
+and runtime portability correction remain unimplemented at this checkpoint.
+
+## Initial research, 2026-09-11
+
 Checked 2026-09-11. Read source and documentation; no deployment, installer execution, live publication, or interoperability test was performed. Commits below are research snapshots, not a proven compatible release set. Package source does not establish that matching public release binaries exist.
 
 Implementation follow-up: the initial application and local Caddy/PM2 deployment mode now exist. [IMPLEMENTATION.md](IMPLEMENTATION.md) records the tested package combination and verification boundaries. The upstream publish/GRASP/Blossom interoperability claims below remain unverified. Applesauce is the selected Nostr SDK; [its official documentation](https://applesauce.build/introduction/getting-started.html) and installed package types informed the event-store, relay, and signer adapters.
