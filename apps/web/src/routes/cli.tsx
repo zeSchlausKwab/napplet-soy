@@ -26,6 +26,8 @@ function CliHelp() {
           <br />
           napplet-space dev
           <br />
+          napplet-space build
+          <br />
           napplet-space publish
         </code>
       </div>
@@ -34,8 +36,9 @@ function CliHelp() {
           <span>01</span>
           <h2>No runtime setup</h2>
           <p>
-            The CLI includes its runtime. You do not need to install Bun, Node, npm, or project
-            dependencies. Your creation is ordinary HTML, CSS, and JavaScript.
+            The CLI prepares a private Node/pnpm toolchain and installs the starter’s locked
+            dependencies. No global Bun, Node, or npm installation is needed. The TypeScript project
+            builds into a self-contained HTML napplet.
           </p>
         </article>
         <article>
@@ -55,6 +58,21 @@ function CliHelp() {
           </p>
         </article>
       </div>
+      <h2>The upstream starter, with skills included</h2>
+      <p className="command-note">
+        New projects use a pinned version of{' '}
+        <a href="https://github.com/napplet/boilerplate">napplet/boilerplate</a>, including its SDK,
+        Vite plugin, documentation, and eight official Napplet skills. Open your coding agent in the
+        project folder; AGENTS.md and CLAUDE.md point it to the instructions. Run{' '}
+        <code>napplet-space run verify</code> for the upstream checks or{' '}
+        <code>napplet-space run test:conformance</code> for its reference harness.
+      </p>
+      <p className="command-note">
+        For an existing creation, run <code>napplet-space skills update</code> in its folder after
+        updating the CLI. This adds the bundled skills and preserves your edits. The project’s{' '}
+        <code>docs/napplet-space.md</code> explains publishing and supported host capabilities.
+        Explicit example starters remain available through <code>--template</code>.
+      </p>
       <div className="creation-steps">
         <article>
           <h2>macOS</h2>

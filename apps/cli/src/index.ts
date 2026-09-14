@@ -10,9 +10,15 @@ import { checkPublication } from './publish-check';
 import { preview, checkProject, doctor } from './local';
 import { installBrowser } from './browser';
 import { commandName, version } from './distribution';
+import { setupProject, buildProject, projectTool, installConformanceBrowser } from './toolchain';
+import { installCreatorSkills } from './creator-kit';
 
 const help = `Usage:
-  bun run napplet new <folder> [--template soft-orbit] [--identity create|connect|later]
+  bun run napplet new <folder> [--template boilerplate] [--identity create|connect|later] [--no-install]
+  bun run napplet setup|build [--project <folder>]
+  bun run napplet run <package-script> [arguments...]
+  bun run napplet exec <project-tool> [arguments...]
+  bun run napplet skills update [--project <folder>]
   bun run napplet account create|show|list|check
   bun run napplet account connect [--stdin]
   bun run napplet account import [--stdin]
@@ -62,6 +68,17 @@ const publicAccount = (a: Account, network: Network) => ({
   network,
 });
 try {
+  const raw = process.argv.slice(2);
+  if (raw[0] === 'run' || raw[0] === 'exec') {
+    if (!raw[1] || raw[1].startsWith('-'))
+      throw new AccountError('USAGE', 'Use run <package-script> or exec <project-tool>.');
+    if (!(await Bun.file(join(process.cwd(), 'node_modules/.modules.yaml')).exists()))
+      await setupProject(process.cwd(), controller.signal);
+    if (raw[0] === 'run' && raw[1] === 'test:conformance')
+      await installConformanceBrowser(process.cwd(), controller.signal);
+    await projectTool(process.cwd(), raw, controller.signal);
+    process.exit(0);
+  }
   let parsed;
   try {
     parsed = parseArgs({
@@ -69,6 +86,7 @@ try {
       allowPositionals: true,
       options: {
         template: { type: 'string' },
+        'no-install': { type: 'boolean' },
         identity: { type: 'string' },
         network: { type: 'string', default: 'public' },
         stdin: { type: 'boolean' },
@@ -148,7 +166,9 @@ try {
   if (!['publish', 'status'].includes(command) && publishingOptions)
     throw new AccountError('USAGE', 'Publication options are only valid for publish/status.');
   if (
-    (values.project && !['publish', 'status', 'dev', 'check'].includes(command)) ||
+    (values['no-install'] && command !== 'new') ||
+    (values.project &&
+      !['publish', 'status', 'dev', 'check', 'setup', 'build', 'skills'].includes(command)) ||
     ((values.port || values['no-open']) && command !== 'dev')
   )
     throw new AccountError(
@@ -168,7 +188,8 @@ try {
         'USAGE',
         'Use new <folder> [--template name] [--identity create|connect|later].',
       );
-    const directory = await scaffold(process.cwd(), action, values.template ?? 'soft-orbit');
+    const template = values.template ?? 'boilerplate';
+    const directory = await scaffold(process.cwd(), action, template);
     createdProject = directory;
     let account = values.identity === 'later' ? null : await accounts.current();
     let identity = values.identity;
@@ -195,6 +216,10 @@ try {
       config.creator = { pubkey: account.pubkey, network };
       await Bun.write(configPath, JSON.stringify(config, null, 2) + '\n');
     }
+    if (template === 'boilerplate' && !values['no-install']) {
+      await setupProject(directory, controller.signal);
+      await buildProject(directory, controller.signal);
+    }
     if (json)
       console.log(
         JSON.stringify({ directory, account: account ? publicAccount(account, network) : null }),
@@ -203,7 +228,25 @@ try {
       console.log(
         `\nYour napplet is ready at ${directory}\n\n  cd ${action}\n  napplet-space dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nRun napplet-space publish to share it.`,
       );
-  } else if (['dev', 'check', 'doctor', 'browser'].includes(command)) {
+  } else if (command === 'skills') {
+    if (
+      action !== 'update' ||
+      argument ||
+      extra.length ||
+      values.template ||
+      values.identity ||
+      values.stdin ||
+      values['passphrase-stdin']
+    )
+      throw new AccountError('USAGE', 'Use skills update [--project folder].');
+    const result = await installCreatorSkills(values.project ?? process.cwd());
+    console.log(
+      json
+        ? JSON.stringify(result)
+        : `${result.updated.length} skill/support files updated. ${result.conflicts.length} edited files preserved.${result.conflicts.length ? '\n' + result.conflicts.join('\n') : ''}`,
+    );
+    if (result.conflicts.length) process.exitCode = 1;
+  } else if (['dev', 'check', 'doctor', 'browser', 'setup', 'build'].includes(command)) {
     if (
       values.template ||
       values.identity ||
@@ -214,7 +257,16 @@ try {
       (command === 'browser' ? action !== 'install' : !!action)
     )
       throw new AccountError('USAGE', 'Use dev, check, doctor, or browser install.');
-    if (command === 'dev') {
+    if (command === 'setup' || command === 'build') {
+      const directory = values.project ?? process.cwd();
+      if (command === 'setup') await setupProject(directory, controller.signal);
+      else await buildProject(directory, controller.signal);
+      console.log(
+        json
+          ? JSON.stringify({ status: command === 'setup' ? 'ready' : 'built' })
+          : `${command === 'setup' ? 'Project dependencies ready.' : 'Built dist/index.html.'}`,
+      );
+    } else if (command === 'dev') {
       const port = Number(values.port ?? 4173);
       if (
         !/^\d+$/.test(values.port ?? '4173') ||
@@ -420,7 +472,7 @@ try {
     console.error(`${safe.code}: ${safe.message}`);
     if (createdProject)
       console.error(
-        `Preview project retained at ${createdProject}. Finish creator setup with the account commands.`,
+        `Preview project retained at ${createdProject}. Use setup/build for project tools or the account commands for creator setup.`,
       );
   }
   process.exitCode = 1;

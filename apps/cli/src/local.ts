@@ -8,6 +8,7 @@ import { previewAssets } from './preview/assets';
 import { startPreviewServer } from './preview/server';
 import { gitAvailable } from './prerequisites';
 import { version } from './distribution';
+import { watchProject } from './toolchain';
 
 export async function preview(
   directory: string,
@@ -17,10 +18,13 @@ export async function preview(
   signal: AbortSignal,
 ) {
   const root = await realpath(directory);
-  const server = startPreviewServer(pathToFileURL(root + '/'), port, false, await previewAssets());
-  const stop = () => server.stop(true);
-  signal.addEventListener('abort', stop, { once: true });
+  const config = await Bun.file(new URL('napplet.json', pathToFileURL(root + '/'))).json();
+  const watcher = config.entry === 'dist/index.html' ? await watchProject(root, signal) : undefined;
+  let server: ReturnType<typeof startPreviewServer> | undefined;
+  const stop = () => server?.stop(true);
   try {
+    server = startPreviewServer(pathToFileURL(root + '/'), port, false, await previewAssets());
+    signal.addEventListener('abort', stop, { once: true });
     const response = await fetch(new URL('revision', server.url));
     if (!response.ok)
       throw new AccountError(
@@ -30,7 +34,7 @@ export async function preview(
     console.log(
       json
         ? JSON.stringify({ url: server.url.href })
-        : `Local napplet preview: ${server.url}\nEdit index.html; the preview reloads after each save. Press Ctrl+C to stop.`,
+        : `Local napplet preview: ${server.url}\nEdit ${watcher ? 'src/main.ts, src/styles.css or index.html' : 'index.html'}; the preview reloads after each build/save. Press Ctrl+C to stop.`,
     );
     if (open && !json) {
       const executable = Bun.which(process.platform === 'darwin' ? 'open' : 'xdg-open');
@@ -44,12 +48,26 @@ export async function preview(
       }
     }
     if (!signal.aborted)
-      await new Promise<void>((resolve) =>
-        signal.addEventListener('abort', () => resolve(), { once: true }),
-      );
+      await Promise.race([
+        new Promise<void>((resolve) =>
+          signal.addEventListener('abort', () => resolve(), { once: true }),
+        ),
+        ...(watcher
+          ? [
+              watcher.exited.then(() => {
+                if (!signal.aborted)
+                  throw new AccountError(
+                    'BUILD_WATCH',
+                    'The Vite build watcher stopped. See its output above.',
+                  );
+              }),
+            ]
+          : []),
+      ]);
   } finally {
     signal.removeEventListener('abort', stop);
     stop();
+    await watcher?.stop();
   }
 }
 

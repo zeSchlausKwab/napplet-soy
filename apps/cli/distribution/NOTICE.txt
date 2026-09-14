@@ -12,3 +12,9 @@ or on the first publication check and is subject to its own license terms.
 The executable also bundles JavaScript dependencies. Their license and notice
 files are included in licenses. This directory may include notices for platform
 build dependencies that are not bundled in the executable.
+
+This executable embeds snapshots of napplet/boilerplate and napplet/napplet's
+skills, copyright their respective contributors, under MIT. Their licenses are
+in licenses/napplet-boilerplate-MIT.txt and licenses/napplet-skills-MIT.txt; exact
+revisions are recorded in release.json. Node and pnpm are downloaded separately
+from their official releases and retain the licenses included in their archives.

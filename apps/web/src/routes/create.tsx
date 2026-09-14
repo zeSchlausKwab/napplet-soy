@@ -9,6 +9,7 @@ export const Route = createFileRoute('/create')({
       .object({
         template: z
           .enum([
+            'boilerplate',
             'soft-orbit',
             'tiny-tennis',
             'plasma-garden',
@@ -16,7 +17,7 @@ export const Route = createFileRoute('/create')({
             'very-important',
             'pixel-rain',
           ])
-          .catch('soft-orbit'),
+          .catch('boilerplate'),
       })
       .parse(input),
   component: Create,
@@ -25,7 +26,7 @@ function Create() {
   const { template } = Route.useSearch();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
-  const command = `curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet --template ${template}`;
+  const command = `curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet${template === 'boilerplate' ? '' : ` --template ${template}`}`;
   return (
     <section className="create-page">
       <span className="eyebrow">FROM “WHAT IF” TO “LOOK AT THIS”</span>
@@ -73,24 +74,24 @@ function Create() {
           <span>01</span>
           <h2>Start with a spark</h2>
           <p>
-            Get a self-contained HTML project, a Git repository, and instructions for your coding
-            agent.
+            Get a working project, a Git repository, and Napplet skills for your coding agent. New
+            creations start from the creator-maintained Napplet boilerplate.
           </p>
         </article>
         <article>
           <span>02</span>
           <h2>Make it your kind of weird</h2>
           <p>
-            Run <code>napplet-space dev</code> in the new project. Edit the HTML with the AI tool
-            you already use.
+            Run <code>napplet-space dev</code> in the new project. Make changes with the AI tool you
+            already use and see them in the sandbox preview.
           </p>
         </article>
         <article>
           <span>03</span>
           <h2>Play it. Pass it around.</h2>
           <p>
-            Run <code>napplet-space publish</code> to check your creation, publish to Nostr, and get
-            a link to share.
+            Build your latest changes, then run <code>napplet-space publish</code> to check your
+            creation, publish to Nostr, and get a link to share.
           </p>
         </article>
       </div>

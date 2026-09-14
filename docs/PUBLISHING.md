@@ -19,10 +19,10 @@ An ordinary `publish` checks the current project. If a different unfinished rele
 
 ## Destinations and identity
 
-| Profile | Primary relay | Blossom | GRASP | Website route origin |
-| --- | --- | --- | --- | --- |
-| local | `ws://127.0.0.1:19347/relay` | `http://127.0.0.1:8081` | `http://127.0.0.1:8082` | `http://localhost:8080` |
-| public | `wss://napplet.soy/relay` | `https://blossom.napplet.soy` | `https://git.napplet.soy` | `https://napplet.soy` |
+| Profile | Primary relay                | Blossom                       | GRASP                     | Website route origin    |
+| ------- | ---------------------------- | ----------------------------- | ------------------------- | ----------------------- |
+| local   | `ws://127.0.0.1:19347/relay` | `http://127.0.0.1:8081`       | `http://127.0.0.1:8082`   | `http://localhost:8080` |
+| public  | `wss://napplet.soy/relay`    | `https://blossom.napplet.soy` | `https://git.napplet.soy` | `https://napplet.soy`   |
 
 Public defaults describe the intended deployment; they have not been deployed or tested here. Public mode additionally mirrors manifests to `wss://relay.damus.io` and `wss://nos.lol`. Local mode has no public mirrors or fallback. This implementation was verified exclusively against isolated local services, with no public event writes.
 
@@ -34,7 +34,7 @@ An existing project `creator` must match the selected account and network. No cr
 
 ## Source and sandbox checks
 
-The default public file set is `index.html`, `napplet.json`, `LICENSE`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `dev.ts`, `package.json`, `.gitignore`, and the three bundled `.napplet` preview files. Missing optional files are omitted. `publish.files` can specify up to 128 explicit relative files; HTML, configuration and license are always required. Paths cannot contain whitespace/traversal or symlinks. The complete selected source is limited to 40 MiB; HTML is limited to 10 MiB and must be nonempty UTF-8. A nonempty license file is required. Unsupported mandatory NAP domains are rejected.
+For legacy `entry: index.html` projects, the default public file set is `index.html`, `napplet.json`, `LICENSE`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `dev.ts`, `package.json`, `.gitignore`, and the three bundled `.napplet` preview files. Missing optional files are omitted. `publish.files` can specify up to 128 explicit relative files; HTML, configuration and license are always required. Paths cannot contain whitespace/traversal or symlinks. The complete selected source is limited to 40 MiB; HTML is limited to 10 MiB and must be nonempty UTF-8. A nonempty license file is required. Unsupported mandatory NAP domains are rejected.
 
 The publisher rejects credential filenames, Git internals, dependency folders, `.env` files, Git attribute/module files and several recognizable credential formats. These checks reduce accidental disclosure; they do not prove the source contains no secrets. Dry-run and the interactive publication summary make the scope reviewable. Nothing invokes project build scripts, package lifecycle commands or Git hooks.
 
@@ -42,7 +42,14 @@ Source is copied into a dedicated release repository under the ignored `.napplet
 
 The browser check runs the frozen HTML under our current shared host, CSP, opaque iframe sandbox and shim. It checks startup, the shell handshake, script errors and CSP violations, while blocking external network requests. It does not use an inherited preview server or modified runtime bundle. This is a startup smoke check, not comprehensive gameplay, performance, NAP, or external-service conformance testing. The compiler runs in a fresh Bun process to avoid the pinned runtime's known build/read issue after networking. The check report records the runtime profile and browser version.
 
-The archive is Git's tar of the exact frozen commit and contains the selected regular files. In this profile the playable artifact is directly the archived `index.html`; no build-derived source association is claimed for arbitrary toolchains. Both tar and HTML are uploaded to Blossom and independently retrieved/hash-checked.
+The archive is Git's tar of the exact frozen commit and contains the selected regular files. The playable artifact is the archived entry selected in `napplet.json`: `index.html`
+for legacy projects or `dist/index.html` for the upstream boilerplate. Built projects
+include Git-visible source files plus their ignored built HTML by default, so the
+repository retains editable TypeScript, the locked toolchain configuration and the
+exact executable artifact. The publisher reads standard `napplet-requires` metadata
+from built HTML in addition to configured requirements. It never runs build scripts;
+creators must build their latest source before publishing. This records exact bytes,
+not an independently reproducible-build attestation. Both tar and HTML are uploaded to Blossom and independently retrieved/hash-checked.
 
 ## Journal and retry behavior
 

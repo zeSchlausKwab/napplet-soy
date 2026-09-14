@@ -1,0 +1,170 @@
+import { lstat, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import boilerplate from '../vendor/boilerplate.json';
+import skills from '../vendor/skills.json';
+import { AccountError } from '../../../packages/identity/src/signer';
+
+export const upstream = { boilerplate: boilerplate.revision, skills: skills.revision };
+const profile = `# Napplet Space integration
+
+This project includes the maintained napplet/boilerplate and unchanged upstream
+napplet-* skills. Start with napplet-make. Protocol guidance stays upstream;
+this note maps its local tooling commands to the installed Napplet Space CLI.
+
+## Commands
+
+- The project is already scaffolded. Do not run another creator CLI or re-scaffold it.
+- Skills are already installed locally in .agents/skills and .claude/skills.
+  The upstream npx skills command is an alternative for other environments.
+- napplet-space setup prepares the pinned Node/pnpm toolchain and dependencies.
+  Nothing is installed globally; ordinary pnpm commands also work if you have it.
+- napplet-space run verify runs the upstream guidance/type/build checks.
+- napplet-space run test:conformance runs the upstream reference-shell checks.
+  Its pinned test browser is downloaded and cached on first use.
+- napplet-space dev watches the Vite build inside the Napplet Space sandbox.
+  Use its URL for preview. The upstream pnpm dev URL serves source without a host.
+- napplet-space build makes dist/index.html. Edit index.html, src/main.ts and
+  src/styles.css; keep the upstream Vite configuration and dependency lockfile.
+- napplet-space check checks the existing built artifact in our host.
+- napplet-space publish --dry-run inspects source and destinations;
+  napplet-space publish publishes the existing build. Build after editing and
+  before publishing. Publication and checks never execute project scripts.
+- For older single-file projects whose napplet.json entry is index.html, edit
+  that file directly and use dev/check/publish; no build toolchain is required.
+
+## Metadata and host support
+
+napplet.json owns this client's creator reference, name, identifier, topic labels,
+relay/resource hints and publication destinations. It replaces the upstream
+CLI's deployment configuration in this workflow; never put creator secrets in
+the project. The default endpoints already point to napplet.soy.
+
+Keep hard domain requirements in vite.config.ts; the publisher reads the build's
+napplet-requires metadata and checks it against this host. Optional domains must
+degrade gracefully, following upstream guidance. Use the injected namespace and
+SDK; do not add a bootstrap or a private protocol extension to app code.
+
+This host provides identity, storage, theme, resource, relay/outbox reads,
+common reads, user-confirmed links and session files. Social writes, signer
+operations, ContextVM and cross-napplet operations are not currently granted.
+A domain's presence does not promise that every operation will be permitted.
+Our host check complements upstream conformance; report each result separately.
+
+## Upstream maintenance
+
+Pinned boilerplate: ${boilerplate.repository}/tree/${boilerplate.revision}
+Pinned skills: ${skills.repository}/tree/${skills.revision}
+
+Upstream source, configuration, documentation and scripts are retained. Local
+changes: package name, this integration note, agent entry pointers, private-state
+gitignore entries, and excluding installed skill folders from the boilerplate's
+repository-guidance scan. Skill bodies and licenses are unchanged. Run
+napplet-space skills update to install the CLI's bundled skill revision; modified
+files are reported as conflicts and preserved. Template/source changes are never
+applied by that command.
+`;
+
+const pointer = `## Napplet Space workspace\n\nRead [docs/napplet-space.md](docs/napplet-space.md) first for this project's CLI commands, installed skills and host capabilities. Use the upstream guidance below with those tooling mappings.\n\n`;
+
+export function creatorSkills() {
+  const files: Record<string, string> = {
+    'docs/napplet-space.md': profile,
+    'docs/napplet-skills-LICENSE.txt': skills.files.LICENSE,
+    'CLAUDE.md':
+      '@AGENTS.md\n\nThe upstream skills are installed in .claude/skills; begin with napplet-make.\n',
+  };
+  for (const [path, text] of Object.entries(skills.files)) {
+    if (!path.startsWith('skills/')) continue;
+    for (const agent of ['.agents', '.claude']) files[`${agent}/${path}`] = text;
+  }
+  return files;
+}
+
+export function boilerplateFiles(name: string) {
+  const files: Record<string, string> = { ...boilerplate.files };
+  files['package.json'] =
+    JSON.stringify({ ...JSON.parse(files['package.json']), name }, null, 2) + '\n';
+  files['AGENTS.md'] = pointer + files['AGENTS.md'];
+  files['README.md'] = pointer + files['README.md'];
+  files['.gitignore'] +=
+    '\n# Napplet Space private build/publication state\n.napplet-space/\n.nip5a-manifest.json\n';
+  // Upstream scans all text, including negative examples in installed skills.
+  // Keep its assertions intact; installed agent bundles are not template source.
+  const original = "new Set(['.git', 'dist', 'node_modules'])";
+  if (!files['tests/guidance.test.mjs'].includes(original))
+    throw new Error('Upstream guidance scanner changed; review the adapter.');
+  files['tests/guidance.test.mjs'] = files['tests/guidance.test.mjs'].replace(
+    original,
+    "new Set(['.git', 'dist', 'node_modules', '.agents', '.claude', '.napplet-space'])",
+  );
+  return files;
+}
+
+const hash = (text: string) => new Bun.CryptoHasher('sha256').update(text).digest('hex');
+async function safeParent(root: string, path: string) {
+  if (
+    !/^[a-zA-Z0-9._/-]+$/.test(path) ||
+    path.startsWith('/') ||
+    path.split('/').some((p) => p === '..' || !p)
+  )
+    throw new AccountError('SKILLS_PATH', 'Invalid managed skill path.');
+  let current = root;
+  for (const part of path.split('/').slice(0, -1)) {
+    current = join(current, part);
+    await mkdir(current, { mode: part === '.napplet-space' ? 0o700 : 0o755 }).catch((error) => {
+      if (error.code !== 'EEXIST') throw error;
+    });
+    const stat = await lstat(current);
+    if (!stat.isDirectory() || stat.isSymbolicLink())
+      throw new AccountError('SKILLS_PATH', 'Skill directories must not be symlinks.');
+  }
+  return join(root, path);
+}
+
+/** Add/update only our recorded bundle; a creator edit is never an overwrite target. */
+export async function installCreatorSkills(directory: string) {
+  const root = resolve(directory);
+  const statePath = await safeParent(root, '.napplet-space/skills.json');
+  const stateStat = await lstat(statePath).catch(() => null);
+  if (stateStat && (!stateStat.isFile() || stateStat.isSymbolicLink() || stateStat.size > 65536))
+    throw new AccountError('SKILLS_STATE', 'Invalid skill update record; it was not overwritten.');
+  const previous: Record<string, string> = stateStat
+    ? JSON.parse(await readFile(statePath, 'utf8')).files
+    : {};
+  if (!previous || typeof previous !== 'object')
+    throw new AccountError('SKILLS_STATE', 'Invalid skill update record.');
+  const files: Record<string, string> = {},
+    updated: string[] = [],
+    conflicts: string[] = [];
+  for (const [path, text] of Object.entries(creatorSkills())) {
+    const target = await safeParent(root, path);
+    const stat = await lstat(target).catch(() => null);
+    const existing =
+      stat?.isFile() && !stat.isSymbolicLink() && stat.size < 1024 * 1024
+        ? await readFile(target, 'utf8')
+        : undefined;
+    if (
+      stat &&
+      existing !== text &&
+      (existing === undefined || previous[path] !== hash(existing))
+    ) {
+      conflicts.push(path);
+      if (previous[path]) files[path] = previous[path];
+      continue;
+    }
+    if (existing !== text) {
+      const temporary = join(dirname(target), `.skill-${crypto.randomUUID()}`);
+      await writeFile(temporary, text, { flag: 'wx' });
+      await rename(temporary, target);
+      updated.push(path);
+    }
+    files[path] = hash(text);
+  }
+  const temporary = `${statePath}.${crypto.randomUUID()}`;
+  await writeFile(temporary, JSON.stringify({ version: 1, upstream, files }, null, 2) + '\n', {
+    flag: 'wx',
+    mode: 0o600,
+  });
+  await rename(temporary, statePath);
+  return { upstream, updated, conflicts };
+}

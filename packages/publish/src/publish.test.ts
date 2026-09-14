@@ -219,6 +219,47 @@ test('first publish is standard and retry preserves every signed event, artifact
     await f.close();
   }
 });
+test('a built project uploads compiled HTML and publishes editable source with standard capability metadata', async () => {
+  const f = await fixture();
+  try {
+    await sourceGit(f.project, ['init', '--initial-branch=main']);
+    await Bun.write(
+      join(f.project, 'napplet.json'),
+      JSON.stringify({ ...f.config, entry: 'dist/index.html' }),
+    );
+    await Bun.write(join(f.project, '.gitignore'), 'dist/\nnode_modules/\n.napplet-space/\n');
+    await Bun.write(join(f.project, 'src/main.ts'), 'export const message: string = "compiled";');
+    await Bun.write(
+      join(f.project, 'index.html'),
+      '<script type="module" src="/src/main.ts"></script>',
+    );
+    const html =
+      '<!doctype html><meta name="napplet-requires" content="storage,theme"><p>compiled</p>';
+    await Bun.write(join(f.project, 'dist/index.html'), html);
+    const first = await publishProject(f.options);
+    const job = await f.load();
+    expect(first.status).toBe('announced_pending_index');
+    expect(job.plan.artifactHash).toBe(await sha256(html));
+    expect(new TextDecoder().decode(f.blobs.get(job.plan.artifactHash))).toBe(html);
+    const release = await validateRelease(job.current, job.snapshot);
+    expect(release.current.tags.filter((t) => t[0] === 'requires')).toEqual([
+      ['requires', 'storage'],
+      ['requires', 'theme'],
+    ]);
+    const source = join(f.journal.directory(job.id), 'source');
+    expect(await sourceGit(source, ['show', 'HEAD:src/main.ts'])).toContain('export const message');
+    expect(await sourceGit(source, ['show', 'HEAD:dist/index.html'])).toBe(html);
+    expect(await sourceGit(source, ['show', 'HEAD:index.html'])).toContain('/src/main.ts');
+    const writes = [...f.writes];
+    expect(await publishProject(f.options)).toMatchObject({
+      unchanged: true,
+      sourceCommit: job.commit,
+    });
+    expect(f.writes).toEqual(writes);
+  } finally {
+    await f.close();
+  }
+});
 test('uncertain upload and relay acknowledgement resume the exact saved events without a second snapshot', async () => {
   const f = await fixture();
   try {

@@ -2,6 +2,7 @@ import { afterAll, expect, test } from 'bun:test';
 import { mkdtemp, readlink, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import release from '../../apps/cli/distribution/version.json';
 import { cliDownload } from '../../packages/backend/src/cli-download';
 
 const enabled = process.env.SPACE_TEST_CLI === undefined ? test.skip : test;
@@ -43,7 +44,20 @@ enabled(
     await writeFile(join(root, 'bunfig.toml'), 'preload = ["./hijack.js"]\n');
     await writeFile(join(root, 'hijack.js'), 'throw new Error("PROJECT PRELOAD RAN");');
     expect((await run([binary, 'account', 'show', '--json'])).code).toBe(0);
-    expect((await run([binary, 'new', 'creation', '--identity', 'later', '--json'])).code).toBe(0);
+    expect(
+      (
+        await run([
+          binary,
+          'new',
+          'creation',
+          '--template',
+          'soft-orbit',
+          '--identity',
+          'later',
+          '--json',
+        ])
+      ).code,
+    ).toBe(0);
     const project = join(root, 'creation');
     await writeFile(join(root, '.env'), `SPACE_ACCOUNT_HOME=${project}\n`);
     expect(
@@ -81,14 +95,24 @@ enabled(
     const local = { NAPPLET_DOWNLOAD_BASE: server.url.href.replace(/\/$/, '') };
     try {
       const installed = await run(
-        ['/bin/sh', source, 'new', 'installed-project', '--identity', 'later', '--json'],
+        [
+          '/bin/sh',
+          source,
+          'new',
+          'installed-project',
+          '--template',
+          'soft-orbit',
+          '--identity',
+          'later',
+          '--json',
+        ],
         root,
         local,
       );
       expect(installed.code, installed.stderr + installed.stdout).toBe(0);
       const command = join(env.NAPPLET_BIN_DIR, 'napplet-space');
       const destination = await readlink(command);
-      expect((await run([command, '--version'])).stdout).toContain('0.1.0');
+      expect((await run([command, '--version'])).stdout).toContain(release.version);
       corrupt = true;
       const bad = await run(['/bin/sh', source], root, local);
       expect(bad.code).toBe(1);
@@ -99,12 +123,17 @@ enabled(
       await writeFile(command, 'another program');
       expect((await run(['/bin/sh', source], root, local)).stderr).toContain('not managed');
       expect(await Bun.file(command).text()).toBe('another program');
-      expect((await fetch(new URL('/0.1.0/embedded.json', server.url))).status).toBe(404);
+      expect((await fetch(new URL(`/${release.version}/embedded.json`, server.url))).status).toBe(
+        404,
+      );
       expect(
         (
-          await fetch(new URL('/0.1.0/napplet-space-linux-x64.tar.gz.sha256', server.url), {
-            method: 'HEAD',
-          })
+          await fetch(
+            new URL(`/${release.version}/napplet-space-linux-x64.tar.gz.sha256`, server.url),
+            {
+              method: 'HEAD',
+            },
+          )
         ).headers.get('content-length'),
       ).not.toBeNull();
     } finally {

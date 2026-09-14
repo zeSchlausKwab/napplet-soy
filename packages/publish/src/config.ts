@@ -44,7 +44,7 @@ export const projectSchema = z
     name: z.string().min(1).max(160),
     title: z.string().min(1).max(160).optional(),
     description: z.string().max(1000).default(''),
-    entry: z.literal('index.html'),
+    entry: z.enum(['index.html', 'dist/index.html']),
     previewId: z.uuid(),
     identifier: identifier.optional(),
     template: z.string().optional(),

@@ -29,7 +29,7 @@ async function interactiveInstall(cancel = false, redirectErrors = false) {
       '-c',
       `
       before=$(stty -g)
-      curl -fsSL "$TEST_INSTALL_URL" | sh -s -- new creation ${redirectErrors ? '2>errors.log' : ''}
+      curl -fsSL "$TEST_INSTALL_URL" | sh -s -- new creation --no-install ${redirectErrors ? '2>errors.log' : ''}
       result=$?
       [ "$before" = "$(stty -g)" ] || exit 80
       exit "$result"

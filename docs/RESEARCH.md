@@ -1,5 +1,29 @@
 # Upstream observations
 
+## Integrated upstream starter — 2026-09-14
+
+CLI 0.2.0 now uses the creator-maintained boilerplate as its default, superseding
+this document's earlier suggestion to make it optional. Snapshots pin boilerplate
+`cbbebe9bd56271277b054535c0a8d720a588f61d` and skills
+`976ad0549c38f93d4ed418d3ea59a615a7e5fd7f`. The source, Vite configuration, scripts,
+lockfile and eight skill bodies remain upstream; see [CLI.md](CLI.md) for the small
+integration surface and update process.
+
+Verified: upstream's six guidance tests, TypeScript and build; its reference
+conformance harness (5 passed, 0 failed, 5 explicitly skipped: unsigned-manifest,
+wire/lifecycle coverage); our sandbox startup; upstream SDK storage roundtrip;
+Vite rebuild/reload and explicit required-domain metadata; a signed publication
+using built HTML while retaining editable source; and standalone scaffolding with
+no global runtimes on PATH. No test creation was published to public relays.
+
+Skill bodies and YAML frontmatter are preserved exactly. Seven pass the local
+skill-creator linter; `napplet-interop` uses literal `<archetype>/<intent>` placeholders
+in its description, which that stricter linter rejects despite valid YAML. We retain
+upstream's text. This host does not yet grant that skill's cross-napplet operations;
+the project integration note states the current capability subset.
+
+Earlier findings below are historical research, not the current implementation.
+
 ## Creator skills follow-up, 2026-09-14
 
 Inspected live Git checkouts of [napplet/boilerplate at cbbebe9](https://github.com/napplet/boilerplate/tree/cbbebe9bd56271277b054535c0a8d720a588f61d)

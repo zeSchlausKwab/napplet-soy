@@ -3,6 +3,9 @@ import { createResourceResponder } from '../../../../packages/backend/src/resour
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../../../packages/protocol/src/artifact';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
 import type { PreviewAssets } from './assets';
+import { builtRequirements } from '../../../../packages/publish/src/artifact';
+import { regularFile } from '../../../../packages/publish/src/project';
+import { fileURLToPath } from 'node:url';
 
 const relayUrl = z
   .string()
@@ -14,7 +17,7 @@ const relayUrl = z
   .transform((url) => url.href);
 const configSchema = z.object({
   previewId: z.uuid(),
-  entry: z.literal('index.html'),
+  entry: z.enum(['index.html', 'dist/index.html']),
   requires: z
     .array(z.string().regex(/^[a-z]+$/))
     .max(32)
@@ -39,20 +42,24 @@ export function startPreviewServer(
 ) {
   async function revision() {
     // BunFile caches stat/size: create fresh handles after every editor save.
-    const artifact = Bun.file(new URL('index.html', root));
     const configFile = Bun.file(new URL('napplet.json', root));
-    if (artifact.size > MAX_ARTIFACT_BYTES) throw new Error('Keep index.html under 10 MiB.');
     if (configFile.size > 16384) throw new Error('Project configuration is too large.');
-    const [bytes, configText] = await Promise.all([artifact.bytes(), configFile.text()]);
+    const configText = await configFile.text();
+    const config = configSchema.parse(JSON.parse(configText));
+    const bytes = await regularFile(fileURLToPath(root), config.entry, MAX_ARTIFACT_BYTES);
     if (bytes.length > MAX_ARTIFACT_BYTES || configText.length > 16384)
       throw new Error('Project exceeds preview limits.');
-    const config = configSchema.parse(JSON.parse(configText));
     const artifactHash = await sha256(bytes);
     const info: PreviewRevision = {
       id: await sha256(`${artifactHash}:${configText}`),
       artifactHash,
       hostIdentity: `local-preview:${config.previewId}:${artifactHash}`,
-      requires: config.requires,
+      requires: [
+        ...new Set([
+          ...config.requires,
+          ...(config.entry === 'dist/index.html' ? await builtRequirements(bytes) : []),
+        ]),
+      ],
       relays: config.relays,
     };
     return { info, bytes, servers: config.servers };

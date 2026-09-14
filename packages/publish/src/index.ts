@@ -25,6 +25,7 @@ import { freezeSource, inspectProject, regularFile, type PublishPlan } from './p
 import { PublicationRelays } from './relay';
 import { ownedBlobs, verifiedBlob } from './blobs';
 import { confirmWebsite } from './website';
+import { executableBytes } from './artifact';
 
 export { PublishError } from './config';
 type RelayOperations = Pick<PublicationRelays, 'latest' | 'ensure' | 'close'>;
@@ -489,7 +490,7 @@ export async function publishProject(options: PublishOptions) {
           options.signal,
         );
         for (const [kind, bytes, hash, type] of [
-          ['artifact', frozen.contents.get('index.html')!, job.plan.artifactHash, 'text/html'],
+          ['artifact', executableBytes(frozen.contents), job.plan.artifactHash, 'text/html'],
           ['archive', frozen.archive, job.archiveHash, 'application/x-tar'],
         ] as const) {
           if (

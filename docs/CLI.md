@@ -10,19 +10,47 @@ curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet
 # Follow the printed PATH instruction if ~/.local/bin is not already on PATH.
 cd my-napplet
 napplet-space dev
+# After editing (or stopping dev):
+napplet-space build
+napplet-space run verify
 napplet-space check
 napplet-space publish
 ```
 
-`new` initializes Git and writes HTML, configuration, license and coding-agent
-instructions. It reuses the chosen creator or asks to create/connect/set up later.
-The installer reconnects stdin to the terminal's actual device so identity prompts
-also work through `curl | sh`. Opening the `/dev/tty` alias stalls delayed input
-in the macOS bundled runtime. Redirecting stderr (where prompts appear) makes
-installation noninteractive; users can also explicitly pass `--identity later`.
-`dev` opens the loopback preview and reloads edited HTML. `--no-open`, `--port`
-and `--project` support existing workflows. The CLI supplies trusted preview code;
-project scripts and generated runtime copies are never executed by dev/check/publish.
+`new` starts from the pinned creator-maintained `napplet/boilerplate`, initializes
+Git, installs its locked dependencies with a private Node/pnpm toolchain, and builds
+`dist/index.html`. TypeScript source, upstream scripts, the SDK, Vite plugin,
+lockfile and documentation remain intact. It installs the eight upstream Napplet
+skills in `.agents/skills` and `.claude/skills`; AGENTS.md and CLAUDE.md point to the
+integration notes in `docs/napplet-space.md`. These are ordinary project files, not
+background global installations. `napplet.upstream.json` records the exact commits.
+Explicit `--template soft-orbit` (and the other five examples) still creates a
+single-file project and includes the same skills.
+
+`new` reuses the chosen creator or asks to create/connect/set up later. The installer
+reconnects stdin to the terminal's actual device so identity prompts also work
+through `curl | sh`. Opening the `/dev/tty` alias stalls delayed input in the macOS
+bundled runtime. Redirecting stderr makes installation noninteractive; users can
+also explicitly pass `--identity later`. `--no-install` writes the complete scaffold
+and skills without downloading dependencies; follow with `setup` and `build`.
+
+`dev` runs the upstream Vite build watcher and opens the loopback sandbox preview.
+It reloads after each build. Legacy HTML examples reload on save without a build.
+`--no-open`, `--port` and `--project` support existing workflows. `build` builds
+once, `setup` installs with the frozen lockfile, and `run <script>` / `exec <tool>`
+use the private toolchain from the current project. `dev`, `build`, and `run` execute
+your project's tools. **Check and publish never execute project scripts**: build
+your latest changes first; they inspect and run the finished HTML only.
+
+`napplet-space run verify` uses the upstream guidance tests, TypeScript check and
+build. `napplet-space run test:conformance` runs the reference harness and downloads
+its own pinned Playwright browser on first use. This complements the Space host
+check; skipped reference cases are reported by the upstream harness.
+
+After upgrading the CLI, `napplet-space skills update [--project folder]` adds its
+bundled skills to existing projects. It replaces only unchanged managed files,
+leaves edited or foreign files alone, and reports conflicts. It does not migrate
+source code, update dependencies, or fetch unreviewed skill changes from the web.
 
 `check` validates the source selection and runs frozen HTML in the same restricted
 sandbox as publication. It needs no identity and publishes nothing. The first
@@ -53,10 +81,21 @@ requirements; `account check` verifies the selected signer.
 - Project recovery state: `.napplet-space`, ignored by Git and excluded from
   published source. Preserve this directory for interrupted-publication recovery.
 
-No dependency installation is needed for the HTML starters. Optional package.json
-scripts simply invoke the CLI; creators may use their preferred package manager
-if they later add their own build tooling. Publishing currently accepts a finished,
-self-contained `index.html`, not arbitrary project build scripts.
+The private Node 24.21.0 and pnpm 10.8.0 toolchain is verified against pinned release
+checksums and reused across projects. Its cache is
+`~/Library/Caches/napplet-space/toolchains` (macOS) or
+`~/.cache/napplet-space/toolchains` (Linux); `SPACE_TOOLCHAIN_CACHE` overrides it.
+No global runtime or package manager is installed. Dependency installation uses
+`--frozen-lockfile --ignore-scripts`. Creators can explicitly run their own package
+manager if additional dependencies need installation scripts.
+
+Publishing accepts a finished self-contained `index.html` or `dist/index.html`.
+For the upstream profile it selects Git-visible source files plus the built HTML,
+excluding ignored dependencies and private state. Existing byte limits, regular-file
+checks and credential detection apply; use `publish.files` to narrow selection.
+The source repository includes editable source and the exact built artifact.
+Required domains combine `napplet.json` with standard `napplet-requires` build
+metadata. The artifact and NIP-5D publication format are the same for both profiles.
 
 ## Building and releasing
 
@@ -65,7 +104,7 @@ Use the pinned Bun 1.3.11 toolchain for builds:
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.1.0/napplet-space-darwin-arm64/napplet-space" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.2.0/napplet-space-darwin-arm64/napplet-space" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts
@@ -99,3 +138,25 @@ If an older installer stopped at the identity prompt, open a fresh terminal if
 Ctrl+C does not respond. The CLI is already installed and the project was created:
 enter that project directory and run `~/.local/bin/napplet-space dev`. Creator
 setup can follow with `napplet-space account create` or `napplet-space account connect`.
+
+## Updating the upstream pins
+
+The scaffold and skill bodies are embedded snapshots, so creation does not depend
+on GitHub availability. Maintainers review clean checkouts and run:
+
+```sh
+bun scripts/creator-sync.ts --boilerplate /path/to/boilerplate --skills /path/to/napplet
+```
+
+This records tracked files at the exact HEAD commits. Never run a fetched installer
+as part of this update. The snapshot preserves the upstream MIT license; skills
+include their own license copy. The only boilerplate adaptations are package name,
+Space configuration/provenance, agent-entry-point preambles, ignored private state,
+and excluding bundled skill directories/private state from the guidance scanner.
+The scanner's actual assertions remain unchanged. See `creator-kit.ts` and its
+fidelity test for the complete adaptation surface.
+
+Review toolchain pins separately against Node's official release checksums and
+pnpm's npm integrity value. Then validate a fresh scaffold, upstream verify and
+conformance, the Space sandbox, source/artifact publication, live rebuilds and the
+standalone installer before shipping a new immutable CLI version.

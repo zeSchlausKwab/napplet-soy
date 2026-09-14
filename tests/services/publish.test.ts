@@ -166,6 +166,8 @@ test('publisher runs its sandbox check, survives interruption, retains Git relea
         new URL('../../apps/cli/src/index.ts', import.meta.url).pathname,
         'new',
         'creation',
+        '--template',
+        'soft-orbit',
         '--identity',
         'later',
       ],
@@ -314,7 +316,7 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
     };
     try {
       await run(['account', 'create']);
-      const created = await run(['new', 'cli-creation']);
+      const created = await run(['new', 'cli-creation', '--template', 'soft-orbit']);
       const flags = [
         '--project',
         created.directory,

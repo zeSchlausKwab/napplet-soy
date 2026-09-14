@@ -14,6 +14,7 @@ import {
   type Targets,
 } from './config';
 import type { Network } from '../../identity/src/signer';
+import { builtRequirements } from './artifact';
 
 export const MAX_SOURCE_BYTES = 40 * 1024 * 1024;
 export type SourceFile = { path: string; hash: string; size: number };
@@ -93,7 +94,7 @@ export async function inspectProject(
   } catch {
     throw new PublishError(
       'PROJECT_CONFIG',
-      'Invalid napplet.json. This publisher supports the single-HTML starter profile.',
+      'Invalid napplet.json. Choose index.html or the upstream dist/index.html artifact.',
     );
   }
   if (project.creator && (project.creator.pubkey !== pubkey || project.creator.network !== network))
@@ -102,13 +103,30 @@ export async function inspectProject(
       'The project belongs to a different creator or network. Select its saved account, or explicitly change the project creator and identifier for a remix.',
     );
   const targets = resolveTargets(project, network, overrides);
-  const missing = missingDomains(project.requires);
-  if (missing.length)
+  const built = project.entry === 'dist/index.html';
+  const defaults = built
+    ? (
+        await sourceGit(root, [
+          '-c',
+          'core.fsmonitor=false',
+          'ls-files',
+          '--cached',
+          '--others',
+          '--exclude-standard',
+          '-z',
+        ])
+      )
+        .split('\0')
+        .filter(Boolean)
+    : sourceDefaults;
+  const selected = [
+    ...new Set([...(project.publish?.files ?? defaults), ...(built ? [project.entry] : [])]),
+  ].sort();
+  if (selected.length > 128)
     throw new PublishError(
-      'PROJECT_CAPABILITY',
-      `Unsupported required domains: ${missing.join(', ')}.`,
+      'SOURCE_LIMIT',
+      'Select at most 128 public source files with publish.files.',
     );
-  const selected = [...new Set(project.publish?.files ?? sourceDefaults)].sort();
   if (!['index.html', 'napplet.json', 'LICENSE'].every((p) => selected.includes(p)))
     throw new PublishError(
       'SOURCE_REQUIRED',
@@ -126,9 +144,14 @@ export async function inspectProject(
           : await regularFile(
               root,
               path,
-              path === 'index.html' ? MAX_ARTIFACT_BYTES : MAX_SOURCE_BYTES,
+              path === project.entry ? MAX_ARTIFACT_BYTES : MAX_SOURCE_BYTES,
             );
     } catch (error) {
+      if (path === project.entry && (error as NodeJS.ErrnoException).code === 'ENOENT')
+        throw new PublishError(
+          'ARTIFACT_MISSING',
+          'Build the project before checking or publishing: napplet-space build.',
+        );
       if (
         (error as NodeJS.ErrnoException).code === 'ENOENT' &&
         !project.publish?.files &&
@@ -146,12 +169,21 @@ export async function inspectProject(
   }
   if (!contents.get('LICENSE')?.length)
     throw new PublishError('SOURCE_LICENSE', 'Provide a nonempty LICENSE file before publishing.');
-  const html = contents.get('index.html')!;
+  const html = contents.get(project.entry)!;
   try {
     if (!new TextDecoder('utf-8', { fatal: true }).decode(html).trim()) throw new Error();
   } catch {
     throw new PublishError('ARTIFACT_INVALID', 'index.html must be nonempty UTF-8 HTML.');
   }
+  const requires = [
+    ...new Set([...project.requires, ...(built ? await builtRequirements(html) : [])]),
+  ];
+  const missing = missingDomains(requires);
+  if (missing.length)
+    throw new PublishError(
+      'PROJECT_CAPABILITY',
+      `Unsupported required domains: ${missing.join(', ')}.`,
+    );
   const plan = {
     network,
     pubkey,
@@ -159,7 +191,7 @@ export async function inspectProject(
     title: project.title ?? project.name,
     description: project.description,
     license: project.license,
-    requires: [...new Set(project.requires)],
+    requires,
     topics: projectTopics(project),
     servers: [...new Set([targets.blossom, ...project.servers])],
     targets,
@@ -206,7 +238,7 @@ export async function freezeSource(
   }
   for (const [path, bytes] of contents) await durableFile(join(repo, path), bytes);
   // Stage exactly the explicit file list, with no inherited filters or Git configuration.
-  await sourceGit(repo, ['add', '--', ...contents.keys()]);
+  await sourceGit(repo, ['add', '--force', '--', ...contents.keys()]);
   await sourceGit(repo, ['commit', '--allow-empty', '-m', 'Publish napplet source'], {
     GIT_AUTHOR_DATE: `${createdAt} +0000`,
     GIT_COMMITTER_DATE: `${createdAt} +0000`,

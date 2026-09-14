@@ -47,7 +47,7 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
       const { account } = await run(['account', 'create']);
       expect((await run(['account', 'check'])).account.pubkey).toBe(account.pubkey);
       for (const folder of ['first-project', 'second-project']) {
-        const project = await run(['new', folder]);
+        const project = await run(['new', folder, '--template', 'soft-orbit']);
         expect(project.account.pubkey).toBe(account.pubkey);
         expect((await Bun.file(join(directory, folder, 'napplet.json')).json()).creator).toEqual({
           pubkey: account.pubkey,

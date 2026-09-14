@@ -2,6 +2,9 @@ import { chmod, cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { previewAssets } from '../apps/cli/src/preview/assets';
+import boilerplate from '../apps/cli/vendor/boilerplate.json';
+import skills from '../apps/cli/vendor/skills.json';
+import toolchain from '../apps/cli/vendor/toolchain.json';
 import { playwrightDirectory } from '../apps/cli/src/distribution';
 
 const root = resolve(import.meta.dir, '..');
@@ -55,6 +58,8 @@ for (const platform of selected) {
   await cp(join(root, 'LICENSE'), join(directory, 'LICENSE'));
   const licenses = join(directory, 'licenses');
   await mkdir(licenses);
+  await writeFile(join(licenses, 'napplet-boilerplate-MIT.txt'), boilerplate.files.LICENSE);
+  await writeFile(join(licenses, 'napplet-skills-MIT.txt'), skills.files.LICENSE);
   const store = join(root, 'node_modules/.bun');
   for (const entry of await readdir(store, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
@@ -81,7 +86,18 @@ for (const platform of selected) {
   await cp(join(root, 'apps/cli/distribution/BUN-LICENSE.txt'), join(licenses, 'BUN-LICENSE.txt'));
   await writeFile(
     join(directory, 'release.json'),
-    JSON.stringify({ version, platform, bun: Bun.version, playwright: '1.63.0' }, null, 2) + '\n',
+    JSON.stringify(
+      {
+        version,
+        platform,
+        bun: Bun.version,
+        playwright: '1.63.0',
+        upstream: { boilerplate: boilerplate.revision, skills: skills.revision },
+        toolchain: { node: toolchain.node.version, pnpm: toolchain.pnpm.version },
+      },
+      null,
+      2,
+    ) + '\n',
   );
   const archive = join(output, `${name}.tar.gz`);
   const tar = Bun.spawn(

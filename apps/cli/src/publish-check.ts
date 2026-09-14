@@ -8,6 +8,7 @@ import { startPreviewServer } from './preview/server';
 import { PublishError } from '../../../packages/publish/src/config';
 import { AccountError } from '../../../packages/identity/src/signer';
 import { RUNTIME_PROFILE } from '../../../packages/runtime/src/capabilities';
+import { executableEntry } from '../../../packages/publish/src/artifact';
 
 /** Execute only the frozen HTML in our current sandbox. Never run a project's build/preview scripts. */
 export async function checkPublication(contents: Map<string, Uint8Array>) {
@@ -17,7 +18,8 @@ export async function checkPublication(contents: Map<string, Uint8Array>) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await mkdir(join(directory, '.napplet'));
-    for (const path of ['index.html', 'napplet.json'])
+    await mkdir(join(directory, 'dist'));
+    for (const path of [executableEntry(contents), 'napplet.json'])
       await Bun.write(join(directory, path), contents.get(path)!);
     server = startPreviewServer(pathToFileURL(directory + '/'), 0, false, await previewAssets());
     await installBrowser();
