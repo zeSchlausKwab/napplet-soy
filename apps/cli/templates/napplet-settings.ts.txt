@@ -1,0 +1,21 @@
+import { config } from '@napplet/sdk';
+import { runtimeHasDomain } from './domain-availability.js';
+
+// The upstream Vite plugin embeds config.schema.json into the signed build.
+// Config is optional here: the stylesheet also supplies these defaults.
+if (runtimeHasDomain('config')) {
+  try {
+    const subscription = config.subscribe((values) => {
+      const root = document.documentElement.style;
+      const textSize = typeof values.textSize === 'number' ? values.textSize : 13;
+      const controlSize = typeof values.controlSize === 'number' ? values.controlSize : 28;
+      root.fontSize = `${textSize}px`;
+      root.setProperty('--control-h', `${controlSize}px`);
+      root.setProperty('--napplet-text-selection', values.selectText === true ? 'text' : 'none');
+    });
+    window.addEventListener('pagehide', () => subscription.close(), { once: true });
+  } catch {
+    // Optional operations may be unavailable even when a host exposes the domain.
+    // Keep stylesheet defaults so this example still works in a limited host.
+  }
+}

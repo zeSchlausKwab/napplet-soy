@@ -9,7 +9,11 @@ import { PublishError } from '../../../packages/publish/src/config';
 import { AccountError } from '../../../packages/identity/src/signer';
 import { RUNTIME_PROFILE } from '../../../packages/runtime/src/capabilities';
 import { MAX_PREVIEW_BYTES } from '../../../packages/protocol/src/preview';
-import { executableEntry } from '../../../packages/publish/src/artifact';
+import {
+  builtConfiguration,
+  executableBytes,
+  executableEntry,
+} from '../../../packages/publish/src/artifact';
 
 /** Execute only the frozen HTML in our current sandbox. Never run a project's build/preview scripts. */
 export async function checkPublication(contents: Map<string, Uint8Array>, forceScreenshot = false) {
@@ -18,6 +22,7 @@ export async function checkPublication(contents: Map<string, Uint8Array>, forceS
   let server: ReturnType<typeof startPreviewServer> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
+    await builtConfiguration(executableBytes(contents));
     await mkdir(join(directory, '.napplet'));
     await mkdir(join(directory, 'dist'));
     for (const path of [executableEntry(contents), 'napplet.json'])

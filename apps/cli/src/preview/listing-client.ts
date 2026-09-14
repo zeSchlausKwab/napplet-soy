@@ -81,6 +81,12 @@ export function setupListing(signal: AbortSignal) {
       ['Source / Git', data.targets.grasp],
       ['Website', data.targets.site],
       ['Required capabilities', data.runtime.requires.join(', ') || 'None'],
+      [
+        'User settings',
+        data.runtime.configuration
+          ? `${data.runtime.configuration.properties} top-level properties${data.runtime.configuration.version !== null ? ` · schema version ${data.runtime.configuration.version}` : ''}. Open Settings to try them.`
+          : 'No static settings schema in this build',
+      ],
       ['Runtime relays', data.runtime.relays.join('\n') || 'Host defaults'],
       ['Runtime servers', data.runtime.servers.join('\n') || 'None'],
     ];

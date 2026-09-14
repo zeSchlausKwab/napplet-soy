@@ -4,6 +4,7 @@ import { scopedStorage } from './storage';
 import { NappletFiles, type ExportFile } from './filesystem';
 import { PlaybackNostr } from '../../nostr/src/playback';
 import { WorkQueue } from './work-queue';
+import { NappletConfig } from './config-session';
 
 export type HostPrompt = {
   kind: 'link' | 'save';
@@ -18,6 +19,8 @@ export type HostOptions = {
   pubkey: string | null;
   prompt: (prompt: HostPrompt | null) => void;
   files: (files: ExportFile[]) => void;
+  declaration?: { schema?: unknown; error?: string };
+  configuration?: (config: NappletConfig | null) => void;
 };
 const envelope = z
   .object({
@@ -202,6 +205,17 @@ export function attachNappletHost(options: HostOptions) {
     };
   };
   let account = createAccount(options.pubkey);
+  const config = new NappletConfig({
+    storage: localStorage,
+    identity: options.identity,
+    pubkey: options.pubkey,
+    declaration: options.declaration,
+    send,
+    focused: () => document.activeElement === options.frame,
+  });
+  options.configuration?.(config);
+  let configCalls = 0,
+    configWindow = Date.now();
   const listener = (event: MessageEvent) => {
     if (!alive || event.source !== source || event.origin !== 'null') return;
     const parsed = envelope.safeParse(event.data);
@@ -211,6 +225,20 @@ export function attachNappletHost(options: HostOptions) {
       if (initialized) return;
       initialized = true;
       send({ type: 'shell.init', capabilities: { domains: [...RUNTIME_DOMAINS] }, services: [] });
+      config.ready();
+      return;
+    }
+    if (initialized && message.type.startsWith('config.') && HOST_REQUESTS.has(message.type)) {
+      if (Date.now() - configWindow >= 60000) {
+        configWindow = Date.now();
+        configCalls = 0;
+      }
+      if (++configCalls > 120) return;
+      try {
+        if (JSON.stringify(message).length <= 70000) config.handle(message);
+      } catch {
+        /* Invalid structured data has no authority. */
+      }
       return;
     }
     if (!initialized || !message.id || !HOST_REQUESTS.has(message.type)) return;
@@ -295,12 +323,15 @@ export function attachNappletHost(options: HostOptions) {
       options.files([]);
       account = createAccount(pubkey);
       if (initialized) send({ type: 'identity.changed', pubkey: pubkey ?? '' });
+      config.updateIdentity(pubkey);
     },
     close() {
       if (!alive) return;
       alive = false;
       window.removeEventListener('message', listener);
       account.close('Player closed');
+      config.close();
+      options.configuration?.(null);
       options.files([]);
     },
   };

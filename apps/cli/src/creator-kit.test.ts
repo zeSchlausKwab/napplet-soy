@@ -21,9 +21,13 @@ test('preserves the upstream project and skill bodies with only the documented i
     'README.md',
     '.gitignore',
     'tests/guidance.test.mjs',
+    'src/main.ts',
   ]);
   for (const [path, original] of Object.entries(boilerplate.files))
     if (!adapted.has(path)) expect(files[path], path).toBe(original);
+  expect(files['src/main.ts'].replace("import './napplet-settings.js';\n", '')).toBe(
+    boilerplate.files['src/main.ts'],
+  );
   const pkg = JSON.parse(files['package.json']),
     original = JSON.parse(boilerplate.files['package.json']);
   expect({ ...pkg, name: original.name }).toEqual(original);

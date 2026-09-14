@@ -6,6 +6,10 @@ import { attachNappletHost, type HostPrompt } from '../../../../packages/runtime
 import type { ExportFile } from '../../../../packages/runtime/src/filesystem';
 import type { PreviewRevision } from './server';
 import { setupListing } from './listing-client';
+import { createRoot } from 'react-dom/client';
+import { createElement } from 'react';
+import { SettingsControl } from '../../../../packages/runtime/src/settings-panel';
+import { declaredConfig } from '../../../../packages/runtime/src/config-schema';
 
 const stage = document.querySelector<HTMLElement>('#stage')!;
 const status = document.querySelector<HTMLElement>('#status')!;
@@ -15,7 +19,12 @@ const confirm = document.querySelector<HTMLButtonElement>('#confirm')!;
 const cancel = document.querySelector<HTMLButtonElement>('#cancel')!;
 const link = document.querySelector<HTMLAnchorElement>('#open-link')!;
 const exports = document.querySelector<HTMLElement>('#files')!;
-const prelude = nappletPrelude(shim);
+const settingsRoot = createRoot(document.querySelector('#settings')!);
+let settingsOpen = false;
+function settingsChanged(open: boolean) {
+  settingsOpen = open;
+  if (frame) frame.inert = choice !== null || open;
+}
 let host: ReturnType<typeof attachNappletHost> | undefined;
 let frame: HTMLIFrameElement | undefined;
 let choice: HostPrompt | null = null;
@@ -27,7 +36,7 @@ setupListing(lifetime.signal);
 
 function showPrompt(prompt: HostPrompt | null) {
   choice = prompt;
-  if (frame) frame.inert = prompt !== null;
+  if (frame) frame.inert = prompt !== null || settingsOpen;
   if (!prompt) {
     dialog.close();
     return;
@@ -102,7 +111,11 @@ async function refresh() {
     status.textContent = 'Verifying preview…';
     const missing = missingDomains(info.requires);
     if (missing.length) throw new Error(`Unsupported required capabilities: ${missing.join(', ')}`);
-    const doc = await loadArtifact(info.artifactHash, lifetime.signal, prelude);
+    let declaration: ReturnType<typeof declaredConfig> = {};
+    const doc = await loadArtifact(info.artifactHash, lifetime.signal, (verifiedHtml) => {
+      declaration = declaredConfig(verifiedHtml);
+      return nappletPrelude(shim, declaration);
+    });
     frame = document.createElement('iframe');
     frame.title = 'Your napplet';
     frame.sandbox.value = PLAYER_SANDBOX;
@@ -119,6 +132,17 @@ async function refresh() {
       pubkey,
       prompt: showPrompt,
       files: showFiles,
+      declaration,
+      configuration: (session) =>
+        settingsRoot.render(
+          session
+            ? createElement(SettingsControl, {
+                session,
+                title: 'Local preview',
+                onOpenChange: settingsChanged,
+              })
+            : null,
+        ),
     });
     status.textContent = 'Local preview · saved changes reload automatically';
   } catch (error) {
@@ -136,6 +160,7 @@ async function refresh() {
 window.addEventListener('pagehide', () => {
   lifetime.abort();
   host?.close();
+  settingsRoot.unmount();
   showFiles([]);
 });
 void refresh();

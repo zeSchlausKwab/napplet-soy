@@ -163,8 +163,10 @@ This records tracked files at the exact HEAD commits. Never run a fetched instal
 as part of this update. The snapshot preserves the upstream MIT license; skills
 include their own license copy. The only boilerplate adaptations are package name,
 Space configuration/provenance, agent-entry-point preambles, ignored private state,
-and excluding bundled skill directories/private state from the guidance scanner.
-The scanner's actual assertions remain unchanged. See `creator-kit.ts` and its
+excluding bundled skill directories/private state from the guidance scanner, and
+the static NAP-CONFIG example with one main.ts import. The former schema-free-starter
+assertion now checks that example is an object; all other guidance assertions remain.
+See `creator-kit.ts` and its
 fidelity test for the complete adaptation surface.
 
 Review toolchain pins separately against Node's official release checksums and
@@ -218,3 +220,17 @@ upstream boilerplate and skill bodies stay unchanged.
 Readable links require a one-time claim on the website: connect the publishing account,
 choose **Named link**, and claim `/@your-handle/your-slug`. Existing releases can do this
 now. Republish does not claim a name; a claimed name follows later releases automatically.
+
+## Napplet settings (next CLI release)
+
+New boilerplates include `config.schema.json` and an optional SDK settings example.
+The maintained Vite plugin embeds the schema in the built HTML. **Settings** in
+the preview opens the same live form used on the website; Listing also reports
+the schema's property count/version. These are user preferences, separate from
+publication targets in `napplet.json`. See [CONFIGURATION.md](CONFIGURATION.md) for
+the authoring flow, supported subset, storage behavior and verification.
+
+This source milestone is not in the published 0.4.1 CLI yet. Existing projects are
+not modified by updating skills. They can adopt the documented schema/SDK pattern
+after updating to a CLI release that contains this host. The upstream conformance
+runner currently checks boot/degradation only; it does not exercise configuration.

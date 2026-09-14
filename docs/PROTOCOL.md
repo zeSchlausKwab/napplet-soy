@@ -10,7 +10,7 @@ The current [NIP-5D proposal at commit 24711d9](https://github.com/dskvr/nips/bl
 
 The client accepts named, root, and snapshot manifests. Our publisher will default to named napplets and additionally publish snapshots for pinned links; snapshots are not a prerequisite for playing another publisher's current manifest. The source repository has its own NIP-34 identity.
 
-The tested release must record exact SDK, shim, template, conformance, ngit, GRASP, Blossom, and protocol revisions. Reading an old README or choosing the latest versions independently is insufficient. The registry's NAP-SHELL handshake language differs from the newer NIP-5D domain-injection language; the compatibility spike must select and document one working contract without asserting compatibility with both.
+The tested release must record exact SDK, shim, template, conformance, ngit, GRASP, Blossom, and protocol revisions. Reading an old README or choosing the latest versions independently is insufficient. The [compatibility record](COMPATIBILITY.md) rechecks the NIP-5D pin and inventories current operations/evidence. The host injects domains before creator scripts and performs the SHELL handshake itself; standard artifacts do not need app-owned bootstrap code. The new [NAP-CONFIG implementation](CONFIGURATION.md) uses upstream build metadata inside the signed HTML and shares one host between the CLI preview and website. Other per-NAP proposal audits and independent-client acceptance remain open.
 
 ## 2. Domain identities
 
@@ -120,7 +120,7 @@ Store saves in host-owned storage scoped by viewer/anonymous local profile and f
 
 ## 9. Protocol-level acceptance checks
 
-- Publish from our CLI with a real creator identity, then discover the signed manifest using only standard Nostr kind/address filters in a second implementation. That client must retrieve the hinted Blossom bytes, verify the same aggregate hash, and run the creation without the Space API, alias, hashtag, or optional descriptor. This acceptance check is pending until publishing is implemented.
+- Publish from our CLI with a real creator identity, then discover the signed manifest using only standard Nostr kind/address filters in a second implementation. That client must retrieve the hinted Blossom bytes, verify the same aggregate hash, and run the creation without the Space API, alias, hashtag, or optional descriptor. Publishing is implemented; this independent-client acceptance check remains on A12, including a configurable artifact.
 - Import that publication back through the same relay ingestion path as any other publisher. Local fixtures and imported copies must receive identical validation, capabilities, resource access, and storage identity.
 - Removing optional presentation metadata still yields a discoverable, playable napplet with a generated poster.
 - Another operator can reconstruct the napplet, source, metadata, and ancestry from exported signed events, Git, and Blossom without our Postgres database.

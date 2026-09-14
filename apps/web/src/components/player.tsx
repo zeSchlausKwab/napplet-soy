@@ -10,8 +10,9 @@ import shim from '@napplet/shim/prelude.global?raw';
 import { nappletPrelude } from '../../../../packages/runtime/src/prelude';
 import { attachNappletHost, type HostPrompt } from '../../../../packages/runtime/src/host';
 import type { ExportFile } from '../../../../packages/runtime/src/filesystem';
-
-const prelude = nappletPrelude(shim);
+import { declaredConfig } from '../../../../packages/runtime/src/config-schema';
+import type { NappletConfig } from '../../../../packages/runtime/src/config-session';
+import { SettingsControl } from '../../../../packages/runtime/src/settings-panel';
 
 function FileExports({ files }: { files: ExportFile[] }) {
   const [downloads, setDownloads] = useState<{ name: string; url: string }[]>([]);
@@ -52,6 +53,9 @@ export function Player({
   const { ready, pubkey } = useNostr();
   const [prompt, setPrompt] = useState<HostPrompt | null>(null);
   const [exports, setExports] = useState<ExportFile[]>([]);
+  const [configuration, setConfiguration] = useState<NappletConfig | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const declaration = useRef<ReturnType<typeof declaredConfig>>({});
   const host = useRef<ReturnType<typeof attachNappletHost> | undefined>(undefined);
   const currentPubkey = useRef(pubkey);
   useLayoutEffect(() => {
@@ -77,14 +81,14 @@ export function Player({
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setExpanded(false);
+      if (event.key === 'Escape' && !event.defaultPrevented && !settingsOpen) setExpanded(false);
     };
     document.addEventListener('keydown', escape);
     return () => {
       document.body.style.overflow = previous;
       document.removeEventListener('keydown', escape);
     };
-  }, [expanded]);
+  }, [expanded, settingsOpen]);
   const bindFrame = useCallback(
     (node: HTMLIFrameElement | null) => {
       host.current?.close();
@@ -98,6 +102,8 @@ export function Player({
         pubkey: currentPubkey.current,
         prompt: setPrompt,
         files: setExports,
+        declaration: declaration.current,
+        configuration: setConfiguration,
       });
     },
     [napplet, release],
@@ -114,8 +120,13 @@ export function Player({
     setRelease(null);
     void preparePlayback(manifest, napplet.artifactHash)
       .then(async (release) => {
-        const html = await loadArtifact(release.artifactHash, controller.signal, prelude);
+        let config: ReturnType<typeof declaredConfig> = {};
+        const html = await loadArtifact(release.artifactHash, controller.signal, (verifiedHtml) => {
+          config = declaredConfig(verifiedHtml);
+          return nappletPrelude(shim, config);
+        });
         if (!controller.signal.aborted) {
+          declaration.current = config;
           setRelease(release);
           setDoc(html);
         }
@@ -163,7 +174,7 @@ export function Player({
             title={napplet.title}
             srcDoc={doc}
             sandbox={PLAYER_SANDBOX}
-            inert={prompt !== null}
+            inert={prompt !== null || settingsOpen}
             allow="fullscreen"
             referrerPolicy="no-referrer"
           />
@@ -241,6 +252,15 @@ export function Player({
           )}
         </span>
         <div>
+          {configuration && (
+            <SettingsControl
+              session={configuration}
+              container={wrapper.current}
+              title={napplet.title}
+              iconOnly
+              onOpenChange={setSettingsOpen}
+            />
+          )}
           <Button
             variant="ghost"
             size="icon"

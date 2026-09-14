@@ -9,6 +9,57 @@ async function start(page: import('@playwright/test').Page) {
   return frame;
 }
 
+test('napplet settings stay usable in fullscreen, apply only on save and survive restarting the same release', async ({
+  page,
+}) => {
+  let frame = await start(page);
+  const schema = {
+    type: 'object',
+    properties: {
+      speed: { type: 'number', title: 'Speed', minimum: 0.25, maximum: 3, default: 1 },
+      token: { type: 'string', title: 'Session token', 'x-napplet-secret': true },
+    },
+  };
+  const register = () =>
+    frame.evaluate(async (schema) => {
+      const config = (window as any).napplet.config;
+      await config.registerSchema(schema);
+      (window as any).settings = [];
+      config.subscribe((values: unknown) => (window as any).settings.push(values));
+      return config.get();
+    }, schema);
+  expect(await register()).toEqual({ speed: 1 });
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
+  await page.getByRole('button', { name: 'Napplet settings', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Make it feel like yours.' })).toBeVisible();
+  expect(
+    await page.evaluate(() => {
+      const wrapper = document.fullscreenElement ?? document.querySelector('.player-expanded');
+      return wrapper?.contains(document.querySelector('.nap-settings-dialog'));
+    }),
+  ).toBe(true);
+  await page.getByLabel('Speed', { exact: true }).fill('2.5');
+  await page.getByLabel('Session token', { exact: true }).fill('session-only');
+  await page.getByRole('button', { name: 'Save settings' }).click();
+  await expect
+    .poll(() => frame.evaluate(() => (window as any).settings.at(-1)))
+    .toEqual({ speed: 2.5, token: 'session-only' });
+  await page.getByRole('button', { name: 'Napplet settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Reset defaults' }).click();
+  await expect(page.getByLabel('Speed', { exact: true })).toHaveValue('1');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(await frame.evaluate(() => (window as any).napplet.config.get())).toEqual({
+    speed: 2.5,
+    token: 'session-only',
+  });
+  await page.getByRole('button', { name: 'Exit fullscreen' }).click();
+  await page.getByRole('button', { name: 'Restart napplet' }).click();
+  await expect(page.frameLocator('iframe').locator('canvas')).toBeVisible();
+  frame = page.frames().find((f) => f.parentFrame())!;
+  expect(await register()).toEqual({ speed: 2.5 });
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain('session-only');
+});
+
 test('NAP handshake, scoped persistence, policy errors and source binding work through the real shim', async ({
   page,
 }) => {

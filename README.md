@@ -8,6 +8,10 @@ is design history; it is not the current delivery checklist.
 
 This is the first working implementation slice: Bun + React + TanStack Start, shadcn/ui, and Applesauce. It includes six signed local examples, SSR and client navigation, named/Nostr/pinned URLs, hash-verified sandbox playback, source inspection, a standalone creator CLI, and Caddy/PM2 deployment tooling.
 
+Source milestone (2026-09-14): [napplet settings](docs/CONFIGURATION.md) now share a
+validated form across the website and CLI preview. See the [compatibility record](docs/COMPATIBILITY.md)
+for verified behavior and remaining launch work. This is not in the deployed 0.4.1 release yet.
+
 ## Start developing
 
 Platform development requires Bun **1.3.11**, Node **18+** for PM2, Git, Go **1.21+**, Rust **1.97.1**, and a C compiler. Linux additionally needs `pkg-config` and OpenSSL development headers. The relay build selects Go **1.25.0** automatically. See [relay setup](docs/RELAY.md) and [Git hosting](docs/GRASP.md).

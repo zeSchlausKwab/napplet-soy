@@ -43,9 +43,12 @@ enabled(
     let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
     try {
       await run(['new', 'creation', '--identity', 'later', '--json'], root);
-      expect(await readFile(join(project, 'src/main.ts'), 'utf8')).toBe(
-        upstream.files['src/main.ts'],
-      );
+      expect(
+        (await readFile(join(project, 'src/main.ts'), 'utf8')).replace(
+          "import './napplet-settings.js';\n",
+          '',
+        ),
+      ).toBe(upstream.files['src/main.ts']);
       expect(await readFile(join(project, 'pnpm-lock.yaml'), 'utf8')).toBe(
         upstream.files['pnpm-lock.yaml'],
       );
@@ -96,9 +99,15 @@ enabled(
       await frame.locator('#storageButton').click();
       await frame.locator('#storageValue').filter({ hasText: 'Saved with upstream SDK' }).waitFor();
       expect(await frame.locator('#notifyButton').isDisabled()).toBe(true);
+      await page.getByRole('button', { name: 'Napplet settings', exact: true }).click();
+      await page.getByLabel('Text size', { exact: true }).fill('18');
+      await page.getByRole('button', { name: 'Save settings' }).click();
+      await page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+      expect(await frame.locator('html').evaluate((node) => node.style.fontSize)).toBe('18px');
       await writeFile(
         join(project, 'src/main.ts'),
-        upstream.files['src/main.ts'] +
+        "import './napplet-settings.js';\n" +
+          upstream.files['src/main.ts'] +
           '\ndocument.getElementById("noteInput")!.setAttribute("data-rebuilt", "yes");\n',
       );
       await frame.locator('#noteInput[data-rebuilt="yes"]').waitFor({ timeout: 15000 });

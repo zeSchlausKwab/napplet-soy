@@ -9,7 +9,7 @@ import { MAX_PREVIEW_BYTES } from '../../../../packages/protocol/src/preview';
 import { encodeAddress, sha256 } from '../../../../packages/protocol/src';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
 import type { Network } from '../../../../packages/identity/src/signer';
-import { builtRequirements } from '../../../../packages/publish/src/artifact';
+import { builtConfiguration, builtRequirements } from '../../../../packages/publish/src/artifact';
 import { MAX_ARTIFACT_BYTES } from '../../../../packages/protocol/src/artifact';
 
 async function projectAt(root: string) {
@@ -47,9 +47,20 @@ export async function listingPreview(root: string, network: Network, captureAvai
   const warnings: string[] = [];
   let artifact: { bytes: number; hash: string } | null = null;
   let requires = project.requires;
+  let configuration: { properties: number; version: number | null } | null = null;
   try {
     const bytes = await regularFile(root, project.entry, MAX_ARTIFACT_BYTES);
     artifact = { bytes: bytes.length, hash: await sha256(bytes) };
+    try {
+      const schema = await builtConfiguration(bytes);
+      if (schema)
+        configuration = {
+          properties: Object.keys(schema.properties ?? {}).length,
+          version: schema.$version ?? null,
+        };
+    } catch {
+      warnings.push('The built settings schema is invalid. Check config.schema.json and rebuild.');
+    }
     requires = [
       ...new Set([
         ...requires,
@@ -102,7 +113,7 @@ export async function listingPreview(root: string, network: Network, captureAvai
     creator: project.creator?.pubkey ?? null,
     network,
     targets,
-    runtime: { requires, relays: project.relays, servers: project.servers },
+    runtime: { requires, relays: project.relays, servers: project.servers, configuration },
     artifact,
     image,
     warnings,

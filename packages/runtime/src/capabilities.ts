@@ -10,6 +10,7 @@ export const RUNTIME_DOMAINS = [
   'common',
   'link',
   'fs',
+  'config',
 ] as const;
 export const RUNTIME_PROFILE = 'space-playback-1';
 
@@ -17,6 +18,7 @@ export const RUNTIME_PROFILE = 'space-playback-1';
 // operations must be ignored, including unknown operations in supported domains.
 export const HOST_REQUESTS = new Set(
   Object.entries({
+    config: ['registerSchema', 'get', 'subscribe', 'unsubscribe', 'openSettings'],
     identity: [
       'getPublicKey',
       'getRelays',

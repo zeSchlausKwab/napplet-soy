@@ -4,7 +4,7 @@ Implemented 2026-09-12. Open a public card and choose **Play napplet**. Cards di
 
 ## Standards and integration
 
-Fixtures and relay-imported napplets use the same manifest validator, capability admission, artifact verification, host identity, and resource service. The browser subscription covers named, root, and snapshot kinds without a Space hashtag. Fixture metadata contains no custom snapshot pointer. Public publishing remains a separate unfinished feature; the bundled test key must never be used on public relays.
+Fixtures and relay-imported napplets use the same manifest validator, capability admission, artifact verification, host identity, and resource service. The browser subscription covers named, root, and snapshot kinds without a Space hashtag. Fixture metadata contains no custom snapshot pointer. The creator publisher uses this same admission path; the bundled test key must never be used on public relays.
 
 Storage uses the same author/address/aggregate scope regardless of catalog source. A creator-signed snapshot and current manifest of the same build share that scope; a different app or signer cannot claim it. Existing current public-manifest scopes are preserved. The old fixture-only artifact-hash scope is retired; prototype fixture saves are not migrated.
 
@@ -27,11 +27,12 @@ References: [NAP registry and web projection](https://github.com/napplet/naps), 
 | `common`   | Public NIP-19 encoding/decoding and profile/follows reads                                        | Secret identifiers, nrelay encoding, follow/unfollow/react/report writes denied                                                                                     |
 | `resource` | HTTPS and hash-verified Blossom bytes, ordered bulk responses, cancellation, scheme discovery    | `data:` handled locally by upstream shim; no htree/nostr resolver; raw SVG/HTML/XML denied                                                                          |
 | `link`     | HTTPS links presented in a host-owned confirmation                                               | User clicks to open; no automatic navigation                                                                                                                        |
+| `config`   | Static/runtime schemas, validated settings UI, snapshots/subscriptions, focused settings opening | Browser-local values scoped to author/address/build/account; session-only secrets; see [configuration limits](CONFIGURATION.md). Implemented in source, not deployed yet |
 | `fs`       | Session virtual files: metadata/list/read/write/mkdir/remove/move/watch, save destination picker | 10 MiB aggregate, 256 KiB chunks, 128 entries, 16 watches; device file/directory pickers unsupported                                                                |
 
 `fs.pickSaveFile()` opens a host prompt. After writes complete, files appear below the player with download links. This does not write into the user's filesystem without a download action. Download session files before stopping the player. Virtual paths are restricted to `/files`; they never map to server or device paths.
 
-Required unsupported domains still gate launch: for example `inc`, `intent`, `config`, `keys`, `media`, `upload`, and `cvm`. Composability, accounts that publish, extended identity lists, arbitrary custom relay connections, filesystem imports, and ContextVM game sessions remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
+Required unsupported domains still gate launch: for example `inc`, `intent`, `keys`, `media`, `upload`, and `cvm`. Composability, napplet signing grants, extended identity lists, arbitrary custom relay connections, filesystem imports, and ContextVM game sessions remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
 
 ## Resource and lifecycle boundaries
 
@@ -61,6 +62,14 @@ TEST_ORIGIN=http://localhost:8080 TEST_PUBLICDEV=1 TEST_LARGE_PUBLIC=1 \
 
 New CLI projects include the same prelude builder, host and resource responder as the website. The browser hash-checks local bytes before injecting `srcdoc`; the opaque iframe has the same CSP and capability set. The host page permits the inline code/WebAssembly required by inherited `srcdoc` policy, while the frame's stricter CSP removes all network access. Save/link confirmations and downloads are host-owned, and browser-extension connection exercises the same identity lifecycle.
 
-`napplet.json` accepts `requires` (mandatory domains), `relays` (explicit host allowlist) and `servers` (Blossom hints). Empty arrays support self-contained experiments. The preview server binds loopback, checks Host/Origin, and admits resource requests only for the current compatible local revision. It reuses production origin, URL/IP, MIME, quota and timeout checks. Local source authority and `previewId` do not impersonate a signed publication or creator key. Publishing is still a separate milestone. Existing generated projects retain their bundled runtime; this change applies to newly scaffolded projects.
+`napplet.json` accepts `requires` (mandatory domains), `relays` (explicit host allowlist) and `servers` (Blossom hints). Empty arrays support self-contained experiments. The preview server binds loopback, checks Host/Origin, and admits resource requests only for the current compatible local revision. It reuses production origin, URL/IP, MIME, quota and timeout checks. Local source authority and `previewId` do not impersonate a signed publication or creator key. Publishing is available through the separate CLI publish flow. Updating the CLI updates its preview host; older self-contained generated harness copies retain their old bundled runtime.
 
 This conformance checkpoint passed type checking, 62 unit/integration tests, 15 Chromium checks, and a production build/startup. The separate 78 MiB packaged-resource integration test remains opt-in and was not repeated.
+
+## Configuration checkpoint (2026-09-14, source only)
+
+The shared host now provides NAP-CONFIG in both players, with settings inside the
+fullscreen wrapper and a static-schema example in new boilerplates. See
+[CONFIGURATION.md](CONFIGURATION.md) for semantics and [COMPATIBILITY.md](COMPATIBILITY.md)
+for the operation inventory, tested pins and upstream conformance-runner limitations.
+A broader release and independent-client acceptance remain separate agenda work.

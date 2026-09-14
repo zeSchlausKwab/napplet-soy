@@ -2,7 +2,8 @@
 
 Reviewed **2026-09-14** for [agenda A12](../AGENDA.md#a12--upstream-concept-and-interoperability-review-before-wider-launch).
 This records an upstream reading and code comparison, not a completed conformance
-audit. The site is already deployed; the remaining acceptance work precedes a wider
+audit. The [compatibility inventory](COMPATIBILITY.md) now records the configuration
+milestone and actual test coverage. The site is already deployed; the remaining acceptance work precedes a wider
 launch. The user's decision that the NIP-5D proposal has authority still applies.
 
 ## Sources and revision boundaries
@@ -42,20 +43,21 @@ payloads; URL presentation must not become a second protocol identity.
 
 The overview mentions manifest kind 35128, while our pinned NIP-5D implementation
 uses 35129/15129/5129. Record the layer and revision behind each statement; do not
-replace deployed identities based on a general overview. Reconcile the current
-normative manifest and bootstrap contracts in the launch matrix. This disagreement
+replace deployed identities based on a general overview. The current proposal head
+was rechecked and still matches our NIP-5D pin; no kind migration is needed. The
+host-owned injection/handshake decision is recorded in the compatibility matrix. This disagreement
 was also identified in [earlier research](RESEARCH.md).
 
 ## What the current code actually exposes
 
 The [runtime domain registry](../packages/runtime/src/capabilities.ts) advertises
 `shell`, `identity`, `storage`, `theme`, `resource`, `relay`, `outbox`, `common`,
-`link` and `fs`. Several write operations are denied by current policy; domain
+`link`, `fs` and, in the new source milestone, `config`. Several write operations are denied by current policy; domain
 presence is not permission for every operation. The upstream
 [shim integration](../packages/runtime/src/prelude.ts) and
 [host dispatcher](../packages/runtime/src/host.ts) are shared by web and CLI previews.
 
-`config`, `cvm`, `intent` and `inc` are not advertised. Account sign-in and surrounding
+`cvm`, `intent` and `inc` are not advertised. Account sign-in and surrounding
 website zaps do not automatically implement napplet identity-changing or payment
 capabilities. Inventory all domains, including deployed `common` and `fs`, against
 their exact proposal/SDK sources; the README alone is not a complete compatibility
@@ -68,13 +70,17 @@ defines schema-based settings with shell-owned writes, defaults, validation, sna
 and subscriptions. Its supported JSON Schema subset is bounded, not arbitrary schema
 execution; it includes registration acknowledgements, errors, secret annotations and
 version hints. Prefer declared schemas where possible and retain the registration
-escape hatch. Confirm the manifest/build binding before choosing a local file format.
+escape hatch. The pinned Vite plugin already embeds `config.schema.json` as a
+`napplet-config-schema` meta tag in signed HTML; there is no new manifest event tag.
 
 Our design work must distinguish publication config, napplet-declared schema,
 user-selected values, and provider/game rules. Specify author/account scoping,
 release upgrades, reset and invalid-value handling. Reuse a single validator and
 settings adapter in the CLI harness and live shell, with an example and conformance
-fixtures. A schema annotation must never grant a napplet access to a creator key.
+fixtures. These are now implemented in the [shared configuration host](CONFIGURATION.md),
+with fresh scopes per verified build/account and memory-only secrets. A schema
+annotation must never grant a napplet access to a creator key. The compatibility
+record distinguishes the upstream runner's boot checks from actual config tests.
 
 ## ContextVM implications — A14/A15
 
@@ -93,11 +99,10 @@ and three gameplay topology examples before declaring a generalized API. Existin
 
 ## Wider-launch acceptance still to do
 
-1. Record a matrix of specification revision, required dependencies, advertised
-   operations, denial behavior and passing conformance tests for every domain.
-2. Reconcile manifest kinds, bootstrap, packaged resources and source/preview bindings
-   across the chosen upstream toolchain. Preserve existing links and signed events;
-   document any additive compatibility or migration behavior.
+1. Complete the existing operation/evidence matrix with each remaining NAP's exact
+   specification revision, dependencies and per-operation conformance tests.
+2. Retain the reconciled NIP-5D manifest/bootstrap and CONFIG bindings; finish the
+   cross-client packaged-resource/source/preview audit across the chosen toolchain.
 3. Publish with our CLI, discover and run in an independent client without our API;
    import an independent creation back. Include configurable creations when A11 ships.
 4. Exercise optional/unknown requirements and malformed messages. Keep one verified
@@ -106,6 +111,6 @@ and three gameplay topology examples before declaring a generalized API. Existin
    CVM sessions and flavors. Keep UI layout, media representation, identity and
    provider choice independently replaceable without an unrestricted generic RPC.
 
-These are proposed acceptance steps for upcoming work. This review neither adds
-capabilities nor claims native/WASM support, cross-client conformance, or a production
+These remain launch acceptance steps. The configuration implementation does not
+claim native projection support, full cross-client conformance or a production
 multiplayer service.

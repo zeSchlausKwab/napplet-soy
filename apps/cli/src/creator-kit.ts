@@ -2,6 +2,8 @@ import { lstat, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import boilerplate from '../vendor/boilerplate.json';
 import skills from '../vendor/skills.json';
+import settingsSchema from '../templates/config.schema.json';
+import settingsExample from '../templates/napplet-settings.ts.txt' with { type: 'text' };
 import { AccountError } from '../../../packages/identity/src/signer';
 
 export const upstream = { boilerplate: boilerplate.revision, skills: skills.revision };
@@ -27,6 +29,7 @@ this note maps its local tooling commands to the installed Napplet Space CLI.
   screenshot, license and publishing destinations. Use Capture screenshot after
   the final build; inspect the saved image in Listing before publishing. Captures
   select a new PNG in napplet.json and preserve previous images.
+  The Settings button opens the same live configuration form as the website.
 - napplet-space build makes dist/index.html. Edit index.html, src/main.ts and
   src/styles.css; keep the upstream Vite configuration and dependency lockfile.
 - napplet-space config shows effective publishing targets without a signer or build.
@@ -101,11 +104,35 @@ napplet-requires metadata and checks it against this host. Optional domains must
 degrade gracefully, following upstream guidance. Use the injected namespace and
 SDK; do not add a bootstrap or a private protocol extension to app code.
 
-This host provides identity, storage, theme, resource, relay/outbox reads,
+This host provides configuration, identity, storage, theme, resource, relay/outbox reads,
 common reads, user-confirmed links and session files. Social writes, signer
 operations, ContextVM and cross-napplet operations are not currently granted.
 A domain's presence does not promise that every operation will be permitted.
 Our host check complements upstream conformance; report each result separately.
+
+## User-facing settings
+
+config.schema.json declares the napplet's NAP-CONFIG settings. The upstream Vite
+plugin embeds it as napplet-config-schema metadata inside the signed HTML build.
+This is separate from napplet.json, which configures publication and infrastructure.
+The starter's src/napplet-settings.ts uses the upstream SDK config.subscribe to
+apply text size, control height and text selection live. Replace these example
+properties with settings relevant to the creation. Keep sensible in-app fallbacks
+when config is optional; declare requires: ['config'] in the existing Vite plugin
+only if the core experience cannot work without it.
+
+Use the NAP-CONFIG Core Subset: typed properties, literal defaults, enum choices,
+numeric/string/list bounds and nested objects (at most four levels). No refs,
+regex patterns, expressions or conditional schemas. x-napplet-section and
+x-napplet-order organize the form. config.openSettings can open it from an app
+control. For a static schema, do not also call config.registerSchema at startup.
+
+The host validates edits and pushes values; a napplet cannot write configuration.
+Space scopes values by verified creator/address/build and viewer. A new build
+starts fresh. Non-secret settings persist on this browser; x-napplet-secret
+string fields are masked, have no default, and last only for the running session.
+Never use settings to request the creator's signing key. Check Settings in the
+local preview, including defaults, live changes and a reload, before publishing.
 
 ## Upstream maintenance
 
@@ -114,8 +141,10 @@ Pinned skills: ${skills.repository}/tree/${skills.revision}
 
 Upstream source, configuration, documentation and scripts are retained. Local
 changes: package name, this integration note, agent entry pointers, private-state
-gitignore entries, and excluding installed skill folders from the boilerplate's
-repository-guidance scan. Skill bodies and licenses are unchanged. Run
+gitignore entries, a static settings example and its single main.ts import, and
+excluding installed skill folders from the boilerplate's repository-guidance scan.
+The guidance check for a schema-free starter now checks our static settings example.
+Skill bodies and licenses are unchanged. Run
 napplet-space skills update to install the CLI's bundled skill revision; modified
 files are reported as conflicts and preserved. Template/source changes are never
 applied by that command.
@@ -143,6 +172,9 @@ export function boilerplateFiles(name: string) {
     JSON.stringify({ ...JSON.parse(files['package.json']), name }, null, 2) + '\n';
   files['AGENTS.md'] = pointer + files['AGENTS.md'];
   files['README.md'] = pointer + files['README.md'];
+  files['config.schema.json'] = JSON.stringify(settingsSchema, null, 2) + '\n';
+  files['src/napplet-settings.ts'] = settingsExample;
+  files['src/main.ts'] = "import './napplet-settings.js';\n" + files['src/main.ts'];
   files['.gitignore'] +=
     '\n# Napplet Space private build/publication state\n.napplet-space/\n.nip5a-manifest.json\n';
   // Upstream scans all text, including negative examples in installed skills.
@@ -153,6 +185,13 @@ export function boilerplateFiles(name: string) {
   files['tests/guidance.test.mjs'] = files['tests/guidance.test.mjs'].replace(
     original,
     "new Set(['.git', 'dist', 'node_modules', '.agents', '.claude', '.napplet-space'])",
+  );
+  const schemaFree = "assert.equal(sources.has('config.schema.json'), false);";
+  if (!files['tests/guidance.test.mjs'].includes(schemaFree))
+    throw new Error('Upstream static-schema guidance changed; review the adapter.');
+  files['tests/guidance.test.mjs'] = files['tests/guidance.test.mjs'].replace(
+    schemaFree,
+    "assert.equal(JSON.parse(sources.get('config.schema.json')).type, 'object');",
   );
   return files;
 }
