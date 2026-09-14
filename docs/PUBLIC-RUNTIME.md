@@ -27,7 +27,7 @@ References: [NAP registry and web projection](https://github.com/napplet/naps), 
 | `common`   | Public NIP-19 encoding/decoding and profile/follows reads                                        | Secret identifiers, nrelay encoding, follow/unfollow/react/report writes denied                                                                                     |
 | `resource` | HTTPS and hash-verified Blossom bytes, ordered bulk responses, cancellation, scheme discovery    | `data:` handled locally by upstream shim; no htree/nostr resolver; raw SVG/HTML/XML denied                                                                          |
 | `link`     | HTTPS links presented in a host-owned confirmation                                               | User clicks to open; no automatic navigation                                                                                                                        |
-| `config`   | Static/runtime schemas, validated settings UI, snapshots/subscriptions, focused settings opening | Browser-local values scoped to author/address/build/account; session-only secrets; see [configuration limits](CONFIGURATION.md). Implemented in source, not deployed yet |
+| `config`   | Static/runtime schemas, validated settings UI, snapshots/subscriptions, focused settings opening | Browser-local values scoped to author/address/build/account; session-only secrets; see [configuration limits](CONFIGURATION.md). Deployed 2026-09-14 |
 | `fs`       | Session virtual files: metadata/list/read/write/mkdir/remove/move/watch, save destination picker | 10 MiB aggregate, 256 KiB chunks, 128 entries, 16 watches; device file/directory pickers unsupported                                                                |
 
 `fs.pickSaveFile()` opens a host prompt. After writes complete, files appear below the player with download links. This does not write into the user's filesystem without a download action. Download session files before stopping the player. Virtual paths are restricted to `/files`; they never map to server or device paths.
@@ -46,7 +46,7 @@ Relay access is through a frame-owned Applesauce pool. Filters, event counts, re
 
 ## Immersive links
 
-Implemented and verified locally on **2026-09-14**; this slice is not deployed yet.
+Implemented, verified and deployed on **2026-09-14** in `20260914171728494-21459`.
 Append `/play` to a portable `/n/<naddr>`, pinned `/r/<event-id>` or named
 `/@<handle>/<slug>` URL. **Open player** on the detail page opens that presentation;
 the trusted bar can copy its link. The parent route keeps its canonical detail URL

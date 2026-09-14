@@ -5,6 +5,9 @@ do not deploy or upload releases unless the user explicitly requests deployment.
 
 Updated 2026-09-14. **[napplet.soy](https://napplet.soy) is live**, using the temporary legacy CPU profile on the existing Namecheap VPS. Caddy issued valid Let's Encrypt certificates for the website, www, Blossom and Git; the other site remains available. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. See the deployment record below for verification and the compatibility workaround.
 
+Latest verified release: **`20260914171728494-21459`**; see the
+[immersive player and social controls record](#immersive-player-and-social-controls-release--2026-09-14).
+
 ## One command
 
 ```sh
@@ -549,7 +552,7 @@ needed. Local verification records are under `.local/identity-check/`.
 
 ## Source-browser release — 2026-09-14
 
-Active release: **`20260914151021458-42270`**, application changes through `5b27d36`
+Release: **`20260914151021458-42270`** (superseded below), application changes through `5b27d36`
 and updated deployment smoke check `483b406`. Previous release:
 `20260914142718446-76864`. The user explicitly requested this deployment after
 locally verifying the source browser and gallery layout fix.
@@ -598,3 +601,62 @@ match the pre-deploy values:
 The other site, `schlaustronics.com`, returns HTTPS 200. No DNS or proxy changes or
 reboot were needed. Local deployment logs, service results, browser results and
 source screenshots are retained in `.local/source-deploy/`.
+
+
+## Immersive player and social controls release — 2026-09-14
+
+Active release: **`20260914171728494-21459`**, source through `105dd2f`.
+Application changes are `bb631ac`, `a43a92b` and `74faff9`; `105dd2f` stabilizes
+an existing admin-auth test. Previous release `20260914151021458-42270` remains
+available for rollback. The user explicitly requested this deployment. It used
+the existing shared-Caddy, web-port 3040, legacy CPU and administrator profile.
+
+This release adds `/play` to named, portable and pinned napplet routes, retaining
+the running iframe and host session across fullscreen/detail changes and browser
+Back/Forward. Gallery and ranking cards now have a share icon; detail pages show
+like/count, share and zap icons beneath the creator. Header and discussion controls
+share one conversation and retry state. Likes require sign-in; sharing and anonymous
+zaps remain available to guests. See [playback](PUBLIC-RUNTIME.md#immersive-links)
+and [community controls](COMMUNITY.md#social-actions). CLI **0.5.0** is unchanged;
+no native CLI archives were replaced.
+
+The first attempt stopped during local validation, before uploading or changing
+the VPS. An auth test created a request 31 seconds in the future; crossing a clock
+second before verification made it valid at the allowed 30-second boundary. A
+controlled-clock reproduction confirmed the cause. Freezing the test clock fixed
+the race and passed 20 consecutive runs without changing server authorization.
+The successful deployment reran typechecking and all **181 repository tests** on
+both machines, Go race/relay checks, **16 Blossom tests** and **eight GRASP tests**.
+It built the production web/native services and validated the candidate before
+activation.
+
+After activation, all **12 public app/runtime browser tests passed**, including
+SSR/navigation, sandbox and hash enforcement, source routes, OG previews, mobile
+layout, identity changes, settings, storage and file exports. Additional live checks
+verified gallery/header sharing while signed out, disabled guest likes, enabled
+zap controls, portable/pinned/named detail routes, and playback of the published
+**Impact Yard remix** at event
+`5b31a37bbd0726a41cd92a07953ba31d3b584fc822f5499d9bfe1b6e180484ab`.
+Back to details retained its iframe. A controlled ordinary example also verified
+native-to-CSS fullscreen exit, Back/Forward, play-link copying and retained instance
+storage. Portrait/landscape screenshots were inspected with no horizontal overflow.
+The temporary sharing check needed to await hydration before clicking the SSR button.
+Real-device Safari/iOS coverage remains a follow-up. No social events, personal
+credentials or Lightning payments were submitted during live validation.
+
+Public checks passed for the expected HTTPS release, relay NIP-11 and read-only WSS
+subscriptions on both relay URLs, Blossom health, GRASP identity, unauthenticated
+admin 401, installer version and all four CLI archive sizes/checksum files. An
+initial Damus discovery error cleared on the next observed refresh; the final
+indexer report was fresh, non-stale and error-free, using managed and external relays.
+
+All five Napplet PM2 processes are online with zero restarts; Caddy is active. Both
+configuration hashes match the pre-deploy values:
+
+- Parent: `be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f`.
+- Napplet fragment: `ef99cf551dca7c36d7ab82b6075c36bd537034f19e402d63648784b9d65e3c5e`.
+
+`schlaustronics.com` returned HTTPS 200 during the build and after activation.
+No DNS changes or reboot were needed. Logs, the focused live browser script and
+screenshots are retained in `.local/immersive-deploy/`. AGENDA A02/A17 and their
+feature documents now record this deployment; A05 remains the next planned slice.

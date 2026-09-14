@@ -12,7 +12,7 @@ The web process requires `SPACE_COMMUNITY_DIR`. `bun run dev` and `bun run dev:p
 
 Napplet detail pages and gallery cards share likes/unlikes and zaps. Detail pages also have comments, replies and author deletion; the gallery comment bubble opens and focuses the detail composer. Likes and commenting require sign-in, while viewing counts and anonymous zapping do not. Connect a NIP-07 signer through Applesauce. Its returned signature, author and complete event payload are verified. Signing happens in the trusted website; napplet iframe signing permissions remain unchanged.
 
-**Detail toolbar (2026-09-14, verified locally; not deployed):** named, portable and
+**Detail toolbar (deployed 2026-09-14 in `20260914171728494-21459`):** named, portable and
 pinned pages also show like/count, share and zap icons beneath the creator name.
 One `NappletSocial` owner supplies the toolbar, feedback and discussion, so header
 and discussion likes stay synchronized without fetching a second conversation or
@@ -94,8 +94,8 @@ canonical portable detail route with `#comments` and focuses the composer after 
 loads. A direct logged-out hash link focuses the sign-in control, retaining the focus
 intent after connecting. Comment likes and replies follow the same sign-in rule.
 
-Gallery and ranking cards also offer an icon-only **Share** control (implemented and
-verified locally on 2026-09-14; not deployed yet). It copies this site's portable
+Gallery and ranking cards also offer an icon-only **Share** control (verified and
+deployed on 2026-09-14 in `20260914171728494-21459`). It copies this site's portable
 `/n/<naddr>` detail URL, or `/r/<event-id>` for an entry without an address. Sharing
 does not require signing in or depend on social counts, and does not navigate or
 start playback. Success briefly changes the icon to a checkmark with a screen-reader

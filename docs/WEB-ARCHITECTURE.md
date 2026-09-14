@@ -55,7 +55,7 @@ Route loaders call a server function or API boundary that resolves identifiers a
 | `/n/<naddr>/source` | Equivalent source view without a site handle |
 | `/r/<snapshot-event-id>` | Exact immutable release |
 | `/r/<snapshot-event-id>/source` | Exact source revision of that release |
-| `/n/<naddr>/play`, `/r/<event-id>/play`, `/@alice/plasma-pet/play` | Immersive presentation of the same identity/release; implemented locally 2026-09-14 |
+| `/n/<naddr>/play`, `/r/<event-id>/play`, `/@alice/plasma-pet/play` | Immersive presentation of the same identity/release; deployed 2026-09-14 |
 | `/settings` | Creator/account preferences |
 | `/api/v1/*` | CLI/public data/status and authenticated account endpoints |
 
@@ -66,7 +66,7 @@ which retains the live iframe and host while route presentation changes. They re
 the parent's resolver and canonical/OG metadata. Native fullscreen is layered over
 CSS expansion and requires a browser gesture. See the current
 [immersive lifecycle contract](PUBLIC-RUNTIME.md#immersive-links) for exit/history
-semantics and verification; this source milestone has not been deployed yet.
+semantics and verification; deployed in `20260914171728494-21459` on 2026-09-14.
 
 For the proposed Start implementation, use file-based routes under `apps/web/src/routes` and its generated typed route tree. Route modules own validated path/search inputs, loaders, metadata, and error boundaries; server functions and API handlers own protected backend operations. Shared detail components and a shared `resolveNappletPage()` service keep alias, address, and snapshot views consistent. The URL contract above does not depend on the final router choice.
 
