@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import release from '../../apps/cli/distribution/version.json';
+import release from '../../apps/cli/distribution/version.json' with { type: 'json' };
 
 test('onboarding provides a runtime-free installer and real versioned downloads', async ({
   page,

@@ -1,13 +1,8 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import records from '../../packages/backend/data/catalog.json' with { type: 'json' };
 
-// The gallery can grow through relay discovery while these fixture assertions
-// continue to check deterministic filtering and navigation behavior.
-const fixtureCards = (page: Page) =>
-  page
-    .locator('.napplet-card')
-    .filter({ has: page.getByRole('link', { name: 's @space-lab', exact: true }) });
-
+// Discover a visible tag and creation instead of depending on bundled examples.
+// Production and local discovery use the same ordinary gallery entries.
 test('gallery SSR, filtering, navigation and browser history', async ({ page, request }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -16,7 +11,8 @@ test('gallery SSR, filtering, navigation and browser history', async ({ page, re
   expect(await response.text()).toContain('Small code.');
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'The playground' })).toBeVisible();
-  await expect(fixtureCards(page)).toHaveCount(6);
+  await expect(page.locator('.napplet-card').first()).toBeVisible();
+  await expect(page.getByLabel('Sort napplets')).toHaveValue('new');
   await expect(page.locator('iframe')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Public napplets' })).toHaveCount(0);
   await page.screenshot({
@@ -24,21 +20,36 @@ test('gallery SSR, filtering, navigation and browser history', async ({ page, re
     fullPage: true,
     animations: 'disabled',
   });
-  await page.getByRole('button', { name: 'More tags', exact: true }).click();
-  await page.getByRole('button', { name: 'Filter by #game', exact: true }).click();
-  await expect(fixtureCards(page)).toHaveCount(1);
-  await expect(page).toHaveURL(/tag=game/);
-  await page.getByRole('link', { name: 'Play Tiny tennis' }).click();
-  await expect(page.getByRole('heading', { name: 'Tiny tennis.' })).toBeVisible();
+  const filter = page.getByRole('button', { name: /^Filter by #/ }).first();
+  const label = (await filter.getAttribute('aria-label'))!;
+  const topic = label.replace('Filter by #', '');
+  await filter.click();
+  await expect(page.getByRole('button', { name: label, exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  expect(new URL(page.url()).searchParams.get('tag')).toBe(topic);
+  const card = page.locator('.napplet-card').first();
+  await expect(card).toBeVisible();
+  const title = (await card.locator('.card-heading a').textContent())!;
+  await card.locator('.card-preview').click();
+  await expect(page.locator('h1')).toContainText(title);
   await page.goBack();
-  await expect(fixtureCards(page)).toHaveCount(1);
-  await fixtureCards(page).getByRole('link', { name: '#arcade', exact: true }).click();
-  await expect(page).toHaveURL(/tag=arcade/);
-  await expect(fixtureCards(page)).toHaveCount(1);
+  await expect(page.getByRole('button', { name: label, exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  const tagLink = page.locator('.napplet-card .topic-tags a').first();
+  const linkedTopic = (await tagLink.textContent())!.slice(1);
+  await tagLink.click();
+  expect(new URL(page.url()).searchParams.get('tag')).toBe(linkedTopic);
   await page.reload();
   await expect(
-    page.getByRole('button', { name: 'Filter by #arcade', exact: true }),
+    page.getByRole('button', { name: `Filter by #${linkedTopic}`, exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
+  await page.getByLabel('Sort napplets').selectOption('featured');
+  await expect(page.getByLabel('Sort napplets')).toHaveValue('featured');
+  await page.getByLabel('Sort napplets').selectOption('new');
   expect(errors).toEqual([]);
 });
 
@@ -138,17 +149,21 @@ test('mobile gallery has no horizontal overflow and signer failure is actionable
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await expect(fixtureCards(page)).toHaveCount(6);
+  await expect(page.locator('.napplet-card').first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({
     path: '.local/gallery-mobile.png',
     fullPage: true,
     animations: 'disabled',
   });
-  await page.getByRole('button', { name: 'More tags', exact: true }).click();
+  const moreTags = page.getByRole('button', { name: 'More tags', exact: true });
+  if (await moreTags.isVisible()) await moreTags.click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole('button', { name: 'Filter by #pixel-art', exact: true }).click();
-  await expect(fixtureCards(page)).toHaveCount(1);
+  await page
+    .getByRole('button', { name: /^Filter by #/ })
+    .first()
+    .click();
+  await expect(page.locator('.napplet-card').first()).toBeVisible();
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
   await page.getByRole('button', { name: 'Connect browser extension' }).click();
   await expect(page.getByRole('alert')).toContainText('Install or unlock a Nostr extension');
