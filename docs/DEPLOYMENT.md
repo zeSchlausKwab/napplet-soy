@@ -497,7 +497,7 @@ restore instructions.
 
 ## Identity, configuration and social release — 2026-09-14
 
-Active release: `20260914142718446-76864`, source through `dd75e01`.
+Release: `20260914142718446-76864`, source through `dd75e01` (superseded by the source-browser release below).
 The previous release `20260914121312140-13099` remains available for rollback.
 The user explicitly authorized this deployment after completing A03/A04. It also
 releases the previously verified A11 configuration and A17 gallery/social work.
@@ -545,3 +545,56 @@ unchanged:
 `schlaustronics.com` continues to return HTTPS 200. The deployment retained the
 shared-Caddy, web-port 3040 and legacy CPU profile; no DNS changes or reboot were
 needed. Local verification records are under `.local/identity-check/`.
+
+
+## Source-browser release — 2026-09-14
+
+Active release: **`20260914151021458-42270`**, application changes through `5b27d36`
+and updated deployment smoke check `483b406`. Previous release:
+`20260914142718446-76864`. The user explicitly requested this deployment after
+locally verifying the source browser and gallery layout fix.
+
+Deployed the removal of the gallery’s “Liked.” / “Like removed.” success lines;
+filled hearts and counts provide success feedback, while errors/retry remain. Every
+napplet detail page now offers **Browse source**: a pinned file tree, highlighted
+read-only text, license, author-recorded commit, file permalinks, download and remix
+links. The existing optional signed archive convention enables original files;
+**Built HTML** remains an explicit fallback. Current-manifest event IDs now resolve
+consistently on pinned routes, and source inspection is available while playable
+artifact discovery is pending. See [source inspection](REMIXING.md#browsing-a-releases-original-files).
+
+CLI **0.5.0** remains the deployed CLI; this release required no new native archives.
+The larger-media creator workflow is still planned in A19, with the current supported
+asset path documented in [ASSETS.md](ASSETS.md).
+
+Deployment reran 181 repository tests and typechecking on both the development
+machine and VPS, plus Go race/relay checks, 16 Blossom checks and eight GRASP checks.
+The script built and tested its candidate before activation and completed successfully
+with the established shared-Caddy, port 3040 and legacy-CPU settings.
+
+After activation, **12 public browser checks passed** for gallery/SSR/navigation,
+opaque sandbox playback, tamper rejection, portable/pinned/source routes, mobile
+layout, signer guidance, OG previews, configuration/fullscreen/reload, runtime
+storage/files and identity changes in an existing frame. A separate read-only check
+opened the author’s **Impact Yard remix** at exact event
+`5b31a37bbd0726a41cd92a07953ba31d3b584fc822f5499d9bfe1b6e180484ab`:
+47 original files were browsable, highlighted text and file downloads matched,
+archive SHA-256 matched the signed reference, and the built-HTML fallback stayed
+inert. Desktop and mobile views passed without horizontal page overflow.
+[Live source page](https://napplet.soy/r/5b31a37bbd0726a41cd92a07953ba31d3b584fc822f5499d9bfe1b6e180484ab/source).
+
+Public checks also passed for HTTPS health with the new release ID, fresh indexer
+state using the managed and external relays without errors, relay NIP-11/read-only
+WSS subscriptions (including the old compatibility alias), Blossom health,
+unauthenticated admin 401, installer version and all four CLI archive sizes/checksum
+files. No real social events, personal credentials or payments were used.
+
+All five Napplet PM2 processes are online; Caddy is active. Both configuration hashes
+match the pre-deploy values:
+
+- Parent: `be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f`.
+- Napplet fragment: `ef99cf551dca7c36d7ab82b6075c36bd537034f19e402d63648784b9d65e3c5e`.
+
+The other site, `schlaustronics.com`, returns HTTPS 200. No DNS or proxy changes or
+reboot were needed. Local deployment logs, service results, browser results and
+source screenshots are retained in `.local/source-deploy/`.

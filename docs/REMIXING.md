@@ -22,7 +22,8 @@ Remix has shipped since CLI 0.3.0; the deployed CLI baseline is now 0.5.0. See t
 
 ## Browsing a release’s original files
 
-Implemented and verified locally on **2026-09-14**, not yet deployed. **Browse source** on each
+Implemented, verified and deployed on **2026-09-14** in release
+`20260914151021458-42270`. See the [deployment record](DEPLOYMENT.md#source-browser-release--2026-09-14). **Browse source** on each
 napplet opens `/r/EVENT_ID/source`; `?file=src/main.ts&view=project` links to a file
 in that exact signed release. The tree lists the bounded source archive, offers its
 license file and author-recorded commit, and displays selected text with syntax
