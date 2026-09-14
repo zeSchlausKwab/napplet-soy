@@ -91,6 +91,9 @@ test('NIP-46 pairs over encrypted relay traffic, stores only a client session an
     const account = await accounts.connect(await e.provider.getBunkerURI(), { timeoutMs: 3000 });
     expect(account.pubkey).toBe(await e.creator.getPublicKey());
     expect(account.pubkey).not.toBe(await e.transport.getPublicKey());
+    await expect(accounts.backup()).rejects.toMatchObject({ code: 'RECOVERY_REMOTE' });
+    expect(await accounts.create()).toEqual(account);
+    expect(await Bun.file(join(e.directory, `${account.pubkey}.nsec`)).exists()).toBe(false);
     const reopened = new Accounts('local', e.directory, e.vault);
     await expect(reopened.use(account.id, { signal: AbortSignal.abort() })).rejects.toMatchObject({
       code: 'SIGNER_CLOSED',

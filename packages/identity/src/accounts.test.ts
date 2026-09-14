@@ -1,5 +1,15 @@
 import { afterAll, expect, test } from 'bun:test';
-import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import {
+  chmod,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getPublicKey, generateSecretKey, nip19 } from 'nostr-tools';
@@ -49,6 +59,85 @@ test('creator persists outside projects; reopened instances and every publicatio
   expect((await stat(accounts.directory)).mode & 0o777).toBe(0o700);
   expect((await stat(join(accounts.directory, 'accounts.json'))).mode & 0o777).toBe(0o600);
 });
+test('creation saves a private portable backup that restores the same identity after losing the vault', async () => {
+  const { accounts, vault } = fixture('portable-backup');
+  const original = await accounts.create();
+  const path = join(accounts.directory, `${original.pubkey}.nsec`);
+  const secret = (await readFile(path, 'utf8')).trim();
+  expect(secret.startsWith('nsec1')).toBe(true);
+  expect((await stat(path)).mode & 0o777).toBe(0o600);
+  const before = await stat(path);
+  await vault.delete(original.id);
+  expect(await accounts.backup()).toBe(path);
+  expect(await accounts.create()).toEqual(original);
+  expect((await stat(path)).mtimeMs).toBe(before.mtimeMs);
+  expect((await fixture('restored-backup').accounts.import(secret)).pubkey).toBe(original.pubkey);
+  await chmod(path, 0o644);
+  await accounts.backup();
+  expect((await stat(path)).mode & 0o777).toBe(0o600);
+  await rm(path);
+  await expect(accounts.backup()).rejects.toMatchObject({ code: 'CREDENTIAL_MISSING' });
+  expect(await Bun.file(path).exists()).toBe(false);
+  expect(await accounts.current()).toEqual(original);
+});
+test('backup preserves corrupt or symlinked destinations and never substitutes another creator', async () => {
+  const { accounts, vault } = fixture('backup-destination');
+  const original = await accounts.create();
+  const path = await accounts.backup();
+  await writeFile(path, 'precious existing content');
+  await expect(accounts.create()).rejects.toMatchObject({ code: 'RECOVERY_FILE' });
+  expect(await readFile(path, 'utf8')).toBe('precious existing content');
+  expect(await accounts.current()).toEqual(original);
+  await rm(path);
+  const target = join(root, 'backup-link-target');
+  await writeFile(target, 'leave this alone');
+  await symlink(target, path);
+  await expect(accounts.backup()).rejects.toMatchObject({ code: 'RECOVERY_FILE' });
+  expect(await readFile(target, 'utf8')).toBe('leave this alone');
+  await rm(path);
+  const otherKey = generateSecretKey();
+  await writeFile(path, nip19.nsecEncode(otherKey));
+  await expect(accounts.backup()).rejects.toMatchObject({ code: 'RECOVERY_FILE' });
+  await rm(path);
+  await vault.set(
+    original.id,
+    JSON.stringify({ type: 'local', key: Buffer.from(otherKey).toString('hex') }),
+  );
+  await expect(accounts.backup()).rejects.toMatchObject({ code: 'IDENTITY_CHANGED' });
+  expect(await Bun.file(path).exists()).toBe(false);
+});
+test('failed keychain creation leaves no plaintext fallback or selected replacement', async () => {
+  const { accounts, vault } = fixture('no-backup-fallback');
+  vault.set = async () => {
+    throw new AccountError('KEYSTORE_UNAVAILABLE', 'Unavailable');
+  };
+  await expect(accounts.create()).rejects.toMatchObject({ code: 'KEYSTORE_UNAVAILABLE' });
+  expect(await accounts.current()).toBeNull();
+  expect((await readdir(accounts.directory)).some((name) => name.endsWith('.nsec'))).toBe(false);
+});
+test('a blocked backup destination preserves the newly created identity for a later retry', async () => {
+  const { accounts, vault } = fixture('backup-retry');
+  const store = vault.set.bind(vault);
+  let path = '';
+  vault.set = async (id, value) => {
+    await store(id, value);
+    const key = Uint8Array.from(Buffer.from(JSON.parse(value).key, 'hex'));
+    try {
+      path = join(accounts.directory, `${getPublicKey(key)}.nsec`);
+      await mkdir(path);
+    } finally {
+      key.fill(0);
+    }
+  };
+  await expect(accounts.create()).rejects.toMatchObject({ code: 'RECOVERY_FILE' });
+  const account = await accounts.current();
+  if (!account) throw new Error('Backup failure lost the selected creator');
+  expect(account.status).toBe('ready');
+  await rm(path, { recursive: true });
+  expect(await accounts.backup()).toBe(path);
+  expect(await accounts.create()).toEqual(account);
+  expect(vault.values.size).toBe(1);
+});
 test('a crash after credential storage recovers the same reserved key; missing credentials never rotate identity', async () => {
   const { accounts, vault } = fixture('recovery');
   const set = vault.set.bind(vault);
@@ -68,7 +157,7 @@ test('a crash after credential storage recovers the same reserved key; missing c
   await expect(accounts.signer()).rejects.toMatchObject({ code: 'CREDENTIAL_MISSING' });
   expect((await accounts.create()).pubkey).toBe(restored.pubkey);
 });
-test('unavailable keystore saves no plaintext key and does not replace an existing identity', async () => {
+test('failed imports keep metadata public and do not replace an existing identity', async () => {
   const { accounts, vault } = fixture('unavailable');
   const original = await accounts.create();
   vault.set = async () => {

@@ -34,6 +34,16 @@ bundled runtime. Redirecting stderr makes installation noninteractive; users can
 also explicitly pass `--identity later`. `--no-install` writes the complete scaffold
 and skills without downloading dependencies; follow with `setup` and `build`.
 
+For a local creator, onboarding also saves a private-key backup and prints its
+absolute path before dependency installation. By default this is
+`~/.config/napplet-space/accounts/public/<public-key>.nsec`, outside the project
+and Git. It is an **unencrypted nsec**, mode 0600 inside the private account
+directory; preserve a private copy. The same creator reuses the same file.
+`napplet-space account backup` creates or locates it for an existing local identity.
+Restore with `napplet-space account import --stdin < /path/to/key.nsec`.
+For an encrypted copy, use `napplet-space account export /path/to/new.ncryptsec`.
+Remote identities are backed up in the remote signer instead.
+
 `dev` runs the upstream Vite build watcher and opens the loopback sandbox preview.
 It reloads after each build. Legacy HTML examples reload on save without a build.
 `--no-open`, `--port` and `--project` support existing workflows. `build` builds
@@ -63,7 +73,7 @@ requirements; `account check` verifies the selected signer.
 - macOS: Apple Silicon or modern Intel with AVX2; Git/Apple Command Line Tools;
   login Keychain. The installer selects native ARM64 even in a Rosetta terminal.
   Keychain access belongs to the executable; macOS may request authorization when
-  changing executables. There is no plaintext fallback.
+  changing executables. Signing has no file fallback; the nsec file is for recovery.
 - Linux: glibc, ARM64 or x86-64 with SSE4.2; Git; an unlocked Secret Service keyring
   and D-Bus session for identity. Ubuntu 24.04 is the tested desktop baseline.
   Chromium system libraries are listed at `/cli`. The CLI never installs OS
@@ -73,7 +83,8 @@ requirements; `account check` verifies the selected signer.
   Command symlink: `~/.local/bin/napplet-space`. `NAPPLET_INSTALL_DIR` and
   `NAPPLET_BIN_DIR` override these paths. Foreign existing commands are preserved.
   Shell profiles are left unchanged; a copyable PATH export is printed if needed.
-- Credentials: OS store; public account index: `~/.config/napplet-space/accounts`.
+- Credentials: OS store; public account index and private nsec backups:
+  `~/.config/napplet-space/accounts/<network>`.
   Existing `SPACE_ACCOUNT_HOME` / `XDG_CONFIG_HOME` configuration remains supported.
 - Browser cache: `~/Library/Caches/napplet-space/browsers` on macOS or
   `~/.cache/napplet-space/browsers` on Linux; honors `PLAYWRIGHT_BROWSERS_PATH`.

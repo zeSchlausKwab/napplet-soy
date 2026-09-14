@@ -10,7 +10,7 @@ bun run napplet account show
 bun run napplet account check
 ```
 
-Interactive project creation offers **create**, **connect existing**, or **set up later**. A selected account is reused without unlocking the keystore or contacting the signer just to scaffold another project. Noninteractive `new` reuses an existing selection, or leaves identity unset; `--identity create` explicitly enables first-use provisioning, and `--identity later` bypasses account setup entirely. If setup fails after scaffolding, the generated preview remains usable; finish setup with the account commands rather than recreating the directory.
+Interactive project creation offers **create**, **connect existing**, or **set up later**. A selected account is reused. Local creators also get an automatic private-key backup; an existing valid backup is reused without unlocking the keystore, while saving a missing backup requires access to the stored key. Remote signers are not contacted just to scaffold a project. Noninteractive `new` reuses an existing selection, or leaves identity unset; `--identity create` explicitly enables first-use provisioning, and `--identity later` bypasses account setup entirely. If setup fails after scaffolding, the generated preview remains usable; finish setup with the account commands rather than recreating the directory.
 
 `account create` is idempotent: it reuses the selected account. `account import` and `account connect` add and select an identity while retaining earlier entries. `account list` displays their public keys, types, status and account IDs. `account use <account-id>` verifies the stored signer before selecting it. An npub is also accepted; use the account ID when multiple sessions represent the same public key.
 
@@ -23,16 +23,17 @@ The implementation uses [Bun's native Secrets API](https://bun.sh/docs/runtime/s
 | State | Location |
 | --- | --- |
 | Local creator private key | OS credential store, `space.napplet.creator.<network>` service, random credential ID |
+| Portable local private-key backup | `<public-key>.nsec` beside account JSON, mode 0600, outside Git projects |
 | Remote client key and connection credentials | Same credential store; the creator's private key remains with the remote signer |
 | Public keys, credential IDs, type, selection, pending status | Account JSON, mode 0600 in a mode-0700 directory |
 | Process ownership | SQLite lock beside the account JSON; automatically released after process exit |
 | Project creator reference | Public key and network only |
 
-Missing, locked or unavailable native storage produces an actionable error. There is no file/env fallback. Linux needs a running, unlocked Secret Service such as GNOME Keyring or KWallet; headless Linux without one cannot persist creator credentials through this implementation. The VPS services have separate service identities and do not need a creator account. Native macOS behavior is tested; Linux and Windows credential stores are not yet validated here.
+Missing, locked or unavailable native storage produces an actionable error. Signing has no file/env fallback: restoring a backup is an explicit import into the credential store. Linux needs a running, unlocked Secret Service such as GNOME Keyring or KWallet; headless Linux without one cannot persist creator credentials through this implementation. The VPS services have separate service identities and do not need a creator account. Native macOS behavior is tested; Linux and Windows credential stores are not yet validated here.
 
 A public pending reservation is flushed before storing a credential. Activation happens only after reading that credential back. If the process dies between those steps, another account setup recovers the reserved identity instead of silently generating a replacement. A pending reservation with no stored credential can be discarded safely because it was never activated or published. Missing keys for an already selected account never trigger key rotation. Damaged metadata is reported and preserved. Previously selected identities remain available when importing/connecting fails.
 
-The OS credential store protects credentials at rest. JavaScript must still hold key material temporarily to sign or export; strings and OS/runtime memory cannot be guaranteed fully erased. No private key is passed to Git, a build command, a generated preview bundle, SSR, or project configuration.
+The OS credential store protects the signing credential at rest. The portable nsec backup is unencrypted, protected by owner-only filesystem permissions; preserve a private copy. JavaScript must still hold key material temporarily to sign or export; strings and OS/runtime memory cannot be guaranteed fully erased. No private key is passed to Git, a build command, a generated preview bundle, SSR, or project configuration.
 
 ## Existing remote identity
 
@@ -50,6 +51,26 @@ Current scope is bunker-link pairing and reconnection. Client-generated `nostrco
 
 ## Recovery and automation
 
+`new` and `account create` automatically save a local creator's key to
+`${XDG_CONFIG_HOME:-~/.config}/napplet-space/accounts/<network>/<public-key>.nsec`
+and report its absolute path. `SPACE_ACCOUNT_HOME` changes the base directory.
+This file stays outside Git trees and all project source/artifacts. It is written
+atomically with mode 0600. Existing files are validated against the creator's
+public key and reused; damaged files, mismatched keys, symlinks and hard links
+are refused without overwrite. A backup failure leaves the selected identity
+intact: fix the destination and retry `account backup`.
+
+Existing local identities can create or locate their backup explicitly:
+
+```sh
+bun run napplet account backup
+bun run napplet account import --stdin < /path/to/key.nsec
+```
+
+The second command restores the same identity into the OS credential store.
+Remote keys remain with the signer, which owns their backup workflow.
+An encrypted export is also available:
+
 ```sh
 bun run napplet account export "$HOME/napplet-recovery.ncryptsec"
 bun run napplet account import
@@ -59,7 +80,7 @@ Export prompts twice for a passphrase of at least 12 characters and writes an en
 
 The recovery parser checks the Bech32 checksum, format and scrypt cost before decryption. It accepts logN 10–18 and exports at logN 16; larger-cost backups must be handled with another trusted recovery tool. Wrong passphrases and invalid keys produce a generic error without echoing input. The bundled public fixture key cannot become a public creator identity.
 
-`--json` reports public account data or `{error: {code, message}}`. For automation, `account connect --stdin` reads a bunker URL. `account import --stdin` reads the recovery value on line 1 and, for an encrypted value, its passphrase on line 2. `account export <path> --passphrase-stdin` reads a passphrase. Input is bounded; do not place secrets in shell arguments or command history. Both public and local profiles use the same code with separate metadata and credential namespaces.
+`--json` reports public account data or `{error: {code, message}}`. Successful local `new` and `account create` include `backupFile`; `account backup` returns `{backupFile, format: "nsec"}`. Only paths are reported, never private keys. For automation, `account connect --stdin` reads a bunker URL. `account import --stdin` reads the recovery value on line 1 and, for an encrypted value, its passphrase on line 2. `account export <path> --passphrase-stdin` reads a passphrase. Input is bounded; do not place secrets in shell arguments or command history. Both public and local profiles use the same code with separate metadata and credential namespaces.
 
 ## Verification and remaining publication work
 

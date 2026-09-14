@@ -19,7 +19,7 @@ const help = `Usage:
   bun run napplet run <package-script> [arguments...]
   bun run napplet exec <project-tool> [arguments...]
   bun run napplet skills update [--project <folder>]
-  bun run napplet account create|show|list|check
+  bun run napplet account create|show|list|check|backup
   bun run napplet account connect [--stdin]
   bun run napplet account import [--stdin]
   bun run napplet account use <npub-or-account-id>
@@ -34,6 +34,8 @@ const help = `Usage:
 
 All commands accept --network public|local and --json.
 Create reuses your selected account. Connect accepts a hidden bunker link.
+Create and new save a private nsec backup outside Git projects and report its path.
+Account backup saves/reuses that file for an existing local creator. Keep it private.
 Import accepts a hidden nsec or encrypted NIP-49 recovery key. With --stdin,
 provide the key on line 1 and, for an encrypted key, its passphrase on line 2.
 Export writes a passphrase-encrypted NIP-49 file outside Git projects.
@@ -143,15 +145,18 @@ try {
       ).trim(),
       { signal: controller.signal, onAuth },
     );
-  const output = (account: Account | null) => {
+  const backupNotice = (path: string) =>
+    `Private-key backup: ${path}\nThis unencrypted nsec file is outside your project and readable only by your user. Preserve a private copy to recover your identity.`;
+  const output = (account: Account | null, backupFile?: string) => {
     const data = account ? publicAccount(account, network) : null;
-    if (json) console.log(JSON.stringify({ account: data }));
+    if (json) console.log(JSON.stringify({ account: data, ...(backupFile ? { backupFile } : {}) }));
     else
       console.log(
         data
           ? `${data.npub}\n${data.type === 'local' ? 'Local key in OS credential store' : 'Remote signer'} · ${network} · ${data.status}`
           : 'No creator selected. Run account create or account connect.',
       );
+    if (!json && backupFile) console.log(backupNotice(backupFile));
   };
   const [command, action, argument, ...extra] = positionals;
   const publishingOptions =
@@ -216,13 +221,20 @@ try {
       config.creator = { pubkey: account.pubkey, network };
       await Bun.write(configPath, JSON.stringify(config, null, 2) + '\n');
     }
+    const backupFile = account?.type === 'local' ? await accounts.backup(account.id) : undefined;
+    // Report recovery information before dependency setup, which may be interrupted or fail.
+    if (backupFile && !json) console.log(backupNotice(backupFile));
     if (template === 'boilerplate' && !values['no-install']) {
       await setupProject(directory, controller.signal);
       await buildProject(directory, controller.signal);
     }
     if (json)
       console.log(
-        JSON.stringify({ directory, account: account ? publicAccount(account, network) : null }),
+        JSON.stringify({
+          directory,
+          account: account ? publicAccount(account, network) : null,
+          ...(backupFile ? { backupFile } : {}),
+        }),
       );
     else
       console.log(
@@ -373,9 +385,18 @@ try {
     )
       throw new AccountError('USAGE', 'Invalid account command/options. Use --help.');
     switch (action) {
-      case 'create':
-        output(await accounts.create());
+      case 'create': {
+        const account = await accounts.create();
+        output(account, account.type === 'local' ? await accounts.backup(account.id) : undefined);
         break;
+      }
+      case 'backup': {
+        const backupFile = await accounts.backup();
+        console.log(
+          json ? JSON.stringify({ backupFile, format: 'nsec' }) : backupNotice(backupFile),
+        );
+        break;
+      }
       case 'show':
         output(await accounts.current());
         break;

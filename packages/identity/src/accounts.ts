@@ -1,5 +1,5 @@
 import { constants } from 'node:fs';
-import { chmod, lstat, mkdir, open, realpath, rename, rm } from 'node:fs/promises';
+import { chmod, link, lstat, mkdir, open, realpath, rename, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { Database } from 'bun:sqlite';
@@ -238,18 +238,110 @@ export class Accounts {
   async create() {
     return this.locked(async (index) => {
       const selected = index.accounts.find((a) => a.id === index.active);
-      if (selected) return selected;
+      if (selected) {
+        if (selected.type === 'local') await this.backupAccount(selected);
+        return selected;
+      }
       const key = generateSecretKey();
       try {
-        return await this.save(
+        const account = await this.save(
           index,
           { type: 'local', key: Buffer.from(key).toString('hex') },
           getPublicKey(key),
         );
+        await this.backupAccount(account);
+        return account;
       } finally {
         key.fill(0);
       }
     });
+  }
+  /** A portable backup outside source trees; signing still uses the OS credential store. */
+  async backup(id?: string) {
+    return this.locked(async (index) => {
+      const account = index.accounts.find((a) => a.id === (id ?? index.active));
+      if (!account || account.status !== 'ready')
+        throw new AccountError('ACCOUNT_REQUIRED', 'Select a creator before saving its backup.');
+      return this.backupAccount(account);
+    });
+  }
+  private async backupAccount(account: Account) {
+    if (account.type !== 'local')
+      throw new AccountError(
+        'RECOVERY_REMOTE',
+        'Back up remote identities in the signer application. Only locally held creator keys can be backed up here.',
+      );
+    const path = await outsideRepository(join(this.directory, `${account.pubkey}.nsec`));
+    // An existing valid backup remains usable even if the OS credential was lost.
+    const existing = await open(
+      path,
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    ).catch((error) => {
+      if (error.code === 'ENOENT') return null;
+      throw new AccountError(
+        'RECOVERY_FILE',
+        `Cannot read private-key backup at ${path}. It was not overwritten.`,
+      );
+    });
+    if (existing) {
+      try {
+        const stat = await existing.stat();
+        if (!stat.isFile() || stat.size > 128 || stat.nlink !== 1) throw new Error();
+        const decoded = nip19.decode((await existing.readFile('utf8')).trim());
+        if (decoded.type !== 'nsec') throw new Error();
+        try {
+          if (getPublicKey(decoded.data) !== account.pubkey) throw new Error();
+        } finally {
+          decoded.data.fill(0);
+        }
+        await existing.chmod(0o600);
+        return path;
+      } catch {
+        throw new AccountError(
+          'RECOVERY_FILE',
+          `Private-key backup at ${path} is invalid or unsafe. It was not overwritten; preserve it elsewhere before retrying account backup.`,
+        );
+      } finally {
+        await existing.close();
+      }
+    }
+    const credential = await this.credential(account);
+    if (credential.type !== 'local')
+      throw new AccountError('INVALID_CREDENTIAL', 'Expected a local creator key.');
+    const key = Uint8Array.from(Buffer.from(credential.key, 'hex'));
+    const temporary = `${path}.${crypto.randomUUID()}.tmp`;
+    let file;
+    try {
+      if (getPublicKey(key) !== account.pubkey)
+        throw new AccountError(
+          'IDENTITY_CHANGED',
+          'Stored key does not match the selected creator.',
+        );
+      file = await open(temporary, 'wx', 0o600);
+      await file.writeFile(nip19.nsecEncode(key) + '\n');
+      await file.sync();
+      await file.close();
+      // Publish a complete file atomically without ever replacing an existing destination.
+      await link(temporary, path);
+      await rm(temporary);
+      const directory = await open(this.directory, 'r');
+      try {
+        await directory.sync();
+      } finally {
+        await directory.close();
+      }
+      return path;
+    } catch (error) {
+      if (error instanceof AccountError) throw error;
+      throw new AccountError(
+        'RECOVERY_DESTINATION',
+        `Could not save private-key backup at ${path}. Your stored identity was not replaced. Check permissions and retry account backup.`,
+      );
+    } finally {
+      key.fill(0);
+      await file?.close();
+      await rm(temporary, { force: true });
+    }
   }
   private async save(index: Index, credential: Credential, pubkey: string) {
     checkPubkey(pubkey, this.network);

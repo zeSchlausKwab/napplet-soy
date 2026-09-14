@@ -39,6 +39,22 @@ relay/resource hints and publication destinations. It replaces the upstream
 CLI's deployment configuration in this workflow; never put creator secrets in
 the project. The default endpoints already point to napplet.soy.
 
+## Creator backup
+
+Creating a local identity also saves its private key as an nsec file outside this
+Git project. The CLI prints the path before installing dependencies. By default
+it is \`~/.config/napplet-space/accounts/public/<public-key>.nsec\` (local-network
+identities use accounts/local). The file has owner-only permissions. Preserve a
+private copy: it is unencrypted and can recover the creator identity.
+
+napplet-space account backup saves or locates that file for an existing local
+creator. To restore it, use napplet-space account import --stdin < /path/to/key.nsec.
+Signing continues to use the OS credential store; the project contains only the
+public creator reference. Remote-signer identities are backed up in their signer.
+Never copy the key into source, skills, browser code, or published assets.
+
+## Runtime capabilities
+
 Keep hard domain requirements in vite.config.ts; the publisher reads the build's
 napplet-requires metadata and checks it against this host. Optional domains must
 degrade gracefully, following upstream guidance. Use the injected namespace and
