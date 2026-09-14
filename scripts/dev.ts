@@ -66,6 +66,7 @@ const env = {
   SPACE_PUBLICDEV_DIR: publicdev ? resolve(local, 'publicdev') : '',
   SPACE_MODERATION_FILE: resolve(local, 'services/moderation/policy.json'),
   SPACE_INDEX_DIR: resolve(local, 'services/index'),
+  SPACE_COMMUNITY_DIR: resolve(local, 'services/community'),
   SPACE_INDEX_RELAYS: localRelayUrl,
   SPACE_INDEX_LOCAL_BLOSSOM: localBlossomOrigin,
 };

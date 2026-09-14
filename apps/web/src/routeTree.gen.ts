@@ -18,6 +18,7 @@ import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
 import { Route as ApiAdminRouteImport } from './routes/api.admin'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiManifestRouteImport } from './routes/api.manifest'
+import { Route as ApiNamesRouteImport } from './routes/api.names'
 import { Route as ApiPublicationsRouteImport } from './routes/api.publications'
 import { Route as ApiResourcesRouteImport } from './routes/api.resources'
 import { Route as NNaddrRouteImport } from './routes/n.$naddr'
@@ -71,6 +72,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const ApiManifestRoute = ApiManifestRouteImport.update({
   id: '/api/manifest',
   path: '/api/manifest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNamesRoute = ApiNamesRouteImport.update({
+  id: '/api/names',
+  path: '/api/names',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicationsRoute = ApiPublicationsRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/api/admin': typeof ApiAdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
+  '/api/names': typeof ApiNamesRoute
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
   '/n/$naddr': typeof NNaddrRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/api/admin': typeof ApiAdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
+  '/api/names': typeof ApiNamesRoute
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
   '/n/$naddr': typeof NNaddrRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/api/admin': typeof ApiAdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
+  '/api/names': typeof ApiNamesRoute
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
   '/n/$naddr': typeof NNaddrRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/api/admin'
     | '/api/health'
     | '/api/manifest'
+    | '/api/names'
     | '/api/publications'
     | '/api/resources'
     | '/n/$naddr'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/api/admin'
     | '/api/health'
     | '/api/manifest'
+    | '/api/names'
     | '/api/publications'
     | '/api/resources'
     | '/n/$naddr'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/api/admin'
     | '/api/health'
     | '/api/manifest'
+    | '/api/names'
     | '/api/publications'
     | '/api/resources'
     | '/n/$naddr'
@@ -252,6 +264,7 @@ export interface RootRouteChildren {
   ApiAdminRoute: typeof ApiAdminRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiManifestRoute: typeof ApiManifestRoute
+  ApiNamesRoute: typeof ApiNamesRoute
   ApiPublicationsRoute: typeof ApiPublicationsRoute
   ApiResourcesRoute: typeof ApiResourcesRoute
   NNaddrRoute: typeof NNaddrRoute
@@ -324,6 +337,13 @@ declare module '@tanstack/react-router' {
       path: '/api/manifest'
       fullPath: '/api/manifest'
       preLoaderRoute: typeof ApiManifestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/names': {
+      id: '/api/names'
+      path: '/api/names'
+      fullPath: '/api/names'
+      preLoaderRoute: typeof ApiNamesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/publications': {
@@ -434,6 +454,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminRoute: ApiAdminRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiManifestRoute: ApiManifestRoute,
+  ApiNamesRoute: ApiNamesRoute,
   ApiPublicationsRoute: ApiPublicationsRoute,
   ApiResourcesRoute: ApiResourcesRoute,
   NNaddrRoute: NNaddrRoute,

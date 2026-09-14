@@ -11,6 +11,9 @@ import { siteOrigin } from '../../../../packages/backend/src/site-origin';
 import { indexedLookup, indexStore } from '../../../../packages/backend/src/indexed-catalog';
 import { newerManifest } from '../../../../packages/backend/src/index-store';
 
+import { communityStore } from '../../../../packages/community/src/store';
+import { visibleAlias } from '../../../../packages/backend/src/names-response';
+
 const lookupSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('named'), creator: z.string().max(40), slug: z.string().max(64) }),
   z.object({ type: z.literal('address'), naddr: z.string().max(4096) }),
@@ -22,6 +25,12 @@ export const getGallery = createServerFn({ method: 'GET' })
 export const getNapplet = createServerFn({ method: 'GET' })
   .validator(lookupSchema)
   .handler(async ({ data }) => {
+    if (data.type === 'named' && data.creator !== '@space-lab') {
+      if (!process.env.SPACE_COMMUNITY_DIR) return null;
+      const alias = communityStore().lookup(data.creator.replace(/^@/, ''), data.slug);
+      if (!alias || !data.creator.startsWith('@') || !visibleAlias(alias)) return null;
+      data = { type: 'address', naddr: alias.naddr };
+    }
     let napplet = (await resolveNapplet(data)) as
       Awaited<ReturnType<typeof resolveNapplet>> | Awaited<ReturnType<typeof resolvePublicNapplet>>;
     const remote = await resolvePublicNapplet(data);
@@ -63,3 +72,11 @@ export const getSource = createServerFn({ method: 'GET' })
     const file = await artifact(release.artifactHash);
     return file ? { release, source: await file.text() } : null;
   });
+
+export const getCreatorNames = createServerFn({ method: 'GET' })
+  .validator(z.string().regex(/^@[a-z0-9-]{1,32}$/))
+  .handler(({ data }) =>
+    process.env.SPACE_COMMUNITY_DIR
+      ? communityStore().creator(data.slice(1)).filter(visibleAlias)
+      : [],
+  );

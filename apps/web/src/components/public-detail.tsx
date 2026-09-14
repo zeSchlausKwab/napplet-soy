@@ -7,6 +7,7 @@ import { TopicTags } from './topic-tags';
 import { Button } from './ui/button';
 import { publicPoster, type PublicNapplet } from '../../../../packages/backend/src/public-model';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
+import { NameButton } from './name-button';
 import { RemixButton } from './remix-button';
 
 export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
@@ -33,6 +34,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
           <p>{napplet.creator}</p>
         </div>
         <div className="detail-actions">
+          {napplet.naddr && <NameButton naddr={napplet.naddr} author={napplet.pubkey} />}
           <RemixButton revision={napplet.revisionId} title={napplet.title} />
           <Button
             variant="outline"

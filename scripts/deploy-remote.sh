@@ -90,7 +90,7 @@ done
 if [[ ${#missing[@]} -gt 0 ]]; then apt-get update -qq; apt-get install -y -qq --no-upgrade "${missing[@]}"; fi
 id napplet >/dev/null 2>&1 || useradd --system --create-home --home-dir "$state_root" --shell /usr/sbin/nologin napplet
 install -d -m 755 "$app_root/bin" "$app_root/tools" "$app_root/releases" "$app_root/shared" /etc/napplet-space
-install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom" "$state_root/grasp" "$state_root/index" "$state_root/moderation"
+install -d -o napplet -g napplet -m 750 "$state_root/pm2" "$state_root/caddy" "$state_root/relay" "$state_root/blossom" "$state_root/grasp" "$state_root/index" "$state_root/moderation" "$state_root/community"
 if [[ "$runtime_profile" == legacy-x64 ]]; then
   install -d -o napplet -g napplet -m 755 "$app_root/tools/legacy-images"
 fi
@@ -177,6 +177,7 @@ printf '%s\n' "$SPACE_ADMIN_PUBKEYS" > "$app_root/shared/admin-pubkeys"
 chmod 600 "$app_root/shared/admin-pubkeys"
 export SPACE_PUBLICDEV=0 SPACE_PUBLICDEV_DIR=''
 export SPACE_INDEX_DIR="$state_root/index"
+export SPACE_COMMUNITY_DIR="$state_root/community"
 source "$release_dir/scripts/index-env.sh"
 napplet_index_env "$domain" "$release_dir/packages/nostr/discovery-relays.json"
 export SPACE_INDEX_LOCAL_BLOSSOM=''
@@ -187,7 +188,7 @@ if [[ -f "$state_root/grasp/upstream.commit" ]] && [[ "$(cat "$state_root/grasp/
   echo 'GRASP upstream pin changed. Stop here: migrate/restore its full state separately before deployment.' >&2
   exit 1
 fi
-systemd-run --scope --quiet --unit="napplet-build-$release_id" -p MemoryMax=3G -p CPUQuota=200% -p TasksMax=512 runuser -u napplet -- env -u SPACE_MODERATION_FILE -u SPACE_ADMIN_PUBKEYS -u SPACE_INDEX_DIR GOMAXPROCS=2 GOFLAGS=-p=2 CARGO_BUILD_JOBS=2 nice -n 10 bash -ec 'cd "$1"; "$2" install --frozen-lockfile; if [[ "$3" == legacy-x64 ]]; then bash scripts/legacy-images.sh "$1" "$4"; fi; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$bun_bin" "$runtime_profile" "$app_root/tools/legacy-images"
+systemd-run --scope --quiet --unit="napplet-build-$release_id" -p MemoryMax=3G -p CPUQuota=200% -p TasksMax=512 runuser -u napplet -- env -u SPACE_MODERATION_FILE -u SPACE_ADMIN_PUBKEYS -u SPACE_INDEX_DIR -u SPACE_COMMUNITY_DIR GOMAXPROCS=2 GOFLAGS=-p=2 CARGO_BUILD_JOBS=2 nice -n 10 bash -ec 'cd "$1"; "$2" install --frozen-lockfile; if [[ "$3" == legacy-x64 ]]; then bash scripts/legacy-images.sh "$1" "$4"; fi; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$bun_bin" "$runtime_profile" "$app_root/tools/legacy-images"
 
 runuser -u napplet -- "$bun_bin" "$release_dir/scripts/moderation-init.ts" "$SPACE_MODERATION_FILE"
 

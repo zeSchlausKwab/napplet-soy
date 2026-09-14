@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { Player } from './player';
 import { TopicTags } from './topic-tags';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
+import { NameButton } from './name-button';
 import { RemixButton } from './remix-button';
 
 export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?: boolean }) {
@@ -42,6 +43,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
           </Link>
         </div>
         <div className="detail-actions">
+          {napplet.naddr && <NameButton naddr={napplet.naddr} author={napplet.pubkey} />}
           <Button variant="outline" onClick={copy}>
             {copied ? <Check size={16} /> : <Copy size={16} />}Share
           </Button>

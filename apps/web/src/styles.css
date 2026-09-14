@@ -1511,3 +1511,11 @@ pre:focus-visible {
     padding: 18px;
   }
 }
+
+.community-form { display: grid; gap: 1rem; }
+.community-form label { display: grid; gap: .5rem; font-size: .875rem; }
+.community-form input, .community-form textarea { width: 100%; border: 1px solid var(--border); border-radius: .5rem; padding: .75rem; background: var(--background); }
+.community-form textarea { min-height: 100px; resize: vertical; }
+.community-form input:focus-visible, .community-form textarea:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.named-link, .creator-aliases a { color: var(--primary); overflow-wrap: anywhere; }
+.creator-aliases { display: grid; gap: 1rem; padding: 1rem 0; }

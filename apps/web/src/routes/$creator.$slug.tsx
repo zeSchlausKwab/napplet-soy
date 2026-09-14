@@ -9,14 +9,10 @@ export const Route = createFileRoute('/$creator/$slug')({
     if (!napplet) throw notFound();
     return napplet;
   },
-  head: ({ loaderData }) =>
+  head: ({ loaderData, params }) =>
     nappletHead(
       loaderData,
-      loaderData && 'provenance' in loaderData
-        ? loaderData.naddr
-          ? `/n/${loaderData.naddr}`
-          : `/r/${loaderData.revisionId}`
-        : `/@${loaderData?.handle}/${loaderData?.slug}`,
+      `/${params.creator}/${params.slug}`,
       loaderData && 'provenance' in loaderData ? loaderData.revisionId : loaderData?.snapshot.id,
     ),
   component: () => {
