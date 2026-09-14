@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -10,6 +10,10 @@ test.beforeAll(async () => {
   directory = await mkdtemp(join(tmpdir(), 'space-preview-browser-'));
   execFileSync('bun', ['tests/fixtures/linked-preview.ts', directory]);
   entry = JSON.parse(await readFile(join(directory, 'fixture.json'), 'utf8'));
+  await writeFile(
+    join(directory, 'policy.json'),
+    JSON.stringify({ version: 1, revision: 0, rules: [], audit: [], used: [] }),
+  );
   server = spawn('bun', ['apps/web/server.ts'], {
     env: {
       ...process.env,
@@ -19,6 +23,8 @@ test.beforeAll(async () => {
       SPACE_PUBLICDEV: '1',
       SPACE_PUBLICDEV_DIR: directory,
       SPACE_SITE_ORIGIN: 'http://localhost',
+      SPACE_MODERATION_FILE: join(directory, 'policy.json'),
+      SPACE_INDEX_DIR: '',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -58,15 +64,39 @@ test('linked screenshot appears in gallery, player cover and SSR sharing without
   await page.goto(`${origin}/?q=${encodeURIComponent(entry.title)}`);
   await expect(page.locator('.napplet-card')).toHaveCount(1);
   await page.getByRole('link', { name: '#generative', exact: true }).click();
-  await expect(page.locator('.napplet-card')).toHaveCount(4);
+  await expect(page.locator('.napplet-card')).toHaveCount(1);
   await expect(
     page.getByRole('button', { name: 'Filter by #generative', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Filter by #generative', exact: true }).click();
-  await expect(page.locator('.napplet-card')).toHaveCount(7);
+  await expect(page.locator('.napplet-card')).toHaveCount(1);
   await page.goBack();
-  await expect(page.locator('.napplet-card')).toHaveCount(4);
+  await expect(page.locator('.napplet-card')).toHaveCount(1);
   await page.goto(`${origin}/?q=${encodeURIComponent(entry.title)}`);
+  await page.getByLabel('Sort napplets').selectOption('featured');
+  await expect(page.locator('.napplet-card')).toHaveCount(0);
+  await expect(page.getByText('No featured napplets found.')).toBeVisible();
+  await writeFile(
+    join(directory, 'policy.json'),
+    JSON.stringify({
+      version: 1,
+      revision: 1,
+      rules: [],
+      audit: [],
+      used: [],
+      featured: [
+        {
+          type: 'event',
+          target: entry.revisionId,
+          actor: 'a'.repeat(64),
+          at: 1,
+          reason: 'Browser fixture selection',
+        },
+      ],
+    }),
+  );
+  await page.reload();
+  await expect(page.locator('.napplet-card')).toHaveCount(1);
   const image = page.locator('.card-preview img');
   await expect(image).toHaveAttribute(
     'src',

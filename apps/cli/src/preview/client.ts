@@ -5,6 +5,7 @@ import { missingDomains } from '../../../../packages/runtime/src/capabilities';
 import { attachNappletHost, type HostPrompt } from '../../../../packages/runtime/src/host';
 import type { ExportFile } from '../../../../packages/runtime/src/filesystem';
 import type { PreviewRevision } from './server';
+import { setupListing } from './listing-client';
 
 const stage = document.querySelector<HTMLElement>('#stage')!;
 const status = document.querySelector<HTMLElement>('#status')!;
@@ -22,6 +23,7 @@ let urls: string[] = [];
 let loaded = '';
 let pubkey: string | null = null;
 const lifetime = new AbortController();
+setupListing(lifetime.signal);
 
 function showPrompt(prompt: HostPrompt | null) {
   choice = prompt;

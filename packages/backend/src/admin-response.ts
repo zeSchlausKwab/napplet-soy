@@ -105,7 +105,13 @@ export async function adminResponse(request: Request) {
       policy = updatePolicy(action, event.pubkey, event.id, now);
     }
     return Response.json(
-      { revision: policy.revision, rules: policy.rules, audit: policy.audit, admins },
+      {
+        revision: policy.revision,
+        rules: policy.rules,
+        featured: policy.featured,
+        audit: policy.audit,
+        admins,
+      },
       { headers },
     );
   } catch (error) {

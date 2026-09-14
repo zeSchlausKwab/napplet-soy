@@ -9,6 +9,7 @@ import { startPreviewServer } from './preview/server';
 import { gitAvailable } from './prerequisites';
 import { version } from './distribution';
 import { watchProject } from './toolchain';
+import { screenshotProject } from './project-config';
 
 export async function preview(
   directory: string,
@@ -16,6 +17,7 @@ export async function preview(
   open: boolean,
   json: boolean,
   signal: AbortSignal,
+  network: Network = 'public',
 ) {
   const root = await realpath(directory);
   const config = await Bun.file(new URL('napplet.json', pathToFileURL(root + '/'))).json();
@@ -23,7 +25,15 @@ export async function preview(
   let server: ReturnType<typeof startPreviewServer> | undefined;
   const stop = () => server?.stop(true);
   try {
-    server = startPreviewServer(pathToFileURL(root + '/'), port, false, await previewAssets());
+    server = startPreviewServer(pathToFileURL(root + '/'), port, false, await previewAssets(), {
+      network,
+      capture: () =>
+        screenshotProject(
+          root,
+          network,
+          `preview-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`,
+        ),
+    });
     signal.addEventListener('abort', stop, { once: true });
     const response = await fetch(new URL('revision', server.url));
     if (!response.ok)

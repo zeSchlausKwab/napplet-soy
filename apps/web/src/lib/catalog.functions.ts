@@ -1,3 +1,4 @@
+import { manifestFeatured } from '../../../../packages/moderation/src/policy';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { gallerySearchSchema } from '../../../../packages/protocol/src';
@@ -60,7 +61,10 @@ export const getNapplet = createServerFn({ method: 'GET' })
   });
 export const getPublicCatalog = createServerFn({ method: 'GET' }).handler(async () => ({
   status: await catalogStatus(),
-  entries: await communityEntries(),
+  entries: (await communityEntries()).map((entry) => ({
+    ...entry,
+    featured: manifestFeatured(entry.manifest),
+  })),
 }));
 export const getSource = createServerFn({ method: 'GET' })
   .validator(z.string().regex(/^[a-f0-9]{64}$/))

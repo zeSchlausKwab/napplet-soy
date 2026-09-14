@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GitFork, Copy, Check } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -11,10 +11,24 @@ import {
 } from './ui/dialog';
 
 export function RemixButton({ revision, title }: { revision: string; title: string }) {
-  const [copied, setCopied] = useState(false),
+  const [copied, setCopied] = useState(''),
     [error, setError] = useState('');
-  const origin = typeof location === 'undefined' ? '' : location.origin;
-  const command = `napplet-space remix ${origin}/r/${revision} my-remix`;
+  const [origin, setOrigin] = useState('https://napplet.soy');
+  useEffect(() => setOrigin(location.origin), []);
+  const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
+  const source = quote(`${origin}/r/${revision}`);
+  const commands = [
+    {
+      id: 'install',
+      label: 'Install and remix',
+      command: `curl -fsSL https://napplet.soy/install.sh | sh -s -- remix ${source} my-remix`,
+    },
+    {
+      id: 'installed',
+      label: 'Already have the CLI?',
+      command: `napplet-space remix ${source} my-remix`,
+    },
+  ];
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -30,28 +44,34 @@ export function RemixButton({ revision, title }: { revision: string; title: stri
             original.
           </DialogDescription>
         </DialogHeader>
-        <div className="remix-command">
-          <code>{command}</code>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Copy remix command"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(command);
-                setCopied(true);
-              } catch {
-                setError('Select the command to copy it.');
-              }
-            }}
-          >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-          </Button>
-        </div>
+        {commands.map(({ id, label, command }) => (
+          <div key={id}>
+            <p className="muted">{label}</p>
+            <div className="remix-command">
+              <code>{command}</code>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label={`Copy ${id === 'install' ? 'install and remix' : 'remix'} command`}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(command);
+                    setCopied(id);
+                    setError('');
+                  } catch {
+                    setError('Select the command to copy it.');
+                  }
+                }}
+              >
+                {copied === id ? <Check size={16} /> : <Copy size={16} />}
+              </Button>
+            </div>
+          </div>
+        ))}
         <p className="muted">
-          Run this in your terminal, then open the new folder in your coding agent. Source and
-          license files are preserved when the author provides an archive; otherwise the verified
-          HTML is your starting point.
+          No Bun or Node installation needed. Run a command in your terminal, then open the new
+          folder in your coding agent. Source and license files are preserved when the author
+          provides an archive; otherwise the verified HTML is your starting point.
         </p>
         <a href="/cli">Install the CLI ↗</a>
         {error && <p role="status">{error}</p>}

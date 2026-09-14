@@ -11,6 +11,7 @@ import {
   blocked,
   initializePolicy,
   manifestBlocked,
+  manifestFeatured,
   readPolicy,
   updatePolicy,
   type ModerationAction,
@@ -138,6 +139,43 @@ test('signed policy changes survive reload, reject replay/stale updates, and aud
   expect((await adminResponse(request(await signed(undo), undo))).status).toBe(200);
   expect(readPolicy().rules).toHaveLength(0);
   expect(readPolicy().audit).toHaveLength(2);
+});
+
+test('Featured is empty by default, signed and independent of blocks; address selections follow releases', async () => {
+  // Existing policy files load without a migration or any automatic selections.
+  await writeFile(
+    process.env.SPACE_MODERATION_FILE!,
+    JSON.stringify({ version: 1, revision: 0, rules: [], audit: [], used: [] }),
+  );
+  expect(readPolicy().featured).toEqual([]);
+  expect(manifestFeatured(fixture.current)).toBe(false);
+  const body = JSON.stringify({ ...action(), action: 'feature' });
+  expect((await adminResponse(request(await signed(body, undefined, outsider), body))).status).toBe(
+    403,
+  );
+  const token = await signed(body);
+  const response = await adminResponse(request(token, body));
+  expect(response.status).toBe(200);
+  expect((await response.json()).featured).toHaveLength(1);
+  expect((await adminResponse(request(token, body))).status).toBe(409);
+  expect(readPolicy().rules).toHaveLength(0);
+  expect(manifestFeatured({ ...fixture.current, id: 'a'.repeat(64) })).toBe(true);
+  expect(manifestFeatured(fixture.snapshot)).toBe(true);
+  expect(manifestFeatured({ ...fixture.snapshot, pubkey: await outsider.getPublicKey() })).toBe(
+    false,
+  );
+  updatePolicy(action(), actor, '7'.repeat(64));
+  expect(manifestBlocked(fixture.current)).toBe(true);
+  updatePolicy({ ...action(), action: 'unfeature' }, actor, '8'.repeat(64));
+  expect(manifestFeatured(fixture.current)).toBe(false);
+  expect(manifestBlocked(fixture.current)).toBe(true);
+  expect(() =>
+    updatePolicy(
+      { ...action(), action: 'feature', type: 'pubkey', target: fixture.pubkey },
+      actor,
+      '9'.repeat(64),
+    ),
+  ).toThrow('Only napplets');
 });
 test('naddr blocks preserve exact identifiers including trailing whitespace and root identities', () => {
   for (const [kind, identifier] of [

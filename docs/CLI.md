@@ -172,7 +172,6 @@ pnpm's npm integrity value. Then validate a fresh scaffold, upstream verify and
 conformance, the Space sandbox, source/artifact publication, live rebuilds and the
 standalone installer before shipping a new immutable CLI version.
 
-
 ### Project destinations and screenshots (CLI 0.3.1)
 
 `napplet-space config` prints the effective public targets without reading a key
@@ -192,3 +191,30 @@ update the CLI, run `skills update`, then `config init` and `screenshot` as need
 CLI 0.3.1 is required for these configuration fields and commands. Deploy the
 versioned CLI downloads before deploying the installer that advertises them;
 older installed binaries remain unchanged until the creator reruns the installer.
+
+## Local listing preview (CLI 0.4.0)
+
+Run `napplet-space dev` in a project, then select **Listing** beside **Play**. This draft
+shows the title, description, tags, creator public key, selected screenshot, license,
+identifier, built artifact and effective destinations for the selected network. Use
+`--network local` for local services; the default is public. Publication flags can
+still override these destinations.
+
+**Capture screenshot** runs the existing sandboxed build check and saves a new PNG,
+then selects it as `preview.image` in `napplet.json`. It preserves previous images and
+does not publish or sign anything. First use may download the cached Chromium browser.
+Review the image after the final build; it may need an interactive scene or custom PNG
+for a representative state. Configuration and image changes refresh in Listing.
+
+Missing metadata or a build appears as a draft warning. The listing preview complements
+`napplet-space check`; it does not assert that the artifact passed all publication checks.
+Only public configuration and the selected, bounded project PNG are served by loopback.
+Capturing requires an explicit same-origin action.
+
+Existing projects get this view by updating the CLI and restarting `napplet-space dev`.
+Run `napplet-space skills update` to refresh the separate Space integration guidance;
+upstream boilerplate and skill bodies stay unchanged.
+
+Readable links require a one-time claim on the website: connect the publishing account,
+choose **Named link**, and claim `/@your-handle/your-slug`. Existing releases can do this
+now. Republish does not claim a name; a claimed name follows later releases automatically.

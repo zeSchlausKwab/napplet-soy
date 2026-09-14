@@ -7,6 +7,7 @@ import {
   lastTag,
   validComment,
   validLike,
+  validCommentLike,
   socialView,
   type SocialScope,
 } from '../../protocol/src/social';
@@ -96,6 +97,16 @@ export class SocialService {
             { ids: referenced, kinds: [35129, 15129, 5129, 1111], limit: 64 },
           ])),
         );
+      const commentIds = [...new Set(found.filter((e) => e.kind === 1111).map((e) => e.id))].slice(
+        0,
+        128,
+      );
+      for (let i = 0; i < commentIds.length; i += 64)
+        found.push(
+          ...(await this.relay.query(relays, [
+            { kinds: [7, 9735], '#e': commentIds.slice(i, i + 64), limit: 150 },
+          ])),
+        );
       const social = found.filter((e) => [7, 1111].includes(e.kind));
       const authors = [...new Set([manifest.pubkey, ...social.map((e) => e.pubkey)])].slice(0, 64);
       const ids = [...new Set(social.map((e) => e.id))].slice(0, 128);
@@ -167,7 +178,11 @@ export class SocialService {
       ]);
     let valid = false;
     if (event.kind === 1111) valid = validComment(event, context.scope, map);
-    if (event.kind === 7) valid = validLike(event, context.scope, data.manifests);
+    if (event.kind === 7)
+      valid =
+        validLike(event, context.scope, data.manifests) ||
+        (validCommentLike(event, context.scope, map) &&
+          data.comments.some((comment) => comment.id === lastTag(event, 'e') && !comment.deleted));
     if (event.kind === 5) {
       const targets = event.tags.filter((t) => t[0] === 'e');
       valid =
@@ -181,7 +196,8 @@ export class SocialService {
             target.pubkey === event.pubkey &&
             target.created_at <= event.created_at &&
             (validComment(target, context.scope, map) ||
-              validLike(target, context.scope, data.manifests))
+              validLike(target, context.scope, data.manifests) ||
+              validCommentLike(target, context.scope, map))
           );
         });
     }

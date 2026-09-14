@@ -59,7 +59,7 @@ const rule = z.object({
   at: z.number().int(),
 });
 const audit = rule.extend({
-  action: z.enum(['block', 'unblock']),
+  action: z.enum(['block', 'unblock', 'feature', 'unfeature']),
   revision: z.number().int(),
   requestId: z.string().regex(hex),
 });
@@ -67,11 +67,22 @@ const schema = z.object({
   version: z.literal(1),
   revision: z.number().int().nonnegative(),
   rules: z.array(rule).max(10000),
+  featured: z
+    .array(rule.extend({ type: z.enum(['address', 'event']) }))
+    .max(256)
+    .default([]),
   audit: z.array(audit).max(500),
   used: z.array(z.object({ id: z.string().regex(hex), expires: z.number().int() })).max(1000),
 });
 export type Policy = z.infer<typeof schema>;
-const empty = (): Policy => ({ version: 1, revision: 0, rules: [], audit: [], used: [] });
+const empty = (): Policy => ({
+  version: 1,
+  revision: 0,
+  rules: [],
+  featured: [],
+  audit: [],
+  used: [],
+});
 export class PolicyError extends Error {
   constructor(
     message: string,
@@ -97,6 +108,12 @@ export function readPolicy(path = policyPath()) {
       if (normalizeTarget(r.type, r.target) !== r.target || keys.has(`${r.type}:${r.target}`))
         throw new Error();
       keys.add(`${r.type}:${r.target}`);
+    }
+    const featured = new Set<string>();
+    for (const r of policy.featured) {
+      const key = `${r.type}:${r.target}`;
+      if (normalizeTarget(r.type, r.target) !== r.target || featured.has(key)) throw new Error();
+      featured.add(key);
     }
     cached = { path, stamp, policy, keys };
     return policy;
@@ -152,15 +169,43 @@ export function initializePolicy(path: string) {
   }
   readPolicy(path);
 }
+/** Site curation never changes a creator's signed manifest or bypasses moderation. */
+export function manifestFeatured(event: {
+  id: string;
+  pubkey: string;
+  kind: number;
+  tags: string[][];
+}) {
+  const address = [35129, 15129].includes(event.kind)
+    ? `${event.kind}:${event.pubkey}:${event.kind === 15129 ? '' : (event.tags.find((t) => t[0] === 'd')?.[1] ?? '')}`
+    : null;
+  return readPolicy().featured.some((item) =>
+    item.type === 'event'
+      ? item.target === event.id
+      : item.target === address ||
+        (event.kind === 5129 &&
+          event.tags.some(
+            (t) =>
+              t[0] === 'a' &&
+              t[1] === item.target &&
+              (t[1].startsWith(`35129:${event.pubkey}:`) || t[1] === `15129:${event.pubkey}:`),
+          )),
+  );
+}
 export const actionSchema = z
   .object({
-    action: z.enum(['block', 'unblock']),
+    action: z.enum(['block', 'unblock', 'feature', 'unfeature']),
     type: z.enum(ruleTypes),
     target: z.string().min(1).max(4096),
     reason: z.string().trim().min(1).max(500),
     revision: z.number().int().nonnegative(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (input) =>
+      !['feature', 'unfeature'].includes(input.action) || ['address', 'event'].includes(input.type),
+    'Only napplets and revisions can be featured.',
+  );
 export type ModerationAction = z.infer<typeof actionSchema>;
 /** One atomic document contains rules, replay receipts and the bounded audit trail. */
 export function updatePolicy(
@@ -169,6 +214,7 @@ export function updatePolicy(
   requestId: string,
   now = Math.floor(Date.now() / 1000),
 ) {
+  input = actionSchema.parse(input);
   const path = policyPath();
   if (!path) throw new PolicyError('Moderation is not configured.');
   const target = normalizeTarget(input.type, input.target);
@@ -188,14 +234,24 @@ export function updatePolicy(
       throw new PolicyError('Policy changed. Refresh before trying again.', 409);
     const used = current.used.filter((r) => r.expires >= now);
     if (used.length >= 1000) throw new PolicyError('Admin request budget exceeded.', 429);
-    const rules = current.rules.filter((r) => r.type !== input.type || r.target !== target);
+    const curating = input.action === 'feature' || input.action === 'unfeature';
+    const rules = curating
+      ? [...current.rules]
+      : current.rules.filter((r) => r.type !== input.type || r.target !== target);
+    const featured = curating
+      ? current.featured.filter((r) => r.type !== input.type || r.target !== target)
+      : [...current.featured];
     const item = { type: input.type, target, reason: input.reason, actor, at: now };
     if (input.action === 'block') rules.push(item);
+    if (input.action === 'feature' && (item.type === 'address' || item.type === 'event'))
+      featured.push({ ...item, type: item.type });
+    if (featured.length > 256) throw new PolicyError('Featured collection capacity reached.', 409);
     if (rules.length > 10000) throw new PolicyError('Block list capacity reached.', 409);
     const next: Policy = {
       version: 1,
       revision: current.revision + 1,
       rules,
+      featured,
       audit: [
         ...current.audit,
         { ...item, action: input.action, revision: current.revision + 1, requestId },

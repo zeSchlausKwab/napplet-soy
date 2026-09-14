@@ -5,7 +5,7 @@ import { sha256 as hashBytes } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
 import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
 import { inspectInvoice } from '../../protocol/src/invoice';
-import { socialScope } from '../../protocol/src/social';
+import { socialScope, commentScope, commentTemplate } from '../../protocol/src/social';
 import { resolveZapEndpoint, requestZapInvoice, verifiedZapReceipt } from '../../backend/src/zaps';
 import { verifiedEvent } from '../../protocol/src';
 import type { SocialContext } from '../../backend/src/social-service';
@@ -191,4 +191,58 @@ test('invoice inspection agrees with the independent BOLT-11 hashed-description 
   );
   expect(decoded.expiresAt).toBe(1496314658 + 3600);
   expect(() => inspectInvoice(vector.slice(0, -1) + 'q')).toThrow();
+});
+
+test('comment zaps bind the invoice and receipt to the commenter, independently of the napplet author', async () => {
+  const { context: napplet, endpoint: authorEndpoint } = await fixture();
+  const comment = finalizeEvent(commentTemplate(napplet.scope, 'A helpful comment'), alice);
+  const context = { ...napplet, manifest: comment, scope: commentScope(comment) };
+  const targets = new Map([[comment.id, comment]]);
+  const endpoint = { ...authorEndpoint, pubkey: comment.pubkey };
+  const request = finalizeEvent(
+    {
+      kind: 9734,
+      created_at: now,
+      content: '',
+      tags: [
+        ['p', comment.pubkey],
+        ['e', comment.id],
+        ['k', '1111'],
+        ['amount', '21000'],
+        ['lnurl', endpoint.lnurl],
+        ['relays', ...context.relays],
+      ],
+    },
+    author,
+  );
+  const description = JSON.stringify(verifiedEvent(request));
+  const result = await requestZapInvoice(context, targets, endpoint, request, async () => ({
+    pr: invoice(21000, description),
+  }));
+  expect(result.msats).toBe(21000);
+  await expect(requestZapInvoice(context, targets, authorEndpoint, request)).rejects.toThrow();
+  await expect(requestZapInvoice(napplet, targets, endpoint, request)).rejects.toThrow();
+  const receipt = finalizeEvent(
+    {
+      kind: 9735,
+      created_at: now,
+      content: '',
+      tags: [
+        ['p', comment.pubkey],
+        ['e', comment.id],
+        ['description', description],
+        ['bolt11', result.invoice],
+      ],
+    },
+    provider,
+  );
+  expect((await verifiedZapReceipt(receipt, context.scope, targets, endpoint)).msats).toBe(21000);
+  await expect(
+    verifiedZapReceipt(receipt, napplet.scope, targets, authorEndpoint),
+  ).rejects.toThrow();
+  const ambiguous = finalizeEvent(
+    { ...request, tags: [...request.tags, ['a', napplet.scope.key]] },
+    author,
+  );
+  await expect(requestZapInvoice(context, targets, endpoint, ambiguous)).rejects.toThrow();
 });

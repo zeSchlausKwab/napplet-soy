@@ -323,6 +323,7 @@ try {
         !values['no-open'],
         json,
         controller.signal,
+        network,
       );
     } else {
       const result =
@@ -426,6 +427,10 @@ try {
           `Preview: ${result.preview.url}\nSaved image: ${join(values.project ?? process.cwd(), '.napplet-space', network, result.jobId, 'preview.png')}`,
         );
       if (result.error) console.log(`${result.error.code}: ${result.error.message}`);
+      if (result.websiteReady)
+        console.log(
+          'Readable link: open the napplet page, connect the creator account and choose Named link. Claim /@your-handle/your-slug once; future releases keep it.',
+        );
     }
   } else if (command === 'account') {
     if (

@@ -6,6 +6,8 @@ import type { PreviewAssets } from './assets';
 import { builtRequirements } from '../../../../packages/publish/src/artifact';
 import { regularFile } from '../../../../packages/publish/src/project';
 import { fileURLToPath } from 'node:url';
+import { listingPreview, listingImage } from './listing';
+import type { Network } from '../../../../packages/identity/src/signer';
 
 const relayUrl = z
   .string()
@@ -39,7 +41,9 @@ export function startPreviewServer(
   port = Number(process.env.PORT ?? 4173),
   announce = true,
   assets?: PreviewAssets,
+  listing: { network: Network; capture?: () => Promise<unknown> } = { network: 'public' },
 ) {
+  let capturing = false;
   async function revision() {
     // BunFile caches stat/size: create fresh handles after every editor save.
     const configFile = Bun.file(new URL('napplet.json', root));
@@ -83,8 +87,36 @@ export function startPreviewServer(
       try {
         if (url.pathname === '/api/resources' && request.method === 'POST')
           return await resourceResponse(request);
+        if (url.pathname === '/listing/capture' && request.method === 'POST') {
+          // Only an explicit action in this host can write a selected screenshot.
+          if (request.headers.get('Origin') !== url.origin)
+            return new Response('Forbidden', { status: 403, headers: noStore });
+          if (!listing.capture)
+            return new Response('Capture unavailable', { status: 404, headers: noStore });
+          if (capturing)
+            return new Response('Capture already running', { status: 409, headers: noStore });
+          capturing = true;
+          try {
+            return Response.json(await listing.capture(), { headers: noStore });
+          } finally {
+            capturing = false;
+          }
+        }
         if (request.method !== 'GET')
           return new Response('Method not allowed', { status: 405, headers: noStore });
+        if (url.pathname === '/listing')
+          return Response.json(
+            await listingPreview(fileURLToPath(root), listing.network, !!listing.capture),
+            { headers: noStore },
+          );
+        if (url.pathname === '/listing/preview.png')
+          return new Response((await listingImage(fileURLToPath(root))).bytes, {
+            headers: {
+              ...noStore,
+              'Content-Type': 'image/png',
+              'Content-Security-Policy': "default-src 'none'; sandbox",
+            },
+          });
         if (url.pathname === '/revision')
           return Response.json((await revision()).info, { headers: noStore });
         if (/^\/api\/artifacts\/[a-f0-9]{64}$/.test(url.pathname)) {

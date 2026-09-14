@@ -31,3 +31,37 @@ The invoice offers a `lightning:` wallet link and copy control. When WebLN is av
 Current limits: mainnet amount-bearing BOLT-11 invoices, NIP-07 signing, recent relay history, and whole-satoshi invoice creation capped at 1,000,000 sats. No wallet custody, NWC pairing, automatic payment or real payment was performed during implementation. Split-recipient `zap` tags are detected and explicitly referred to a split-aware client; this UI does not silently pay the author instead. A missing Lightning profile does not prevent comments, likes, or playback. Local-only development does not create zaps without public WSS relay hints.
 
 Validation: `bun run check`; `bun run build && bun test tests/services/community.test.ts tests/services/remix-cli.test.ts`. The latter uses temporary loopback services, the documented public fixture key, a temporary CLI executable, and a simulated wallet. No public events or Lightning payments are sent by these tests.
+
+## Remixing without an installed CLI
+
+The **Remix this** dialog offers both the existing-CLI command and an install-and-remix command:
+
+```sh
+curl -fsSL https://napplet.soy/install.sh | sh -s -- remix 'https://napplet.soy/r/REVISION_ID' my-remix
+```
+
+Both select the exact revision and preserve remix attribution. The installer forwards
+arguments to the verified native CLI; creators do not need Bun or Node installed.
+
+## Reactions to comments
+
+Each visible NIP-22 comment can receive a NIP-25 like and a NIP-57 zap. Reactions target
+the comment's event ID, kind 1111 and author. They do not inherit the napplet address or
+its author as payment recipient. Likes count unique authors; creators can undo their
+own reactions. Deleted comments have no reaction actions. Comment zap invoices and
+receipts use the commenter's verified Lightning profile and the same invoice checks
+as napplet zaps. Payment still requires an explicit wallet action.
+
+## Gallery and Featured
+
+The homepage reads the standard relay/index collection and sorts newest first. Bundled
+examples are no longer prepended as a special collection. The dev seed process still
+publishes them to the local services, where discovery treats them like any other napplet.
+Legacy direct example links remain available for compatibility.
+
+**Featured** is an explicit gallery selection managed at `/admin`. It is empty by default,
+including for existing policy files. Feature a napplet naddr to follow its releases, or
+an event ID to select a revision. These actions require the existing administrator's
+signed requests, revision checks and replay protection. Selections are stored alongside
+moderation state and audited, never added to the creator's signed manifest. Featuring
+content does not unblock it or import content that discovery has not indexed.

@@ -105,6 +105,20 @@ test('production SSR, signed named routes and social actions work through a real
     await page.getByRole('button', { name: '0 likes', exact: true }).waitFor();
     await page.getByRole('button', { name: '0 likes', exact: true }).click();
     await page.getByRole('button', { name: '1 like', exact: true }).waitFor();
+    const commentLike = page.getByRole('button', { name: /^Like comment by/ }).first();
+    await commentLike.click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[aria-label^="Like comment by"]')?.getAttribute('aria-pressed') ===
+        'true',
+    );
+    expect(await commentLike.textContent()).toContain('1');
+    await commentLike.click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[aria-label^="Like comment by"]')?.getAttribute('aria-pressed') ===
+        'false',
+    );
     await page.getByRole('button', { name: 'Reply', exact: true }).click();
     await page.getByLabel('Your reply').fill('A reply in the same thread.');
     await page.getByRole('button', { name: 'Post reply', exact: true }).click();
@@ -112,7 +126,9 @@ test('production SSR, signed named routes and social actions work through a real
     await page.getByRole('button', { name: 'Delete', exact: true }).first().click();
     await page.getByText('Comment deleted by its author.').waitFor();
     await page.getByRole('button', { name: 'Remix this', exact: true }).click();
-    expect(await page.locator('.remix-command').textContent()).toContain(
+    expect(await page.locator('.remix-command').count()).toBe(2);
+    expect(await page.locator('.remix-command').first().textContent()).toContain('sh -s -- remix');
+    expect(await page.locator('.remix-command').first().textContent()).toContain(
       `/r/${fixture.snapshot.id}`,
     );
     await page.keyboard.press('Escape');
@@ -121,7 +137,7 @@ test('production SSR, signed named routes and social actions work through a real
     expect(state.comments).toHaveLength(2);
     expect(state.comments[0].deleted).toBe(true);
     expect([...events.values()].filter((e) => e.kind === 1111)).toHaveLength(2);
-    expect([...events.values()].filter((e) => e.kind === 7)).toHaveLength(2);
+    expect([...events.values()].filter((e) => e.kind === 7)).toHaveLength(3);
     expect(rejected).toBe(0);
     // Wallet UI is simulated; no invoice provider or wallet receives a real request.
     let invoiceRequests = 0;
@@ -146,6 +162,12 @@ test('production SSR, signed named routes and social actions work through a real
         expect(event.kind).toBe(9734);
         expect(event.pubkey).toBe(fixture.pubkey);
         expect(event.tags).toContainEqual(['amount', '21000']);
+        const commentId = new URL(route.request().url()).searchParams.get('comment');
+        if (commentId) {
+          expect(event.tags).toContainEqual(['e', commentId]);
+          expect(event.tags).toContainEqual(['k', '1111']);
+          expect(event.tags.some((t) => t[0] === 'a')).toBe(false);
+        }
         invoiceRequests++;
         return route.fulfill({
           json: {
@@ -182,6 +204,13 @@ test('production SSR, signed named routes and social actions work through a real
       'lnbc1test-only-never-pay',
     ]);
     expect([...events.values()].some((e) => e.kind === 9734)).toBe(false);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Zap comment', exact: true }).click();
+    await page.getByLabel('Satoshis', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Create zap invoice', exact: true }).click();
+    await page.getByRole('button', { name: 'Pay with browser wallet', exact: true }).waitFor();
+    expect(invoiceRequests).toBe(2);
+    expect(await page.evaluate(() => (window as any).testPayments.length)).toBe(1);
     await page.keyboard.press('Escape');
     await mkdir(join(root, '.local/community-check'), { recursive: true });
     await page.locator('.social-panel').scrollIntoViewIfNeeded();

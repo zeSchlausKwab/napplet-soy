@@ -14,12 +14,18 @@ import { jsonResponse, signForAccount, type Template } from '@/lib/community-cli
 import {
   commentTemplate,
   likeTemplate,
+  commentLikeTemplate,
   deletionTemplate,
   type SocialScope,
 } from '../../../../packages/protocol/src/social';
 import type { SignedEvent } from '../../../../packages/protocol/src';
 import type { ZapEndpoint } from '../../../../packages/backend/src/zaps';
-type Comment = SignedEvent & { deleted: boolean; parent: string | null };
+type Comment = SignedEvent & {
+  deleted: boolean;
+  parent: string | null;
+  likes: SignedEvent[];
+  likeCount: number;
+};
 type SocialData = {
   scope: SocialScope;
   manifest: SignedEvent;
@@ -215,6 +221,7 @@ export function SocialPanel({ reference }: { reference: string }) {
                 const repliedTo = comment.parent
                   ? data.comments.find((e) => e.id === comment.parent)
                   : null;
+                const commentLikes = comment.likes?.filter((e) => e.pubkey === pubkey) ?? [];
                 return (
                   <article key={comment.id} className="comment" id={`comment-${comment.id}`}>
                     <div className="comment-avatar" aria-hidden>
@@ -243,6 +250,32 @@ export function SocialPanel({ reference }: { reference: string }) {
                         {comment.deleted ? 'Comment deleted by its author.' : comment.content}
                       </p>
                       <div className="comment-tools">
+                        {!comment.deleted && (
+                          <>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              aria-label={`Like comment by ${data.profiles[comment.pubkey]?.name ?? short(comment.pubkey)}`}
+                              aria-pressed={commentLikes.length > 0}
+                              disabled={busy || !!pending}
+                              onClick={() =>
+                                write(
+                                  commentLikes.length
+                                    ? deletionTemplate(commentLikes)
+                                    : commentLikeTemplate(comment),
+                                )
+                              }
+                            >
+                              <Heart
+                                size={13}
+                                fill={commentLikes.length ? 'currentColor' : 'none'}
+                              />{' '}
+                              {comment.likeCount ?? 0}
+                            </Button>
+                            <ZapButton data={data} reference={reference} commentTarget={comment} />
+                          </>
+                        )}
+
                         {!comment.deleted && (
                           <Button
                             size="xs"
@@ -326,7 +359,15 @@ export function SocialPanel({ reference }: { reference: string }) {
     </section>
   );
 }
-function ZapButton({ data, reference }: { data: SocialData; reference: string }) {
+function ZapButton({
+  data,
+  reference,
+  commentTarget,
+}: {
+  data: SocialData;
+  reference: string;
+  commentTarget?: Comment;
+}) {
   const { pubkey, connect } = useNostr();
   const keyRef = useRef(pubkey);
   keyRef.current = pubkey;
@@ -341,7 +382,8 @@ function ZapButton({ data, reference }: { data: SocialData; reference: string })
     ),
     [total, setTotal] = useState<number | null>(null),
     [webln, setWebln] = useState(false);
-  const url = `/api/zaps?reference=${encodeURIComponent(reference)}`;
+  const target = commentTarget ?? data.manifest;
+  const url = `/api/zaps?reference=${encodeURIComponent(reference)}${commentTarget ? `&comment=${commentTarget.id}` : ''}`;
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
@@ -369,14 +411,22 @@ function ZapButton({ data, reference }: { data: SocialData; reference: string })
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button
+          variant={commentTarget ? 'ghost' : 'outline'}
+          size={commentTarget ? 'xs' : 'default'}
+          aria-label={commentTarget ? 'Zap comment' : undefined}
+        >
           <Zap size={16} />
           {total === null ? 'Zap' : `${(total / 1000).toLocaleString()} sats zapped`}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>A little lightning for the creator</DialogTitle>
+          <DialogTitle>
+            {commentTarget
+              ? 'A little lightning for the commenter'
+              : 'A little lightning for the creator'}
+          </DialogTitle>
           <DialogDescription>
             Send sats directly to the author’s Lightning service. A zap request is public; your
             wallet confirms the payment.
@@ -416,9 +466,9 @@ function ZapButton({ data, reference }: { data: SocialData; reference: string })
                   content: comment,
                   tags: [
                     ['p', endpoint.pubkey],
-                    ['e', data.manifest.id],
-                    ['k', String(data.manifest.kind)],
-                    ...(data.scope.address ? [['a', data.scope.address]] : []),
+                    ['e', target.id],
+                    ['k', String(target.kind)],
+                    ...(!commentTarget && data.scope.address ? [['a', data.scope.address]] : []),
                     ['amount', String(msats)],
                     ['lnurl', endpoint.lnurl],
                     ['relays', ...relays],
@@ -479,7 +529,7 @@ function ZapButton({ data, reference }: { data: SocialData; reference: string })
         {invoice && (
           <div className="zap-invoice">
             <strong>
-              {(invoice.msats / 1000).toLocaleString()} sats to {short(data.manifest.pubkey)}
+              {(invoice.msats / 1000).toLocaleString()} sats to {short(target.pubkey)}
             </strong>
             <p>Invoice ready. Choose your wallet to pay.</p>
             <textarea aria-label="Lightning invoice" readOnly value={invoice.invoice} />

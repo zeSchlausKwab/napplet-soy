@@ -38,7 +38,7 @@ test('topic projection normalizes and deduplicates hashtags without changing the
   expect(gallerySearchSchema.parse({ tag: '#VISUAL' }).tag).toBe('visual');
   expect(gallerySearchSchema.parse({ category: 'public' })).toEqual({
     tag: '',
-    sort: 'curated',
+    sort: 'new',
     q: '',
   });
 });

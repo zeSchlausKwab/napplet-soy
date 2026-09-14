@@ -9,7 +9,7 @@ import { ArrowDown, ArrowUpRight, Eye, Search, Shuffle, Sparkles, X } from 'luci
 import { useState } from 'react';
 import { gallerySearchSchema, type GallerySearch } from '../../../../packages/protocol/src';
 import { matchesGallery, topicFacets } from '../../../../packages/protocol/src/topics';
-import { getGallery, getPublicCatalog } from '@/lib/catalog.functions';
+import { getPublicCatalog } from '@/lib/catalog.functions';
 import { NappletCard } from '@/components/napplet-card';
 import { useNostr } from '@/components/nostr-provider';
 import { Button } from '@/components/ui/button';
@@ -19,45 +19,19 @@ export const Route = createFileRoute('/')({
   validateSearch: (input: SearchSchemaInput & Partial<GallerySearch>) =>
     gallerySearchSchema.parse(input),
   search: {
-    middlewares: [stripSearchParams({ tag: '', sort: 'curated', q: '', unavailable: false })],
+    middlewares: [stripSearchParams({ tag: '', sort: 'new', q: '', unavailable: false })],
   },
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {
-    const [local, publicCatalog] = await Promise.all([
-      getGallery({ data: { tag: '', q: '', sort: 'curated' } }),
-      getPublicCatalog(),
-    ]);
-    const cards = local.filter(
-      (n) =>
-        !publicCatalog.entries.some(
-          (entry) =>
-            entry.manifest.kind === 35129 &&
-            entry.pubkey === n.pubkey &&
-            entry.manifest.tags.some((t) => t[0] === 'd' && t[1] === n.identifier) &&
-            (entry.manifest.created_at > n.createdAt ||
-              (entry.manifest.created_at === n.createdAt && entry.revisionId < n.currentId)),
-        ),
-    );
-    const curated = new Set(cards.map((n) => `35129:${n.pubkey}:${n.identifier}`));
-    const catalog = [
-      ...cards,
-      ...publicCatalog.entries.filter(
-        (n) =>
-          !curated.has(
-            `${n.manifest.kind}:${n.pubkey}:${n.manifest.tags.find((t) => t[0] === 'd')?.[1] ?? ''}`,
-          ),
-      ),
-    ];
-    const playable = (n: (typeof catalog)[number]) =>
-      !('availability' in n) || n.availability === 'ready';
+    const publicCatalog = await getPublicCatalog();
+    const catalog = publicCatalog.entries.filter((n) => deps.sort !== 'featured' || n.featured);
+    const playable = (n: (typeof catalog)[number]) => n.availability === 'ready';
     const visibleCatalog = deps.unavailable ? catalog : catalog.filter(playable);
     const napplets = visibleCatalog.filter((n) => matchesGallery(n, deps));
-    if (deps.sort === 'new')
-      napplets.sort(
-        (a, b) =>
-          ('provenance' in b ? b.manifest.created_at : b.createdAt) -
-          ('provenance' in a ? a.manifest.created_at : a.createdAt),
-      );
+    napplets.sort(
+      (a, b) =>
+        b.manifest.created_at - a.manifest.created_at || a.revisionId.localeCompare(b.revisionId),
+    );
     return {
       napplets,
       topics: topicFacets(visibleCatalog),
@@ -164,14 +138,7 @@ function Gallery() {
             disabled={!ready || !napplets.length}
             onClick={() => {
               const n = napplets[Math.floor(Math.random() * napplets.length)];
-              if ('provenance' in n) {
-                void navigate(publicLink(n));
-                return;
-              }
-              void navigate({
-                to: '/$creator/$slug',
-                params: { creator: `@${n.handle}`, slug: n.slug },
-              });
+              void navigate(publicLink(n));
             }}
           >
             <Shuffle size={15} />
@@ -224,11 +191,11 @@ function Gallery() {
             </form>
             <select
               aria-label="Sort napplets"
-              value={search.sort}
+              value={search.sort === 'curated' ? 'new' : search.sort}
               onChange={(e) => update({ sort: e.target.value as GallerySearch['sort'] })}
             >
-              <option value="curated">Curated</option>
               <option value="new">Newest</option>
+              <option value="featured">Featured</option>
             </select>
           </div>
           <Button
@@ -260,20 +227,22 @@ function Gallery() {
         )}
         <div className="napplet-grid">
           {napplets.map((n, index) => (
-            <NappletCard
-              key={'provenance' in n ? n.revisionId : n.snapshotId}
-              napplet={n}
-              index={index}
-            />
+            <NappletCard key={n.revisionId} napplet={n} index={index} />
           ))}
         </div>
         {!napplets.length && (
           <div className="empty-results">
-            <h3>No little wonders found.</h3>
+            <h3>
+              {search.sort === 'featured'
+                ? 'No featured napplets found.'
+                : 'No little wonders found.'}
+            </h3>
             <p>
               {!search.unavailable && unavailableCount > 0
                 ? `${unavailableCount} matching ${unavailableCount === 1 ? 'napplet is' : 'napplets are'} unavailable. Use “Show unavailable” to include them.`
-                : 'Try a different word or open up the filters.'}
+                : search.sort === 'featured'
+                  ? 'Featured napplets are selected by the site administrator. Explore Newest to see the whole playground.'
+                  : 'Try a different word or open up the filters.'}
             </p>
             <Button variant="outline" onClick={() => update({ q: '', tag: '' })}>
               Clear search and tag

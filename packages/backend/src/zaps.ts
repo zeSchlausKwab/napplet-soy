@@ -3,7 +3,7 @@ import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
 import { sha256 as hashBytes } from '@noble/hashes/sha2.js';
 import { sha256, verifiedEvent, type SignedEvent } from '../../protocol/src';
 import { inspectInvoice } from '../../protocol/src/invoice';
-import { oneTag, targetManifest, type SocialScope } from '../../protocol/src/social';
+import { oneTag, targetManifest, commentScope, type SocialScope } from '../../protocol/src/social';
 import { fetchPublicBytes, publicResourceUrl } from './blossom';
 import {
   allowedSocial,
@@ -99,6 +99,7 @@ export function validZapRequest(
   if (
     event.kind !== 9734 ||
     oneTag(event, 'p') !== endpoint.pubkey ||
+    endpoint.pubkey !== scope.author ||
     !targetManifest(event, scope, manifests) ||
     oneTag(event, 'lnurl') !== endpoint.lnurl ||
     !Number.isSafeInteger(msats) ||
@@ -217,20 +218,30 @@ export async function zapResponse(request: Request) {
     communityBudget();
     const ref = new URL(request.url).searchParams.get('reference') ?? '';
     if (ref.length > 4096) throw new CommunityError('Invalid reference.');
-    const context = await socialContext(ref),
-      service = socialService();
+    let context = await socialContext(ref);
+    const service = socialService();
+    await service.refresh(context);
+    const data = await service.data(context);
+    let targets = data.manifests;
+    const commentId = new URL(request.url).searchParams.get('comment');
+    if (commentId !== null) {
+      const comment = data.comments.find((event) => event.id === commentId && !event.deleted);
+      if (!/^[a-f0-9]{64}$/.test(commentId) || !comment || !allowedSocial(comment))
+        throw new CommunityError('Comment not found in this conversation.', 404);
+      const original = data.events.find((event) => event.id === comment.id)!;
+      context = { ...context, manifest: original, scope: commentScope(original) };
+      targets = new Map([[original.id, original]]);
+    }
     // A split payment requires a multi-invoice flow; do not silently redirect it to the author.
     if (context.manifest.tags.some((t) => t[0] === 'zap'))
       throw new CommunityError(
         'This creation requests split zaps. Use a Nostr client that supports its recipient split.',
         409,
       );
-    await service.refresh(context);
-    const data = await service.data(context);
     const endpoint = await resolveZapEndpoint(context.manifest.pubkey, data.events);
     if (request.method === 'POST') {
       const { value } = await boundedJson(request);
-      return Response.json(await requestZapInvoice(context, data.manifests, endpoint, value), {
+      return Response.json(await requestZapInvoice(context, targets, endpoint, value), {
         headers: communityHeaders,
       });
     }
@@ -239,7 +250,7 @@ export async function zapResponse(request: Request) {
     const hashes = new Set<string>();
     for (const e of data.events.filter((e) => e.kind === 9735).slice(0, 150))
       try {
-        const receipt = await verifiedZapReceipt(e, context.scope, data.manifests, endpoint);
+        const receipt = await verifiedZapReceipt(e, context.scope, targets, endpoint);
         if (!hashes.has(receipt.paymentHash)) {
           receipts.push(receipt);
           hashes.add(receipt.paymentHash);

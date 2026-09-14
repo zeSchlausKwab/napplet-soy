@@ -12,6 +12,7 @@ import {
   likeTemplate,
   deletionTemplate,
   socialView,
+  commentLikeTemplate,
 } from '../../protocol/src/social';
 import { aggregateHash, type SignedEvent } from '../../protocol/src';
 const author = generateSecretKey(),
@@ -132,6 +133,46 @@ test('social service requires relay acknowledgements, retries exact events and p
     expect((await service.data(context)).likeCount).toBe(1);
     await service.write(context, finalizeEvent(deletionTemplate([like]), alice));
     expect((await service.data(context)).likeCount).toBe(0);
+    const commentLike = finalizeEvent(commentLikeTemplate(comment, now + 1), bob);
+    await service.write(context, commentLike);
+    expect((await service.data(context)).comments[0].likeCount).toBe(1);
+    expect((await service.data(context)).likeCount).toBe(0);
+    await service.write(context, finalizeEvent(commentLikeTemplate(comment, now + 2), bob));
+    expect((await service.data(context)).comments[0].likeCount).toBe(1);
+    await expect(
+      service.write(context, finalizeEvent(commentLikeTemplate(wrong), alice)),
+    ).rejects.toThrow('thread');
+    await expect(
+      service.write(
+        context,
+        finalizeEvent(
+          {
+            ...commentLikeTemplate(comment),
+            tags: [
+              ['e', comment.id],
+              ['p', getPublicKey(author)],
+              ['k', '1111'],
+            ],
+          },
+          bob,
+        ),
+      ),
+    ).rejects.toThrow('thread');
+    await service.write(context, finalizeEvent(deletionTemplate([commentLike], now + 3), bob));
+    expect((await service.data(context)).comments[0].likeCount).toBe(1);
+    // A fresh client discovers comment reactions using event filters, not the napplet's #a.
+    const freshStore = new CommunityStore(join(dir, 'fresh'));
+    try {
+      const fresh = new SocialService(freshStore, relay);
+      await fresh.refresh(context);
+      expect((await fresh.data(context)).comments[0].likeCount).toBe(1);
+    } finally {
+      freshStore.close();
+    }
+    await service.write(context, finalizeEvent(deletionTemplate([comment], now + 4), alice));
+    await expect(
+      service.write(context, finalizeEvent(commentLikeTemplate(comment, now + 5), bob)),
+    ).rejects.toThrow('thread');
     const profile = finalizeEvent(
       { kind: 0, created_at: now, content: '{"name":"Alice"}', tags: [] },
       alice,
@@ -141,7 +182,7 @@ test('social service requires relay acknowledgements, retries exact events and p
     expect(store.events(scope.key).some((e) => e.id === profile.id)).toBe(true);
     expect(store.events(socialScope(other).key).some((e) => e.id === profile.id)).toBe(true);
     const restarted = new SocialService(store, relay);
-    expect((await restarted.data(context)).comments[0].content).toBe('<script>plain text</script>');
+    expect((await restarted.data(context)).comments[0].deleted).toBe(true);
   } finally {
     store.close();
     await rm(dir, { recursive: true, force: true });

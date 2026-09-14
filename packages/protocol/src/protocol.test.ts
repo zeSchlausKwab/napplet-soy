@@ -111,6 +111,6 @@ describe('signed napplet identities and releases', () => {
     expect(await gallery({ tag: 'game', sort: 'new', q: 'blob' })).toHaveLength(0);
     expect(
       gallerySearchSchema.parse({ tag: 'x'.repeat(500), sort: 'broken', q: 'x'.repeat(500) }),
-    ).toEqual({ tag: '', sort: 'curated', q: '' });
+    ).toEqual({ tag: '', sort: 'new', q: '' });
   });
 });

@@ -72,6 +72,32 @@ export function likeTemplate(
     ],
   };
 }
+/** A comment is an event target; it never inherits its napplet's payment recipient. */
+export function commentScope(comment: SignedEvent): SocialScope {
+  return {
+    key: comment.id,
+    address: null,
+    kind: 1111,
+    author: comment.pubkey,
+    eventId: comment.id,
+    eventKind: 1111,
+  };
+}
+export function commentLikeTemplate(comment: SignedEvent, now = Math.floor(Date.now() / 1000)) {
+  return likeTemplate(commentScope(comment), comment, now);
+}
+export function validCommentLike(
+  event: SignedEvent,
+  scope: SocialScope,
+  events: Map<string, SignedEvent>,
+) {
+  const comment = events.get(lastTag(event, 'e') ?? '');
+  return (
+    !!comment &&
+    validComment(comment, scope, events) &&
+    validLike(event, commentScope(comment), new Map([[comment.id, comment]]))
+  );
+}
 export function deletionTemplate(events: SignedEvent[], now = Math.floor(Date.now() / 1000)) {
   return {
     kind: 5,
@@ -124,7 +150,9 @@ export function targetManifest(
   const target = manifests.get(lastTag(e, 'e') ?? '');
   return (
     !!target &&
-    socialScope(target).key === scope.key &&
+    (scope.kind === 1111
+      ? target.kind === 1111 && target.id === scope.key
+      : [35129, 15129, 5129].includes(target.kind) && socialScope(target).key === scope.key) &&
     e.tags.filter((t) => t[0] === 'a').length <= 1 &&
     e.tags.filter((t) => t[0] === 'k').length <= 1 &&
     (!oneTag(e, 'a') || oneTag(e, 'a') === scope.address) &&
@@ -161,9 +189,14 @@ export function socialView(
     .filter((e) => validComment(e, scope, events))
     .sort((a, b) => a.created_at - b.created_at || a.id.localeCompare(b.id));
   const likes = raw.filter((e) => !deleted.has(e.id) && validLike(e, scope, manifests));
+  const commentLikes = raw.filter((e) => !deleted.has(e.id) && validCommentLike(e, scope, events));
   return {
     comments: comments.map((e) => ({
       ...e,
+      likes: commentLikes.filter((like) => lastTag(like, 'e') === e.id),
+      likeCount: new Set(
+        commentLikes.filter((like) => lastTag(like, 'e') === e.id).map((like) => like.pubkey),
+      ).size,
       content: deleted.has(e.id) ? '' : e.content,
       deleted: deleted.has(e.id),
       parent: oneTag(e, 'k') === '1111' ? (oneTag(e, 'e') ?? null) : null,

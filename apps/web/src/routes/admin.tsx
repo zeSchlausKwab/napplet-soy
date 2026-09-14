@@ -3,7 +3,11 @@ import { useState } from 'react';
 import { ShieldCheck, LoaderCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNostr } from '@/components/nostr-provider';
-import type { Policy, RuleType } from '../../../../packages/moderation/src/policy';
+import type {
+  Policy,
+  RuleType,
+  ModerationAction,
+} from '../../../../packages/moderation/src/policy';
 
 export const Route = createFileRoute('/admin')({
   head: () => ({
@@ -14,7 +18,7 @@ export const Route = createFileRoute('/admin')({
   }),
   component: Admin,
 });
-type State = Pick<Policy, 'revision' | 'rules' | 'audit'> & { admins: string[] };
+type State = Pick<Policy, 'revision' | 'rules' | 'featured' | 'audit'> & { admins: string[] };
 const labels: Record<RuleType, string> = {
   pubkey: 'Author',
   address: 'Napplet',
@@ -30,7 +34,7 @@ function Admin() {
   const [type, setType] = useState<RuleType>('address');
   const [target, setTarget] = useState('');
   const [reason, setReason] = useState('');
-  const [action, setAction] = useState<'block' | 'unblock'>('block');
+  const [action, setAction] = useState<ModerationAction['action']>('block');
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const visible = pubkey === loadedKey ? state : null;
   async function request(mutate = false) {
@@ -84,7 +88,14 @@ function Admin() {
       setState(result);
       setLoadedKey(key);
       if (mutate) {
-        setNotice(action === 'block' ? 'Block saved.' : 'Block removed.');
+        setNotice(
+          {
+            block: 'Block saved.',
+            unblock: 'Block removed.',
+            feature: 'Featured napplet saved.',
+            unfeature: 'Napplet removed from Featured.',
+          }[action],
+        );
         setTarget('');
         setReason('');
       }
@@ -133,17 +144,22 @@ function Admin() {
               void request(true);
             }}
           >
-            <h2>{action === 'block' ? 'Add a block' : 'Remove a block'}</h2>
+            <h2>Update the collection</h2>
             <div className="admin-fields">
               <label>
                 Action
                 <select
                   value={action}
-                  onChange={(e) => setAction(e.target.value as typeof action)}
+                  onChange={(e) => {
+                    setAction(e.target.value as typeof action);
+                    if (['feature', 'unfeature'].includes(e.target.value)) setType('address');
+                  }}
                   disabled={busy}
                 >
                   <option value="block">Block</option>
                   <option value="unblock">Unblock</option>
+                  <option value="feature">Feature</option>
+                  <option value="unfeature">Remove from Featured</option>
                 </select>
               </label>
               <label>
@@ -153,11 +169,17 @@ function Admin() {
                   onChange={(e) => setType(e.target.value as RuleType)}
                   disabled={busy}
                 >
-                  {Object.entries(labels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
+                  {Object.entries(labels)
+                    .filter(
+                      ([value]) =>
+                        !['feature', 'unfeature'].includes(action) ||
+                        ['address', 'event'].includes(value),
+                    )
+                    .map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
                 </select>
               </label>
             </div>
@@ -200,9 +222,39 @@ function Admin() {
             </p>
             <Button disabled={busy || !target.trim() || !reason.trim()} type="submit">
               {busy && <LoaderCircle size={16} className="animate-spin" />}
-              {action === 'block' ? 'Sign and save block' : 'Sign and remove block'}
+              Sign and save change
             </Button>
           </form>
+          <h2>Featured napplets</h2>
+          <p className="muted">
+            Select a napplet by naddr to follow its future releases, or an event ID to feature one
+            revision. Nothing is featured automatically. Blocks still apply.
+          </p>
+          {!visible.featured.length && <p className="muted">The Featured collection is empty.</p>}
+          <ul className="admin-rules">
+            {visible.featured.map((r) => (
+              <li key={`${r.type}:${r.target}`}>
+                <div>
+                  <span className="eyebrow">{labels[r.type]}</span>
+                  <code>{r.target}</code>
+                  <p>{r.reason}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    setType(r.type);
+                    setTarget(r.target);
+                    setAction('unfeature');
+                    setReason('');
+                  }}
+                >
+                  Prepare removal
+                </Button>
+              </li>
+            ))}
+          </ul>
           <h2>Active blocks</h2>
           {!visible.rules.length && <p className="muted">No content is blocked.</p>}
           <ul className="admin-rules">
@@ -241,7 +293,15 @@ function Admin() {
               .map((r) => (
                 <li key={r.revision}>
                   <strong>
-                    #{r.revision} · {r.action === 'block' ? 'Blocked' : 'Unblocked'}{' '}
+                    #{r.revision} ·{' '}
+                    {
+                      {
+                        block: 'Blocked',
+                        unblock: 'Unblocked',
+                        feature: 'Featured',
+                        unfeature: 'Removed from Featured',
+                      }[r.action]
+                    }{' '}
                     {labels[r.type].toLowerCase()}
                   </strong>
                   <code>{r.target}</code>

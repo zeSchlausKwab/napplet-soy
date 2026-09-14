@@ -23,6 +23,10 @@ this note maps its local tooling commands to the installed Napplet Space CLI.
   Its pinned test browser is downloaded and cached on first use.
 - napplet-space dev watches the Vite build inside the Napplet Space sandbox.
   Use its URL for preview. The upstream pnpm dev URL serves source without a host.
+  Switch from Play to Listing to inspect the title, description, tags, creator,
+  screenshot, license and publishing destinations. Use Capture screenshot after
+  the final build; inspect the saved image in Listing before publishing. Captures
+  select a new PNG in napplet.json and preserve previous images.
 - napplet-space build makes dist/index.html. Edit index.html, src/main.ts and
   src/styles.css; keep the upstream Vite configuration and dependency lockfile.
 - napplet-space config shows effective publishing targets without a signer or build.
@@ -70,6 +74,11 @@ For an interactive scene needing a start click, take a representative PNG during
 manual/browser testing and select it with preview.image. Only PNG up to 5 MiB and
 4096 × 4096 is currently accepted. Remove preview.image to resume automatic capture.
 The local preview setting is authoring configuration, not a new Nostr manifest tag.
+
+Readable routes are a one-time website claim, not an automatic publish step.
+After publishing, open the napplet page, connect the same creator account and
+choose Named link to claim /@your-handle/your-slug. The name follows later releases.
+Existing published napplets can claim a name without republishing.
 
 ## Creator backup
 
