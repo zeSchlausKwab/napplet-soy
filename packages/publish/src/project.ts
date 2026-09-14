@@ -120,7 +120,11 @@ export async function inspectProject(
         .filter(Boolean)
     : sourceDefaults;
   const selected = [
-    ...new Set([...(project.publish?.files ?? defaults), ...(built ? [project.entry] : [])]),
+    ...new Set([
+      ...(project.publish?.files ?? defaults),
+      ...(built ? [project.entry] : []),
+      ...(project.preview?.image ? [project.preview.image] : []),
+    ]),
   ].sort();
   if (selected.length > 128)
     throw new PublishError(
@@ -155,7 +159,7 @@ export async function inspectProject(
       if (
         (error as NodeJS.ErrnoException).code === 'ENOENT' &&
         !project.publish?.files &&
-        !['index.html', 'LICENSE'].includes(path)
+        !['index.html', 'LICENSE', project.preview?.image].includes(path)
       )
         continue;
       throw error;

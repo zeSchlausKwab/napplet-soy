@@ -1,3 +1,4 @@
+import { projectConfiguration, screenshotProject } from './project-config';
 import { parseArgs } from 'node:util';
 import { join } from 'node:path';
 import { nip19 } from 'nostr-tools';
@@ -20,6 +21,8 @@ const help = `Usage:
   bun run napplet setup|build [--project <folder>]
   bun run napplet run <package-script> [arguments...]
   bun run napplet exec <project-tool> [arguments...]
+  bun run napplet config [init] [--project <folder>]
+  bun run napplet screenshot [preview.png] [--project <folder>]
   bun run napplet skills update [--project <folder>]
   bun run napplet account create|show|list|check|backup
   bun run napplet account connect [--stdin]
@@ -175,7 +178,17 @@ try {
   if (
     (values['no-install'] && !['new', 'remix'].includes(command)) ||
     (values.project &&
-      !['publish', 'status', 'dev', 'check', 'setup', 'build', 'skills'].includes(command)) ||
+      ![
+        'publish',
+        'status',
+        'dev',
+        'check',
+        'setup',
+        'build',
+        'skills',
+        'config',
+        'screenshot',
+      ].includes(command)) ||
     ((values.port || values['no-open']) && command !== 'dev')
   )
     throw new AccountError(
@@ -326,6 +339,25 @@ try {
               .join('\n'),
       );
     }
+  } else if (command === 'config' || command === 'screenshot') {
+    if (
+      argument ||
+      extra.length ||
+      values.template ||
+      values.identity ||
+      values.stdin ||
+      values['passphrase-stdin'] ||
+      (command === 'config' && action && action !== 'init')
+    )
+      throw new AccountError(
+        'USAGE',
+        'Use config [init] or screenshot [preview.png], optionally with --project.',
+      );
+    const result =
+      command === 'config'
+        ? await projectConfiguration(values.project ?? process.cwd(), network, action === 'init')
+        : await screenshotProject(values.project ?? process.cwd(), network, action);
+    console.log(JSON.stringify(result, null, json ? undefined : 2));
   } else if (command === 'publish' || command === 'status') {
     if (
       action ||
@@ -368,6 +400,7 @@ try {
             dryRun: values['dry-run'],
             resume: values.resume,
             check: checkPublication,
+            requirePreview: true,
             signal: controller.signal,
             onAuth,
             progress: json ? undefined : (stage) => process.stderr.write(`Publishing: ${stage}\n`),
@@ -375,7 +408,7 @@ try {
               ? undefined
               : (plan) =>
                   process.stderr.write(
-                    `Creator: ${plan.pubkey}\nSource (${plan.sourceBytes} bytes, ${JSON.stringify(plan.license)}):\n${plan.files.map((file) => `  ${file.path}`).join('\n')}\nRelay: ${plan.targets.relay}\nBlossom: ${plan.targets.blossom}\nGit: ${plan.targets.grasp}\n`,
+                    `Creator: ${plan.pubkey}\nSource (${plan.sourceBytes} bytes, ${JSON.stringify(plan.license)}):\n${plan.files.map((file) => `  ${file.path}`).join('\n')}\nRelay: ${plan.targets.relay}\nBlossom: ${plan.targets.blossom}\nGit: ${plan.targets.grasp}\nSite: ${plan.targets.site}\nAdditional relay copies (best effort): ${plan.targets.mirrors.join(', ') || 'none'}\nPreview: selected PNG or automatic sandbox capture\n`,
                   ),
           });
     if (json) console.log(JSON.stringify(result));
@@ -388,6 +421,10 @@ try {
       console.log(
         `${result.unchanged ? 'Existing publication' : 'Publication'}: ${result.status}\nSource commit: ${result.sourceCommit}\nNapplet: ${result.naddr}\nSnapshot: ${result.snapshotId ?? 'pending'}\n${result.websiteReady ? `Website confirmed at ${new Date(result.websiteCheckedAt!).toISOString()}: ${result.url}\nPinned snapshot: ${result.snapshotUrl}` : `Website ${result.websiteStatus}; the route is not yet confirmed: ${result.url}`}`,
       );
+      if (result.preview)
+        console.log(
+          `Preview: ${result.preview.url}\nSaved image: ${join(values.project ?? process.cwd(), '.napplet-space', network, result.jobId, 'preview.png')}`,
+        );
       if (result.error) console.log(`${result.error.code}: ${result.error.message}`);
     }
   } else if (command === 'account') {

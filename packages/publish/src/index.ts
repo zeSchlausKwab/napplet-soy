@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { realpath } from 'node:fs/promises';
+import { realpath, rm } from 'node:fs/promises';
 import { Accounts } from '../../identity/src/accounts';
 import {
   AccountError,
@@ -21,7 +21,13 @@ import { uploadBlob } from '../../blossom/src/client';
 import type { EventTemplate } from 'nostr-tools';
 import { PublishError, projectSchema, resolveTargets, type Targets } from './config';
 import { Journal, type PublishJob } from './journal';
-import { freezeSource, inspectProject, regularFile, type PublishPlan } from './project';
+import {
+  durableFile,
+  freezeSource,
+  inspectProject,
+  regularFile,
+  type PublishPlan,
+} from './project';
 import { PublicationRelays } from './relay';
 import { ownedBlobs, verifiedBlob } from './blobs';
 import { confirmWebsite } from './website';
@@ -46,7 +52,10 @@ export type PublishOptions = {
   dryRun?: boolean;
   resume?: boolean;
   accounts?: Pick<Accounts, 'current' | 'signer'>;
-  check: (contents: Map<string, Uint8Array>) => Promise<{ profile: string; browser: string }>;
+  check: (
+    contents: Map<string, Uint8Array>,
+  ) => Promise<{ profile: string; browser: string; preview?: Uint8Array }>;
+  requirePreview?: boolean;
   signal?: AbortSignal;
   onAuth?: (url: string) => Promise<void>;
   progress?: (stage: string) => void;
@@ -78,6 +87,14 @@ function result(job: PublishJob, unchanged = false) {
     websiteReady: job.website?.ready ?? false,
     websiteCheckedAt: job.website?.checkedAt ?? null,
     websiteStatus: job.website?.reason ?? 'pending',
+    targets: job.plan.targets,
+    preview: job.preview
+      ? {
+          hash: job.preview.hash,
+          url: `${job.plan.targets.blossom}/${job.preview.hash}`,
+          descriptorId: job.preview.descriptor?.id ?? null,
+        }
+      : null,
     mirrors: job.mirrors,
     receipts: job.receipts,
     error: job.error ?? null,
@@ -129,7 +146,20 @@ async function verifyFrozen(journal: Journal, job: PublishJob) {
       'FROZEN_SOURCE_CHANGED',
       'The saved source archive is damaged. Restore its journal backup before resuming.',
     );
-  return { ...inspected, archive };
+  const preview = job.preview
+    ? await regularFile(directory, 'preview.png', 5 * 1024 * 1024)
+    : undefined;
+  if (
+    job.preview &&
+    (!preview ||
+      preview.length !== job.preview.bytes ||
+      (await sha256(preview)) !== job.preview.hash)
+  )
+    throw new PublishError(
+      'FROZEN_PREVIEW_CHANGED',
+      'The saved preview is damaged. Restore its journal backup before resuming.',
+    );
+  return { ...inspected, archive, preview };
 }
 export async function publishProject(options: PublishOptions) {
   const accounts = options.accounts ?? new Accounts(options.network);
@@ -157,7 +187,7 @@ export async function publishProject(options: PublishOptions) {
       fingerprint,
       plan,
       checksPending: [
-        'sandbox startup',
+        'sandbox startup and preview capture',
         'remote current version',
         'Git/Blossom/relay availability',
       ],
@@ -206,17 +236,23 @@ export async function publishProject(options: PublishOptions) {
               'PUBLISH_PENDING',
               'A different release is pending. Use publish --resume to finish its frozen source, then publish your new edits.',
             );
-          if (!job && previous?.fingerprint === inspected.fingerprint) job = previous;
+          if (
+            !job &&
+            previous?.fingerprint === inspected.fingerprint &&
+            (!options.requirePreview || previous.preview)
+          )
+            job = previous;
           if (!job) {
             if (previous) {
               if (
                 previous.plan.pubkey !== account.pubkey ||
                 previous.plan.identifier !== inspected.plan.identifier ||
-                JSON.stringify(previous.plan.targets) !== JSON.stringify(inspected.plan.targets)
+                previous.plan.targets.relay !== inspected.plan.targets.relay ||
+                previous.plan.targets.grasp !== inspected.plan.targets.grasp
               )
                 throw new PublishError(
                   'PUBLISH_IDENTITY',
-                  'The publication identity or destinations changed. Use a separate project for a new identity; saved releases retain their original destinations.',
+                  'The creator, identifier, primary relay or Git host changed. Their existing publication history must be migrated explicitly. Blossom, site and mirrors can be changed for a new release; pending releases retain their frozen destinations.',
                 );
               await verifyFrozen(journal, previous);
             }
@@ -254,7 +290,19 @@ export async function publishProject(options: PublishOptions) {
                 'The last publication is ahead of this clock. Correct the clock before publishing.',
               );
             progress('sandbox');
-            const check = await options.check(inspected.contents);
+            const { preview, ...check } = await options.check(inspected.contents);
+            if (options.requirePreview && !preview)
+              throw new PublishError(
+                'PREVIEW_REQUIRED',
+                'Publishing requires a preview. Run napplet-space screenshot or update the CLI.',
+              );
+            if (
+              preview &&
+              (!preview.length ||
+                preview.length > 5 * 1024 * 1024 ||
+                Buffer.from(preview.subarray(0, 8)).toString('hex') !== '89504e470d0a1a0a')
+            )
+              throw new PublishError('PREVIEW_IMAGE', 'The preview must be a PNG under 5 MiB.');
             if (
               (await inspectProject(root, options.network, account.pubkey, options.targets))
                 .fingerprint !== inspected.fingerprint
@@ -282,6 +330,11 @@ export async function publishProject(options: PublishOptions) {
                   }
                 : undefined,
             );
+            if (preview) {
+              const path = join(journal.directory(id), 'preview.png');
+              await rm(path, { force: true }); // Only an unactivated preparation can reach this branch.
+              await durableFile(path, preview);
+            }
             const releaseRefs = {
               ...previous?.releaseRefs,
               [`refs/tags/release-${id.slice(0, 16)}`]: frozen.commit,
@@ -303,10 +356,14 @@ export async function publishProject(options: PublishOptions) {
               baseAnnouncement: announcement?.id ?? null,
               ...frozen,
               check,
+              ...(preview
+                ? { preview: { hash: await sha256(preview), bytes: preview.length } }
+                : {}),
               releaseRefs,
               status: 'prepared',
               mirrors: {},
               receipts: {
+                ...(preview ? { preview: false, descriptor: false } : {}),
                 source: false,
                 artifact: false,
                 archive: false,
@@ -404,6 +461,15 @@ export async function publishProject(options: PublishOptions) {
             'aggregate',
           ],
           ['title', job.plan.title],
+          ...(job.preview
+            ? [
+                [
+                  'app',
+                  `32267:${account.pubkey}:${job.plan.identifier}-${job.id.slice(0, 16)}`,
+                  job.plan.targets.relay,
+                ],
+              ]
+            : []),
           ...(job.plan.remix
             ? [
                 ['A', job.plan.remix.origin],
@@ -441,6 +507,30 @@ export async function publishProject(options: PublishOptions) {
             );
           return event;
         };
+        if (job.preview) {
+          job.preview.descriptor = await sign(
+            {
+              kind: 32267,
+              created_at: job.createdAt,
+              content: job.plan.description,
+              tags: [
+                ['d', `${job.plan.identifier}-${job.id.slice(0, 16)}`],
+                ['name', job.plan.title],
+                ['image', `${job.plan.targets.blossom}/${job.preview.hash}`],
+                ['license', job.plan.license],
+                ['repository', job.source.announcement.tags.find((tag) => tag[0] === 'clone')![1]],
+                [
+                  'latest',
+                  `35129:${account.pubkey}:${job.plan.identifier}`,
+                  job.plan.targets.relay,
+                ],
+                ...job.plan.topics.map((topic) => ['t', topic]),
+              ],
+            },
+            job.preview.descriptor,
+          );
+          if (!completed) await save();
+        }
         job.snapshot = await sign(
           {
             kind: 5129,
@@ -502,6 +592,9 @@ export async function publishProject(options: PublishOptions) {
         for (const [kind, bytes, hash, type] of [
           ['artifact', executableBytes(frozen.contents), job.plan.artifactHash, 'text/html'],
           ['archive', frozen.archive, job.archiveHash, 'application/x-tar'],
+          ...(job.preview && frozen.preview
+            ? [['preview', frozen.preview, job.preview.hash, 'image/png'] as const]
+            : []),
         ] as const) {
           if (
             !owned.has(hash) ||
@@ -524,6 +617,12 @@ export async function publishProject(options: PublishOptions) {
           await save();
         }
         await guard();
+        if (job.preview?.descriptor) {
+          progress('descriptor');
+          await relays.ensure(job.plan.targets.relay, job.preview.descriptor);
+          job.receipts.descriptor = true;
+          await save();
+        }
         progress('snapshot');
         await relays.ensure(job.plan.targets.relay, job.snapshot);
         job.receipts.snapshot = true;
@@ -537,6 +636,7 @@ export async function publishProject(options: PublishOptions) {
         for (const mirror of job.plan.targets.mirrors) {
           progress('mirror');
           try {
+            if (job.preview?.descriptor) await relays.ensure(mirror, job.preview.descriptor);
             await relays.ensure(mirror, job.snapshot);
             await relays.ensure(mirror, job.current);
             job.mirrors[mirror] = true;

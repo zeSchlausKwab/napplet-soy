@@ -15,7 +15,7 @@ import { remixLineage } from '../../protocol/src/remix';
 import { manifestTopics } from '../../protocol/src/topics';
 import { fetchPublicBytes } from '../../backend/src/blossom';
 import { PreviewWebSocket, previewRelayUrl } from '../../backend/src/preview-relay';
-import { projectSchema } from '../../publish/src/config';
+import { projectPublishingDefaults, projectSchema } from '../../publish/src/config';
 import { sourceGit } from '../../grasp/src/client';
 import { sourceArchive } from './archive';
 import type { Network } from '../../identity/src/signer';
@@ -235,7 +235,8 @@ export async function createRemix(
       remix: lineage,
     };
     delete (config as Record<string, unknown>).creator;
-    delete (config as Record<string, unknown>).publish;
+    (config as Record<string, unknown>).publish = projectPublishingDefaults();
+    delete (config as Record<string, unknown>).preview;
     await writeFile(join(target, 'napplet.json'), JSON.stringify(config, null, 2) + '\n', {
       flag: 'wx',
     });

@@ -1,6 +1,6 @@
 # Linked napplet previews
 
-Implemented 2026-09-12. Catalog refresh follows standard manifest `app` references through Applesauce, verifies the linked signed metadata, and caches a normalized image. The gallery and player use that image; the existing 1200 × 630 OG card incorporates it. No napplet is executed to generate a preview, and page/image requests perform no remote metadata or image fetches.
+Implemented 2026-09-12. Catalog refresh follows standard manifest `app` references through Applesauce, verifies the linked signed metadata, and caches a normalized image. The gallery and player use that image; the existing 1200 × 630 OG card incorporates it. The catalog never executes downloaded napplets to generate previews, and page/image requests perform no remote metadata or image fetches.
 
 ## Supported metadata
 
@@ -49,4 +49,50 @@ bunx playwright test tests/browser/previews.spec.ts
 
 Validation: 57 unit/integration tests, type checking, production build/startup, and five Chromium preview/public/runtime checks passed. The optional 78 MiB packaged-loader test was not repeated in this pass. No VPS deployment was performed.
 
-The browser fixture is local test data with a public test key. It must never be published. Source/publisher integration can use the same `app` conventions when that milestone is implemented.
+The browser fixture is local test data with a public test key. It must never be published. The creator publisher now emits these same `app` conventions.
+
+
+## Creator capture and publication (2026-09-14)
+
+The CLI checks the built HTML in the same opaque sandbox before publication. It
+also captures a 1200 × 750 PNG of the iframe after fonts load and a 1500 ms settle
+period. Host controls are excluded. `napplet.json` may set `preview.delayMs` from
+250 to 10000, or `preview.image` to a project PNG (up to 5 MiB, 4096 × 4096).
+Explicit images are validated and included in the frozen source; automatic
+captures are saved as `preview.png` beside the release's journal and source archive.
+
+For an image the creator/AI can inspect before publishing:
+
+```sh
+napplet-space build
+napplet-space screenshot
+# Saves preview.png and selects it with preview.image in napplet.json.
+# Existing images are preserved: use screenshot preview-2.png to capture again.
+napplet-space publish --dry-run
+napplet-space publish
+```
+
+Choose a representative state, especially for scenes requiring a start click.
+The automatic fallback captures startup; it cannot judge whether that frame tells
+the story of the app. The installed integration guidance requires visual inspection
+as the finishing step. A manually captured PNG may be selected instead. Remove
+`preview.image` to return to fresh automatic capture for each release.
+
+Publishing uploads the PNG to the configured Blossom server, signs kind 32267
+with an `image` URL, and links it from both current and snapshot manifests using
+NIP-5A `app`. Each release uses its own descriptor identifier, preventing a later
+CLI release from changing an earlier release's preview. The descriptor references
+the current napplet through `latest`. Our primary relay must acknowledge the
+descriptor and manifests before optional mirror copies. Mirror copies include the
+descriptor. No viewer or app private key is involved in capture.
+
+Frozen PNG bytes, hashes, descriptor signatures and acknowledgements survive
+retries. Resume never recaptures or changes destinations. An older completed
+publication without a preview can receive one on the next ordinary publish,
+including when its executable bytes are unchanged; its old snapshot stays intact.
+No existing live publication is automatically modified by installing the CLI.
+
+Generated poster covers now fit fully inside the player at desktop and phone
+sizes; actual screenshots retain their existing cover treatment. Regression tests
+cover exact capture pixels, custom-image validation, resumed uploads/signatures,
+legacy release upgrades, real local service readback, and browser cover fitting.

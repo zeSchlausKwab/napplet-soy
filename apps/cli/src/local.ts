@@ -86,9 +86,12 @@ export async function checkProject(directory: string, network: Network) {
     network,
     config.creator?.pubkey ?? '0'.repeat(64),
   );
+  const { profile, browser, preview } = await checkPublication(contents);
   return {
     status: 'checked',
-    ...(await checkPublication(contents)),
+    profile,
+    browser,
+    previewBytes: preview.length,
     artifactHash: plan.artifactHash,
     sourceBytes: plan.sourceBytes,
   };

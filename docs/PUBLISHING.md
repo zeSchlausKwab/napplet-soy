@@ -87,3 +87,59 @@ bun run test:publish:native
 The deterministic tests cover interrupted uploads, lost relay acknowledgements, unchanged retries, metadata-only updates, modified working/frozen source, forged saved signatures, competing remote versions, concurrent processes, identity/target isolation, failed mirrors and repair of missing data. Native service tests use the actual Khatru/GRASP/Blossom implementations, the browser check, an independent Nostr wire reader, tar extraction and independent Git clone/fetch. An opt-in test drives the real CLI across processes with temporary native Keychain credentials.
 
 Still ahead: persistent website ingestion and confirmed playable links, authenticated names, public installer, automatic media descriptors, remix, additional build profiles, explicit journal adoption/conflict recovery, Linux/Windows native keystore acceptance, and publication/discovery in an external public client. No VPS or public hosting verification is claimed.
+
+
+## Visible project destinations and previews
+
+Run `napplet-space config` to inspect effective destinations without an account,
+build, or network request. `napplet-space config init` materializes the current
+network's targets in an older project's `napplet.json`. New projects and remixes
+include explicit public and local profiles:
+
+```json
+{
+  "publish": {
+    "networks": {
+      "public": {
+        "relay": "wss://napplet.soy/relay",
+        "blossom": "https://blossom.napplet.soy",
+        "grasp": "https://git.napplet.soy",
+        "site": "https://napplet.soy",
+        "mirrors": ["wss://relay.damus.io", "wss://nos.lol"]
+      },
+      "local": {
+        "relay": "ws://127.0.0.1:19347/relay",
+        "blossom": "http://127.0.0.1:8081",
+        "grasp": "http://127.0.0.1:8082",
+        "site": "http://localhost:8080",
+        "mirrors": []
+      }
+    }
+  },
+  "preview": { "delayMs": 1500 }
+}
+```
+
+Merge this into the existing project configuration; do not replace its identity,
+entry, license, or other metadata. Precedence is CLI target flags, selected
+`publish.networks` profile, legacy direct `publish` fields, then built-in defaults.
+`publish.files` remains a shared source selection. Top-level `relays` and `servers`
+are runtime read/resource hints; they are never upload destinations.
+
+`relay` receives signed manifests and preview descriptors. `blossom` receives
+HTML, source archives and PNG previews. `grasp` must be a compatible NIP-34/GRASP
+Git service. `site` determines share links and indexing checks. `mirrors` are
+best-effort extra copies after primary acknowledgement, not substitute primaries;
+set `mirrors: []` to disable them. A failed primary stops publication and leaves
+an exact resumable journal; it does not silently switch services.
+
+Edit e.g. `publish.networks.public.blossom` to choose another server. New releases
+may change Blossom, site or mirrors. Changing the identity, primary relay or Git
+service of an existing journal requires migration of their published history;
+the CLI refuses to overwrite competing state. Pending releases always resume with
+their original destinations. Keep earlier stores available for existing snapshots.
+
+See [preview capture and metadata](PREVIEWS.md#creator-capture-and-publication-2026-09-14)
+for automatic screenshots and choosing an inspected image. `napplet-space skills
+update` refreshes the bundled integration note in an existing project while
+preserving creator edits and upstream skill bodies.

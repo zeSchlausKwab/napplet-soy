@@ -303,7 +303,8 @@ The native macOS package and piped installer passed their local tests. Linux and
 Intel macOS targets were built but were not executed on those operating systems.
 
 No artifacts have been uploaded and no VPS deployment was performed for this
-change. Because the website installer now advertises 0.3.0, release the CLI first:
+change. This recorded 0.3.0 preparation is superseded by the 0.3.1 preparation below.
+For a version whose archives are built, release the CLI first:
 
 ```sh
 bun run cli:release --host root@159.198.46.2
@@ -314,3 +315,27 @@ rerun the website installer to receive 0.3.0. See [community behavior and limits
 and [remix provenance](REMIXING.md) before rollout. Zap invoice validation uses
 signed fixtures, and the browser wallet was simulated; no Lightning payment was
 sent during these checks.
+
+
+## Prepared locally: preview authoring and CLI 0.3.1
+
+The current source fixes generated player covers, adds automatic sandbox PNG
+capture and linked app descriptors, and exposes editable publishing profiles.
+The creator integration note now covers destinations and visual preview review.
+Impact Yard's saved published build was captured locally for inspection; its
+project and signed live listing were not modified.
+
+Version 0.3.1 uses new archives; do not replace the immutable 0.3.0 files with
+new bytes. Build/verify the current version before uploading, then deploy the site:
+
+```sh
+bun run cli:build
+bun run cli:release --host root@159.198.46.2
+# Then use the usual website deployment command.
+```
+
+The existing public installer stays unchanged until you deploy. Local checks do
+not publish creator events, upload downloads, or change the VPS. Creators using
+an older binary must rerun the deployed installer before using the new config
+fields. A subsequent napplet publish supplies the preview; existing publications
+are never rewritten merely by deploying this site or installing the CLI.

@@ -115,7 +115,7 @@ Use the pinned Bun 1.3.11 toolchain for builds:
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.3.0/napplet-space-darwin-arm64/napplet-space" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.3.1/napplet-space-darwin-arm64/napplet-space" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts
@@ -171,3 +171,24 @@ Review toolchain pins separately against Node's official release checksums and
 pnpm's npm integrity value. Then validate a fresh scaffold, upstream verify and
 conformance, the Space sandbox, source/artifact publication, live rebuilds and the
 standalone installer before shipping a new immutable CLI version.
+
+
+### Project destinations and screenshots (CLI 0.3.1)
+
+`napplet-space config` prints the effective public targets without reading a key
+or contacting services. `config init` writes those values into older projects.
+New projects include editable `publish.networks.public` and `.local` profiles.
+Use `--network local` to inspect the dev stack. CLI publication flags override
+project settings. See [configuration precedence and destinations](PUBLISHING.md#visible-project-destinations-and-previews).
+
+`napplet-space screenshot` captures the current built app, writes `preview.png`
+and selects it in `napplet.json`. Inspect that PNG before publishing. A named
+capture (`screenshot preview-2.png`) preserves an existing file. Set
+`preview.delayMs` for startup timing, or select a different PNG with
+`preview.image`. Without an explicit image, publication captures one automatically
+and publishes linked standard metadata. Existing projects need not be re-scaffolded:
+update the CLI, run `skills update`, then `config init` and `screenshot` as needed.
+
+CLI 0.3.1 is required for these configuration fields and commands. Deploy the
+versioned CLI downloads before deploying the installer that advertises them;
+older installed binaries remain unchanged until the creator reruns the installer.

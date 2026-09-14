@@ -13,7 +13,7 @@ export class AccountError extends Error {
     super(message);
   }
 }
-export const publishingKinds = [30617, 30618, 24242, 35129, 15129, 5129];
+export const publishingKinds = [30617, 30618, 24242, 32267, 35129, 15129, 5129];
 export type RemoteCredential = {
   type: 'remote';
   clientKey: string;

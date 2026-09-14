@@ -1,3 +1,4 @@
+import { projectPublishingDefaults } from '../../../packages/publish/src/config';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { requireGit } from './prerequisites';
@@ -34,6 +35,8 @@ export async function scaffold(parent: string, name: string, template: string) {
         entry: 'dist/index.html',
         previewId,
         identifier: `n-${previewId.replaceAll('-', '').slice(0, 11)}`,
+        publish: projectPublishingDefaults(),
+        preview: { delayMs: 1500 },
         requires: [],
         relays: [],
         servers: [],
@@ -83,6 +86,8 @@ async function scaffoldLegacy(parent: string, name: string, template: string) {
         entry: 'index.html',
         previewId,
         identifier: `n-${previewId.replaceAll('-', '').slice(0, 11)}`,
+        publish: projectPublishingDefaults(),
+        preview: { delayMs: 1500 },
         requires: [],
         relays: [],
         servers: [],

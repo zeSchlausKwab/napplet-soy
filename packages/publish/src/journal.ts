@@ -69,8 +69,22 @@ export const jobSchema = z
     source: z.object({ announcement: eventSchema, state: eventSchema }).optional(),
     snapshot: eventSchema.optional(),
     current: eventSchema.optional(),
+    preview: z
+      .object({
+        hash,
+        bytes: z
+          .number()
+          .int()
+          .positive()
+          .max(5 * 1024 * 1024),
+        descriptor: eventSchema.optional(),
+      })
+      .strict()
+      .optional(),
     receipts: z
       .object({
+        preview: z.boolean().optional(),
+        descriptor: z.boolean().optional(),
         source: z.boolean(),
         artifact: z.boolean(),
         archive: z.boolean(),
@@ -104,6 +118,10 @@ export const jobSchema = z
       (!!job.source &&
         !!job.current &&
         !!job.snapshot &&
+        (!job.preview ||
+          (!!job.preview.descriptor &&
+            job.receipts.preview === true &&
+            job.receipts.descriptor === true)) &&
         Object.values(job.receipts).every(Boolean)),
     'Completed jobs require all publication evidence',
   );

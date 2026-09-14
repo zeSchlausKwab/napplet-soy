@@ -8,6 +8,14 @@ import { sourceGit, sourceUrls } from '../../grasp/src/client';
 import { publishProject, publicationStatus, type PublishOptions } from './index';
 import { Journal } from './journal';
 import { newer } from './relay';
+import { appReferences, descriptorImages } from '../../protocol/src/preview';
+
+const previewPng = new Uint8Array(
+  Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lS8AAAAASUVORK5CYII=',
+    'base64',
+  ),
+);
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'napplet-publish-'));
@@ -133,6 +141,96 @@ async function fixture() {
     close: () => rm(root, { recursive: true, force: true }),
   };
 }
+test('preview upload and linked descriptor survive interruption with identical signatures and image bytes', async () => {
+  const f = await fixture();
+  try {
+    f.options.requirePreview = true;
+    f.options.check = async () => ({ profile: 'test', browser: 'test', preview: previewPng });
+    f.deps.checkpoint = async (job) => {
+      if (job.receipts.descriptor) throw new Error('Crash after descriptor acknowledgement');
+    };
+    await expect(publishProject(f.options)).rejects.toMatchObject({ code: 'PUBLISH_FAILED' });
+    const interrupted = await f.load();
+    expect(interrupted.receipts).toMatchObject({
+      preview: true,
+      descriptor: true,
+      snapshot: false,
+    });
+    expect(f.blobs.get(interrupted.preview!.hash)).toEqual(previewPng);
+    const ref = appReferences(interrupted.current!)[0];
+    expect(ref.kind).toBe(32267);
+    expect(ref.relay).toBe(interrupted.plan.targets.relay);
+    expect(ref.pubkey).toBe(f.creator.pubkey);
+    expect(descriptorImages(interrupted.preview!.descriptor!)).toEqual([
+      `${interrupted.plan.targets.blossom}/${await sha256(previewPng)}`,
+    ]);
+    delete f.deps.checkpoint;
+    f.options.check = async () => {
+      throw new Error('Resume must never recapture');
+    };
+    await publishProject({ ...f.options, resume: true });
+    const resumed = await f.load();
+    expect(resumed.preview).toEqual(interrupted.preview);
+    expect(resumed.current).toEqual(interrupted.current);
+    expect(resumed.snapshot).toEqual(interrupted.snapshot);
+    expect(resumed.status).toBe('announced_pending_index');
+    await Bun.write(join(f.journal.directory(resumed.id), 'preview.png'), 'tampered');
+    const before = f.writes.length;
+    await expect(publishProject({ ...f.options, resume: true })).rejects.toMatchObject({
+      code: 'FROZEN_PREVIEW_CHANGED',
+    });
+    expect(f.writes.length).toBe(before);
+  } finally {
+    await f.close();
+  }
+});
+
+test('older releases gain a preview without code edits; Blossom can change on a subsequent release', async () => {
+  const f = await fixture();
+  const publish = async () => {
+    const result = await publishProject(f.options);
+    if (result.status === 'dry_run') throw new Error('Expected publication');
+    return result;
+  };
+  try {
+    const old = await publish();
+    f.options.requirePreview = true;
+    f.options.check = async () => ({ profile: 'test', browser: 'test', preview: previewPng });
+    const upgraded = await publish();
+    expect(upgraded.artifactHash).toBe(old.artifactHash);
+    expect(upgraded.currentId).not.toBe(old.currentId);
+    expect(upgraded.preview!.hash).toBe(await sha256(previewPng));
+    expect((await publish()).currentId).toBe(upgraded.currentId);
+    await Bun.write(
+      join(f.project, 'napplet.json'),
+      JSON.stringify({ ...f.config, publish: { blossom: 'http://127.0.0.1:9988' } }),
+    );
+    const moved = await publish();
+    expect(moved.preview!.url).toStartWith('http://127.0.0.1:9988/');
+    expect((await f.load()).current!.tags).toContainEqual(['server', 'http://127.0.0.1:9988']);
+    expect(moved.creator).toBe(old.creator);
+  } finally {
+    await f.close();
+  }
+});
+
+test('required preview cannot be silently omitted and a selected missing image fails before publication', async () => {
+  const f = await fixture();
+  try {
+    await expect(publishProject({ ...f.options, requirePreview: true })).rejects.toMatchObject({
+      code: 'PREVIEW_REQUIRED',
+    });
+    expect(f.writes).toHaveLength(0);
+    await Bun.write(
+      join(f.project, 'napplet.json'),
+      JSON.stringify({ ...f.config, preview: { image: 'missing.png' } }),
+    );
+    await expect(publishProject(f.options)).rejects.toBeDefined();
+    expect(f.writes).toHaveLength(0);
+  } finally {
+    await f.close();
+  }
+});
 test('dry-run inspects explicit source and targets without signing, contacting services or creating a journal', async () => {
   const f = await fixture();
   try {

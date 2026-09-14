@@ -58,41 +58,67 @@ export const projectSchema = z
     topics: z.array(z.string().max(256)).max(32).default([]),
     relays: z.array(z.string().max(256)).max(8).default([]),
     servers: z.array(z.string().max(256)).max(8).default([]),
+    preview: z
+      .object({
+        image: z.string().min(1).max(200).optional(),
+        delayMs: z.number().int().min(250).max(10000).optional(),
+      })
+      .strict()
+      .optional(),
     creator: z
       .object({ pubkey: z.string().regex(/^[a-f0-9]{64}$/), network: z.enum(['local', 'public']) })
       .strict()
       .optional(),
     publish: targetsSchema
       .partial()
-      .extend({ files: z.array(z.string().max(200)).min(3).max(128).optional() })
+      .extend({
+        files: z.array(z.string().max(200)).min(3).max(128).optional(),
+        networks: z
+          .object({
+            public: targetsSchema.partial().optional(),
+            local: targetsSchema.partial().optional(),
+          })
+          .strict()
+          .optional(),
+      })
       .strict()
       .optional(),
   })
   .strict();
 export type Project = z.infer<typeof projectSchema>;
+/** Shared by scaffold, config inspection and publishing; old projects inherit these defaults. */
+export function defaultTargets(network: Network): Targets {
+  return network === 'local'
+    ? {
+        relay: 'ws://127.0.0.1:19347/relay',
+        blossom: 'http://127.0.0.1:8081',
+        grasp: 'http://127.0.0.1:8082',
+        site: 'http://localhost:8080',
+        mirrors: [],
+      }
+    : {
+        relay: 'wss://napplet.soy/relay',
+        blossom: 'https://blossom.napplet.soy',
+        grasp: 'https://git.napplet.soy',
+        site: 'https://napplet.soy',
+        mirrors: ['wss://relay.damus.io', 'wss://nos.lol'],
+      };
+}
+export const projectPublishingDefaults = () => ({
+  networks: { public: defaultTargets('public'), local: defaultTargets('local') },
+});
 export function resolveTargets(
   project: Project,
   network: Network,
   overrides: Partial<Targets> = {},
 ): Targets {
-  const defaults: Targets =
-    network === 'local'
-      ? {
-          relay: 'ws://127.0.0.1:19347/relay',
-          blossom: 'http://127.0.0.1:8081',
-          grasp: 'http://127.0.0.1:8082',
-          site: 'http://localhost:8080',
-          mirrors: [],
-        }
-      : {
-          relay: 'wss://napplet.soy/relay',
-          blossom: 'https://blossom.napplet.soy',
-          grasp: 'https://git.napplet.soy',
-          site: 'https://napplet.soy',
-          mirrors: ['wss://relay.damus.io', 'wss://nos.lol'],
-        };
-  const { files: _, ...configured } = project.publish ?? {};
-  const targets = targetsSchema.parse({ ...defaults, ...configured, ...overrides });
+  const { files: _, networks, ...configured } = project.publish ?? {};
+  const targets = targetsSchema.parse({
+    ...defaultTargets(network),
+    ...configured,
+    ...networks?.[network],
+    ...overrides,
+  });
   const endpoint = (value: string, relay = false, site = false) => {
     const u = new URL(value);
     const loopback = ['127.0.0.1', '[::1]', ...(site ? ['localhost'] : [])].includes(u.hostname);

@@ -25,7 +25,13 @@ this note maps its local tooling commands to the installed Napplet Space CLI.
   Use its URL for preview. The upstream pnpm dev URL serves source without a host.
 - napplet-space build makes dist/index.html. Edit index.html, src/main.ts and
   src/styles.css; keep the upstream Vite configuration and dependency lockfile.
+- napplet-space config shows effective publishing targets without a signer or build.
+  config init writes them into napplet.json for older projects.
 - napplet-space check checks the existing built artifact in our host.
+- napplet-space screenshot saves preview.png and selects it in napplet.json.
+  Inspect the image: it should show a representative app state, not a blank canvas
+  or loading screen. Use screenshot preview-2.png for another capture, or supply
+  your own PNG with preview.image. Capture after the final build.
 - napplet-space publish --dry-run inspects source and destinations;
   napplet-space publish publishes the existing build. Build after editing and
   before publishing. Publication and checks never execute project scripts.
@@ -37,7 +43,33 @@ this note maps its local tooling commands to the installed Napplet Space CLI.
 napplet.json owns this client's creator reference, name, identifier, topic labels,
 relay/resource hints and publication destinations. It replaces the upstream
 CLI's deployment configuration in this workflow; never put creator secrets in
-the project. The default endpoints already point to napplet.soy.
+the project. Read it before publishing and tell the creator the effective targets.
+
+New projects expose publish.networks.public and publish.networks.local explicitly:
+relay is the primary manifest/descriptor relay, blossom receives the HTML, source
+archive and preview image, grasp is the NIP-34 Git service, and site displays the
+result. The defaults use wss://napplet.soy/relay, https://blossom.napplet.soy,
+https://git.napplet.soy and https://napplet.soy. Edit those fields to choose services.
+CLI --relay/--blossom/--grasp/--site overrides apply only to that publication.
+The optional mirrors array receives extra descriptor/manifest copies only after
+our primary relay acknowledges publication; failures do not undo the primary
+publication. Use mirrors: [] to disable extra copies. Never substitute a foreign
+primary relay silently. relays and servers at the top level are runtime read and
+resource hints, not publishing destinations. Git must provide NIP-34/GRASP support.
+
+A new release may change Blossom, site and mirrors. Existing relay/Git history
+requires explicit migration when moving those services; --resume always uses the
+saved release destinations. Keep the publication journal to preserve that history.
+
+Publishing automatically captures a 1200 × 750 PNG from the sandbox when no
+preview.image is selected, using preview.delayMs (1500 by default, 250–10000).
+It uploads the PNG to the selected Blossom server and publishes a linked signed
+app descriptor so other clients can discover it. This fallback prevents accidental
+imageless releases; an inspected screenshot is still the preferred finishing step.
+For an interactive scene needing a start click, take a representative PNG during
+manual/browser testing and select it with preview.image. Only PNG up to 5 MiB and
+4096 × 4096 is currently accepted. Remove preview.image to resume automatic capture.
+The local preview setting is authoring configuration, not a new Nostr manifest tag.
 
 ## Creator backup
 

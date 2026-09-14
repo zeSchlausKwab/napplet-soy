@@ -8,10 +8,11 @@ import { startPreviewServer } from './preview/server';
 import { PublishError } from '../../../packages/publish/src/config';
 import { AccountError } from '../../../packages/identity/src/signer';
 import { RUNTIME_PROFILE } from '../../../packages/runtime/src/capabilities';
+import { MAX_PREVIEW_BYTES } from '../../../packages/protocol/src/preview';
 import { executableEntry } from '../../../packages/publish/src/artifact';
 
 /** Execute only the frozen HTML in our current sandbox. Never run a project's build/preview scripts. */
-export async function checkPublication(contents: Map<string, Uint8Array>) {
+export async function checkPublication(contents: Map<string, Uint8Array>, forceScreenshot = false) {
   const directory = await mkdtemp(join(tmpdir(), 'napplet-publish-check-'));
   let browser: import('@playwright/test').Browser | undefined;
   let server: ReturnType<typeof startPreviewServer> | undefined;
@@ -32,7 +33,14 @@ export async function checkPublication(contents: Map<string, Uint8Array>) {
         'The check browser could not start. Run napplet-space doctor; Linux needs the Chromium system libraries. Browser setup is available with napplet-space browser install.',
       );
     }
-    const page = await browser.newPage();
+    const config = JSON.parse(new TextDecoder().decode(contents.get('napplet.json')));
+    const delayMs = config.preview?.delayMs ?? 1500;
+    if (!Number.isInteger(delayMs) || delayMs < 250 || delayMs > 10000)
+      throw new PublishError('PREVIEW_CONFIG', 'preview.delayMs must be between 250 and 10000.');
+    const page = await browser.newPage({
+      viewport: { width: 1200, height: 850 },
+      deviceScaleFactor: 1,
+    });
     const errors: string[] = [];
     page.on('pageerror', () => errors.push('script error'));
     await page.addInitScript(() => {
@@ -69,10 +77,72 @@ export async function checkPublication(contents: Map<string, Uint8Array>) {
         timer = setTimeout(() => reject(new Error('Handshake timed out')), 5000);
       }),
     ]);
-    await page.waitForTimeout(250);
+    await iframe.evaluate((node) => {
+      node.style.cssText =
+        'position:fixed;top:0;left:0;width:1200px;height:750px;border:0;display:block;';
+    });
+    await frame.waitForFunction(() => document.fonts.status === 'loaded', undefined, {
+      timeout: 5000,
+    });
+    await page.waitForTimeout(delayMs);
     if (errors.length || (await frame.evaluate(() => (window as any).__publishViolations?.length)))
       throw new Error();
-    return { profile: RUNTIME_PROFILE, browser: browser.version() };
+    let preview: Uint8Array;
+    if (config.preview?.image && !forceScreenshot) {
+      const selected = contents.get(config.preview.image);
+      if (
+        !selected ||
+        selected.length > MAX_PREVIEW_BYTES ||
+        Buffer.from(selected.subarray(0, 8)).toString('hex') !== '89504e470d0a1a0a'
+      )
+        throw new PublishError(
+          'PREVIEW_IMAGE',
+          'preview.image must select a PNG under 5 MiB in the project.',
+        );
+      const header = Buffer.from(selected);
+      if (
+        header.length < 24 ||
+        header.toString('ascii', 12, 16) !== 'IHDR' ||
+        header.readUInt32BE(16) > 4096 ||
+        header.readUInt32BE(20) > 4096
+      )
+        throw new PublishError(
+          'PREVIEW_IMAGE',
+          'The selected PNG must be no larger than 4096 × 4096.',
+        );
+      const valid = await page.evaluate(
+        async (data) => {
+          const image = new Image();
+          image.src = data;
+          try {
+            await image.decode();
+          } catch {
+            return false;
+          }
+          return (
+            image.naturalWidth > 0 &&
+            image.naturalHeight > 0 &&
+            image.naturalWidth <= 4096 &&
+            image.naturalHeight <= 4096
+          );
+        },
+        `data:image/png;base64,${Buffer.from(selected).toString('base64')}`,
+      );
+      if (!valid)
+        throw new PublishError(
+          'PREVIEW_IMAGE',
+          'The selected preview must be a valid PNG no larger than 4096 × 4096.',
+        );
+      preview = selected;
+    } else {
+      preview = new Uint8Array(await iframe.screenshot({ type: 'png', timeout: 5000 }));
+    }
+    if (preview.length > MAX_PREVIEW_BYTES)
+      throw new PublishError(
+        'PREVIEW_IMAGE',
+        'The preview exceeds 5 MiB. Choose a smaller PNG with preview.image.',
+      );
+    return { profile: RUNTIME_PROFILE, browser: browser.version(), preview };
   } catch (error) {
     if (error instanceof AccountError) throw error;
     throw new PublishError(

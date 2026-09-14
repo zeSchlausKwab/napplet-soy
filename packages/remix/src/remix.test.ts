@@ -67,7 +67,8 @@ test('remix downloads exact signed archive and makes a fresh project with source
     const result = await createRemix(root, 'my-remix', loaded);
     const fresh = await Bun.file(join(result.directory, 'napplet.json')).json();
     expect(fresh.creator).toBeUndefined();
-    expect(fresh.publish).toBeUndefined();
+    expect(fresh.publish.networks.public.relay).toBe('wss://napplet.soy/relay');
+    expect(fresh.publish.networks.local.site).toBe('http://localhost:8080');
     expect(fresh.identifier).not.toBe(config.identifier);
     expect(fresh.previewId).not.toBe(config.previewId);
     expect(fresh.remix.revision).toBe(manifest.id);
