@@ -1,6 +1,7 @@
 import { ExtensionSigner } from 'applesauce-signers/signers/extension-signer';
-import { nip19 } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils.js';
+import { readPrivateKey } from '../../../../packages/identity/src/key-material';
+import { decryptRecovery, encryptRecovery } from './key-recovery';
 import {
   AccountError,
   bunkerCredential,
@@ -30,10 +31,11 @@ type Active = {
   method: Method;
   controller: AbortController;
   credential?: RemoteCredential;
+  backupKey?: Uint8Array;
 };
 type Feedback = Pick<SignerOptions, 'onAuth'>;
 
-/** Secrets live in this browser instance only, never in React/SSR state or storage. */
+/** Signing credentials stay in this browser instance, outside public state and storage. */
 export class BrowserIdentity {
   private active?: Active;
   private recovery?: { credential: RemoteCredential; pubkey: string };
@@ -71,6 +73,7 @@ export class BrowserIdentity {
     this.active = undefined;
     this.recovery = undefined;
     old?.controller.abort();
+    old?.backupKey?.fill(0);
     void old?.signer.close();
     this.update(anonymous);
   }
@@ -78,7 +81,7 @@ export class BrowserIdentity {
     method: Method,
     factory: (
       signal: AbortSignal,
-    ) => Promise<{ signer: CreatorSigner; credential?: RemoteCredential }>,
+    ) => Promise<{ signer: CreatorSigner; credential?: RemoteCredential; backupKey?: Uint8Array }>,
   ) {
     this.cancel();
     const controller = new AbortController();
@@ -94,12 +97,14 @@ export class BrowserIdentity {
       this.pending = undefined;
       this.recovery = undefined;
       old?.controller.abort();
+      old?.backupKey?.fill(0);
       void old?.signer.close();
       this.update({ pubkey, method, reconnect: false });
     } catch (error) {
       const cancelled = controller.signal.aborted;
       controller.abort();
       await opened?.signer.close();
+      opened?.backupKey?.fill(0);
       if (this.pending === controller) this.pending = undefined;
       if (error instanceof AccountError) throw error;
       if (method === 'extension' && !cancelled)
@@ -152,33 +157,40 @@ export class BrowserIdentity {
       };
     });
   }
-  importKey(input: string) {
+  importKey(input: string, password = '') {
     return this.connect('key', async (signal) => {
-      let key = input.trim();
-      input = '';
+      let key: Uint8Array | undefined;
       try {
-        if (key.startsWith('nsec1')) {
-          const decoded = nip19.decode(key);
-          if (decoded.type !== 'nsec') throw new Error();
-          key = bytesToHex(decoded.data);
-          decoded.data.fill(0);
-        }
-        if (!/^[a-fA-F0-9]{64}$/.test(key)) throw new Error();
+        key = input.trim().startsWith('ncryptsec1')
+          ? await decryptRecovery(input, password, signal)
+          : readPrivateKey(input);
         return {
-          signer: await openCredential({ type: 'local', key: key.toLowerCase() }, this.network, {
+          signer: await openCredential({ type: 'local', key: bytesToHex(key) }, this.network, {
             signal,
             kinds: websiteKinds,
           }),
+          backupKey: key,
         };
       } catch {
+        key?.fill(0);
         throw new AccountError(
           'INVALID_KEY',
-          'Enter an nsec or 64-character hexadecimal private key.',
+          'Use a valid nsec, hexadecimal key, or encrypted recovery key with its passphrase (scrypt logN 10–18).',
         );
       } finally {
-        key = '';
+        input = '';
+        password = '';
       }
     });
+  }
+  async backup(pubkey: string, password: string, signal?: AbortSignal) {
+    const active = this.active;
+    if (!active?.backupKey || active.pubkey !== pubkey)
+      throw new Error('Only the private key held by this browser session can be backed up here.');
+    const value = await encryptRecovery(active.backupKey, password, signal);
+    if (this.active !== active || active.controller.signal.aborted || signal?.aborted)
+      throw new Error('The account changed. Open backup again for the selected account.');
+    return value;
   }
   bunker(uri: string, feedback: Feedback = {}) {
     return this.connect('remote', async (signal) => {
@@ -249,6 +261,7 @@ export class BrowserIdentity {
       if (this.active === active) {
         this.active = undefined;
         active.controller.abort();
+        active.backupKey?.fill(0);
         await active.signer.close();
         this.recovery = active.credential ? { credential: active.credential, pubkey } : undefined;
         this.update({ pubkey: null, method: null, reconnect: !!this.recovery });

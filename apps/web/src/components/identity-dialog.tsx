@@ -1,10 +1,19 @@
 import { useRef, useState } from 'react';
-import { Copy, ExternalLink, KeyRound, LoaderCircle, ShieldCheck, Smartphone } from 'lucide-react';
+import {
+  Copy,
+  ExternalLink,
+  KeyRound,
+  LoaderCircle,
+  Plus,
+  ShieldCheck,
+  Smartphone,
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { LightningCode } from './lightning-code';
 import { browserIdentity, type IdentityState } from '../lib/browser-identity';
 import { defaultSignerRelays } from '../../../../packages/identity/src/signer';
+import { CreateKeyPanel, KeyBackup } from './key-backup';
 
 export function IdentityDialog({
   open,
@@ -15,12 +24,14 @@ export function IdentityDialog({
   setOpen: (open: boolean) => void;
   identity: IdentityState;
 }) {
-  const [method, setMethod] = useState<'extension' | 'remote' | 'key'>('extension');
+  const [method, setMethod] = useState<'extension' | 'remote' | 'key' | 'create'>('extension');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [uri, setUri] = useState('');
   const [auth, setAuth] = useState('');
   const [secret, setSecret] = useState('');
+  const [password, setPassword] = useState('');
+  const [showBackup, setShowBackup] = useState(false);
   const [relay, setRelay] = useState(defaultSignerRelays[0]);
   const [accepted, setAccepted] = useState(false);
   const attempt = useRef(0);
@@ -31,6 +42,8 @@ export function IdentityDialog({
     setUri('');
     setAuth('');
     setSecret('');
+    setPassword('');
+    setShowBackup(false);
     setAccepted(false);
     setError('');
   }
@@ -93,6 +106,22 @@ export function IdentityDialog({
                   : 'your extension'}
             </span>
             <code className="public-key">{identity.pubkey}</code>
+            {identity.method === 'key' && (
+              <>
+                <Button variant="outline" onClick={() => setShowBackup(!showBackup)}>
+                  {showBackup ? 'Close backup' : 'Back up private key'}
+                </Button>
+                {open && showBackup && (
+                  <KeyBackup
+                    key={identity.pubkey}
+                    pubkey={identity.pubkey}
+                    exportBackup={(phrase, signal) =>
+                      browserIdentity().backup(identity.pubkey!, phrase, signal)
+                    }
+                  />
+                )}
+              </>
+            )}
             <Button
               variant="outline"
               onClick={() => {
@@ -119,6 +148,7 @@ export function IdentityDialog({
               ['extension', ShieldCheck, 'Extension'],
               ['remote', Smartphone, 'Remote signer'],
               ['key', KeyRound, 'Private key'],
+              ['create', Plus, 'Create identity'],
             ] as const
           ).map(([value, Icon, label]) => (
             <Button
@@ -233,6 +263,7 @@ export function IdentityDialog({
             )}
           </>
         )}
+        {open && method === 'create' && <CreateKeyPanel onConnected={() => changeOpen(false)} />}
         {method === 'key' && (
           <form
             className="identity-form"
@@ -240,8 +271,10 @@ export function IdentityDialog({
               event.preventDefault();
               if (!accepted) return;
               const key = secret;
+              const phrase = password;
               setSecret('');
-              void run(() => browserIdentity().importKey(key));
+              setPassword('');
+              void run(() => browserIdentity().importKey(key, phrase));
             }}
           >
             <div className="identity-warning" role="note">
@@ -270,10 +303,62 @@ export function IdentityDialog({
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
                 placeholder="nsec1… or hexadecimal key"
+                maxLength={300}
                 disabled={busy}
               />
             </label>
-            <Button disabled={busy || !accepted || !secret.trim()}>Use key for this session</Button>
+            <label className="identity-field">
+              Recovery file
+              <input
+                type="file"
+                accept=".ncryptsec,.nsec,.txt,text/plain"
+                disabled={busy}
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  if (!file) return;
+                  const current = ++attempt.current;
+                  setSecret('');
+                  setPassword('');
+                  setError('');
+                  if (file.size > 320) {
+                    setError(
+                      'Choose a small text file containing one nsec or ncryptsec recovery key.',
+                    );
+                    return;
+                  }
+                  try {
+                    const value = (await file.text()).trim();
+                    if (current === attempt.current) setSecret(value);
+                  } catch {
+                    if (current === attempt.current) setError('Could not read this recovery file.');
+                  }
+                }}
+              />
+            </label>
+            {secret.trim().startsWith('ncryptsec1') && (
+              <label className="identity-field">
+                Recovery passphrase
+                <input
+                  type="password"
+                  autoComplete="off"
+                  maxLength={1024}
+                  value={password}
+                  disabled={busy}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </label>
+            )}
+            <Button
+              disabled={
+                busy ||
+                !accepted ||
+                !secret.trim() ||
+                (secret.trim().startsWith('ncryptsec1') && !password)
+              }
+            >
+              Use key for this session
+            </Button>
           </form>
         )}
         {(identity.authorization || auth) && (
@@ -286,7 +371,7 @@ export function IdentityDialog({
         {busy && (
           <div className="identity-methods" role="status">
             <LoaderCircle className="animate-spin" size={16} />
-            Waiting for your signer…
+            {method === 'key' ? 'Opening your identity…' : 'Waiting for your signer…'}
             <Button variant="outline" onClick={cancel}>
               Cancel connection
             </Button>

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CreatorRouteImport } from './routes/$creator'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CliRouteImport } from './routes/cli'
 import { Route as CreateRouteImport } from './routes/create'
@@ -44,6 +45,11 @@ const IndexRoute = IndexRouteImport.update({
 const CreatorRoute = CreatorRouteImport.update({
   id: '/$creator',
   path: '/$creator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -170,6 +176,7 @@ const CliDownloadVersionFileRoute = CliDownloadVersionFileRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRouteWithChildren
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRouteWithChildren
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$creator': typeof CreatorRouteWithChildren
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$creator'
+    | '/about'
     | '/admin'
     | '/cli'
     | '/create'
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$creator'
+    | '/about'
     | '/admin'
     | '/cli'
     | '/create'
@@ -313,6 +324,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$creator'
+    | '/about'
     | '/admin'
     | '/cli'
     | '/create'
@@ -342,6 +354,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CreatorRoute: typeof CreatorRouteWithChildren
+  AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRoute
   CliRoute: typeof CliRouteWithChildren
   CreateRoute: typeof CreateRoute
@@ -376,6 +389,13 @@ declare module '@tanstack/react-router' {
       path: '/$creator'
       fullPath: '/$creator'
       preLoaderRoute: typeof CreatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -610,6 +630,7 @@ const RSnapshotRouteWithChildren = RSnapshotRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreatorRoute: CreatorRouteWithChildren,
+  AboutRoute: AboutRoute,
   AdminRoute: AdminRoute,
   CliRoute: CliRouteWithChildren,
   CreateRoute: CreateRoute,

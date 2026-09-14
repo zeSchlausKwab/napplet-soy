@@ -57,6 +57,7 @@ Route loaders call a server function or API boundary that resolves identifiers a
 | `/r/<snapshot-event-id>/source` | Exact source revision of that release |
 | `/n/<naddr>/play`, `/r/<event-id>/play`, `/@alice/plasma-pet/play` | Immersive presentation of the same identity/release; deployed 2026-09-14 |
 | `/settings` | Creator/account preferences |
+| `/about` | Server-rendered guide, stack and resources; locally implemented 2026-09-14 |
 | `/api/v1/*` | CLI/public data/status and authenticated account endpoints |
 
 These are ordinary path routes, with no hash router. Direct requests and refreshes go through the same resolver and return proper HTTP status codes. TanStack Router handles subsequent navigation and route loading.

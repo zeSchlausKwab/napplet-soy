@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, Asterisk, Check, Plus, Radio } from 'lucide-react';
+import { ArrowUpRight, Asterisk, Check, CircleHelp, Plus, Radio } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNostr } from './nostr-provider';
@@ -31,6 +31,11 @@ export function Shell({ children }: { children: ReactNode }) {
           </Link>
         </nav>
         <div className="header-actions">
+          <Button asChild variant="ghost" size="icon" className="about-link">
+            <Link to="/about" aria-label="About napplet.soy" title="About napplet.soy">
+              <CircleHelp size={19} />
+            </Link>
+          </Button>
           <Link to="/create" className="make-link">
             <Plus size={16} /> Create a napplet
           </Link>
@@ -57,6 +62,7 @@ export function Shell({ children }: { children: ReactNode }) {
             {relayConfigured ? 'Relay configured' : 'Built on Nostr'}
           </span>
           <Link to="/admin">Administration</Link>
+          <Link to="/about">About</Link>
           <a href="https://github.com/napplet/naps" target="_blank" rel="noreferrer">
             The protocol <ArrowUpRight size={13} />
           </a>

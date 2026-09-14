@@ -105,6 +105,49 @@ Anonymous zaps use a separate ephemeral key per invoice, never the selected sign
 
 ## Recovery and automation
 
+### Browser key generation and recovery
+
+Implemented and verified locally on 2026-09-14; not deployed yet. In the login chooser, **Create
+identity** generates a key using the browser's cryptographic random source. Only
+its public identity is shown. The new key does not replace a connected account
+until the user prepares a recovery backup, saves the file or encrypted text,
+acknowledges preserving it and its passphrase, and chooses Continue. Closing the
+dialog discards an unused draft and cancels its cryptographic work.
+
+**Back up private key** in a connected browser-key session exports that same key
+again. It is unavailable for extensions and remote signers: back those up through
+their signer applications. No private-key export permission is requested from them.
+
+Backups are standard passphrase-encrypted [NIP-49](https://github.com/nostr-protocol/nips/blob/master/49.md)
+`ncryptsec` text files. They use scrypt logN 16 and security byte 0 (the key has been
+handled by a web application). The passphrase is 12–1024 characters and must be
+confirmed. A download link appears after encryption; the browser cannot prove the
+file was saved, so the creation flow explicitly asks the user to confirm that.
+Encrypted text is also available for manual preservation. Keep the passphrase and
+file separately; losing either may mean losing the identity.
+
+Restore through **Private key → Recovery file**, or paste the encrypted text and
+enter its passphrase. Existing nsec/hex import still works. The CLI's existing NIP-49
+import can restore these backups too. Parsing checks checksum, version, length and
+scrypt work factor (10–18) before decryption. Wrong passphrases and corrupt files
+return generic errors. Encryption and decryption run in a cancellable worker with
+a 30-second timeout, so the login stays responsive.
+
+Keys and passphrases never go to our server, napplet frames or browser storage.
+The recovery file is downloaded locally; its temporary object URL is revoked when
+the backup view closes. Draft/active key bytes are wiped on disposal where possible;
+JavaScript cannot guarantee erasure of all runtime copies. Backup does not persist
+a login: refresh/disconnect still clears the browser identity. [Agenda A20](../AGENDA.md#a20--nostr-sessions-through-applesauce-sessions)
+tracks Applesauce Sessions separately.
+
+Verification: key-format interoperability/bounds tests and the production browser
+integration cover generation, required backup acknowledgement, repeat export,
+same-key restore, wrong passphrases, canceled work, refresh/disconnect and absence
+from requests/localStorage/sessionStorage. The existing extension and NIP-46 browser
+checks remain required regressions. All tests use disposable identities.
+
+### CLI backups
+
 `new` and `account create` automatically save a local creator's key to
 `${XDG_CONFIG_HOME:-~/.config}/napplet-space/accounts/<network>/<public-key>.nsec`
 and report its absolute path. `SPACE_ACCOUNT_HOME` changes the base directory.
