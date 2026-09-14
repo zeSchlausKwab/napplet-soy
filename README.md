@@ -2,6 +2,10 @@
 
 A playground for self-contained games, visual experiments, and digital nonsense.
 
+Upcoming work and current gaps live in the maintained [agenda](AGENDA.md), including
+the [NAP review before wider launch](docs/NAP-REVIEW.md). The original [plan](PLAN.md)
+is design history; it is not the current delivery checklist.
+
 This is the first working implementation slice: Bun + React + TanStack Start, shadcn/ui, and Applesauce. It includes six signed local examples, SSR and client navigation, named/Nostr/pinned URLs, hash-verified sandbox playback, source inspection, a standalone creator CLI, and Caddy/PM2 deployment tooling.
 
 ## Start developing

@@ -1,5 +1,11 @@
 # ContextVM and multiplayer
 
+2026-09-14 agenda update: [A15](../AGENDA.md#a15--generalized-multiplayer-contextvm-api)
+requires random 1v1, free-for-all and multiple named rooms with variable membership
+before freezing a generalized API. [A14](../AGENDA.md#a14--currently-playing-and-joinable-sessions)
+adds opt-in public activity and Join cards after the bridge and room contract exist.
+The three tools below remain the implemented starter, not that generalized API.
+
 2026-09-12. The service starter and tests below are implemented. Browser NAP-CVM mediation, game simulation, and managed deployment of creator code are subsequent slices.
 
 ## Decision: a small default service, an open provider boundary
@@ -34,7 +40,7 @@ const result = await window.napplet.cvm.callTool(
 );
 ```
 
-This example is a target contract. The current player injects an empty `window.napplet` and does not advertise `cvm`. A manifest declaring `requires: cvm` is correctly reported as unsupported until the bridge passes interoperability tests.
+This example is a target contract. The current player injects the shared upstream shim and supported playback domains, but does not advertise `cvm`. A manifest declaring `requires: cvm` is correctly reported as unsupported until the bridge passes interoperability tests.
 
 The host must bind requests to the actual iframe `Window`, its author-qualified manifest identity, and verified aggregate hash. It owns transport keys, request correlation, deadlines, and policy; iframe-provided `pubkey`/origin strings cannot establish the caller's identity. Responses must be verified against the selected server's key. Each iframe/provider session must be disposed when playback stops or changes. Discovery is not permission to call every provider, and a napplet's `payment: allow` is not user authorization to spend.
 
@@ -60,7 +66,7 @@ The room ID is rendezvous data, not an access credential. A game service must au
 
 ```sh
 # Use an operator-selected local relay; no external defaults are silently contacted.
-SPACE_CVM_RELAYS=ws://127.0.0.1:7777 bun run cvm
+SPACE_CVM_RELAYS=ws://127.0.0.1:19347/relay bun run cvm
 ```
 
 The entrypoint uses `@contextvm/sdk` 0.13.16, its Applesauce relay pool, MCP SDK 1.30.0, required encryption, and SDK-injected client pubkeys. It creates a persistent mode-0600 key file at `.local/contextvm/identity` without printing the secret. Override `SPACE_CVM_KEY_PATH` for an existing identity. Public announcements and relay-list publication require `SPACE_CVM_ANNOUNCE=1`.

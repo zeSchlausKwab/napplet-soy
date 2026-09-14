@@ -1,5 +1,14 @@
 # napplet.space — proposed v1 plan
 
+**Current planning entry point: [AGENDA.md](AGENDA.md), reconciled 2026-09-14.**
+This document preserves the original proposal and dated decisions. Statements below
+that indexing, naming, publication, remix or deployment are still pending are
+historical. The site is live with CLI 0.4.1; native PM2 services and SQLite replaced
+the initial Compose/Postgres proposal. Use the agenda and linked implementation
+documents for current status. The new requests cover source browsing, immersive
+entry, signers/profiles, onboarding/curation/promotions, media/comments, NAP-CONFIG
+and generalized ContextVM sessions; see the [upstream review](docs/NAP-REVIEW.md).
+
 2026-09-13 infrastructure update: the [managed relay](docs/RELAY.md), [Blossom storage](docs/BLOSSOM.md), and [ngit-grasp source hosting](docs/GRASP.md) now run natively under PM2 locally and in the VPS deployment definition. This revises the original Compose/upstream-blob-server recommendation below: Blossom currently uses a bounded Bun implementation with shared Applesauce signing, explicit ownership/durable commit handling and protocol/process tests. We own its maintenance and conformance checks. The GRASP component now includes signed source pushes, independent clones and idempotent local repository seeds. Creator identity now includes OS-backed keys, NIP-46 bunker connections and encrypted recovery; the resumable single-HTML publisher now joins those services and returns relay publication evidence; persistent website indexing/naming is next; no VPS deployment is claimed.
 
 2026-09-12 design follow-up: [CLIENT-DIRECTION.md](docs/CLIENT-DIRECTION.md) records the proposed Khatru/LMDB/Bleve relay, screenshot/video strategy, selectable flavor napplets, browser loading options, and concrete conformance gaps. The user explicitly selects the NIP-5D proposal as authoritative. Fix known host/CLI contract gaps before extending publication. Layout flavors are a future addition; ordinary creations remain self-contained.

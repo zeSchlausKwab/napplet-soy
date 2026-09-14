@@ -1,5 +1,11 @@
 # Relay, media, flavors, and protocol alignment
 
+Current follow-up: [AGENDA.md](../AGENDA.md), updated 2026-09-14, tracks remaining
+media, hero, config, identity and flavor work against today's implementation.
+The [NAP review](NAP-REVIEW.md) records upstream expansion boundaries. The dated
+recommendations below retain design context; screenshots, the managed relay and
+several former conformance gaps have since been implemented.
+
 2026-09-12. NIP-5D authority is confirmed by the user. The [relay](RELAY.md) is now implemented and tested locally. The capture workflow and flavor interface below remain recommended directions. The original follow-up changed documentation only; the relay implementation is recorded separately.
 
 ## Authoritative contracts
