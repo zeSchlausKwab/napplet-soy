@@ -33,8 +33,9 @@ export class CommunityStore {
       CREATE TABLE IF NOT EXISTS aliases(handle TEXT NOT NULL, slug TEXT NOT NULL, address TEXT NOT NULL, naddr TEXT NOT NULL, pubkey TEXT NOT NULL, PRIMARY KEY(handle,slug));
       CREATE INDEX IF NOT EXISTS aliases_address ON aliases(address);
       CREATE TABLE IF NOT EXISTS requests(id TEXT PRIMARY KEY, expires INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS social(id TEXT PRIMARY KEY, scope TEXT NOT NULL, created INTEGER NOT NULL, event TEXT NOT NULL);
-      CREATE INDEX IF NOT EXISTS social_scope ON social(scope,created);
+      CREATE TABLE IF NOT EXISTS social_events(id TEXT NOT NULL, scope TEXT NOT NULL, created INTEGER NOT NULL, event TEXT NOT NULL, PRIMARY KEY(scope,id));
+      CREATE INDEX IF NOT EXISTS social_scope_v2 ON social_events(scope,created);
+      CREATE INDEX IF NOT EXISTS social_recent ON social_events(created DESC,id);
     `);
   }
   close() {
@@ -113,21 +114,21 @@ export class CommunityStore {
   events(scope: string) {
     return (
       this.db
-        .query('SELECT event FROM social WHERE scope=? ORDER BY created DESC,id LIMIT 2000')
+        .query('SELECT event FROM social_events WHERE scope=? ORDER BY created DESC,id LIMIT 2000')
         .all(scope) as { event: string }[]
     ).map((row) => JSON.parse(row.event) as SignedEvent);
   }
   put(scope: string, events: SignedEvent[]) {
     this.db.transaction(() => {
-      const insert = this.db.prepare('INSERT OR IGNORE INTO social VALUES(?,?,?,?)');
+      const insert = this.db.prepare('INSERT OR IGNORE INTO social_events VALUES(?,?,?,?)');
       for (const e of events) insert.run(e.id, scope, e.created_at, JSON.stringify(e));
       // This is a bounded relay cache, not the authoritative event archive.
       this.db.run(
-        'DELETE FROM social WHERE scope=? AND id NOT IN (SELECT id FROM social WHERE scope=? ORDER BY created DESC,id LIMIT 2000)',
+        'DELETE FROM social_events WHERE scope=? AND id NOT IN (SELECT id FROM social_events WHERE scope=? ORDER BY created DESC,id LIMIT 2000)',
         [scope, scope],
       );
       this.db.exec(
-        'DELETE FROM social WHERE id IN (SELECT id FROM social ORDER BY created DESC,id LIMIT -1 OFFSET 50000)',
+        'DELETE FROM social_events WHERE rowid IN (SELECT rowid FROM social_events ORDER BY created DESC,id LIMIT -1 OFFSET 50000)',
       );
     })();
   }

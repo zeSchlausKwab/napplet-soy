@@ -3,6 +3,7 @@ import { take, takeUntil, takeWhile, timer, fromEvent } from 'rxjs';
 import { matchFilters, type Filter } from 'nostr-tools';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { realpathSync } from 'node:fs';
 import ipaddr from 'ipaddr.js';
 import { publicIp, publicLookup } from './blossom';
 import { verifiedEvent, type SignedEvent } from '../../protocol/src';
@@ -14,7 +15,7 @@ const require = createRequire(import.meta.url);
 declare const NAPPLET_STANDALONE: boolean | undefined;
 const NodeWebSocket: typeof import('ws').WebSocket = require(
   typeof NAPPLET_STANDALONE !== 'undefined' && NAPPLET_STANDALONE
-    ? join(dirname(process.execPath), 'lib/ws/index.js')
+    ? join(dirname(realpathSync(process.execPath)), 'lib/ws/index.js')
     : join(dirname(require.resolve('ws/package.json')), 'index.js'),
 );
 export function previewRelayUrl(value: string) {

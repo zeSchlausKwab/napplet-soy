@@ -8,6 +8,7 @@ import { Button } from './ui/button';
 import { publicPoster, type PublicNapplet } from '../../../../packages/backend/src/public-model';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
 import { NameButton } from './name-button';
+import { SocialPanel } from './social-panel';
 import { RemixButton } from './remix-button';
 
 export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
@@ -109,6 +110,10 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
           </div>
         </aside>
       </div>
+      <SocialPanel
+        key={napplet.naddr ?? napplet.revisionId}
+        reference={napplet.naddr ?? napplet.revisionId}
+      />
       <div className="collection-note">
         {napplet.availability === 'ready' &&
           'Playback supports local saves, resource loading, and Nostr reads. Publishing and account changes are disabled. '}

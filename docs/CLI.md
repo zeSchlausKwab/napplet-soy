@@ -115,7 +115,7 @@ Use the pinned Bun 1.3.11 toolchain for builds:
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.2.0/napplet-space-darwin-arm64/napplet-space" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.3.0/napplet-space-darwin-arm64/napplet-space" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts

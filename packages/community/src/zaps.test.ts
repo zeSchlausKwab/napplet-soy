@@ -1,0 +1,194 @@
+import { test, expect } from 'bun:test';
+import { bech32 } from '@scure/base';
+import { secp256k1 } from '@noble/curves/secp256k1.js';
+import { sha256 as hashBytes } from '@noble/hashes/sha2.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
+import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
+import { inspectInvoice } from '../../protocol/src/invoice';
+import { socialScope } from '../../protocol/src/social';
+import { resolveZapEndpoint, requestZapInvoice, verifiedZapReceipt } from '../../backend/src/zaps';
+import { verifiedEvent } from '../../protocol/src';
+import type { SocialContext } from '../../backend/src/social-service';
+const author = generateSecretKey(),
+  alice = generateSecretKey(),
+  provider = generateSecretKey(),
+  node = generateSecretKey();
+const now = Math.floor(Date.now() / 1000),
+  encoder = new TextEncoder();
+const words = (n: number) => {
+  const w: number[] = [];
+  do {
+    w.unshift(n % 32);
+    n = Math.floor(n / 32);
+  } while (n);
+  return w;
+};
+function invoice(msats: number, description: string, { expiry = 3600, badSignature = false } = {}) {
+  const prefix = `lnbc${msats * 10}p`,
+    timestamp = words(now);
+  while (timestamp.length < 7) timestamp.unshift(0);
+  const field = (tag: number, bytes: Uint8Array) => {
+    const w = bech32.toWords(bytes);
+    return [tag, ...[Math.floor(w.length / 32), w.length % 32], ...w];
+  };
+  const x = words(expiry);
+  const data = [
+    ...timestamp,
+    ...field(1, hashBytes(new Uint8Array(32).fill(7))),
+    ...field(16, new Uint8Array(32).fill(9)),
+    ...field(23, hashBytes(encoder.encode(description))),
+    6,
+    Math.floor(x.length / 32),
+    x.length % 32,
+    ...x,
+  ];
+  const padded = [...data];
+  while (padded.length % 8) padded.push(0);
+  const bytes = bech32.fromWords(padded).slice(0, Math.ceil((data.length * 5) / 8));
+  const digest = hashBytes(new Uint8Array([...encoder.encode(prefix), ...bytes]));
+  const signed = secp256k1.sign(digest, node, { prehash: false, format: 'recovered' });
+  const signature = new Uint8Array([...signed.slice(1), signed[0]]);
+  if (badSignature) signature.fill(0);
+  return bech32.encode(prefix, [...data, ...bech32.toWords(signature)], 12000);
+}
+async function fixture() {
+  const manifest = finalizeEvent(
+    {
+      kind: 35129,
+      created_at: now - 100,
+      content: '',
+      tags: [
+        ['d', 'first'],
+        ['path', '/index.html', 'b'.repeat(64)],
+      ],
+    },
+    author,
+  );
+  const context: SocialContext = {
+    manifest,
+    scope: socialScope(manifest),
+    relays: ['wss://relay.example'],
+  };
+  const profile = finalizeEvent(
+    {
+      kind: 0,
+      created_at: now - 50,
+      content: JSON.stringify({ lud16: 'alice@wallet.example' }),
+      tags: [],
+    },
+    author,
+  );
+  const endpoint = await resolveZapEndpoint(getPublicKey(author), [profile], async () => ({
+    tag: 'payRequest',
+    allowsNostr: true,
+    nostrPubkey: getPublicKey(provider),
+    minSendable: 1000,
+    maxSendable: 1000000,
+    commentAllowed: 100,
+    callback: 'https://wallet.example/callback',
+  }));
+  const request = finalizeEvent(
+    {
+      kind: 9734,
+      created_at: now,
+      content: 'nice',
+      tags: [
+        ['p', getPublicKey(author)],
+        ['e', manifest.id],
+        ['a', context.scope.key],
+        ['k', '35129'],
+        ['amount', '21000'],
+        ['lnurl', endpoint.lnurl],
+        ['relays', ...context.relays],
+      ],
+    },
+    alice,
+  );
+  return { context, endpoint, request, manifests: new Map([[manifest.id, manifest]]) };
+}
+test('zap invoices bind amount and description to the signed request; never accept a substituted invoice', async () => {
+  const { context, endpoint, request, manifests } = await fixture();
+  const description = JSON.stringify(verifiedEvent(request));
+  const result = await requestZapInvoice(context, manifests, endpoint, request, async (url) => {
+    expect(url.searchParams.get('nostr')).toBe(description);
+    return { pr: invoice(21000, description) };
+  });
+  expect(result.msats).toBe(21000);
+  expect(inspectInvoice(result.invoice).paymentHash).toBe(
+    bytesToHex(hashBytes(new Uint8Array(32).fill(7))),
+  );
+  await expect(
+    requestZapInvoice(context, manifests, endpoint, request, async () => ({
+      pr: invoice(22000, description),
+    })),
+  ).rejects.toThrow('match');
+  await expect(
+    requestZapInvoice(context, manifests, endpoint, request, async () => ({
+      pr: invoice(21000, 'some other purchase'),
+    })),
+  ).rejects.toThrow('match');
+  expect(() => inspectInvoice(invoice(21000, description, { badSignature: true }))).toThrow();
+  await expect(
+    requestZapInvoice(context, manifests, endpoint, request, async () => ({
+      pr: invoice(21000, description, { expiry: 0 }),
+    })),
+  ).rejects.toThrow('match');
+});
+test('zap receipts require the advertised provider and exact recipient, request and payment hash', async () => {
+  const { context, endpoint, request, manifests } = await fixture(),
+    description = JSON.stringify(request);
+  const tags = [
+    ...request.tags.filter((t) => ['p', 'e', 'a'].includes(t[0])),
+    ['description', description],
+    ['bolt11', invoice(21000, description)],
+    ['preimage', '07'.repeat(32)],
+    ['P', request.pubkey],
+  ];
+  const receipt = finalizeEvent({ kind: 9735, created_at: now, content: '', tags }, provider);
+  expect((await verifiedZapReceipt(receipt, context.scope, manifests, endpoint)).msats).toBe(21000);
+  await expect(
+    verifiedZapReceipt(
+      finalizeEvent({ kind: 9735, created_at: now, content: '', tags }, alice),
+      context.scope,
+      manifests,
+      endpoint,
+    ),
+  ).rejects.toThrow('Untrusted');
+  const wrong = finalizeEvent(
+    {
+      kind: 9735,
+      created_at: now,
+      content: '',
+      tags: tags.map((t) => (t[0] === 'p' ? ['p', getPublicKey(alice)] : t)),
+    },
+    provider,
+  );
+  await expect(verifiedZapReceipt(wrong, context.scope, manifests, endpoint)).rejects.toThrow(
+    'target',
+  );
+  const bad = finalizeEvent(
+    {
+      kind: 9735,
+      created_at: now,
+      content: '',
+      tags: tags.map((t) => (t[0] === 'preimage' ? ['preimage', '00'.repeat(32)] : t)),
+    },
+    provider,
+  );
+  await expect(verifiedZapReceipt(bad, context.scope, manifests, endpoint)).rejects.toThrow(
+    'preimage',
+  );
+});
+
+test('invoice inspection agrees with the independent BOLT-11 hashed-description vector', () => {
+  // https://github.com/lightning/bolts/blob/master/11-payment-encoding.md#examples
+  const vector =
+    'lnbc20m1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqs9qrsgq7ea976txfraylvgzuxs8kgcw23ezlrszfnh8r6qtfpr6cxga50aj6txm9rxrydzd06dfeawfk6swupvz4erwnyutnjq7x39ymw6j38gp7ynn44';
+  const decoded = inspectInvoice(vector);
+  expect(decoded.msats).toBe(2000000000);
+  expect(decoded.descriptionHash).toBe(
+    '3925b6f67e2c340036ed12093dd44e0368df1b6ea26c53dbe4811f58fd5db8c1',
+  );
+  expect(decoded.expiresAt).toBe(1496314658 + 3600);
+  expect(() => inspectInvoice(vector.slice(0, -1) + 'q')).toThrow();
+});

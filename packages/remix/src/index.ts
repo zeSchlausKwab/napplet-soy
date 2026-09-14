@@ -211,7 +211,11 @@ export async function createRemix(
       ...(previous ?? {}),
       schema: 'space-local-project/v1',
       name,
-      title: `${previous?.title ?? previous?.name ?? input.manifest.tags.find((t) => t[0] === 'title')?.[1] ?? 'Napplet'} remix`,
+      title:
+        `${previous?.title ?? previous?.name ?? input.manifest.tags.find((t) => t[0] === 'title')?.[1] ?? 'Napplet'} remix`.slice(
+          0,
+          160,
+        ),
       entry,
       previewId,
       identifier: `n-${previewId.replaceAll('-', '').slice(0, 11)}`,
@@ -221,8 +225,13 @@ export async function createRemix(
         previous?.requires ??
         input.manifest.tags.filter((t) => t[0] === 'requires').map((t) => t[1]),
       topics: previous?.topics ?? manifestTopics(input.manifest),
-      relays: [],
-      servers: [],
+      relays: previous?.relays ?? [],
+      servers:
+        previous?.servers ??
+        input.manifest.tags
+          .filter((t) => t[0] === 'server')
+          .map((t) => t[1])
+          .slice(0, 8),
       remix: lineage,
     };
     delete (config as Record<string, unknown>).creator;
@@ -230,6 +239,11 @@ export async function createRemix(
     await writeFile(join(target, 'napplet.json'), JSON.stringify(config, null, 2) + '\n', {
       flag: 'wx',
     });
+    if (!files.has('AGENTS.md'))
+      await writeFile(
+        join(target, 'AGENTS.md'),
+        '# Remix workspace\n\nRead docs/napplet-space.md for the installed upstream creator skills and CLI commands. Preserve original license notices and the remix lineage in napplet.json. Use the host-mediated NAP APIs and keep the playable build self-contained. Never put private signing keys in this repository.\n',
+      );
     if (!files.has('LICENSE'))
       await writeFile(
         join(target, 'LICENSE'),

@@ -106,7 +106,7 @@ bun run napplet status --project local-experiment --network local
 bun run napplet publish --project local-experiment --network local --resume
 ```
 
-Publication returns `indexed` once the website confirms the exact current/snapshot pair and verified artifact. If the website is still catching up, it returns `announced_pending_index`; use `bun run napplet status --project local-experiment --network local --refresh` to check again without signing or publishing. Keep `.napplet-space` for retry history. Authenticated named routes remain ahead, and the public defaults target the deployed napplet.soy services. See [publishing and recovery](docs/PUBLISHING.md) and [persistent indexing](docs/INDEXING.md).
+Publication returns `indexed` once the website confirms the exact current/snapshot pair and verified artifact. If the website is still catching up, it returns `announced_pending_index`; use `bun run napplet status --project local-experiment --network local --refresh` to check again without signing or publishing. Keep `.napplet-space` for retry history. Signed creator handles and permanent named routes are available from the napplet detail page; and the public defaults target the deployed napplet.soy services. See [publishing and recovery](docs/PUBLISHING.md) and [persistent indexing](docs/INDEXING.md).
 
 ## Deploy to a VPS
 
@@ -144,6 +144,12 @@ Our publishing contract is standard NIP-5D manifests, public relays, retrievable
 
 The site merges bundled examples, a persistent SQLite relay index and the optional publicdev collection by Nostr identity. Its separate PM2 worker verifies manifests, downloads artifacts and resolves linked previews. Authenticated naming claims, full catalog pagination, and comments/likes/zaps remain planned. The public installer now distributes standalone macOS/Linux creator packages. The player supports the single-HTML profile and documented playback NAP domains. Composability, ContextVM's browser bridge, publishing permissions, and full upstream conformance remain ahead.
 
-The deployment script includes the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), [GRASP source hosting](docs/GRASP.md), and [persistent website index](docs/INDEXING.md). The next slice adds authenticated creator handles and named links over existing portable identities.
+The deployment script includes the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), [GRASP source hosting](docs/GRASP.md), and [persistent website index](docs/INDEXING.md). Creators can claim permanent `/@handle/slug` links, remix pinned source, and comment, like or zap from detail pages. See [remixing](docs/REMIXING.md) and [community actions and limits](docs/COMMUNITY.md).
 
 Standalone creator installation, requirements and release procedure: [CLI guide](docs/CLI.md).
+
+### Remix and share
+
+Open a napplet and choose **Remix this** for an exact-version CLI command. Signed source archives retain source and attribution; other napplets provide a verified HTML starting point. Connect the author's Nostr signer to claim a permanent **Named link**. Comments, replies, likes and zaps appear below the player.
+
+These changes are local until you deploy them. Restart `bun run dev` to load the persistent community state configuration. CLI 0.3.0 includes `remix`. Upload its locally built archives with `bun run cli:release --host root@159.198.46.2` before deploying this website, whose installer points to 0.3.0. These steps remain operator-run. Running `bun run napplet remix ...` in this checkout uses the command immediately.

@@ -7,6 +7,7 @@ import { Player } from './player';
 import { TopicTags } from './topic-tags';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
 import { NameButton } from './name-button';
+import { SocialPanel } from './social-panel';
 import { RemixButton } from './remix-button';
 
 export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?: boolean }) {
@@ -84,9 +85,9 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
           </div>
         </aside>
       </div>
+      <SocialPanel key={napplet.naddr} reference={napplet.naddr} />
       <div className="collection-note">
         This example is bundled for local development and hasn’t been published to Nostr.
-        Publishing, comments, likes, and zaps are coming next.
       </div>
     </section>
   );
