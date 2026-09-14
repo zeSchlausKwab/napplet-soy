@@ -1,7 +1,8 @@
 # About and resources
 
-Implemented and verified locally on 2026-09-14; not deployed. The missing project
-repository URLs remain an A05 acceptance gap. `/about` is a TanStack file route with server-rendered content and
+Implemented and verified locally on 2026-09-14; not deployed. Project repository
+links are deferred by the user until the repositories exist. `/about` is a TanStack
+file route with server-rendered content and
 page-specific title, description and Open Graph text. The header question-mark
 link remains visible on mobile; the footer also links to About. Both work without
 JavaScript. Existing paper/ink colors, typography and shadcn buttons carry through.
@@ -19,9 +20,10 @@ link points at the project's authoritative proposal pin.
 
 ## This client's repositories
 
-No Git remote is configured in this checkout, and the exact Napplet Space GitHub
-and Gitworkshop URLs have not yet been supplied. Do not substitute an upstream
-Napplet repository or invent a project URL. This remains an A05 acceptance gap.
+No Git remote is configured in this checkout. On 2026-09-14 the user said they will
+create the Napplet Space repositories and supply their GitHub and Gitworkshop URLs
+later. Adding those links is deferred follow-up work, not a blocker for the next
+product slice. Do not substitute an upstream Napplet repository or invent a project URL.
 
 Once confirmed, configure these public server environment values:
 
