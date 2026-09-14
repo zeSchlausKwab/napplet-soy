@@ -189,6 +189,9 @@ export SPACE_INDEX_DIR="$state_root/index"
 export SPACE_COMMUNITY_DIR="$state_root/community"
 source "$release_dir/scripts/index-env.sh"
 napplet_index_env "$domain" "$release_dir/packages/nostr/discovery-relays.json" "$relay_domain"
+printf '%s\n' "https://$relay_domain" > "$release_dir/relay-origin"
+printf '%s\n' "https://$domain/relay" > "$release_dir/relay-aliases"
+printf '%s\n' "$SPACE_INDEX_HINTS" > "$release_dir/index-hints"
 export SPACE_INDEX_LOCAL_BLOSSOM=''
 # GRASP migrations are not reversible by switching binaries. Pin changes need a
 # separately rehearsed migration/restore procedure; ordinary deploys cannot do it.
@@ -203,7 +206,10 @@ runuser -u napplet -- "$bun_bin" "$release_dir/scripts/moderation-init.ts" "$SPA
 
 start_relay() {
   local source_release=$1
-  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_RELAY_BIND=127.0.0.1:19347 SPACE_RELAY_BIN="$source_release/bin/napplet-relay" SPACE_RELAY_DATA="$state_root/relay" SPACE_RELAY_ORIGIN="https://$relay_domain" SPACE_RELAY_INSTANCE="$domain" PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/relay.ecosystem.config.cjs" --update-env
+  local origin="https://$domain/relay" aliases=''
+  [[ ! -f "$source_release/relay-origin" ]] || origin=$(cat "$source_release/relay-origin")
+  [[ ! -f "$source_release/relay-aliases" ]] || aliases=$(cat "$source_release/relay-aliases")
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" SPACE_RELEASE_DIR="$source_release" SPACE_SERVICE_PREFIX=napplet SPACE_RELAY_BIND=127.0.0.1:19347 SPACE_RELAY_BIN="$source_release/bin/napplet-relay" SPACE_RELAY_DATA="$state_root/relay" SPACE_RELAY_ORIGIN="$origin" SPACE_RELAY_ALIASES="$aliases" SPACE_RELAY_INSTANCE="$domain" PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/relay.ecosystem.config.cjs" --update-env
 }
 relay_ready() {
   local expected
@@ -235,7 +241,9 @@ start_grasp() {
 }
 start_indexer() {
   local source_release=$1
-  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$source_release")" SPACE_RELEASE_DIR="$source_release" SPACE_RELEASE_ID="$(basename "$source_release")" SPACE_SERVICE_PREFIX=napplet PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/indexer.ecosystem.config.cjs" --update-env
+  local hints="${SPACE_INDEX_HINTS//wss:\/\/$relay_domain/wss:\/\/$domain\/relay}"
+  [[ ! -f "$source_release/index-hints" ]] || hints=$(cat "$source_release/index-hints")
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$source_release")" SPACE_INDEX_HINTS="$hints" SPACE_RELEASE_DIR="$source_release" SPACE_RELEASE_ID="$(basename "$source_release")" SPACE_SERVICE_PREFIX=napplet PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/indexer.ecosystem.config.cjs" --update-env
 }
 indexer_ready() {
   local source_release=$1
