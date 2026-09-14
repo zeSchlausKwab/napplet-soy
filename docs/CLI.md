@@ -16,8 +16,10 @@ napplet-space publish
 
 `new` initializes Git and writes HTML, configuration, license and coding-agent
 instructions. It reuses the chosen creator or asks to create/connect/set up later.
-The installer reconnects stdin to the controlling terminal so identity prompts
-also work through `curl | sh`. Noninteractive users can pass `--identity later`.
+The installer reconnects stdin to the terminal's actual device so identity prompts
+also work through `curl | sh`. Opening the `/dev/tty` alias stalls delayed input
+in the macOS bundled runtime. Redirecting stderr (where prompts appear) makes
+installation noninteractive; users can also explicitly pass `--identity later`.
 `dev` opens the loopback preview and reloads edited HTML. `--no-open`, `--port`
 and `--project` support existing workflows. The CLI supplies trusted preview code;
 project scripts and generated runtime copies are never executed by dev/check/publish.
@@ -38,7 +40,7 @@ requirements; `account check` verifies the selected signer.
   and D-Bus session for identity. Ubuntu 24.04 is the tested desktop baseline.
   Chromium system libraries are listed at `/cli`. The CLI never installs OS
   packages or invokes sudo. Alpine/musl and native Windows are not supported.
-- Installer: curl, tar, SHA-256 utilities; HTTPS downloads with checksum verification.
+- Installer: curl, tar, tty, SHA-256 utilities; HTTPS downloads with checksum verification.
 - Binary/support files: `~/.local/share/napplet-space/releases/<version-platform-hash>`.
   Command symlink: `~/.local/bin/napplet-space`. `NAPPLET_INSTALL_DIR` and
   `NAPPLET_BIN_DIR` override these paths. Foreign existing commands are preserved.
@@ -65,7 +67,8 @@ bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
 SPACE_TEST_CLI="$PWD/.local/cli/0.1.0/napplet-space-darwin-arm64/napplet-space" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
-  tests/services/native-identity.test.ts tests/services/publish.test.ts
+  tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
+  tests/services/publish.test.ts
 bun run cli:release --host root@your-vps
 ```
 
@@ -86,3 +89,13 @@ For a new CLI release, bump `apps/cli/distribution/version.json` and the install
 version together, build/test/upload the artifacts, then deploy the website with
 its updated installer and documentation. Source-only website changes can use
 already-published downloads. Keep older archives for reproducibility and rollback.
+
+The terminal regression runs the real piped installer and packaged CLI under a
+pseudo-terminal, pauses before choosing an identity option, and checks hidden
+input, cancellation and terminal restoration. It uses temporary projects and
+does not create creator keys or publish events.
+
+If an older installer stopped at the identity prompt, open a fresh terminal if
+Ctrl+C does not respond. The CLI is already installed and the project was created:
+enter that project directory and run `~/.local/bin/napplet-space dev`. Creator
+setup can follow with `napplet-space account create` or `napplet-space account connect`.

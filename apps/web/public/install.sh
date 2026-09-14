@@ -26,7 +26,7 @@ fi
 if [ "$os" = linux ]; then
   command -v getconf >/dev/null 2>&1 && getconf GNU_LIBC_VERSION >/dev/null 2>&1 || fail 'This Linux package needs glibc (e.g. Ubuntu/Debian/Fedora). Alpine/musl is not supported.'
 fi
-for tool in curl tar; do command -v "$tool" >/dev/null 2>&1 || fail "Install $tool first, then retry."; done
+for tool in curl tar tty; do command -v "$tool" >/dev/null 2>&1 || fail "Install $tool first, then retry."; done
 if command -v sha256sum >/dev/null 2>&1; then hash() { sha256sum "$1" | cut -d ' ' -f 1; }
 elif command -v shasum >/dev/null 2>&1; then hash() { shasum -a 256 "$1" | cut -d ' ' -f 1; }
 else fail 'Install a SHA-256 tool (sha256sum or shasum) first.'; fi
@@ -76,8 +76,16 @@ if [ "$#" -gt 0 ]; then
   export PATH="$bin_dir:${PATH:-/usr/bin:/bin}"
   cleanup
   trap - EXIT INT TERM
-  # curl | sh occupies stdin. Use the controlling terminal for creator prompts.
-  if ( : </dev/tty ) 2>/dev/null; then exec "$bin_dir/napplet-space" "$@" </dev/tty
-  else exec "$bin_dir/napplet-space" "$@" </dev/null; fi
+  # curl | sh occupies stdin. Bun on macOS stops receiving delayed keypresses
+  # through /dev/tty; reopen the actual device (e.g. /dev/ttys003) instead.
+  # Prompts use stderr. If it is redirected, keep setup noninteractive.
+  terminal=''
+  if [ -t 2 ]; then terminal=$(tty <&2); fi
+  case "$terminal" in
+    /dev/tty) ;; # The generic alias has the same polling problem; skip prompts.
+    /dev/*) [ ! -c "$terminal" ] || exec "$bin_dir/napplet-space" "$@" <"$terminal" ;;
+  esac
+  # Headless installation still supports explicit options such as --identity later.
+  exec "$bin_dir/napplet-space" "$@" </dev/null
 fi
 printf '\nStart with: napplet-space new my-napplet\nHelp: https://napplet.soy/cli\n'
