@@ -1,6 +1,6 @@
 # VPS deployment with Caddy and PM2
 
-Updated 2026-09-13. **[napplet.soy](https://napplet.soy) is live**, using the temporary legacy CPU profile on the existing Namecheap VPS. Caddy issued valid Let's Encrypt certificates for the website, www, Blossom and Git; the other site remains available. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. See the deployment record below for verification and the compatibility workaround.
+Updated 2026-09-14. **[napplet.soy](https://napplet.soy) is live**, using the temporary legacy CPU profile on the existing Namecheap VPS. Caddy issued valid Let's Encrypt certificates for the website, www, Blossom and Git; the other site remains available. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. See the deployment record below for verification and the compatibility workaround.
 
 ## One command
 
@@ -229,3 +229,24 @@ Live Rubik Cube playback, OG metadata and responsive rendering passed, followed 
 Random Sticker loading/changing/exporting images through the production resource
 endpoint. All 225 deployed source checksums matched; PM2 saved the four-relay
 configuration for reboot recovery. No test events were published to public relays.
+
+### Installer terminal hotfix, 2026-09-14
+
+Commit `806c6d6` fixes macOS creator prompts that froze after the user paused to
+read them. The installer now reopens the actual terminal device instead of the
+`/dev/tty` alias. CLI 0.1.0 binaries and their immutable archives are unchanged.
+
+Only `apps/web/public/install.sh` and its served `apps/web/dist/client/install.sh`
+copy were atomically updated in active release `20260913202705982-26454`, under the
+deployment lock, with automatic rollback on verification failure. Their new
+SHA-256 is `69c91010027c6e3416f2c0fd748ecf316bef37a994e71591e2c9227261e6ce58`.
+Original copies and the activation record are retained at
+`/opt/napplet-space/shared/hotfixes/806c6d6`. This is an explicitly recorded static
+hotfix to that release; no services were restarted or proxy configuration changed.
+
+Typechecking, shell syntax, and five installer/distribution integration tests
+passed, including delayed input, hidden input cancellation, terminal restoration,
+and noninteractive setup. A fresh macOS pseudo-terminal then fetched the actual
+HTTPS installer and archive, waited at the creator prompt, and completed setup
+with `3` followed by Return. Both hosted websites remained reachable. No creator
+keys or public events were created by verification.
