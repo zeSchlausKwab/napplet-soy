@@ -97,12 +97,17 @@ export class BrowserIdentity {
       void old?.signer.close();
       this.update({ pubkey, method, reconnect: false });
     } catch (error) {
+      const cancelled = controller.signal.aborted;
       controller.abort();
       await opened?.signer.close();
       if (this.pending === controller) this.pending = undefined;
       if (error instanceof AccountError) throw error;
+      if (method === 'extension' && !cancelled)
+        throw new Error(
+          'Install or unlock a Nostr extension, approve access, and try again. You can also choose a remote signer.',
+        );
       throw new Error(
-        controller.signal.aborted
+        cancelled
           ? 'Connection cancelled or unavailable. Please retry.'
           : 'Could not connect. Please retry.',
       );
@@ -138,7 +143,7 @@ export class BrowserIdentity {
           getPublicKey: async () => pubkey,
           signEvent: (template) =>
             bounded(async () => {
-              if ((await extension.getPublicKey()) !== pubkey)
+              if ((await new ExtensionSigner().getPublicKey()) !== pubkey)
                 throw new Error('Your extension account changed. Connect again.');
               return extension.signEvent(template);
             }),

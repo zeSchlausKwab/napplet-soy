@@ -90,6 +90,8 @@ test('production sign-in supports memory-only key import, both NIP-46 directions
     });
     await page.goto(origin);
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
+    await page.getByRole('button', { name: 'Connect browser extension', exact: true }).click();
+    await page.getByText(/Install or unlock a Nostr extension/).waitFor();
     await page.getByRole('button', { name: 'Private key', exact: true }).click();
     expect(await page.getByRole('button', { name: 'Use key for this session' }).isDisabled()).toBe(
       true,
