@@ -110,6 +110,7 @@ export function Player({
             aria-label={`Start ${napplet.title}`}
           >
             <img
+              className={external && !napplet.preview ? 'generated-poster' : undefined}
               src={external ? publicPoster(napplet) : `/posters/${napplet.slug}.svg`}
               alt=""
               referrerPolicy="no-referrer"

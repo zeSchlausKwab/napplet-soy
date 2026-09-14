@@ -423,7 +423,8 @@ pre:focus-visible {
 .card-preview:hover img {
   transform: scale(1.045);
 }
-.card-preview img.generated-poster {
+.card-preview img.generated-poster,
+.player-cover img.generated-poster {
   object-fit: contain;
   background: #f5f3eb;
 }

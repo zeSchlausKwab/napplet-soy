@@ -46,7 +46,7 @@ const manifest = finalizeEvent(
 const result = await refreshPublicCatalog(directory, {
   relays: [],
   discover: async () => [manifest],
-  metadata: async () => [descriptor],
+  metadata: async () => (process.argv[3] === 'without-preview' ? [] : [descriptor]),
   download: async () =>
     new Uint8Array(
       await Bun.file(
