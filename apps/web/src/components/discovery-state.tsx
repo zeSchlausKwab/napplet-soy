@@ -6,21 +6,23 @@ import { Button } from './ui/button';
 export function DiscoveryState({
   state = 'searching',
   message,
+  poll = true,
 }: {
   state?: string;
   message?: string;
+  poll?: boolean;
 }) {
   const router = useRouter();
   const [attempt, setAttempt] = useState(0);
   const pending = ['queued', 'searching'].includes(state) && attempt < 12;
   useEffect(() => {
-    if (!pending) return;
+    if (!pending || !poll) return;
     const timer = setTimeout(() => {
       setAttempt((a) => a + 1);
       void router.invalidate();
     }, 2000);
     return () => clearTimeout(timer);
-  }, [pending, attempt, router]);
+  }, [pending, poll, attempt, router]);
   return (
     <section className="discovery-state" aria-live="polite">
       <span className="eyebrow">FROM THE RELAYS</span>

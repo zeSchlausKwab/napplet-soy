@@ -12,7 +12,7 @@ export const Route = createFileRoute('/r/$snapshot')({
     return result;
   },
   pendingMs: 200,
-  pendingComponent: DiscoveryState,
+  pendingComponent: () => <DiscoveryState poll={false} />,
   head: ({ loaderData }) => {
     const n = loaderData?.napplet;
     return n
