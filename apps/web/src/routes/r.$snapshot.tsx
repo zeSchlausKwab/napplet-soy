@@ -33,6 +33,15 @@ export const Route = createFileRoute('/r/$snapshot')({
 function Release() {
   const match = useMatchRoute();
   const { napplet: n, discovery, message } = Route.useLoaderData();
+  // Source inspection depends on the signed release, not playable-artifact availability.
+  if (
+    n &&
+    match({
+      to: '/r/$snapshot/source',
+      params: { snapshot: 'provenance' in n ? n.revisionId : n.snapshot.id },
+    })
+  )
+    return <Outlet />;
   if (
     !n ||
     (discovery &&
@@ -41,14 +50,5 @@ function Release() {
       n.availability !== 'ready')
   )
     return <DiscoveryState state={discovery ?? 'failed'} message={message} />;
-  return match({
-    to: '/r/$snapshot/source',
-    params: { snapshot: 'provenance' in n ? n.revisionId : n.snapshot.id },
-  }) ? (
-    <Outlet />
-  ) : 'provenance' in n ? (
-    <PublicDetail napplet={n} />
-  ) : (
-    <Detail napplet={n} pinned />
-  );
+  return 'provenance' in n ? <PublicDetail napplet={n} /> : <Detail napplet={n} pinned />;
 }

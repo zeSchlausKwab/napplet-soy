@@ -1,3 +1,4 @@
+import { SourceSection } from './source-section';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, Code2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -110,6 +111,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
           </div>
         </aside>
       </div>
+      <SourceSection revision={napplet.revisionId} />
       <SocialPanel
         key={napplet.naddr ?? napplet.revisionId}
         reference={napplet.naddr ?? napplet.revisionId}

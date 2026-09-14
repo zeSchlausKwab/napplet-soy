@@ -174,3 +174,6 @@ Standalone creator installation, requirements and release procedure: [CLI guide]
 Open a napplet and choose **Remix this** for an exact-version CLI command. Signed source archives retain source and attribution; other napplets provide a verified HTML starting point. Connect the author's Nostr signer to claim a permanent **Named link**. Comments, replies, likes and zaps appear below the player.
 
 CLI 0.4.0 and these website features are live on napplet.soy. The CLI adds the local Listing preview and screenshot capture controls. The website offers install-and-remix, comment likes/zaps, and an initially empty admin Featured collection. For future releases, upload CLI archives before deploying the website. Existing CLI users can rerun the installer and restart `napplet-space dev`; `napplet-space skills update` refreshes their creator guidance. Readable links require a one-time **Named link** claim on the website and then follow future releases. See [CLI instructions](docs/CLI.md) and [community behavior](docs/COMMUNITY.md).
+
+Creator media: see [where to put assets and current limitations](docs/ASSETS.md).
+The local web build includes a [pinned original-source browser](docs/REMIXING.md#browsing-a-releases-original-files); its release status is recorded in [A01](AGENDA.md#a01--browse-the-original-source-files).

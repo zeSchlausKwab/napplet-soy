@@ -1,5 +1,6 @@
+import { SourceSection } from './source-section';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeft, Check, Code2, Copy, GitFork } from 'lucide-react';
+import { ArrowLeft, Check, Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useEventStore } from 'applesauce-react/hooks';
 import { Button } from './ui/button';
@@ -65,10 +66,6 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
           <div className="instructions">↳ {napplet.instructions}</div>
         </div>
         <aside>
-          <Link to="/r/$snapshot/source" params={{ snapshot: napplet.snapshot.id }}>
-            <Code2 size={17} />
-            Peek at the source <span>↗</span>
-          </Link>
           <div>
             <span>License</span>
             <strong>{napplet.license}</strong>
@@ -85,6 +82,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
           </div>
         </aside>
       </div>
+      <SourceSection revision={napplet.snapshot.id} />
       <SocialPanel key={napplet.naddr} reference={napplet.naddr} />
       <div className="collection-note">
         This example is bundled for local development and hasn’t been published to Nostr.

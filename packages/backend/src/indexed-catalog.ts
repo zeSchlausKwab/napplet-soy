@@ -87,7 +87,10 @@ export function lookupKey(input: Lookup) {
 }
 export async function indexedLookup(input: Lookup) {
   const key = lookupKey(input),
-    row = key ? indexStore()?.row(key) : null;
+    store = indexStore(),
+    // /r/<id> can pin either a snapshot or a still-retained replaceable manifest.
+    // Replaceable rows are keyed by address, so an exact event lookup must use id.
+    row = key ? (input.type === 'snapshot' ? store?.revision(key) : store?.row(key)) : null;
   return {
     known: !!row,
     entry:

@@ -1,0 +1,198 @@
+import { afterAll, beforeAll, expect, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { finalizeEvent } from 'nostr-tools';
+import { aggregateHash, sha256, type SignedEvent } from '../../protocol/src';
+import { freezeSource } from '../../publish/src/project';
+import { initializePolicy, updatePolicy } from '../../moderation/src/policy';
+import { createSourceBrowser, downloadSourceArchive, SOURCE_TEXT_LIMIT } from './source';
+
+let directory: string, tar: Uint8Array, hash: string, artifactHash: string;
+const html = new TextEncoder().encode(
+  '<!doctype html><script>window.sourceWasExecuted = true</script>',
+);
+const key = new Uint8Array(32);
+key[31] = 1; // Public test fixture only.
+let serial = 0;
+async function manifest(tags: string[][] = []) {
+  return finalizeEvent(
+    {
+      kind: 35129,
+      created_at: ++serial,
+      content: '',
+      tags: [
+        ['d', 'source-test'],
+        ['title', 'Little source world'],
+        ['path', '/index.html', artifactHash],
+        ['x', await aggregateHash([{ path: '/index.html', hash: artifactHash }]), 'aggregate'],
+        ...tags,
+      ],
+    },
+    key,
+  );
+}
+function browser(events: SignedEvent[], download = async () => tar) {
+  return createSourceBrowser({
+    manifest: async (id) => events.find((e) => e.id === id) ?? null,
+    artifact: async () => html,
+    download,
+  });
+}
+beforeAll(async () => {
+  directory = await mkdtemp(join(tmpdir(), 'source-test-'));
+  artifactHash = await sha256(html);
+  await freezeSource(
+    directory,
+    new Map([
+      [
+        'README.md',
+        new TextEncoder().encode(
+          '# A small world\n<script>window.sourceWasExecuted = true</script>',
+        ),
+      ],
+      ['src/main.ts', new TextEncoder().encode('export const greeting = "hello";')],
+      ['assets/sound.wav', new Uint8Array([0, 255, 0, 10])],
+      ['large.txt', new Uint8Array(SOURCE_TEXT_LIMIT + 1).fill(65)],
+      ['LICENSE', new TextEncoder().encode('MIT\nOriginal author credit')],
+      ['index.html', html],
+    ]),
+    1800000000,
+  );
+  tar = await Bun.file(join(directory, 'source.tar')).bytes();
+  hash = await sha256(tar);
+});
+afterAll(async () => {
+  await rm(directory, { recursive: true, force: true });
+});
+
+test('pinned archive tree, safe file projection, license, downloads and request deduplication', async () => {
+  const event = await manifest([
+    ['source-archive', `https://assets.example/${hash}`],
+    ['source-commit', 'a'.repeat(40)],
+    ['source', 'https://git.example/project'],
+  ]);
+  let calls = 0;
+  const service = browser([event], async () => {
+    calls++;
+    await Bun.sleep(20);
+    return tar;
+  });
+  const input = { revision: event.id, view: 'project' as const };
+  const [a, b] = await Promise.all([service.view(input), service.view(input)]);
+  expect(calls).toBe(1);
+  expect(a).toEqual(b);
+  expect(a?.archiveHash).toBe(hash);
+  expect(a?.files.length).toBe(6);
+  expect(a?.licenseFile).toBe('LICENSE');
+  expect(a?.selected?.path).toBe('README.md');
+  expect(a?.selected?.text).toContain('<script>');
+  expect(a?.commit).toBe('a'.repeat(40));
+  expect((await service.view({ ...input, file: 'assets/sound.wav' }))?.selected?.state).toBe(
+    'binary',
+  );
+  expect((await service.view({ ...input, file: 'large.txt' }))?.selected).toMatchObject({
+    state: 'large',
+    text: null,
+  });
+  expect((await service.view({ ...input, file: '../../secret' }))?.selected?.state).toBe('missing');
+  expect(await service.download({ ...input, file: '../../secret' })).toBeNull();
+  expect((await service.download({ ...input, file: 'src/main.ts' }))?.bytes).toEqual(
+    new TextEncoder().encode('export const greeting = "hello";'),
+  );
+  expect((await service.download(input, true))?.bytes).toEqual(tar);
+  expect(calls).toBe(1);
+});
+
+test('missing and invalid source remain explicit; verified HTML is an independent fallback', async () => {
+  const event = await manifest([['source', 'nostr://repository-reference']]);
+  let calls = 0;
+  const service = browser([event], async () => {
+    calls++;
+    return tar;
+  });
+  const input = { revision: event.id, view: 'project' as const };
+  const project = await service.view(input);
+  expect(project?.files).toEqual([]);
+  expect(project?.message).toContain('not attached');
+  expect(project?.sourceReference).toBe('nostr://repository-reference');
+  expect(project?.sourceUrl).toBeNull();
+  const built = await service.view({ ...input, view: 'html' });
+  expect(built?.selected?.text).toBe(new TextDecoder().decode(html));
+  expect(built?.licenseFile).toBeNull();
+  expect(calls).toBe(0);
+  const corrupt = await manifest([['source-archive', `https://assets.example/${'f'.repeat(64)}`]]);
+  const unsafe = await manifest([
+    ['source-archive', `https://user:password@assets.example/${hash}`],
+  ]);
+  const activeLink = await manifest([['source', 'javascript:alert(1)']]);
+  const s = browser([corrupt, unsafe, activeLink]);
+  expect((await s.view({ ...input, revision: corrupt.id }))?.message).toContain('could not');
+  expect((await s.view({ ...input, revision: unsafe.id }))?.message).toContain('invalid');
+  expect((await s.view({ ...input, revision: activeLink.id }))?.sourceUrl).toBeNull();
+  const wrongArtifact = createSourceBrowser({
+    manifest: async () => event,
+    artifact: async () => new Uint8Array([1]),
+    download: async () => tar,
+  });
+  expect((await wrongArtifact.view({ ...input, view: 'html' }))?.selected).toBeNull();
+  expect(await wrongArtifact.view({ ...input, revision: 'a'.repeat(64) })).toBeNull();
+});
+
+test('new publications cannot move old source permalinks; deletion and moderation revoke cached reads', async () => {
+  const old = await manifest([['source-archive', `https://assets.example/${hash}`]]);
+  const newer = await manifest();
+  const events = [old, newer],
+    service = browser(events);
+  const input = { revision: old.id, view: 'project' as const };
+  expect((await service.view(input))?.archiveHash).toBe(hash);
+  expect((await service.view({ ...input, revision: newer.id }))?.archiveHash).toBeNull();
+  const previous = process.env.SPACE_MODERATION_FILE;
+  process.env.SPACE_MODERATION_FILE = join(directory, 'policy.json');
+  initializePolicy(process.env.SPACE_MODERATION_FILE);
+  try {
+    updatePolicy(
+      { action: 'block', type: 'hash', target: hash, reason: 'test', revision: 0 },
+      old.pubkey,
+      '1'.repeat(64),
+    );
+    expect((await service.view(input))?.archiveHash).toBeNull();
+    expect(await service.download(input, true)).toBeNull();
+    updatePolicy(
+      { action: 'block', type: 'event', target: old.id, reason: 'test', revision: 1 },
+      old.pubkey,
+      '2'.repeat(64),
+    );
+    expect(await service.view(input)).toBeNull();
+  } finally {
+    if (previous === undefined) delete process.env.SPACE_MODERATION_FILE;
+    else process.env.SPACE_MODERATION_FILE = previous;
+  }
+  events.splice(0, 1); // The repository no longer admits this release (e.g. an author deletion).
+  expect(await service.view(input)).toBeNull();
+  expect(await service.download(input, true)).toBeNull();
+});
+
+test('private-network archive URLs fail before a request unless explicitly configured as dev Blossom', async () => {
+  const previous = process.env.SPACE_INDEX_LOCAL_BLOSSOM;
+  delete process.env.SPACE_INDEX_LOCAL_BLOSSOM;
+  const signal = AbortSignal.timeout(2000);
+  try {
+    await expect(
+      downloadSourceArchive(new URL(`http://127.0.0.1:1/${hash}`), signal),
+    ).rejects.toThrow('requires');
+    await expect(
+      downloadSourceArchive(new URL(`https://127.0.0.1/${hash}`), signal),
+    ).rejects.toThrow();
+    process.env.SPACE_INDEX_LOCAL_BLOSSOM = 'http://localhost:19348/blossom';
+    for (const url of [
+      `http://localhost:19349/blossom/${hash}`,
+      `http://localhost:19348/admin/${hash}`,
+      `http://localhost:19348/blossom/${hash}?action=delete`,
+    ])
+      await expect(downloadSourceArchive(new URL(url), signal)).rejects.toThrow('requires');
+  } finally {
+    if (previous === undefined) delete process.env.SPACE_INDEX_LOCAL_BLOSSOM;
+    else process.env.SPACE_INDEX_LOCAL_BLOSSOM = previous;
+  }
+});

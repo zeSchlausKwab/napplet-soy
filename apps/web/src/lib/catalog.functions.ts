@@ -1,7 +1,8 @@
+import { sourceBrowser, sourceInput } from '../../../../packages/backend/src/source';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { gallerySearchSchema } from '../../../../packages/protocol/src';
-import { artifact, gallery, resolveNapplet } from '../../../../packages/backend/src/catalog';
+import { gallery, resolveNapplet } from '../../../../packages/backend/src/catalog';
 import {
   catalogStatus,
   resolvePublicNapplet,
@@ -116,15 +117,8 @@ export const getDiscoveredNapplet = createServerFn({ method: 'GET' })
     }
   });
 export const getSource = createServerFn({ method: 'GET' })
-  .validator(z.string().regex(/^[a-f0-9]{64}$/))
-  .handler(async ({ data }) => {
-    const release =
-      (await resolveNapplet({ type: 'snapshot', id: data })) ??
-      (await resolvePublicNapplet({ type: 'snapshot', id: data }));
-    if (!release) return null;
-    const file = await artifact(release.artifactHash);
-    return file ? { release, source: await file.text() } : null;
-  });
+  .validator(sourceInput)
+  .handler(({ data }) => sourceBrowser.view(data));
 
 export const getCreatorNames = createServerFn({ method: 'GET' })
   .validator(z.string().regex(/^@[a-z0-9-]{1,32}$/))

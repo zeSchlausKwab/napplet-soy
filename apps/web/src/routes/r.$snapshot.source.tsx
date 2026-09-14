@@ -1,39 +1,20 @@
-import { createFileRoute, Link, notFound } from '@tanstack/react-router';
+import { createFileRoute, notFound } from '@tanstack/react-router';
+import { z } from 'zod';
 import { getSource } from '@/lib/catalog.functions';
+import { SourceBrowser } from '@/components/source-browser';
 export const Route = createFileRoute('/r/$snapshot/source')({
-  loader: async ({ params }) => {
+  validateSearch: z.object({
+    file: z.string().max(200).optional(),
+    view: z.enum(['project', 'html']).optional(),
+  }),
+  loaderDeps: ({ search }) => search,
+  loader: async ({ params, deps }) => {
     if (!/^[a-f0-9]{64}$/.test(params.snapshot)) throw notFound();
-    const result = await getSource({ data: params.snapshot });
+    const result = await getSource({
+      data: { revision: params.snapshot, ...deps, view: deps.view ?? 'project' },
+    });
     if (!result) throw notFound();
     return result;
   },
-  component: Source,
+  component: () => <SourceBrowser source={Route.useLoaderData()} />,
 });
-function Source() {
-  const { release, source } = Route.useLoaderData();
-  return (
-    <section className="source-page">
-      <Link
-        className="back-link"
-        to="/r/$snapshot"
-        params={{ snapshot: 'provenance' in release ? release.revisionId : release.snapshot.id }}
-      >
-        ← Back to {release.title}
-      </Link>
-      <span className="eyebrow">
-        {'provenance' in release ? 'VERIFIED HTML / SEE ORIGINAL LICENSE' : 'OPEN SOURCE / MIT'}
-      </span>
-      <h1>Nothing up our sleeves.</h1>
-      <p>The complete HTML for this exact release. Code, style, and a little bit of weird.</p>
-      <div className="source-toolbar">
-        <span>index.html</span>
-        <a href={`/api/artifacts/${release.artifactHash}`} download={`${release.slug}.html`}>
-          Download source ↓
-        </a>
-      </div>
-      <pre tabIndex={0}>
-        <code>{source}</code>
-      </pre>
-    </section>
-  );
-}

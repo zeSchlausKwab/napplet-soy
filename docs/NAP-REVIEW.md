@@ -114,3 +114,5 @@ and three gameplay topology examples before declaring a generalized API. Existin
 These remain launch acceptance steps. The configuration implementation does not
 claim native projection support, full cross-client conformance or a production
 multiplayer service.
+
+2026-09-14 source-browser slice: no upstream protocol/runtime pin changes. The web client now consumes existing optional signed archive provenance for read-only file inspection, with the same bounded tar policy as remix. Missing archive metadata does not gate playback or standard discovery. The creator asset audit records the unimplemented large-media pipeline in [A19](../AGENDA.md#a19--creator-asset-workflow); it does not claim new resource capabilities.

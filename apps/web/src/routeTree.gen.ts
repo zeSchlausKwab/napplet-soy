@@ -23,6 +23,7 @@ import { Route as ApiNamesRouteImport } from './routes/api.names'
 import { Route as ApiPublicationsRouteImport } from './routes/api.publications'
 import { Route as ApiResourcesRouteImport } from './routes/api.resources'
 import { Route as ApiSocialRouteImport } from './routes/api.social'
+import { Route as ApiSourceRouteImport } from './routes/api.source'
 import { Route as ApiZapsRouteImport } from './routes/api.zaps'
 import { Route as NNaddrRouteImport } from './routes/n.$naddr'
 import { Route as RSnapshotRouteImport } from './routes/r.$snapshot'
@@ -102,6 +103,11 @@ const ApiSocialRoute = ApiSocialRouteImport.update({
   path: '/api/social',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSourceRoute = ApiSourceRouteImport.update({
+  id: '/api/source',
+  path: '/api/source',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiZapsRoute = ApiZapsRouteImport.update({
   id: '/api/zaps',
   path: '/api/zaps',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
   '/api/social': typeof ApiSocialRoute
+  '/api/source': typeof ApiSourceRoute
   '/api/zaps': typeof ApiZapsRoute
   '/n/$naddr': typeof NNaddrRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
   '/api/social': typeof ApiSocialRoute
+  '/api/source': typeof ApiSourceRoute
   '/api/zaps': typeof ApiZapsRoute
   '/n/$naddr': typeof NNaddrRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
@@ -207,6 +215,7 @@ export interface FileRoutesById {
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
   '/api/social': typeof ApiSocialRoute
+  '/api/source': typeof ApiSourceRoute
   '/api/zaps': typeof ApiZapsRoute
   '/n/$naddr': typeof NNaddrRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
@@ -233,6 +242,7 @@ export interface FileRouteTypes {
     | '/api/publications'
     | '/api/resources'
     | '/api/social'
+    | '/api/source'
     | '/api/zaps'
     | '/n/$naddr'
     | '/r/$snapshot'
@@ -257,6 +267,7 @@ export interface FileRouteTypes {
     | '/api/publications'
     | '/api/resources'
     | '/api/social'
+    | '/api/source'
     | '/api/zaps'
     | '/n/$naddr'
     | '/r/$snapshot'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
     | '/api/publications'
     | '/api/resources'
     | '/api/social'
+    | '/api/source'
     | '/api/zaps'
     | '/n/$naddr'
     | '/r/$snapshot'
@@ -305,6 +317,7 @@ export interface RootRouteChildren {
   ApiPublicationsRoute: typeof ApiPublicationsRoute
   ApiResourcesRoute: typeof ApiResourcesRoute
   ApiSocialRoute: typeof ApiSocialRoute
+  ApiSourceRoute: typeof ApiSourceRoute
   ApiZapsRoute: typeof ApiZapsRoute
   NNaddrRoute: typeof NNaddrRoute
   RSnapshotRoute: typeof RSnapshotRouteWithChildren
@@ -413,6 +426,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSocialRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/source': {
+      id: '/api/source'
+      path: '/api/source'
+      fullPath: '/api/source'
+      preLoaderRoute: typeof ApiSourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/zaps': {
       id: '/api/zaps'
       path: '/api/zaps'
@@ -519,6 +539,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicationsRoute: ApiPublicationsRoute,
   ApiResourcesRoute: ApiResourcesRoute,
   ApiSocialRoute: ApiSocialRoute,
+  ApiSourceRoute: ApiSourceRoute,
   ApiZapsRoute: ApiZapsRoute,
   NNaddrRoute: NNaddrRoute,
   RSnapshotRoute: RSnapshotRouteWithChildren,
