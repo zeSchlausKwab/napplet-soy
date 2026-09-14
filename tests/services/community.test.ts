@@ -84,6 +84,12 @@ test('production SSR, signed named routes and social actions work through a real
       };
     }, getPublicKey(key));
     await page.goto(`${origin}/n/${fixture.naddr}`);
+    const headerActions = page.locator('.napplet-social-actions');
+    await headerActions.getByRole('button', { name: /^Like / }).waitFor();
+    expect(await headerActions.getByRole('button', { name: /^Like / }).isDisabled()).toBe(true);
+    expect(
+      await headerActions.getByRole('button', { name: `Share ${fixture.title}` }).isEnabled(),
+    ).toBe(true);
     await page.getByRole('button', { name: 'Connect to comment or like' }).click();
     await page.getByRole('button', { name: 'Connect browser extension', exact: true }).click();
     await page.getByRole('button', { name: 'Named link', exact: true }).click();
@@ -100,12 +106,42 @@ test('production SSR, signed named routes and social actions work through a real
     await page.getByLabel('Leave a little note').fill('Hello from an independent signed event.');
     await page.getByRole('button', { name: 'Post comment', exact: true }).click();
     await page.getByText('Hello from an independent signed event.', { exact: true }).waitFor();
-    await page.getByRole('button', { name: '0 likes', exact: true }).click();
+    await headerActions.getByRole('button', { name: /^Like / }).click();
     await page.getByRole('button', { name: '1 like', exact: true }).waitFor();
+    expect(
+      await headerActions.getByRole('button', { name: /^Unlike / }).getAttribute('aria-pressed'),
+    ).toBe('true');
     await page.getByRole('button', { name: '1 like', exact: true }).click();
     await page.getByRole('button', { name: '0 likes', exact: true }).waitFor();
-    await page.getByRole('button', { name: '0 likes', exact: true }).click();
+    expect(
+      await headerActions.getByRole('button', { name: /^Like / }).getAttribute('aria-pressed'),
+    ).toBe('false');
+    // Toolbar and discussion share a pending event: retry signs nothing new.
+    const attempts: string[] = [];
+    await page.route('**/api/social?*', async (route) => {
+      if (route.request().method() === 'POST') {
+        attempts.push(route.request().postDataJSON().id);
+        if (attempts.length === 1)
+          return route.fulfill({ status: 503, json: { error: 'Test delivery unavailable' } });
+      }
+      await route.continue();
+    });
+    await headerActions.getByRole('button', { name: /^Like / }).click();
+    await page
+      .locator('.detail-social-feedback')
+      .getByRole('button', { name: 'Retry signed action' })
+      .waitFor();
+    expect(await page.getByRole('button', { name: '0 likes', exact: true }).isDisabled()).toBe(
+      true,
+    );
+    await page
+      .locator('.detail-social-feedback')
+      .getByRole('button', { name: 'Retry signed action' })
+      .click();
     await page.getByRole('button', { name: '1 like', exact: true }).waitFor();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).toBe(attempts[1]);
+    await page.unroute('**/api/social?*');
     const commentLike = page.getByRole('button', { name: /^Like comment by/ }).first();
     await commentLike.click();
     await page.waitForFunction(
@@ -193,7 +229,7 @@ test('production SSR, signed named routes and social actions work through a real
     });
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
     await page.getByText('Conversation refreshed.', { exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Zap', exact: true }).click();
+    await headerActions.getByRole('button', { name: `Zap ${fixture.title}`, exact: true }).click();
     await page.getByLabel('Satoshis', { exact: true }).waitFor();
     expect(invoiceRequests).toBe(0);
     await page.getByRole('button', { name: 'Create zap invoice', exact: true }).click();
@@ -218,6 +254,8 @@ test('production SSR, signed named routes and social actions work through a real
     await page.locator('.social-panel').scrollIntoViewIfNeeded();
     await page.screenshot({ path: join(root, '.local/community-check/desktop.png') });
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('.detail-heading').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: join(root, '.local/community-check/mobile-heading.png') });
     await page.locator('.social-panel').scrollIntoViewIfNeeded();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       390,

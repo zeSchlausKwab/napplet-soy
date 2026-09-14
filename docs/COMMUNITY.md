@@ -12,6 +12,24 @@ The web process requires `SPACE_COMMUNITY_DIR`. `bun run dev` and `bun run dev:p
 
 Napplet detail pages and gallery cards share likes/unlikes and zaps. Detail pages also have comments, replies and author deletion; the gallery comment bubble opens and focuses the detail composer. Likes and commenting require sign-in, while viewing counts and anonymous zapping do not. Connect a NIP-07 signer through Applesauce. Its returned signature, author and complete event payload are verified. Signing happens in the trusted website; napplet iframe signing permissions remain unchanged.
 
+**Detail toolbar (2026-09-14, verified locally; not deployed):** named, portable and
+pinned pages also show like/count, share and zap icons beneath the creator name.
+One `NappletSocial` owner supplies the toolbar, feedback and discussion, so header
+and discussion likes stay synchronized without fetching a second conversation or
+maintaining separate pending events. A failed header action shows its retry nearby;
+retry sends the same signed event and requires the same account. A successful like
+fills the heart without adding a visible message row. Existing discussion controls
+remain available below the player.
+
+Like stays disabled until signed in and conversation data is available. Share and
+zap remain available to guests; the zap dialog can resolve the known signed manifest
+without waiting for discussion data and retains its anonymous QR/wallet flow. Sharing
+reuses the gallery control's portable URL, checkmark, manual-copy fallback and focus
+restoration. Existing scope/signature/payment rules are unchanged. Verified through
+the local community integration (including both like controls and exact-event retry),
+gallery/player regressions and desktop/mobile browser checks; no production actions
+or payments were sent.
+
 Comments use [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md) kind 1111 with address-qualified root and parent tags (including the current event reference when available). Replies retain the root and reference their parent comment. Rooted threads survive title changes, aliases and new versions. A snapshot can join an author's address thread only if its signed parent address has the same author; foreign snapshots keep an event-rooted thread. Text is rendered as text, including HTML-looking strings.
 
 Likes use [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md) kind 7, with `e`, `p`, `k` and `a` references. Only known verified target manifests contribute, and one actor counts once per creation. Unlike and comment deletion use kind 5, applied only to matching events from the same author. Deleting an older like cannot delete a later like. Deleted comments retain a placeholder for replies.

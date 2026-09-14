@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Heart, MessageCircle, Reply, Trash2, RefreshCw, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { useNostr } from './nostr-provider';
 import { useLocation } from '@tanstack/react-router';
 import { ZapButton } from './zap-button';
+import { CardShare } from './card-share';
 import { jsonResponse, signForAccount, type Template } from '@/lib/community-client';
 import {
   commentTemplate,
+  socialScope,
   likeTemplate,
   commentLikeTemplate,
   deletionTemplate,
@@ -30,9 +32,26 @@ type SocialData = {
   lastActions: Record<string, number>;
 };
 const short = (pubkey: string) => `${pubkey.slice(0, 8)}…${pubkey.slice(-4)}`;
-export function SocialPanel({ reference }: { reference: string }) {
+/** One conversation owner supplies the page toolbar and discussion without duplicate requests. */
+export function NappletSocial({
+  reference,
+  title,
+  manifest,
+  relays,
+  children,
+}: {
+  reference: string;
+  title: string;
+  manifest: SignedEvent;
+  relays: string[];
+  children: (slots: {
+    actions: ReactNode;
+    feedback: ReactNode;
+    discussion: ReactNode;
+  }) => ReactNode;
+}) {
   const hash = useLocation({ select: (location) => location.hash });
-  const { pubkey, connect } = useNostr();
+  const { pubkey, connect, ready } = useNostr();
   const currentKey = useRef(pubkey);
   currentKey.current = pubkey;
   const [data, setData] = useState<SocialData | null>(null),
@@ -41,6 +60,7 @@ export function SocialPanel({ reference }: { reference: string }) {
     [content, setContent] = useState(''),
     [parent, setParent] = useState<Comment | null>(null),
     [pending, setPending] = useState<SignedEvent | null>(null);
+  const [headerAction, setHeaderAction] = useState(false);
   const endpoint = `/api/social?reference=${encodeURIComponent(reference)}`;
   const refresh = async (signal?: AbortSignal) => {
     const value = await jsonResponse(await fetch(endpoint, { signal }));
@@ -53,6 +73,7 @@ export function SocialPanel({ reference }: { reference: string }) {
     setParent(null);
     setContent('');
     setMessage('');
+    setHeaderAction(false);
     refresh(controller.signal).catch((error) => {
       if (!controller.signal.aborted) setMessage(error.message);
     });
@@ -86,7 +107,8 @@ export function SocialPanel({ reference }: { reference: string }) {
       ),
     );
   };
-  const write = async (template: Template) => {
+  const write = async (template: Template, fromHeader = false) => {
+    setHeaderAction(fromHeader);
     if (!pubkey) {
       try {
         await connect();
@@ -112,7 +134,107 @@ export function SocialPanel({ reference }: { reference: string }) {
     }
   };
   const ownLikes = data?.likes.filter((e) => e.pubkey === pubkey) ?? [];
-  return (
+  const feedback = (
+    <>
+      {message && (
+        <p
+          role="status"
+          className={
+            headerAction && message === 'Published to Nostr.' ? 'sr-only' : 'community-status'
+          }
+        >
+          {message}
+        </p>
+      )}
+      {pending && (!headerAction || !busy) && (
+        <div className="pending-action">
+          <p>
+            Your signed action is ready. Retry sends the same event, so it won’t create a duplicate.
+          </p>
+          <Button
+            disabled={busy || pubkey !== pending.pubkey}
+            variant="outline"
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await deliver(pending);
+              } catch (error) {
+                setMessage((error as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Retry signed action
+          </Button>
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={() => {
+              setPending(null);
+              setMessage(
+                'Stopped retrying. The event may still have reached a relay; refresh before posting again.',
+              );
+            }}
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
+    </>
+  );
+  const actions = (
+    <div className="napplet-social-actions" role="group" aria-label={`Social actions for ${title}`}>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={`${ownLikes.length ? 'Unlike' : 'Like'} ${title}: ${data?.likeCount ?? 'unknown'} likes${!pubkey ? ' — sign in required' : ''}`}
+        title={
+          !pubkey
+            ? 'Sign in to like'
+            : !data
+              ? 'Social actions are unavailable until the conversation loads'
+              : ownLikes.length
+                ? 'Remove your like'
+                : 'Like this napplet'
+        }
+        aria-pressed={!!ownLikes.length}
+        disabled={!pubkey || !data || busy || !!pending}
+        onClick={() => {
+          if (data)
+            void write(
+              ownLikes.length
+                ? deletionTemplate(ownLikes)
+                : likeTemplate(data.scope, data.manifest),
+              true,
+            );
+        }}
+      >
+        <Heart size={17} fill={ownLikes.length ? 'currentColor' : 'none'} />
+        {data?.likeCount.toLocaleString() ?? '—'}
+      </Button>
+      <CardShare
+        title={title}
+        path={reference.startsWith('naddr1') ? `/n/${reference}` : `/r/${reference}`}
+      />
+      <ZapButton
+        reference={reference}
+        data={data ?? { manifest, scope: socialScope(manifest), relays }}
+        trigger={
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!ready}
+            title="Zap this napplet"
+            aria-label={`Zap ${title}`}
+          >
+            <Zap size={17} />
+          </Button>
+        }
+      />
+    </div>
+  );
+  const discussion = (
     <section id="comments" className="social-panel" aria-labelledby="conversation-title">
       <div className="social-heading">
         <div>
@@ -124,6 +246,7 @@ export function SocialPanel({ reference }: { reference: string }) {
           size="sm"
           disabled={busy}
           onClick={async () => {
+            setHeaderAction(false);
             setBusy(true);
             try {
               await refresh();
@@ -208,7 +331,10 @@ export function SocialPanel({ reference }: { reference: string }) {
               <Button
                 id="comment-connect"
                 variant="outline"
-                onClick={() => connect().catch((error) => setMessage(error.message))}
+                onClick={() => {
+                  setHeaderAction(false);
+                  void connect().catch((error) => setMessage(error.message));
+                }}
               >
                 Connect to comment or like
               </Button>
@@ -317,46 +443,12 @@ export function SocialPanel({ reference }: { reference: string }) {
         </>
       )}
       {!data && !message && <p role="status">Finding the conversation…</p>}
-      {message && (
-        <p role="status" className="community-status">
-          {message}
-        </p>
-      )}
-      {pending && (
-        <div className="pending-action">
-          <p>
-            Your signed action is ready. Retry sends the same event, so it won’t create a duplicate.
-          </p>
-          <Button
-            disabled={busy || pubkey !== pending.pubkey}
-            variant="outline"
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await deliver(pending);
-              } catch (error) {
-                setMessage((error as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            Retry signed action
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={busy}
-            onClick={() => {
-              setPending(null);
-              setMessage(
-                'Stopped retrying. The event may still have reached a relay; refresh before posting again.',
-              );
-            }}
-          >
-            Dismiss
-          </Button>
-        </div>
-      )}
+      {!headerAction && feedback}
     </section>
   );
+  return children({
+    actions,
+    feedback: headerAction ? <div className="detail-social-feedback">{feedback}</div> : null,
+    discussion,
+  });
 }

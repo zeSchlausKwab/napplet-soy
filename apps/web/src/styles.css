@@ -650,6 +650,21 @@ pre:focus-visible {
 .detail-actions button {
   font-size: 12px;
 }
+.napplet-social-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0 0 -8px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.napplet-social-actions button {
+  min-width: 40px;
+  min-height: 40px;
+}
+.napplet-social-actions [aria-pressed=true] { color: var(--primary); }
+.detail-social-feedback { position: relative; }
 .primary-link {
   display: inline-flex;
   gap: 8px;
