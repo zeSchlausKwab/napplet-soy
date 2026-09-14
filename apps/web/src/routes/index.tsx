@@ -234,7 +234,7 @@ function Gallery() {
               index={index}
               playing={active === n.revisionId}
               onPlay={() => setActive(n.revisionId)}
-              onStop={() => setActive(null)}
+              onStop={() => setActive((current) => (current === n.revisionId ? null : current))}
             />
           ))}
         </div>

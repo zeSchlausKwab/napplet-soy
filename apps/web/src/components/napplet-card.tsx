@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, Play, Info } from 'lucide-react';
 import { TopicTags } from './topic-tags';
 import { Player } from './player';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { NappletCard as Card } from '../../../../packages/backend/src/catalog';
 import {
   publicPoster,
@@ -25,6 +25,12 @@ export function NappletCard({
   const article = useRef<HTMLElement>(null);
   const stop = useRef(onStop);
   stop.current = onStop;
+  useLayoutEffect(() => {
+    if (playing)
+      article.current
+        ?.querySelector('.player-stage')
+        ?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  }, [playing]);
   useEffect(() => {
     if (!playing || !article.current) return;
     const observer = new IntersectionObserver(([entry]) => {

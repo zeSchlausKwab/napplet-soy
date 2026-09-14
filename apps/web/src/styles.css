@@ -1559,9 +1559,9 @@ pre:focus-visible {
   flex-direction: column;
 }
 .player-compact .player-stage {
-  flex: 1;
+  flex: 1 0 auto;
   min-height: 0;
-  aspect-ratio: auto;
+  aspect-ratio: 2;
 }
 .player-compact .player-controls {
   flex: none;

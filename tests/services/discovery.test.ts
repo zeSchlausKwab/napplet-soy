@@ -18,13 +18,20 @@ test('cold portable links discover signed manifests, provide SSR OG and play inl
     '<!doctype html><title>Cold arrival</title><button onclick="this.textContent=Number(this.textContent)+1">0</button>',
   );
   const hash = await sha256(bytes);
+  const slowBytes = new TextEncoder().encode('<!doctype html><button>Slow arrival works</button>');
+  const slowHash = await sha256(slowBytes);
   const blob = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: (request) =>
-      new URL(request.url).pathname === `/${hash}`
+    fetch: async (request) => {
+      if (new URL(request.url).pathname === `/${slowHash}`) {
+        await Bun.sleep(3200);
+        return new Response(slowBytes);
+      }
+      return new URL(request.url).pathname === `/${hash}`
         ? new Response(bytes)
-        : new Response(null, { status: 404 }),
+        : new Response(null, { status: 404 });
+    },
   });
   const origin = `http://127.0.0.1:${blob.port}`;
   const manifests = Array.from({ length: 2 }, (_, i) =>
@@ -161,7 +168,7 @@ test('cold portable links discover signed manifests, provide SSR OG and play inl
     await mkdir('.local/discovery-verification', { recursive: true });
     await page.screenshot({ path: '.local/discovery-verification/gallery.png', fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.locator('.napplet-card').first().locator('.card-preview').click();
+    await page.locator('.napplet-card').nth(1).locator('.card-preview').click();
     await page.frameLocator('iframe').locator('button').waitFor();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
@@ -174,6 +181,34 @@ test('cold portable links discover signed manifests, provide SSR OG and play inl
     await page.evaluate(() => scrollTo(0, 0));
     await page.waitForTimeout(350);
     expect(await page.locator('iframe').count()).toBe(0);
+    manifests.push(
+      finalizeEvent(
+        {
+          ...manifests[0],
+          tags: [
+            ['d', 'cold-slow'],
+            ['title', 'Slow arrival'],
+            ['path', '/index.html', slowHash],
+            ['server', origin],
+            ['x', await aggregateHash([{ path: '/index.html', hash: slowHash }]), 'aggregate'],
+          ],
+        },
+        key,
+      ),
+    );
+    const slowAddress = encodeAddress({
+      kind: 35129,
+      pubkey: manifests[0].pubkey,
+      identifier: 'cold-slow',
+    });
+    await page.getByLabel('Search napplets').fill(slowAddress);
+    await page.getByLabel('Search napplets').press('Enter');
+    await page.getByRole('heading', { name: 'Finding your napplet…', exact: true }).waitFor();
+    await page
+      .getByRole('button', { name: 'Start Slow arrival', exact: true })
+      .waitFor({ timeout: 15000 });
+    expect(queries.filter((q) => q['#d']?.includes('cold-slow'))).toHaveLength(1);
+    expect(errors).toEqual([]);
   } finally {
     await browser?.close();
     for (const child of children.reverse()) {
