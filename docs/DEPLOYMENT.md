@@ -373,3 +373,49 @@ Verification covers the unit suite, local website/browser flows, local screensho
 capture and native macOS CLI/installer flows. Invoices and wallets used signed
 fixtures or mocks. No live payment, creator publication, CLI upload or deployment
 was performed by these checks.
+
+## Live community and listing-preview release — 2026-09-14
+
+Deployed at the operator's explicit request. Active release:
+`20260914110729417-3123`, source through `ede7985`; previous release
+`20260914094917291-67355` remains available for rollback. The deployment used the
+existing shared-Caddy profile, web port 3040, legacy CPU runtime and administrator
+public key. No DNS changes or VPS reboot were performed.
+
+CLI 0.4.0 archives were uploaded and verified before website activation. All four
+platforms have public HTTPS downloads with the recorded sizes and SHA-256 checksums
+in `apps/cli/distribution/release-0.4.0.json`. Older versions remain available.
+
+The full deployment script passed typechecking, all 144 application tests, Go race
+checks and the relay, Blossom and GRASP process suites both locally and on the VPS.
+It built a fresh candidate, checked service fingerprints and the index heartbeat,
+then activated the release and saved all five PM2 processes. Caddy is active and
+Napplet's startup unit is enabled. All five processes were online with zero restarts
+when verified. This confirms startup registration; it is not a whole-VPS reboot test.
+
+Both Caddy configuration hashes are unchanged from before deployment:
+
+- Parent: `be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f`.
+- Napplet fragment: `e5da7681ad68641e0e6d18c77463cb94a403615b5bcfe4b8ca01e3858736bfba`.
+
+Public HTTPS verification passed for all eight browser rollout checks, including
+ordinary gallery navigation, desktop/mobile rendering, SSR styling and OG previews,
+sandbox restrictions, pinned/named routes, and onboarding/download links. The new
+gallery showed 26 playable entries at the time of checking, with an empty Featured
+collection and no automatically prepended examples. This count can change as relay
+content and download availability change.
+
+Impact Yard remix loaded its screenshot and ran in the opaque sandbox. Its Remix
+this dialog offered both CLI commands. An actual curl-piped public installer,
+using temporary install/account paths and no global Bun or Node on PATH, installed
+0.4.0 and remixed that exact published creation locally with provenance intact.
+Identity setup and dependency installation were disabled for this check, and the
+temporary project/installation was removed afterward.
+
+The main health endpoint reports the new release and a fresh index heartbeat;
+Blossom health, both relay NIP-11/WebSocket read subscriptions, unauthenticated admin
+rejection, www permanent redirect and Git metrics protection passed. The other site,
+`schlaustronics.com`, still returns HTTPS 200. Damus query timeouts existed before
+this deployment and remain visible in index diagnostics; managed-relay, nos.lol and
+Primal discovery remain configured. No test comments, payments, name claims or
+creator publications were sent to the public instance.

@@ -11,7 +11,7 @@
     "pnpm": "10.8.0"
   },
   "sourceCommit": "ca89c49863176de0b549bc6630d87d63163b2889",
-  "status": "prepared-locally",
+  "status": "published",
   "artifacts": {
     "darwin-arm64": {
       "bytes": 26371735,
@@ -29,5 +29,7 @@
       "bytes": 41990424,
       "sha256": "d0b72f426a62b0cfab427e7bdffa4d29f833c171d6bed5959743d52626ce8d77"
     }
-  }
+  },
+  "publishedAt": "2026-09-14T11:21:09Z",
+  "websiteRelease": "20260914110729417-3123"
 }
