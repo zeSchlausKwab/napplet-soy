@@ -1,6 +1,16 @@
-import { ExtensionSigner } from 'applesauce-signers';
+import { ExtensionSigner, PrivateKeySigner } from 'applesauce-signers';
 import { sha256, verifiedEvent, type SignedEvent } from '../../../../packages/protocol/src';
 export type Template = Pick<SignedEvent, 'kind' | 'created_at' | 'tags' | 'content'>;
+/** Fresh browser-memory identity for exactly one anonymous payment request. */
+export async function signAnonymousZap(template: Template) {
+  if (template.kind !== 9734) throw new Error('Anonymous signing is only available for zaps.');
+  const signer = new PrivateKeySigner();
+  try {
+    return verifiedEvent(await signer.signEvent(template));
+  } finally {
+    signer.key.fill(0);
+  }
+}
 export async function signForAccount(pubkey: string, template: Template) {
   const signer = new ExtensionSigner();
   if ((await signer.getPublicKey()) !== pubkey)

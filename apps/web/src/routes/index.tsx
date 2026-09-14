@@ -11,6 +11,7 @@ import { gallerySearchSchema, type GallerySearch } from '../../../../packages/pr
 import { discoveryTarget } from '../../../../packages/protocol/src/discovery';
 import { getBrowseGallery } from '@/lib/catalog.functions';
 import { NappletCard } from '@/components/napplet-card';
+import { GallerySocialProvider, SocialRankings } from '@/components/gallery-social';
 import { useNostr } from '@/components/nostr-provider';
 import { Button } from '@/components/ui/button';
 import { publicLink } from '../../../../packages/backend/src/public-model';
@@ -59,7 +60,7 @@ function Gallery() {
     </button>
   );
   return (
-    <>
+    <GallerySocialProvider search={search}>
       <section className="hero">
         <div>
           <div className="eyebrow">
@@ -226,15 +227,18 @@ function Gallery() {
           </div>
         )}
         {lookupError && <p role="alert">{lookupError}</p>}
+        <SocialRankings active={active} setActive={setActive} />
         <div className="napplet-grid">
           {napplets.map((n, index) => (
             <NappletCard
               key={n.revisionId}
               napplet={n}
               index={index}
-              playing={active === n.revisionId}
-              onPlay={() => setActive(n.revisionId)}
-              onStop={() => setActive((current) => (current === n.revisionId ? null : current))}
+              playing={active === `grid:${n.revisionId}`}
+              onPlay={() => setActive(`grid:${n.revisionId}`)}
+              onStop={() =>
+                setActive((current) => (current === `grid:${n.revisionId}` ? null : current))
+              }
             />
           ))}
         </div>
@@ -299,6 +303,6 @@ function Gallery() {
           Make your first napplet <ArrowUpRight size={17} />
         </Link>
       </section>
-    </>
+    </GallerySocialProvider>
   );
 }

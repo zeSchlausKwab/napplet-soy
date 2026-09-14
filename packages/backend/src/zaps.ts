@@ -213,6 +213,30 @@ export async function verifiedZapReceipt(
     paymentHash: invoice.paymentHash,
   };
 }
+/** Reuse the same provider verification for detail totals and gallery rankings. */
+export async function zapTotals(
+  context: SocialContext,
+  data: Pick<Awaited<ReturnType<SocialService['data']>>, 'events' | 'manifests'>,
+  endpoint: ZapEndpoint,
+  targets = data.manifests,
+) {
+  const receipts = [];
+  const hashes = new Set<string>();
+  for (const event of data.events.filter((e) => e.kind === 9735).slice(0, 150))
+    try {
+      const receipt = await verifiedZapReceipt(event, context.scope, targets, endpoint);
+      if (!hashes.has(receipt.paymentHash)) {
+        receipts.push(receipt);
+        hashes.add(receipt.paymentHash);
+      }
+    } catch {}
+  return {
+    receipts,
+    zapCount: receipts.length,
+    msats: receipts.reduce((sum, r) => sum + r.msats, 0),
+  };
+}
+
 export async function zapResponse(request: Request) {
   try {
     communityBudget();
@@ -246,18 +270,8 @@ export async function zapResponse(request: Request) {
       });
     }
     if (request.method !== 'GET') throw new CommunityError('Method not allowed.', 405);
-    const receipts = [];
-    const hashes = new Set<string>();
-    for (const e of data.events.filter((e) => e.kind === 9735).slice(0, 150))
-      try {
-        const receipt = await verifiedZapReceipt(e, context.scope, targets, endpoint);
-        if (!hashes.has(receipt.paymentHash)) {
-          receipts.push(receipt);
-          hashes.add(receipt.paymentHash);
-        }
-      } catch {}
     return Response.json(
-      { endpoint, receipts, msats: receipts.reduce((sum, r) => sum + r.msats, 0) },
+      { endpoint, relays: context.relays, ...(await zapTotals(context, data, endpoint, targets)) },
       { headers: communityHeaders },
     );
   } catch (error) {

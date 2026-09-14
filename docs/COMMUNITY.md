@@ -10,7 +10,7 @@ The web process requires `SPACE_COMMUNITY_DIR`. `bun run dev` and `bun run dev:p
 
 ## Social actions
 
-A napplet detail page has comments, replies, likes/unlikes, author deletion and zaps. Connect a NIP-07 signer through Applesauce. Its returned signature, author and complete event payload are verified. Signing happens in the trusted website; napplet iframe signing permissions remain unchanged.
+Napplet detail pages and gallery cards share likes/unlikes and zaps. Detail pages also have comments, replies and author deletion; the gallery comment bubble opens and focuses the detail composer. Likes and commenting require sign-in, while viewing counts and anonymous zapping do not. Connect a NIP-07 signer through Applesauce. Its returned signature, author and complete event payload are verified. Signing happens in the trusted website; napplet iframe signing permissions remain unchanged.
 
 Comments use [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md) kind 1111 with address-qualified root and parent tags (including the current event reference when available). Replies retain the root and reference their parent comment. Rooted threads survive title changes, aliases and new versions. A snapshot can join an author's address thread only if its signed parent address has the same author; foreign snapshots keep an event-rooted thread. Text is rendered as text, including HTML-looking strings.
 
@@ -24,11 +24,11 @@ Publication needs a positive relay acknowledgement. If an acknowledgement is los
 
 [NIP-57](https://github.com/nostr-protocol/nips/blob/master/57.md) zaps use the author's latest verified kind-0 `lud16` or `lud06` profile. LNURL endpoints and callbacks are fetched through the existing bounded HTTPS downloader with DNS checks at connection time, private-network rejection and no redirects. Profiles and payment endpoint metadata remain separate from aliases.
 
-The creator's Lightning service must advertise `allowsNostr`, a receipt-signing pubkey and valid amount limits. The user chooses sats and signs kind 9734. That request goes to the LNURL callback, not to a Nostr relay. Before showing the invoice, the server checks its BOLT-11 checksum and signature, exact millisatoshi amount, expiry, and description hash against the serialized signed request sent to the callback. The wallet remains responsible for Lightning feature negotiation, route selection and fees.
+The creator's Lightning service must advertise `allowsNostr`, a receipt-signing pubkey and valid amount limits. The user chooses sats and signs kind 9734 with their connected account, or with a fresh browser-memory key for an anonymous zap. Anonymous mode is automatic while signed out and optional while signed in; it never invokes the profile signer or persists the temporary key. Only the signed request is sent to the server. This hides the Nostr profile association, not network/payment metadata from the wallet service. That request goes to the LNURL callback, not to a Nostr relay. Before showing the invoice, the server checks its BOLT-11 checksum and signature, exact millisatoshi amount, expiry, and description hash against the serialized signed request sent to the callback. The wallet remains responsible for Lightning feature negotiation, route selection and fees.
 
-The invoice offers a `lightning:` wallet link and copy control. When WebLN is available, **Pay with browser wallet** explicitly enables the wallet and requests payment; invoice creation never pays automatically. Wallet success is labelled as the wallet's report. The total uses kind-9735 receipts verified against the advertised provider, signed request, recipient, target, invoice amount and description; an optional preimage must match the payment hash. Event IDs and payment hashes are deduplicated. A receipt remains the Lightning provider's assertion. Changing providers may make older receipts unverifiable from the current profile.
+The invoice offers a locally generated QR code, `lightning:` wallet link and copy control. QR encoding loads lazily in the browser, without a third-party image endpoint. When WebLN is available, **Pay with browser wallet** explicitly enables the wallet and requests payment; invoice creation never pays automatically. Wallet success is labelled as the wallet's report. The total uses kind-9735 receipts verified against the advertised provider, signed request, recipient, target, invoice amount and description; an optional preimage must match the payment hash. Event IDs and payment hashes are deduplicated. A receipt remains the Lightning provider's assertion. Changing providers may make older receipts unverifiable from the current profile.
 
-Current limits: mainnet amount-bearing BOLT-11 invoices, NIP-07 signing, recent relay history, and whole-satoshi invoice creation capped at 1,000,000 sats. No wallet custody, NWC pairing, automatic payment or real payment was performed during implementation. Split-recipient `zap` tags are detected and explicitly referred to a split-aware client; this UI does not silently pay the author instead. A missing Lightning profile does not prevent comments, likes, or playback. Local-only development does not create zaps without public WSS relay hints.
+Current limits: mainnet amount-bearing BOLT-11 invoices, NIP-07 account signing or ephemeral anonymous signing, recent relay history, and whole-satoshi invoice creation capped at 1,000,000 sats. No wallet custody, NWC pairing, automatic payment or real payment was performed during implementation. Split-recipient `zap` tags are detected and explicitly referred to a split-aware client; this UI does not silently pay the author instead. A missing Lightning profile does not prevent comments, likes, or playback. Local-only development does not create zaps without public WSS relay hints.
 
 Validation: `bun run check`; `bun run build && bun test tests/services/community.test.ts tests/services/remix-cli.test.ts`. The latter uses temporary loopback services, the documented public fixture key, a temporary CLI executable, and a simulated wallet. No public events or Lightning payments are sent by these tests.
 
@@ -65,3 +65,49 @@ an event ID to select a revision. These actions require the existing administrat
 signed requests, revision checks and replay protection. Selections are stored alongside
 moderation state and audited, never added to the creator's signed manifest. Featuring
 content does not unblock it or import content that discovery has not indexed.
+
+
+## Gallery social discovery
+
+Every normal gallery card shows unique-author likes, visible comments/replies, verified
+zap receipt count, and sats received. Unknown/unavailable counts use a dash rather than
+zero. The comment bubble is disabled while signed out; signed-in navigation opens the
+canonical portable detail route with `#comments` and focuses the composer after data
+loads. A direct logged-out hash link focuses the sign-in control, retaining the focus
+intent after connecting. Comment likes and replies follow the same sign-in rule.
+
+Most liked, Most zapped and Most commented are scroll-snap carousels with manual arrows,
+keyboard/touch scrolling and reduced-motion handling. They rank the full matching
+indexed collection, independently of the grid's current page, and obey the same
+search/tag, availability, Featured and moderation filters. Zero/unknown entries are
+excluded; ties use newest manifest then event ID. Most zapped ranks by total millisats,
+not number of invoices or receipt events. All card copies coordinate one active player.
+
+`GET /api/gallery-social` serves counts and up to 12 entries per ranking. A single
+rotating web-process job refreshes at most 24 threads per 30-second window with at most
+three concurrent thread refreshes; requests share the existing social-service cache.
+The rotation includes older pages and unavailable entries, keeping future filter
+changes covered. Counts accumulate from the persistent bounded history; cold caches
+fill progressively during visits. The browser polls one endpoint every 30 seconds
+(5 seconds during an active sweep), suspending requests while hidden. An action
+acknowledgement refreshes the counts. There is no per-card browser relay subscription
+and no relay wait in the page's SSR loader.
+
+These are recent, locally observed counts, not exhaustive global totals or a fixed
+calendar-period leaderboard. Zap aggregation reuses the detail receipt validator and
+deduplicates payment hashes. LNURL endpoint lookups are only needed when receipts
+exist, cached for 60 seconds by verified profile revision, and capped in memory;
+failed verification leaves zap totals unknown while likes/comments stay usable.
+Moderation is applied again at read time. Anonymous receipts are verified and counted
+exactly like named receipts. Neither creating an invoice nor a WebLN success message
+increments a total.
+
+Gallery signing verifies the selected identity and payload, keeps a failed signed
+like for an exact-event retry, and gates retry on the matching account. Counts and
+carousels never sign automatically. Browsers may still inspect existing conversations
+through ordinary detail links while signed out.
+
+Verification: `bun test packages/community/src`; `bun run build` followed by
+`bun test tests/services/community.test.ts tests/services/gallery-social.test.ts`.
+These use temporary databases/local relay events and simulated invoices/wallets;
+no production Nostr events or Lightning payments are sent.

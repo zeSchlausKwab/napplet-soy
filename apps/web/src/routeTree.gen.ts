@@ -16,6 +16,7 @@ import { Route as CliRouteImport } from './routes/cli'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
 import { Route as ApiAdminRouteImport } from './routes/api.admin'
+import { Route as ApiGallerySocialRouteImport } from './routes/api.gallery-social'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiManifestRouteImport } from './routes/api.manifest'
 import { Route as ApiNamesRouteImport } from './routes/api.names'
@@ -64,6 +65,11 @@ const CreatorSlugRoute = CreatorSlugRouteImport.update({
 const ApiAdminRoute = ApiAdminRouteImport.update({
   id: '/api/admin',
   path: '/api/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGallerySocialRoute = ApiGallerySocialRouteImport.update({
+  id: '/api/gallery-social',
+  path: '/api/gallery-social',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
   '/api/admin': typeof ApiAdminRoute
+  '/api/gallery-social': typeof ApiGallerySocialRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
   '/api/names': typeof ApiNamesRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
   '/api/admin': typeof ApiAdminRoute
+  '/api/gallery-social': typeof ApiGallerySocialRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
   '/api/names': typeof ApiNamesRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRoute
   '/api/admin': typeof ApiAdminRoute
+  '/api/gallery-social': typeof ApiGallerySocialRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
   '/api/names': typeof ApiNamesRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/$creator/$slug'
     | '/api/admin'
+    | '/api/gallery-social'
     | '/api/health'
     | '/api/manifest'
     | '/api/names'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/$creator/$slug'
     | '/api/admin'
+    | '/api/gallery-social'
     | '/api/health'
     | '/api/manifest'
     | '/api/names'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/$creator/$slug'
     | '/api/admin'
+    | '/api/gallery-social'
     | '/api/health'
     | '/api/manifest'
     | '/api/names'
@@ -286,6 +298,7 @@ export interface RootRouteChildren {
   CliRoute: typeof CliRouteWithChildren
   CreateRoute: typeof CreateRoute
   ApiAdminRoute: typeof ApiAdminRoute
+  ApiGallerySocialRoute: typeof ApiGallerySocialRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiManifestRoute: typeof ApiManifestRoute
   ApiNamesRoute: typeof ApiNamesRoute
@@ -349,6 +362,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin'
       fullPath: '/api/admin'
       preLoaderRoute: typeof ApiAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/gallery-social': {
+      id: '/api/gallery-social'
+      path: '/api/gallery-social'
+      fullPath: '/api/gallery-social'
+      preLoaderRoute: typeof ApiGallerySocialRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -492,6 +512,7 @@ const rootRouteChildren: RootRouteChildren = {
   CliRoute: CliRouteWithChildren,
   CreateRoute: CreateRoute,
   ApiAdminRoute: ApiAdminRoute,
+  ApiGallerySocialRoute: ApiGallerySocialRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiManifestRoute: ApiManifestRoute,
   ApiNamesRoute: ApiNamesRoute,

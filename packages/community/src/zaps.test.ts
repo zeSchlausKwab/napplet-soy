@@ -6,7 +6,12 @@ import { bytesToHex } from '@noble/hashes/utils.js';
 import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools';
 import { inspectInvoice } from '../../protocol/src/invoice';
 import { socialScope, commentScope, commentTemplate } from '../../protocol/src/social';
-import { resolveZapEndpoint, requestZapInvoice, verifiedZapReceipt } from '../../backend/src/zaps';
+import {
+  resolveZapEndpoint,
+  requestZapInvoice,
+  verifiedZapReceipt,
+  zapTotals,
+} from '../../backend/src/zaps';
 import { verifiedEvent } from '../../protocol/src';
 import type { SocialContext } from '../../backend/src/social-service';
 const author = generateSecretKey(),
@@ -154,6 +159,18 @@ test('zap receipts require the advertised provider and exact recipient, request 
       endpoint,
     ),
   ).rejects.toThrow('Untrusted');
+  const duplicateReceipt = finalizeEvent(
+    { kind: 9735, created_at: now + 1, content: '', tags },
+    provider,
+  );
+  const forgedReceipt = finalizeEvent({ kind: 9735, created_at: now, content: '', tags }, alice);
+  const totals = await zapTotals(
+    context,
+    { manifests, events: [receipt, duplicateReceipt, forgedReceipt] },
+    endpoint,
+  );
+  expect(totals.zapCount).toBe(1);
+  expect(totals.msats).toBe(21000);
   const wrong = finalizeEvent(
     {
       kind: 9735,

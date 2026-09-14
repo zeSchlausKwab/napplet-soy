@@ -2,14 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Heart, MessageCircle, Reply, Trash2, RefreshCw, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { useNostr } from './nostr-provider';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from './ui/dialog';
+import { useLocation } from '@tanstack/react-router';
+import { ZapButton } from './zap-button';
 import { jsonResponse, signForAccount, type Template } from '@/lib/community-client';
 import {
   commentTemplate,
@@ -19,7 +13,6 @@ import {
   type SocialScope,
 } from '../../../../packages/protocol/src/social';
 import type { SignedEvent } from '../../../../packages/protocol/src';
-import type { ZapEndpoint } from '../../../../packages/backend/src/zaps';
 type Comment = SignedEvent & {
   deleted: boolean;
   parent: string | null;
@@ -38,6 +31,7 @@ type SocialData = {
 };
 const short = (pubkey: string) => `${pubkey.slice(0, 8)}…${pubkey.slice(-4)}`;
 export function SocialPanel({ reference }: { reference: string }) {
+  const hash = useLocation({ select: (location) => location.hash });
   const { pubkey, connect } = useNostr();
   const currentKey = useRef(pubkey);
   currentKey.current = pubkey;
@@ -64,6 +58,12 @@ export function SocialPanel({ reference }: { reference: string }) {
     });
     return () => controller.abort();
   }, [reference]);
+  useEffect(() => {
+    if (hash !== 'comments' || !data) return;
+    const target = document.getElementById(pubkey ? 'napplet-comment' : 'comment-connect');
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }, [hash, !!data, pubkey]);
   const deliver = async (event: SignedEvent) => {
     if (currentKey.current !== event.pubkey)
       throw new Error('Connect the signing account again before sending.');
@@ -113,7 +113,7 @@ export function SocialPanel({ reference }: { reference: string }) {
   };
   const ownLikes = data?.likes.filter((e) => e.pubkey === pubkey) ?? [];
   return (
-    <section className="social-panel" aria-labelledby="conversation-title">
+    <section id="comments" className="social-panel" aria-labelledby="conversation-title">
       <div className="social-heading">
         <div>
           <span className="eyebrow">PASS IT AROUND</span>
@@ -145,7 +145,7 @@ export function SocialPanel({ reference }: { reference: string }) {
             <Button
               variant={ownLikes.length ? 'default' : 'outline'}
               aria-pressed={!!ownLikes.length}
-              disabled={busy || !!pending}
+              disabled={!pubkey || busy || !!pending}
               onClick={() =>
                 write(
                   ownLikes.length
@@ -189,7 +189,7 @@ export function SocialPanel({ reference }: { reference: string }) {
                   maxLength={4000}
                   placeholder="What did you make of this one?"
                   required
-                  disabled={busy || !!pending}
+                  disabled={!pubkey || busy || !!pending}
                 />
               </label>
               <div className="comment-submit">
@@ -206,6 +206,7 @@ export function SocialPanel({ reference }: { reference: string }) {
             <div className="social-connect">
               <p>Bring your Nostr identity to the conversation.</p>
               <Button
+                id="comment-connect"
                 variant="outline"
                 onClick={() => connect().catch((error) => setMessage(error.message))}
               >
@@ -257,7 +258,7 @@ export function SocialPanel({ reference }: { reference: string }) {
                               variant="ghost"
                               aria-label={`Like comment by ${data.profiles[comment.pubkey]?.name ?? short(comment.pubkey)}`}
                               aria-pressed={commentLikes.length > 0}
-                              disabled={busy || !!pending}
+                              disabled={!pubkey || busy || !!pending}
                               onClick={() =>
                                 write(
                                   commentLikes.length
@@ -280,7 +281,7 @@ export function SocialPanel({ reference }: { reference: string }) {
                           <Button
                             size="xs"
                             variant="ghost"
-                            disabled={busy}
+                            disabled={!pubkey || busy}
                             onClick={() => {
                               setParent(comment);
                               document.getElementById('napplet-comment')?.focus();
@@ -294,7 +295,7 @@ export function SocialPanel({ reference }: { reference: string }) {
                           <Button
                             size="xs"
                             variant="ghost"
-                            disabled={busy || !!pending}
+                            disabled={!pubkey || busy || !!pending}
                             onClick={() => write(deletionTemplate([comment]))}
                           >
                             <Trash2 size={13} />
@@ -357,232 +358,5 @@ export function SocialPanel({ reference }: { reference: string }) {
         </div>
       )}
     </section>
-  );
-}
-function ZapButton({
-  data,
-  reference,
-  commentTarget,
-}: {
-  data: SocialData;
-  reference: string;
-  commentTarget?: Comment;
-}) {
-  const { pubkey, connect } = useNostr();
-  const keyRef = useRef(pubkey);
-  keyRef.current = pubkey;
-  const [open, setOpen] = useState(false),
-    [endpoint, setEndpoint] = useState<ZapEndpoint | null>(null),
-    [sats, setSats] = useState('21'),
-    [comment, setComment] = useState(''),
-    [busy, setBusy] = useState(false),
-    [message, setMessage] = useState(''),
-    [invoice, setInvoice] = useState<{ invoice: string; msats: number; expiresAt: number } | null>(
-      null,
-    ),
-    [total, setTotal] = useState<number | null>(null),
-    [webln, setWebln] = useState(false);
-  const target = commentTarget ?? data.manifest;
-  const url = `/api/zaps?reference=${encodeURIComponent(reference)}${commentTarget ? `&comment=${commentTarget.id}` : ''}`;
-  useEffect(() => {
-    if (!open) return;
-    const controller = new AbortController();
-    setMessage('');
-    setEndpoint(null);
-    setInvoice(null);
-    setWebln(!!(window as any).webln);
-    fetch(url, { signal: controller.signal })
-      .then(jsonResponse)
-      .then((value) => {
-        setEndpoint(value.endpoint);
-        setTotal(value.msats);
-        setSats(String(Math.max(21, Math.ceil(value.endpoint.minSendable / 1000))));
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted) setMessage(error.message);
-      });
-    return () => controller.abort();
-  }, [open, url]);
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(value) => {
-        if (!busy) setOpen(value);
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button
-          variant={commentTarget ? 'ghost' : 'outline'}
-          size={commentTarget ? 'xs' : 'default'}
-          aria-label={commentTarget ? 'Zap comment' : undefined}
-        >
-          <Zap size={16} />
-          {total === null ? 'Zap' : `${(total / 1000).toLocaleString()} sats zapped`}
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {commentTarget
-              ? 'A little lightning for the commenter'
-              : 'A little lightning for the creator'}
-          </DialogTitle>
-          <DialogDescription>
-            Send sats directly to the author’s Lightning service. A zap request is public; your
-            wallet confirms the payment.
-          </DialogDescription>
-        </DialogHeader>
-        {endpoint && !invoice && (
-          <form
-            className="community-form"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!pubkey) {
-                try {
-                  await connect();
-                } catch (error) {
-                  setMessage((error as Error).message);
-                }
-                return;
-              }
-              setBusy(true);
-              setMessage('');
-              try {
-                const msats = Number(sats) * 1000;
-                if (
-                  !Number.isSafeInteger(msats) ||
-                  msats < endpoint.minSendable ||
-                  msats > endpoint.maxSendable
-                )
-                  throw new Error('Choose an amount within the displayed range.');
-                const relays = data.relays.filter((r) => r.startsWith('wss:')).slice(0, 6);
-                if (!relays.length)
-                  throw new Error(
-                    'Zaps need public relays. Local-only development does not send Lightning requests.',
-                  );
-                const template = {
-                  kind: 9734,
-                  created_at: Math.floor(Date.now() / 1000),
-                  content: comment,
-                  tags: [
-                    ['p', endpoint.pubkey],
-                    ['e', target.id],
-                    ['k', String(target.kind)],
-                    ...(!commentTarget && data.scope.address ? [['a', data.scope.address]] : []),
-                    ['amount', String(msats)],
-                    ['lnurl', endpoint.lnurl],
-                    ['relays', ...relays],
-                  ],
-                };
-                const event = await signForAccount(pubkey, template);
-                if (keyRef.current !== pubkey) throw new Error('Your account changed.');
-                setInvoice(
-                  await jsonResponse(
-                    await fetch(url, {
-                      method: 'POST',
-                      headers: { 'content-type': 'application/json' },
-                      body: JSON.stringify(event),
-                    }),
-                  ),
-                );
-              } catch (error) {
-                setMessage((error as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <label>
-              Satoshis
-              <input
-                type="number"
-                min={Math.ceil(endpoint.minSendable / 1000)}
-                max={Math.floor(endpoint.maxSendable / 1000)}
-                step="1"
-                value={sats}
-                onChange={(e) => setSats(e.target.value)}
-                required
-                disabled={busy}
-              />
-            </label>
-            <p className="muted">
-              {Math.ceil(endpoint.minSendable / 1000).toLocaleString()}–
-              {Math.floor(endpoint.maxSendable / 1000).toLocaleString()} sats ·{' '}
-              {new URL(endpoint.callback).hostname}
-            </p>
-            {endpoint.commentAllowed > 0 && (
-              <label>
-                Note (optional)
-                <input
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  maxLength={endpoint.commentAllowed}
-                  disabled={busy}
-                />
-              </label>
-            )}
-            <Button disabled={busy}>
-              {busy ? 'Preparing invoice…' : pubkey ? 'Create zap invoice' : 'Connect to zap'}
-            </Button>
-          </form>
-        )}
-        {invoice && (
-          <div className="zap-invoice">
-            <strong>
-              {(invoice.msats / 1000).toLocaleString()} sats to {short(target.pubkey)}
-            </strong>
-            <p>Invoice ready. Choose your wallet to pay.</p>
-            <textarea aria-label="Lightning invoice" readOnly value={invoice.invoice} />
-            <div className="social-actions">
-              <Button asChild>
-                <a href={`lightning:${invoice.invoice}`}>Open Lightning wallet</a>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  navigator.clipboard
-                    .writeText(invoice.invoice)
-                    .then(() => setMessage('Invoice copied.'))
-                    .catch(() => setMessage('Select and copy the invoice above.'))
-                }
-              >
-                Copy invoice
-              </Button>
-              {webln && (
-                <Button
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    setMessage('');
-                    try {
-                      if (invoice.expiresAt <= Date.now() / 1000)
-                        throw new Error('This invoice has expired. Create another.');
-                      const wallet = (window as any).webln;
-                      await wallet.enable();
-                      await wallet.sendPayment(invoice.invoice);
-                      setMessage(
-                        'Your wallet reports payment sent. The public zap count updates when a verified receipt arrives.',
-                      );
-                    } catch (error) {
-                      setMessage((error as Error).message);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Pay with browser wallet
-                </Button>
-              )}
-            </div>
-            <p className="muted">
-              Expires {new Date(invoice.expiresAt * 1000).toLocaleTimeString()}. Keep this invoice
-              until your wallet confirms its status.
-            </p>
-          </div>
-        )}
-        {!endpoint && !message && <p role="status">Looking up the creator’s Lightning address…</p>}
-        {message && <p role="status">{message}</p>}
-      </DialogContent>
-    </Dialog>
   );
 }

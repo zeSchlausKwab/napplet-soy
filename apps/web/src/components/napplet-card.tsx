@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, Play, Info } from 'lucide-react';
 import { TopicTags } from './topic-tags';
 import { Player } from './player';
+import { GalleryCardSocial } from './gallery-social';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { NappletCard as Card } from '../../../../packages/backend/src/catalog';
 import {
@@ -118,6 +119,7 @@ export function NappletCard({
           )}
         </span>
       </div>
+      {external && <GalleryCardSocial napplet={napplet} />}
       <TopicTags topics={napplet.topics.slice(0, 3)}>
         {napplet.topics.length > 3 && (
           <Link {...link} aria-label={`View all tags for ${napplet.title}`}>

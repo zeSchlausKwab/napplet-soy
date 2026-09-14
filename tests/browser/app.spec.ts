@@ -15,7 +15,7 @@ test('gallery SSR, filtering, navigation and browser history', async ({ page, re
   await expect(page.getByLabel('Sort napplets')).toHaveValue('new');
   await expect(page.locator('iframe')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Public napplets' })).toHaveCount(0);
-  expect(await page.locator('.napplet-card').count()).toBeLessThanOrEqual(24);
+  expect(await page.locator('.napplet-grid > .napplet-card').count()).toBeLessThanOrEqual(24);
   const nextPage = page.getByRole('link', { name: 'Next →', exact: true });
   if (await nextPage.isVisible()) {
     await nextPage.click();

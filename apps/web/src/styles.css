@@ -1521,7 +1521,7 @@ pre:focus-visible {
 .named-link, .creator-aliases a { color: var(--primary); overflow-wrap: anywhere; }
 .creator-aliases { display: grid; gap: 1rem; padding: 1rem 0; }
 
-.social-panel { border-top: 1px solid var(--border); margin: 3rem 0 2rem; padding-top: 2rem; }
+.social-panel { border-top: 1px solid var(--border); margin: 3rem 0 2rem; padding-top: 2rem; scroll-margin-top: 2rem; }
 .social-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .social-heading h2 { font-size: clamp(1.2rem, 2.5vw, 1.65rem); font-weight: 600; margin: .4rem 0 1.3rem; letter-spacing: -.03em; }
 .social-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; margin: .5rem 0 1.5rem; }
@@ -1637,3 +1637,43 @@ pre:focus-visible {
   .napplet-card.is-playing { grid-column: 1 / -1; }
   .player-compact .player-controls > span { white-space: nowrap; }
 }
+
+/* Organic discovery shares the gallery's card, actions and single active player. */
+.card-social { display: flex; align-items: center; flex-wrap: wrap; gap: .15rem; margin: .6rem -.5rem .2rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.card-social [aria-pressed=true] { color: var(--primary); }
+.card-social button:disabled { opacity: .7; }
+.card-social .card-zap { margin-left: auto; }
+.card-sats { font-size: .68rem; opacity: .8; }
+.card-social-feedback { font-size: .75rem; margin: .5rem 0; overflow-wrap: anywhere; }
+.social-discovery { margin: 0 0 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+.social-discovery-note { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; color: var(--muted-foreground); font-size: .75rem; margin: .3rem 0 1.3rem; }
+.social-discovery-note span { display: flex; align-items: center; gap: .35rem; }
+.social-rail + .social-rail { margin-top: 1.6rem; }
+.social-rail-heading { display: flex; align-items: center; gap: .75rem; margin-bottom: .65rem; }
+.social-rail-heading h3 { display: flex; align-items: center; gap: .5rem; font-weight: 600; letter-spacing: -.02em; }
+.social-rail-zapped h3 svg { color: #aa782e; }
+.social-rail-liked h3 svg { color: #cd6b59; }
+.social-rail-commented h3 svg { color: #5b8b77; }
+.rail-caption { font-size: .7rem; color: var(--muted-foreground); }
+.rail-controls { margin-left: auto; display: flex; }
+.rail-empty { color: var(--muted-foreground); font-size: .8rem; padding: .5rem 0 .8rem; }
+.social-rail-track { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(270px, 29%); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; gap: 1.2rem; padding: .2rem .2rem 1rem; scrollbar-width: thin; }
+.social-rail-track > .napplet-card { scroll-snap-align: start; min-width: 0; animation: none; }
+.social-rail-track .card-heading { font-size: .95rem; }
+.social-rail-track .card-meta { font-size: .68rem; }
+.social-rail-track:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+.lightning-code { display: grid; gap: .8rem; justify-items: center; min-width: 0; }
+.lightning-code canvas { max-width: 100%; height: auto !important; border-radius: .5rem; }
+.community-form .anonymous-choice { display: flex; align-items: center; gap: .6rem; }
+.community-form .anonymous-choice input { width: auto; }
+@media(max-width: 620px) {
+  .social-rail-track { grid-auto-columns: 86%; gap: .9rem; }
+  .social-rail-heading { gap: .5rem; }
+  .rail-caption { max-width: 5rem; }
+}
+.zap-dialog { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+
+/* Preserve the primary button contrast when shadcn renders a wallet link. */
+.zap-dialog a[data-slot="button"][data-variant="default"] { color: #fffaf2; }
+.gallery-pending { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); z-index: 40; width: min(680px, calc(100% - 2rem)); display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: .7rem; box-shadow: 0 8px 40px #27292120; }
+.gallery-pending p { flex: 1 1 260px; font-size: .8rem; }
