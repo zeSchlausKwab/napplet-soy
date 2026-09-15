@@ -130,7 +130,10 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
             </aside>
           </div>
           <Genealogy manifest={napplet.manifest} />
-          <SourceSection revision={napplet.revisionId} />
+          <SourceSection
+            revision={napplet.revisionId}
+            hasArchive={napplet.manifest.tags.some((tag) => tag[0] === 'source-archive')}
+          />
           {discussion}
           <div className="collection-note">
             {napplet.availability === 'ready' &&

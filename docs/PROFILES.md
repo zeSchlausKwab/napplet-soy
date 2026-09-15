@@ -51,8 +51,11 @@ concurrency against the configured relays, not a global Nostr lock.
 Destinations are visible in the editor: operator `SPACE_INDEX_RELAYS`, then indexed
 and publicdev relay hints, deduplicated and capped at six, through the existing
 bounded Applesauce relay adapter. A cold read failure cannot silently create a
-blank edit base. Success requires at least one positive relay `OK`, and the UI
-lists accepting relays. Uncertain delivery retains the exact signed event for
+blank edit base. Success requires at least one positive relay `OK`. Local polish
+(2026-09-15, pending deployment) keeps signing/publishing spinners, success and
+error/retry feedback inside the action button; full errors are its accessible
+description and tooltip. A stale-profile conflict still offers Reload and preserves
+visible draft text. Uncertain delivery retains the exact signed event for
 retry, including when the initial delivery actually arrived. Recent new updates
 are limited to one per ten seconds per author/process; identical-event retry is
 exempt. The shared community HTTP budget and request-size limits also apply.

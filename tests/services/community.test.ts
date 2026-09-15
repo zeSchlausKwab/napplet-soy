@@ -96,15 +96,58 @@ test('production SSR, signed named routes and social actions work through a real
     await page.getByLabel('Creator handle').fill('browser-author');
     await page.getByLabel('Napplet slug').fill('first');
     await page.getByRole('button', { name: 'Claim /@handle/slug' }).click();
-    await page.getByText('Your named link is ready.').waitFor();
+    await page.getByRole('button', { name: 'Link ready', exact: true }).waitFor();
     const named = await fetch(`${origin}/@browser-author/first`);
     expect(named.status).toBe(200);
     const html = await named.text();
     expect(html).toContain(fixture.title);
     expect(html).toContain(`content="${origin}/@browser-author/first"`);
     await page.keyboard.press('Escape');
+    let releasePost!: () => void;
+    const postGate = new Promise<void>((resolve) => {
+      releasePost = resolve;
+    });
+    const commentAttempts: string[] = [];
+    let failRefresh = true;
+    await page.route('**/api/social?*', async (route) => {
+      if (route.request().method() === 'POST') {
+        commentAttempts.push(route.request().postData()!);
+        if (commentAttempts.length === 1) {
+          await postGate;
+          return route.fulfill({
+            status: 503,
+            json: { error: 'Relay did not acknowledge the comment.' },
+          });
+        }
+      } else if (commentAttempts.length === 2 && failRefresh) {
+        failRefresh = false;
+        return route.fulfill({ status: 503, json: { error: 'Conversation read failed.' } });
+      }
+      await route.continue();
+    });
     await page.getByLabel('Leave a little note').fill('Hello from an independent signed event.');
     await page.getByRole('button', { name: 'Post comment', exact: true }).click();
+    const publishing = page
+      .locator('.comment-submit')
+      .getByRole('button', { name: 'Publishing…', exact: true });
+    await publishing.waitFor();
+    expect(await publishing.getAttribute('aria-busy')).toBe('true');
+    expect(await publishing.locator('.animate-spin').count()).toBe(1);
+    expect(await page.locator('.pending-action, .community-status').count()).toBe(0);
+    releasePost();
+    const retryComment = page.getByRole('button', { name: 'Retry comment', exact: true });
+    await retryComment.waitFor();
+    expect(await retryComment.getAttribute('title')).toContain('Relay did not acknowledge');
+    expect(await page.getByLabel('Leave a little note').inputValue()).toBe(
+      'Hello from an independent signed event.',
+    );
+    await retryComment.click();
+    await page.getByRole('button', { name: 'Posted', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Retry refresh', exact: true }).click();
+    expect(commentAttempts).toHaveLength(2);
+    expect(commentAttempts[0]).toBe(commentAttempts[1]);
+    expect(await retryComment.count()).toBe(0);
+    await page.unroute('**/api/social?*');
     await page.getByText('Hello from an independent signed event.', { exact: true }).waitFor();
     await headerActions.getByRole('button', { name: /^Like / }).click();
     await page.getByRole('button', { name: '1 like', exact: true }).waitFor();
@@ -128,15 +171,19 @@ test('production SSR, signed named routes and social actions work through a real
     });
     await headerActions.getByRole('button', { name: /^Like / }).click();
     await page
-      .locator('.detail-social-feedback')
-      .getByRole('button', { name: 'Retry signed action' })
+      .locator('.napplet-social-actions')
+      .getByRole('button', { name: 'Retry like', exact: true })
       .waitFor();
-    expect(await page.getByRole('button', { name: '0 likes', exact: true }).isDisabled()).toBe(
-      true,
-    );
+    expect(
+      await page
+        .locator('.social-actions')
+        .getByRole('button', { name: 'Retry like', exact: true })
+        .isEnabled(),
+    ).toBe(true);
+    expect(await page.locator('.pending-action, .detail-social-feedback').count()).toBe(0);
     await page
-      .locator('.detail-social-feedback')
-      .getByRole('button', { name: 'Retry signed action' })
+      .locator('.napplet-social-actions')
+      .getByRole('button', { name: 'Retry like', exact: true })
       .click();
     await page.getByRole('button', { name: '1 like', exact: true }).waitFor();
     expect(attempts).toHaveLength(2);
@@ -228,7 +275,7 @@ test('production SSR, signed named routes and social actions work through a real
       };
     });
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-    await page.getByText('Conversation refreshed.', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
     await headerActions.getByRole('button', { name: `Zap ${fixture.title}`, exact: true }).click();
     await page.getByLabel('Satoshis', { exact: true }).waitFor();
     expect(invoiceRequests).toBe(0);

@@ -24,7 +24,8 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
     [
       'README.md',
       new TextEncoder().encode(
-        '# Little source world\n<script>window.sourceWasExecuted = true</script>',
+        '# Little source world\n<script>window.sourceWasExecuted = true</script>\n\n' +
+          Array.from({ length: 9 }, (_, i) => `Readme line ${i + 4}`).join('\n'),
       ),
     ],
     ['src/main.ts', new TextEncoder().encode(code)],
@@ -128,7 +129,28 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
     const page = await browser.newPage({ viewport: { width: 1365, height: 1000 } });
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.goto(origin + path);
+    await page.goto(`${origin}/r/${event.id}`);
+    await page.locator('.source-section').scrollIntoViewIfNeeded();
+    const excerpt = page.getByLabel('First 10 lines of README.md', { exact: true });
+    await excerpt.waitFor();
+    expect(await excerpt.locator('.readme-line').count()).toBe(10);
+    expect(await excerpt.textContent()).toContain('Readme line 10');
+    expect(await excerpt.textContent()).not.toContain('Readme line 11');
+    expect(await excerpt.textContent()).toContain(
+      '<script>window.sourceWasExecuted = true</script>',
+    );
+    expect(await page.evaluate(() => (window as any).sourceWasExecuted)).toBeUndefined();
+    expect(await excerpt.locator('script, iframe, img').count()).toBe(0);
+    await page.screenshot({ path: '/tmp/napplet-readme-desktop.png' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('.source-section').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: '/tmp/napplet-readme-mobile.png' });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.getByRole('link', { name: 'Read full file', exact: false }).click();
+    expect(new URL(page.url()).searchParams.get('file')).toBe('README.md');
+    await page.setViewportSize({ width: 1365, height: 1000 });
     await page.getByRole('heading', { name: 'Made of little things.' }).waitFor();
     expect(await page.getByLabel('Source code for README.md').textContent()).toContain(
       '<script>window.sourceWasExecuted = true</script>',
@@ -195,6 +217,7 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
     await page.getByLabel('Source code for index.html').waitFor();
     expect(await page.evaluate(() => (window as any).sourceWasExecuted)).toBeUndefined();
     await page.goto(`${origin}/r/${noArchive.id}`);
+    expect(await page.locator('.readme-terminal').count()).toBe(0);
     await page.getByRole('link', { name: 'Browse source', exact: true }).click();
     await page.getByRole('heading', { name: 'Made of little things.' }).waitFor();
     // A queued playable download must not hide the already-verified source archive.

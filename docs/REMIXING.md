@@ -100,6 +100,22 @@ does not create an independent permanent event archive or substitute the new ver
 The signed archive digest proves the author selected those bytes; `source-commit`
 and source-to-build correspondence remain author claims, not a verified rebuild.
 
+### README excerpt on detail pages
+
+Local addition (2026-09-15, pending deployment): “Peek at the source” lazily loads a
+root README as the section nears the viewport. Names are case-insensitive, preferring
+`README.md`, then `README.markdown`, `README`, and `.txt`/`.rst`; nested dependency/docs
+READMEs are not substituted. The terminal shows the first ten physical lines, keeping
+blank lines and normalizing CRLF. Each displayed line is capped at 1,000 characters.
+“Read full file” opens that exact file in the pinned source browser.
+
+This shares the verified archive download and cache described above. It returns only
+the excerpt, not the repository tree or full README. Non-UTF-8/binary, empty or >200 KiB
+files, missing archives and failed retrievals omit this optional preview. Visibility
+and hash moderation are rechecked even on cache hits. React escapes all text: embedded
+HTML, links and images cannot execute, navigate or load resources from the excerpt.
+The README and its terminal presentation introduce no manifest requirement.
+
 Asset originals included by the publisher are browsable and downloadable too. See
 [asset authoring and current gaps](ASSETS.md).
 

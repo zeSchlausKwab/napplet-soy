@@ -90,7 +90,10 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
             </aside>
           </div>
           <Genealogy manifest={pinned ? napplet.snapshot : napplet.current} />
-          <SourceSection revision={napplet.snapshot.id} />
+          <SourceSection
+            revision={napplet.snapshot.id}
+            hasArchive={napplet.snapshot.tags.some((tag) => tag[0] === 'source-archive')}
+          />
           {discussion}
           <div className="collection-note">
             This example is bundled for local development and hasn’t been published to Nostr.

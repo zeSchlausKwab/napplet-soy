@@ -213,7 +213,9 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
       return route.continue();
     });
     await card.getByRole('button', { name: /^Like / }).click();
-    await page.getByRole('button', { name: 'Retry like', exact: true }).click();
+    await card.getByRole('button', { name: 'Retry like', exact: true }).waitFor();
+    expect(await page.locator('.gallery-pending, .card-social-feedback').count()).toBe(0);
+    await card.getByRole('button', { name: 'Retry like', exact: true }).click();
     await card.getByRole('button', { name: /^Unlike .*2 likes/ }).waitFor();
     expect(await card.getByText('Liked.', { exact: true }).count()).toBe(0);
     expect(attempts[0]).toBe(attempts[1]);

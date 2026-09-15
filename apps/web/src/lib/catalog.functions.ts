@@ -119,6 +119,9 @@ export const getDiscoveredNapplet = createServerFn({ method: 'GET' })
 export const getSource = createServerFn({ method: 'GET' })
   .validator(sourceInput)
   .handler(({ data }) => sourceBrowser.view(data));
+export const getReadme = createServerFn({ method: 'GET' })
+  .validator(z.string().regex(/^[a-f0-9]{64}$/))
+  .handler(({ data }) => sourceBrowser.readme(data));
 
 export const getCreatorNames = createServerFn({ method: 'GET' })
   .validator(z.string().regex(/^@[a-z0-9-]{1,32}$/))

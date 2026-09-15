@@ -146,6 +146,7 @@ test('new publications cannot move old source permalinks; deletion and moderatio
     service = browser(events);
   const input = { revision: old.id, view: 'project' as const };
   expect((await service.view(input))?.archiveHash).toBe(hash);
+  expect(await service.readme(old.id)).not.toBeNull();
   expect((await service.view({ ...input, revision: newer.id }))?.archiveHash).toBeNull();
   const previous = process.env.SPACE_MODERATION_FILE;
   process.env.SPACE_MODERATION_FILE = join(directory, 'policy.json');
@@ -158,6 +159,7 @@ test('new publications cannot move old source permalinks; deletion and moderatio
     );
     expect((await service.view(input))?.archiveHash).toBeNull();
     expect(await service.download(input, true)).toBeNull();
+    expect(await service.readme(old.id)).toBeNull();
     updatePolicy(
       { action: 'block', type: 'event', target: old.id, reason: 'test', revision: 1 },
       old.pubkey,
@@ -170,6 +172,7 @@ test('new publications cannot move old source permalinks; deletion and moderatio
   }
   events.splice(0, 1); // The repository no longer admits this release (e.g. an author deletion).
   expect(await service.view(input)).toBeNull();
+  expect(await service.readme(old.id)).toBeNull();
   expect(await service.download(input, true)).toBeNull();
 });
 
@@ -195,4 +198,65 @@ test('private-network archive URLs fail before a request unless explicitly confi
     if (previous === undefined) delete process.env.SPACE_INDEX_LOCAL_BLOSSOM;
     else process.env.SPACE_INDEX_LOCAL_BLOSSOM = previous;
   }
+});
+
+test('README excerpts keep the first ten lines, share verified archive reads, and bound long lines', async () => {
+  const lines = [
+    '# Little world',
+    '',
+    '<script>alert("inert")</script>',
+    'x'.repeat(1200),
+    ...Array.from({ length: 8 }, (_, i) => `Line ${i + 5}`),
+  ];
+  const folder = join(directory, 'excerpt');
+  await freezeSource(
+    folder,
+    new Map([
+      ['readme.MD', new TextEncoder().encode(lines.join('\r\n'))],
+      ['README.txt', new TextEncoder().encode('Lower priority')],
+      ['docs/README.md', new TextEncoder().encode('Nested README')],
+    ]),
+    1800000000,
+  );
+  const bytes = await Bun.file(join(folder, 'source.tar')).bytes();
+  const event = await manifest([
+    ['source-archive', `https://assets.example/${await sha256(bytes)}`],
+  ]);
+  let reads = 0;
+  const service = browser([event], async () => {
+    reads++;
+    return bytes;
+  });
+  const [excerpt] = await Promise.all([
+    service.readme(event.id),
+    service.view({ revision: event.id, view: 'project' }),
+  ]);
+  expect(reads).toBe(1);
+  expect(excerpt?.path).toBe('readme.MD');
+  expect(excerpt?.lines).toHaveLength(10);
+  expect(excerpt?.lines.slice(0, 3)).toEqual(lines.slice(0, 3));
+  expect(excerpt?.lines[3]).toBe('x'.repeat(999) + '…');
+  expect(excerpt?.lines[9]).toBe('Line 10');
+  expect(excerpt?.truncated).toBe(true);
+});
+
+test('optional README excerpts omit missing, binary, oversized and unverified sources', async () => {
+  for (const [name, content] of [
+    ['docs/README.md', new TextEncoder().encode('Not the root README')],
+    ['README', new Uint8Array([0, 255])],
+    ['README.md', new Uint8Array(SOURCE_TEXT_LIMIT + 1).fill(65)],
+    ['README.txt', new Uint8Array()],
+  ] as const) {
+    const folder = join(directory, `missing-excerpt-${serial}`);
+    await freezeSource(folder, new Map([[name, content]]), 1800000000);
+    const bytes = await Bun.file(join(folder, 'source.tar')).bytes();
+    const event = await manifest([
+      ['source-archive', `https://assets.example/${await sha256(bytes)}`],
+    ]);
+    expect(await browser([event], async () => bytes).readme(event.id)).toBeNull();
+  }
+  const missing = await manifest();
+  const invalid = await manifest([['source-archive', `https://assets.example/${'0'.repeat(64)}`]]);
+  expect(await browser([missing]).readme(missing.id)).toBeNull();
+  expect(await browser([invalid]).readme(invalid.id)).toBeNull();
 });

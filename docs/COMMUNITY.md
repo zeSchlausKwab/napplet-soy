@@ -22,7 +22,7 @@ Napplet detail pages and gallery cards share likes/unlikes and zaps. Detail page
 pinned pages also show like/count, share and zap icons beneath the creator name.
 One `NappletSocial` owner supplies the toolbar, feedback and discussion, so header
 and discussion likes stay synchronized without fetching a second conversation or
-maintaining separate pending events. A failed header action shows its retry nearby;
+maintaining separate pending events. A failed header action uses its own button for retry (local polish, 2026-09-15);
 retry sends the same signed event and requires the same account. A successful like
 fills the heart without adding a visible message row. Existing discussion controls
 remain available below the player.
@@ -35,6 +35,23 @@ restoration. Existing scope/signature/payment rules are unchanged. Verified thro
 the local community integration (including both like controls and exact-event retry),
 gallery/player regressions and desktop/mobile browser checks; no production actions
 or payments were sent.
+
+**Button feedback (local, 2026-09-15; pending deployment):** preparing/signing/publishing
+spinners replace the initiating icon or label. Failures turn that control into Retry;
+error details are available through its title and screen-reader description. A small
+cancel control stops retrying and refreshes the conversation. Success uses the filled
+heart/count or a “Posted” checkmark, with no extra delivery panel. Comments, replies,
+comment likes and deletion use the same behavior. Both detail like controls and all
+gallery copies of a card share the action state. If filters remove every copy of a
+pending card, a compact retry button remains available until resolved or cancelled.
+
+Uncertain delivery retains the exact signed event and requires the same account for
+retry; other writes are locked while it is pending. Acknowledged publication clears
+the pending event before refreshing. A failed read instead turns Refresh into Retry
+refresh, so it cannot cause a duplicate publication. Social reads time out after 15
+seconds and writes after 20; signer approval remains user-driven. Named-link claims
+also keep progress/errors/success in their button; their retry uses fresh NIP-98 HTTP
+authorization, not a replayed auth event. The claim itself remains idempotent.
 
 Comments use [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md) kind 1111 with address-qualified root and parent tags (including the current event reference when available). Replies retain the root and reference their parent comment. Rooted threads survive title changes, aliases and new versions. A snapshot can join an author's address thread only if its signed parent address has the same author; foreign snapshots keep an event-rooted thread. Text is rendered as text, including HTML-looking strings.
 

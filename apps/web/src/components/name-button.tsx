@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link2 } from 'lucide-react';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
+import { ActionButton } from './action-button';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ export function NameButton({ naddr, author }: { naddr: string; author: string })
     [slug, setSlug] = useState(''),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
+    [success, setSuccess] = useState(''),
     [paths, setPaths] = useState<string[]>([]);
   useEffect(() => {
     let active = true;
@@ -60,12 +62,14 @@ export function NameButton({ naddr, author }: { naddr: string; author: string })
             className="community-form"
             onSubmit={async (e) => {
               e.preventDefault();
+              if (busy) return;
               setBusy(true);
+              setSuccess('');
               setMessage('');
               try {
                 const { alias } = await claimName(pubkey, { handle, slug, naddr });
                 setPaths((p) => [...new Set([...p, `/@${alias.handle}/${alias.slug}`])]);
-                setMessage('Your named link is ready.');
+                setSuccess('Link ready');
               } catch (error) {
                 setMessage((error as Error).message);
               } finally {
@@ -77,7 +81,11 @@ export function NameButton({ naddr, author }: { naddr: string; author: string })
               Creator handle
               <input
                 value={handle}
-                onChange={(e) => setHandle(e.target.value.toLowerCase())}
+                onChange={(e) => {
+                  setHandle(e.target.value.toLowerCase());
+                  setMessage('');
+                  setSuccess('');
+                }}
                 placeholder="alice"
                 minLength={3}
                 maxLength={32}
@@ -90,7 +98,11 @@ export function NameButton({ naddr, author }: { naddr: string; author: string })
               Napplet slug
               <input
                 value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                onChange={(e) => {
+                  setSlug(e.target.value.toLowerCase());
+                  setMessage('');
+                  setSuccess('');
+                }}
                 placeholder="pixel-rain"
                 maxLength={64}
                 pattern="[a-z0-9-]+"
@@ -101,10 +113,16 @@ export function NameButton({ naddr, author }: { naddr: string; author: string })
             <p className="muted">
               One handle per account. Each link stays attached to this creation permanently.
             </p>
-            <Button disabled={busy}>{busy ? 'Signing claim…' : 'Claim /@handle/slug'}</Button>
+            <ActionButton
+              working={busy ? 'Claiming…' : undefined}
+              error={message}
+              retryLabel="Retry claim"
+              success={success}
+            >
+              Claim /@handle/slug
+            </ActionButton>
           </form>
         )}
-        {message && <p role="status">{message}</p>}
       </DialogContent>
     </Dialog>
   );

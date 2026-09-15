@@ -139,6 +139,28 @@ export function createSourceBrowser(deps: Dependencies) {
   }
 
   return {
+    async readme(revision: string) {
+      const release = await admitted(revision);
+      if (!release) return null;
+      const result = await original(release.manifest);
+      if (!result.archive || !(await admitted(revision))) return null;
+      if (blocked('hash', archiveReference(release.manifest)!.hash)) return null;
+      const files = [...result.archive.files.keys()].sort();
+      const path = [/^readme\.md$/i, /^readme\.markdown$/i, /^readme$/i, /^readme\.(?:txt|rst)$/i]
+        .map((pattern) => files.find((path) => pattern.test(path)))
+        .find(Boolean);
+      if (!path) return null;
+      const file = textFile(result.archive.files.get(path)!);
+      if (file.state !== 'text' || !file.text) return null;
+      const lines = file.text.replace(/\r\n?/g, '\n').split('\n');
+      const excerpt = lines.slice(0, 10);
+      return {
+        revision,
+        path,
+        lines: excerpt.map((line) => (line.length > 1000 ? line.slice(0, 999) + '…' : line)),
+        truncated: lines.length > 10 || excerpt.some((line) => line.length > 1000),
+      };
+    },
     async view(input: SourceInput) {
       const release = await admitted(input.revision);
       if (!release) return null;

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Heart, MessageCircle, Reply, Trash2, RefreshCw, Zap } from 'lucide-react';
 import { Button } from './ui/button';
+import { ActionButton } from './action-button';
+import { CreatorLink } from './creator-link';
 import { useNostr } from './nostr-provider';
 import { useLocation } from '@tanstack/react-router';
 import { ZapButton } from './zap-button';
@@ -60,11 +62,30 @@ export function NappletSocial({
     [content, setContent] = useState(''),
     [parent, setParent] = useState<Comment | null>(null),
     [pending, setPending] = useState<SignedEvent | null>(null);
-  const [headerAction, setHeaderAction] = useState(false);
+  const [action, setAction] = useState('');
+  const [phase, setPhase] = useState('');
+  const [success, setSuccess] = useState('');
+  const [refreshing, setRefreshing] = useState(true);
+  const [refreshError, setRefreshError] = useState('');
+  const busyRef = useRef(false);
   const endpoint = `/api/social?reference=${encodeURIComponent(reference)}`;
   const refresh = async (signal?: AbortSignal) => {
-    const value = await jsonResponse(await fetch(endpoint, { signal }));
-    setData(value);
+    setRefreshing(true);
+    setRefreshError('');
+    try {
+      const value = await jsonResponse(
+        await fetch(endpoint, {
+          signal: signal
+            ? AbortSignal.any([signal, AbortSignal.timeout(15000)])
+            : AbortSignal.timeout(15000),
+        }),
+      );
+      if (!signal?.aborted) setData(value);
+    } catch (error) {
+      if (!signal?.aborted) setRefreshError((error as Error).message);
+    } finally {
+      if (!signal?.aborted) setRefreshing(false);
+    }
   };
   useEffect(() => {
     const controller = new AbortController();
@@ -73,10 +94,9 @@ export function NappletSocial({
     setParent(null);
     setContent('');
     setMessage('');
-    setHeaderAction(false);
-    refresh(controller.signal).catch((error) => {
-      if (!controller.signal.aborted) setMessage(error.message);
-    });
+    setAction('');
+    setSuccess('');
+    void refresh(controller.signal);
     return () => controller.abort();
   }, [reference]);
   useEffect(() => {
@@ -88,104 +108,73 @@ export function NappletSocial({
   const deliver = async (event: SignedEvent) => {
     if (currentKey.current !== event.pubkey)
       throw new Error('Connect the signing account again before sending.');
+    setPhase('Publishing…');
     await jsonResponse(
       await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(event),
+        signal: AbortSignal.timeout(20000),
       }),
     );
     setPending(null);
     if (event.kind === 1111) {
       setContent('');
       setParent(null);
+      setSuccess('Posted');
     }
-    setMessage('Published to Nostr.');
-    await refresh().catch(() =>
-      setMessage(
-        'Published to Nostr. The conversation could not refresh; try Refresh before posting again.',
-      ),
-    );
+    // A failed read after acknowledgement must never offer to publish again.
+    await refresh();
   };
-  const write = async (template: Template, fromHeader = false) => {
-    setHeaderAction(fromHeader);
-    if (!pubkey) {
-      try {
-        await connect();
-      } catch (error) {
-        setMessage((error as Error).message);
-      }
-      return;
-    }
+  const write = async (template: Template, id: string) => {
+    if (!pubkey || busyRef.current || (pending && action !== id)) return;
+    busyRef.current = true;
+    setAction(id);
     setBusy(true);
     setMessage('');
+    setSuccess('');
     try {
-      const event = await signForAccount(pubkey, {
-        ...template,
-        created_at: Math.max(template.created_at, (data?.lastActions[pubkey] ?? 0) + 1),
-      });
-      if (currentKey.current !== pubkey) throw new Error('Your connected account changed.');
-      setPending(event);
-      await deliver(event);
+      if (pending) await deliver(pending);
+      else {
+        setPhase('Signing…');
+        const event = await signForAccount(pubkey, {
+          ...template,
+          created_at: Math.max(template.created_at, (data?.lastActions[pubkey] ?? 0) + 1),
+        });
+        if (currentKey.current !== pubkey) throw new Error('Your connected account changed.');
+        setPending(event);
+        await deliver(event);
+      }
     } catch (error) {
       setMessage((error as Error).message);
     } finally {
+      busyRef.current = false;
       setBusy(false);
+      setPhase('');
     }
   };
-  const ownLikes = data?.likes.filter((e) => e.pubkey === pubkey) ?? [];
-  const feedback = (
-    <>
-      {message && (
-        <p
-          role="status"
-          className={
-            headerAction && message === 'Published to Nostr.' ? 'sr-only' : 'community-status'
+  const control = (id: string, retryLabel: string) => ({
+    working: action === id && busy ? phase : undefined,
+    error: action === id ? message : undefined,
+    retryLabel,
+    disabled: !pubkey || busy || (!!pending && (action !== id || pending.pubkey !== pubkey)),
+    onCancel:
+      action === id && pending
+        ? () => {
+            setPending(null);
+            setMessage('');
+            setSuccess('');
+            void refresh();
           }
-        >
-          {message}
-        </p>
-      )}
-      {pending && (!headerAction || !busy) && (
-        <div className="pending-action">
-          <p>
-            Your signed action is ready. Retry sends the same event, so it won’t create a duplicate.
-          </p>
-          <Button
-            disabled={busy || pubkey !== pending.pubkey}
-            variant="outline"
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await deliver(pending);
-              } catch (error) {
-                setMessage((error as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            Retry signed action
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={busy}
-            onClick={() => {
-              setPending(null);
-              setMessage(
-                'Stopped retrying. The event may still have reached a relay; refresh before posting again.',
-              );
-            }}
-          >
-            Dismiss
-          </Button>
-        </div>
-      )}
-    </>
-  );
+        : undefined,
+  });
+  const ownLikes = data?.likes.filter((e) => e.pubkey === pubkey) ?? [];
   const actions = (
     <div className="napplet-social-actions" role="group" aria-label={`Social actions for ${title}`}>
-      <Button
+      <ActionButton
+        {...control('napplet-like', ownLikes.length ? 'Retry unlike' : 'Retry like')}
+        compact
+        icon={<Heart size={17} fill={ownLikes.length ? 'currentColor' : 'none'} />}
         variant="ghost"
         size="sm"
         aria-label={`${ownLikes.length ? 'Unlike' : 'Like'} ${title}: ${data?.likeCount ?? 'unknown'} likes${!pubkey ? ' — sign in required' : ''}`}
@@ -199,20 +188,19 @@ export function NappletSocial({
                 : 'Like this napplet'
         }
         aria-pressed={!!ownLikes.length}
-        disabled={!pubkey || !data || busy || !!pending}
+        disabled={!data || control('napplet-like', '').disabled}
         onClick={() => {
           if (data)
             void write(
               ownLikes.length
                 ? deletionTemplate(ownLikes)
                 : likeTemplate(data.scope, data.manifest),
-              true,
+              'napplet-like',
             );
         }}
       >
-        <Heart size={17} fill={ownLikes.length ? 'currentColor' : 'none'} />
         {data?.likeCount.toLocaleString() ?? '—'}
-      </Button>
+      </ActionButton>
       <CardShare
         title={title}
         path={reference.startsWith('naddr1') ? `/n/${reference}` : `/r/${reference}`}
@@ -241,45 +229,39 @@ export function NappletSocial({
           <span className="eyebrow">PASS IT AROUND</span>
           <h2 id="conversation-title">Small creation, open conversation.</h2>
         </div>
-        <Button
+        <ActionButton
           variant="ghost"
           size="sm"
+          icon={<RefreshCw size={15} />}
+          working={refreshing ? 'Refreshing…' : undefined}
+          error={refreshError}
+          retryLabel="Retry refresh"
           disabled={busy}
-          onClick={async () => {
-            setHeaderAction(false);
-            setBusy(true);
-            try {
-              await refresh();
-              setMessage('Conversation refreshed.');
-            } catch (error) {
-              setMessage((error as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
+          onClick={() => void refresh()}
         >
-          <RefreshCw size={15} />
           Refresh
-        </Button>
+        </ActionButton>
       </div>
       {data && (
         <>
           <div className="social-actions">
-            <Button
+            <ActionButton
+              {...control('napplet-like', ownLikes.length ? 'Retry unlike' : 'Retry like')}
+              compact
+              icon={<Heart size={16} fill={ownLikes.length ? 'currentColor' : 'none'} />}
               variant={ownLikes.length ? 'default' : 'outline'}
               aria-pressed={!!ownLikes.length}
-              disabled={!pubkey || busy || !!pending}
               onClick={() =>
                 write(
                   ownLikes.length
                     ? deletionTemplate(ownLikes)
                     : likeTemplate(data.scope, data.manifest),
+                  'napplet-like',
                 )
               }
             >
-              <Heart size={16} fill={ownLikes.length ? 'currentColor' : 'none'} />
               {data.likeCount} {data.likeCount === 1 ? 'like' : 'likes'}
-            </Button>
+            </ActionButton>
             <ZapButton data={data} reference={reference} />
             <span className="comment-count">
               <MessageCircle size={16} />
@@ -292,13 +274,19 @@ export function NappletSocial({
               className="community-form comment-form"
               onSubmit={(e) => {
                 e.preventDefault();
-                void write(commentTemplate(data.scope, content, parent ?? undefined));
+                void write(commentTemplate(data.scope, content, parent ?? undefined), 'comment');
               }}
             >
               {parent && (
                 <div className="reply-context">
                   Replying to {data.profiles[parent.pubkey]?.name ?? short(parent.pubkey)}
-                  <Button size="xs" variant="ghost" type="button" onClick={() => setParent(null)}>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    type="button"
+                    disabled={busy || !!pending}
+                    onClick={() => setParent(null)}
+                  >
                     Cancel reply
                   </Button>
                 </div>
@@ -308,7 +296,13 @@ export function NappletSocial({
                 <textarea
                   id="napplet-comment"
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(e) => {
+                    setContent(e.target.value);
+                    if (action === 'comment' && !pending) {
+                      setMessage('');
+                      setSuccess('');
+                    }
+                  }}
                   maxLength={4000}
                   placeholder="What did you make of this one?"
                   required
@@ -320,24 +314,31 @@ export function NappletSocial({
                   Signed by {data.profiles[pubkey]?.name ?? short(pubkey)} · posted publicly on
                   Nostr
                 </span>
-                <Button disabled={busy || !!pending || !content.trim()}>
-                  {busy ? 'Sending…' : parent ? 'Post reply' : 'Post comment'}
-                </Button>
+                <ActionButton
+                  {...control('comment', parent ? 'Retry reply' : 'Retry comment')}
+                  disabled={control('comment', '').disabled || !content.trim()}
+                  success={action === 'comment' ? success : undefined}
+                >
+                  {parent ? 'Post reply' : 'Post comment'}
+                </ActionButton>
               </div>
             </form>
           ) : (
             <div className="social-connect">
               <p>Bring your Nostr identity to the conversation.</p>
-              <Button
+              <ActionButton
                 id="comment-connect"
+                error={action === 'connect' ? message : undefined}
+                retryLabel="Retry connection"
                 variant="outline"
                 onClick={() => {
-                  setHeaderAction(false);
+                  setAction('connect');
+                  setMessage('');
                   void connect().catch((error) => setMessage(error.message));
                 }}
               >
                 Connect to comment or like
-              </Button>
+              </ActionButton>
             </div>
           )}
           <div className="comment-list">
@@ -372,26 +373,33 @@ export function NappletSocial({
                       <div className="comment-tools">
                         {!comment.deleted && (
                           <>
-                            <Button
+                            <ActionButton
+                              {...control(
+                                `like:${comment.id}`,
+                                commentLikes.length ? 'Retry unlike' : 'Retry like',
+                              )}
+                              compact
+                              icon={
+                                <Heart
+                                  size={13}
+                                  fill={commentLikes.length ? 'currentColor' : 'none'}
+                                />
+                              }
                               size="xs"
                               variant="ghost"
                               aria-label={`Like comment by ${data.profiles[comment.pubkey]?.name ?? short(comment.pubkey)}`}
                               aria-pressed={commentLikes.length > 0}
-                              disabled={!pubkey || busy || !!pending}
                               onClick={() =>
                                 write(
                                   commentLikes.length
                                     ? deletionTemplate(commentLikes)
                                     : commentLikeTemplate(comment),
+                                  `like:${comment.id}`,
                                 )
                               }
                             >
-                              <Heart
-                                size={13}
-                                fill={commentLikes.length ? 'currentColor' : 'none'}
-                              />{' '}
                               {comment.likeCount ?? 0}
-                            </Button>
+                            </ActionButton>
                             <ZapButton data={data} reference={reference} commentTarget={comment} />
                           </>
                         )}
@@ -400,7 +408,7 @@ export function NappletSocial({
                           <Button
                             size="xs"
                             variant="ghost"
-                            disabled={!pubkey || busy}
+                            disabled={!pubkey || busy || !!pending}
                             onClick={() => {
                               setParent(comment);
                               document.getElementById('napplet-comment')?.focus();
@@ -411,15 +419,17 @@ export function NappletSocial({
                           </Button>
                         )}
                         {pubkey === comment.pubkey && !comment.deleted && (
-                          <Button
+                          <ActionButton
+                            {...control(`delete:${comment.id}`, 'Retry delete')}
+                            icon={<Trash2 size={13} />}
                             size="xs"
                             variant="ghost"
-                            disabled={!pubkey || busy || !!pending}
-                            onClick={() => write(deletionTemplate([comment]))}
+                            onClick={() =>
+                              write(deletionTemplate([comment]), `delete:${comment.id}`)
+                            }
                           >
-                            <Trash2 size={13} />
                             Delete
-                          </Button>
+                          </ActionButton>
                         )}
                       </div>
                     </div>
@@ -435,14 +445,11 @@ export function NappletSocial({
           </p>
         </>
       )}
-      {!data && !message && <p role="status">Finding the conversation…</p>}
-      {!headerAction && feedback}
     </section>
   );
   return children({
     actions,
-    feedback: headerAction ? <div className="detail-social-feedback">{feedback}</div> : null,
+    feedback: null,
     discussion,
   });
 }
-import { CreatorLink } from './creator-link';

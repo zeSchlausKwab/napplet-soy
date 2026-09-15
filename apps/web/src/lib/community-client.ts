@@ -41,6 +41,7 @@ export async function claimName(
     await fetch(url, {
       method: 'POST',
       body,
+      signal: AbortSignal.timeout(20000),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Nostr ${btoa(JSON.stringify(event))}`,

@@ -1,7 +1,16 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Link } from '@tanstack/react-router';
 import { Heart, MessageCircle, Zap, ChevronLeft, ChevronRight, LockKeyhole } from 'lucide-react';
 import { Button } from './ui/button';
+import { ActionButton } from './action-button';
 import { useNostr } from './nostr-provider';
 import { ZapButton } from './zap-button';
 import { NappletCard } from './napplet-card';
@@ -19,6 +28,9 @@ const Context = createContext<{
   data: GallerySocialData | null;
   error: string;
   busy: boolean;
+  active: string;
+  phase: string;
+  register: (id: string) => () => void;
   pending: { event: SignedEvent; napplet: PublicNapplet } | null;
   message: { id: string; text: string } | null;
   like: (napplet: PublicNapplet) => Promise<void>;
@@ -39,6 +51,14 @@ export function GallerySocialProvider({
   const [data, setData] = useState<GallerySocialData | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [active, setActive] = useState('');
+  const [phase, setPhase] = useState('');
+  const [cards, setCards] = useState<Record<string, number>>({});
+  const register = useCallback((id: string) => {
+    setCards((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
+    return () => setCards((v) => ({ ...v, [id]: Math.max(0, (v[id] ?? 1) - 1) }));
+  }, []);
   const [pending, setPending] = useState<{ event: SignedEvent; napplet: PublicNapplet } | null>(
     null,
   );
@@ -62,7 +82,9 @@ export function GallerySocialProvider({
       try {
         if (document.visibilityState === 'hidden') return;
         const value = await jsonResponse(
-          await fetch(`/api/gallery-social?${query}`, { signal: controller.signal }),
+          await fetch(`/api/gallery-social?${query}`, {
+            signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+          }),
         );
         if (controller.signal.aborted) return;
         setData(value);
@@ -83,6 +105,7 @@ export function GallerySocialProvider({
   const deliver = async (item: NonNullable<typeof pending>) => {
     if (key.current !== item.event.pubkey)
       throw new Error('Reconnect the signing account before retrying.');
+    setPhase('Publishing…');
     await jsonResponse(
       await fetch(
         `/api/social?reference=${encodeURIComponent(item.napplet.naddr ?? item.napplet.revisionId)}`,
@@ -90,6 +113,7 @@ export function GallerySocialProvider({
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(item.event),
+          signal: AbortSignal.timeout(20000),
         },
       ),
     );
@@ -98,13 +122,17 @@ export function GallerySocialProvider({
     setRevision((v) => v + 1);
   };
   const like = async (napplet: PublicNapplet) => {
-    if (!pubkey || busy || pending) return;
+    if (!pubkey || busyRef.current || pending) return;
+    busyRef.current = true;
+    setActive(napplet.revisionId);
+    setPhase('Preparing…');
     setBusy(true);
     setMessage(null);
     try {
       const state = await jsonResponse(
         await fetch(
           `/api/social?reference=${encodeURIComponent(napplet.naddr ?? napplet.revisionId)}`,
+          { signal: AbortSignal.timeout(15000) },
         ),
       );
       if (key.current !== pubkey) throw new Error('Your connected account changed.');
@@ -113,6 +141,7 @@ export function GallerySocialProvider({
         ? deletionTemplate(own)
         : likeTemplate(state.scope, state.manifest);
       template.created_at = Math.max(template.created_at, (state.lastActions[pubkey] ?? 0) + 1);
+      setPhase('Signing…');
       const event = await signForAccount(pubkey, template);
       if (key.current !== pubkey) throw new Error('Your connected account changed.');
       const item = { event, napplet };
@@ -121,7 +150,9 @@ export function GallerySocialProvider({
     } catch (error) {
       setMessage({ id: napplet.revisionId, text: (error as Error).message });
     } finally {
+      busyRef.current = false;
       setBusy(false);
+      setPhase('');
     }
   };
   return (
@@ -130,18 +161,25 @@ export function GallerySocialProvider({
         data,
         error,
         busy,
+        active,
+        phase,
+        register,
         pending,
         message,
         like,
         retry: async () => {
-          if (!pending || busy) return;
+          if (!pending || busyRef.current) return;
+          busyRef.current = true;
+          setMessage(null);
           setBusy(true);
           try {
             await deliver(pending);
           } catch (error) {
             setMessage({ id: pending.napplet.revisionId, text: (error as Error).message });
           } finally {
+            busyRef.current = false;
             setBusy(false);
+            setPhase('');
           }
         },
         dismiss: () => {
@@ -152,7 +190,7 @@ export function GallerySocialProvider({
       }}
     >
       {children}
-      <GalleryPendingAction />
+      {pending && !cards[pending.napplet.revisionId] && <GalleryPendingAction />}
     </Context.Provider>
   );
 }
@@ -163,21 +201,17 @@ function GalleryPendingAction() {
   if (!social?.pending) return null;
   return (
     <aside className="gallery-pending" aria-label="Pending gallery action">
-      <p>
-        {social.busy
-          ? 'Sending your signed like…'
-          : `Delivery was not confirmed for ${social.pending.napplet.title}. Retry sends the same signed action.`}
-      </p>
-      <Button
+      <ActionButton
         size="sm"
-        disabled={social.busy || social.pending.event.pubkey !== pubkey}
+        working={social.busy ? social.phase : undefined}
+        error={social.message?.text}
+        retryLabel={`Retry like · ${social.pending.napplet.title}`}
+        disabled={social.pending.event.pubkey !== pubkey}
         onClick={() => void social.retry()}
+        onCancel={social.dismiss}
       >
-        Retry like
-      </Button>
-      <Button size="sm" variant="ghost" disabled={social.busy} onClick={social.dismiss}>
-        Dismiss
-      </Button>
+        Retry like · {social.pending.napplet.title}
+      </ActionButton>
     </aside>
   );
 }
@@ -192,6 +226,7 @@ export function GalleryCardSocial({
 }) {
   const social = useContext(Context),
     { pubkey, ready } = useNostr();
+  useEffect(() => social?.register(napplet.revisionId), [social?.register, napplet.revisionId]);
   if (!social)
     return (
       <div className="card-social" role="group" aria-label={`Social actions for ${napplet.title}`}>
@@ -199,24 +234,34 @@ export function GalleryCardSocial({
       </div>
     );
   const counts = social.data?.counts[napplet.revisionId];
-  const feedback = social.message?.id === napplet.revisionId ? social.message.text : null;
+  const feedback = social.message?.id === napplet.revisionId ? social.message.text : undefined;
+  const ownsPending = social.pending?.napplet.revisionId === napplet.revisionId;
   return (
     <>
       <div className="card-social" role="group" aria-label={`Social actions for ${napplet.title}`}>
-        <Button
+        <ActionButton
+          compact
+          icon={<Heart size={15} fill={counts?.liked ? 'currentColor' : 'none'} />}
+          working={social.busy && social.active === napplet.revisionId ? social.phase : undefined}
+          error={feedback}
+          retryLabel={counts?.liked ? 'Retry unlike' : 'Retry like'}
+          onCancel={ownsPending ? social.dismiss : undefined}
           size="sm"
           variant="ghost"
           aria-pressed={!!counts?.liked}
-          disabled={!pubkey || social.busy || !!social.pending}
+          disabled={
+            !pubkey ||
+            social.busy ||
+            (!!social.pending && (!ownsPending || social.pending.event.pubkey !== pubkey))
+          }
           title={
             !pubkey ? 'Sign in to like' : counts?.liked ? 'Remove your like' : 'Like this napplet'
           }
           aria-label={`${counts?.liked ? 'Unlike' : 'Like'} ${napplet.title}: ${counts?.likeCount ?? 'unknown'} likes${!pubkey ? ' — sign in required' : ''}`}
-          onClick={() => void social.like(napplet)}
+          onClick={() => void (ownsPending ? social.retry() : social.like(napplet))}
         >
-          <Heart size={15} fill={counts?.liked ? 'currentColor' : 'none'} />
           {amount(counts?.likeCount)}
-        </Button>
+        </ActionButton>
         {pubkey ? (
           <Button asChild size="sm" variant="ghost">
             <Link
@@ -266,11 +311,6 @@ export function GalleryCardSocial({
         />
         {children}
       </div>
-      {feedback && (
-        <p className="card-social-feedback" role="status">
-          {feedback}
-        </p>
-      )}
     </>
   );
 }

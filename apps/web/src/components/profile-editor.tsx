@@ -5,6 +5,7 @@ import { browserIdentity } from '@/lib/browser-identity';
 import { useProfiles } from '@/lib/profiles';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
+import { ActionButton } from './action-button';
 import {
   editableProfile,
   mergeProfile,
@@ -31,12 +32,14 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
     [values, setValues] = useState<ProfileFields | null>(null);
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
+    [phase, setPhase] = useState(''),
     [error, setError] = useState('');
   const [pending, setPending] = useState<{ event: SignedEvent; base: string | null } | null>(null);
   const [conflict, setConflict] = useState(false);
   if (identity.pubkey !== pubkey) return null;
   async function open() {
     setBusy(true);
+    setPhase('Loading profile…');
     setError('');
     setMessage('');
     try {
@@ -58,8 +61,9 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
     }
   }
   async function save() {
-    if (!base || !values) return;
+    if (!base || !values || busy) return;
     setBusy(true);
+    setPhase(pending ? 'Publishing…' : 'Signing…');
     setError('');
     setMessage('');
     try {
@@ -81,6 +85,7 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
       }
       if (browserIdentity().state.pubkey !== pubkey)
         throw new Error('The selected account changed. Reconnect the author to retry.');
+      setPhase('Publishing…');
       const response = await fetch(`/api/profile?pubkey=${pubkey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,11 +98,12 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
         throw new Error(result.error ?? 'No confirmation received. Retry sends the same event.');
       }
       cache.seed(result.profile as ProfileView);
-      setMessage(`Profile published. Accepted by ${result.accepted.join(', ')}.`);
+      setMessage('Profile published');
       setPending(null);
       setBase(null);
       setValues(null);
-      await router.invalidate();
+      // Publication is acknowledged; a stale page must not turn this into a publish retry.
+      await router.invalidate().catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not publish your profile.');
     } finally {
@@ -107,10 +113,17 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
   return (
     <section className="profile-edit-section" aria-label="Your profile">
       {!base ? (
-        <Button variant="outline" disabled={busy} onClick={() => void open()}>
-          <Pencil size={15} />
-          {busy ? 'Loading profile…' : exists ? 'Edit your profile' : 'Create your profile'}
-        </Button>
+        <ActionButton
+          variant="outline"
+          icon={<Pencil size={15} />}
+          working={busy ? phase : undefined}
+          error={error}
+          retryLabel="Retry loading profile"
+          success={message}
+          onClick={() => void open()}
+        >
+          {exists ? 'Edit your profile' : 'Create your profile'}
+        </ActionButton>
       ) : (
         <form
           noValidate
@@ -142,7 +155,10 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
                     maxLength={2000}
                     value={values?.[key] ?? ''}
                     placeholder={placeholder}
-                    onChange={(e) => setValues({ ...values!, [key]: e.target.value })}
+                    onChange={(e) => {
+                      setValues({ ...values!, [key]: e.target.value });
+                      setError('');
+                    }}
                   />
                 ) : (
                   <input
@@ -157,7 +173,10 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
                           ? 254
                           : 2048
                     }
-                    onChange={(e) => setValues({ ...values!, [key]: e.target.value })}
+                    onChange={(e) => {
+                      setValues({ ...values!, [key]: e.target.value });
+                      setError('');
+                    }}
                   />
                 )}
               </label>
@@ -182,14 +201,15 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
             </p>
           </details>
           <div className="identity-methods">
-            <Button disabled={busy || conflict || identity.needsReconnect || !base.relays.length}>
-              <Save size={15} />
-              {busy
-                ? 'Waiting for confirmation…'
-                : pending
-                  ? 'Retry signed update'
-                  : 'Sign & publish profile'}
-            </Button>
+            <ActionButton
+              disabled={conflict || identity.needsReconnect || !base.relays.length}
+              working={busy ? phase : undefined}
+              error={error}
+              retryLabel={conflict ? 'Profile changed' : 'Retry signed update'}
+              icon={<Save size={15} />}
+            >
+              Sign & publish profile
+            </ActionButton>
             {identity.needsReconnect && (
               <Button type="button" variant="outline" onClick={() => void identity.connect()}>
                 Reconnect signer
@@ -214,12 +234,6 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
               Close editor
             </Button>
           </div>
-          {pending && !conflict && (
-            <p className="muted">
-              Keep this editor open to retry the exact signed update. If you close it, a future edit
-              will first check the relays again.
-            </p>
-          )}
           {conflict && (
             <p className="muted">
               Your unsaved text is still visible above. Copy anything you want to keep before
@@ -227,16 +241,6 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
             </p>
           )}
         </form>
-      )}
-      {message && (
-        <p role="status" className="profile-success">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="error-message">
-          {error}
-        </p>
       )}
     </section>
   );
