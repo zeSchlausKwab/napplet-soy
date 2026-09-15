@@ -81,6 +81,17 @@ backed up in their signer application, not exported as local creator keys.
 
 ## Website sign-in
 
+Local presentation revision (2026-09-15, pending deployment): the identity button
+opens a non-modal popup anchored directly beneath it. It contains the same saved
+accounts, profile link, extension/NIP-46/private-key methods, key creation and recovery.
+There is no page-dimming overlay. Escape, the close button, a second trigger click,
+or clicking outside dismiss it and cancel pending connection/key work. Explicit close
+returns keyboard focus to the trigger. Other sign-in prompts first reveal the header
+button and open that same popup. It fits the viewport and scrolls internally on phones.
+Form semantics remain a labeled dialog for assistive technology rather than a menu
+of commands; the presentation is an anchored popup. Session and key handling are unchanged.
+
+
 The shell and social prompts open the same account chooser. Choose a NIP-07
 extension, create a NIP-46 connection code/link, paste a `bunker://` link, or import
 an nsec/hex private key after acknowledging the warning. The selected account signs
@@ -149,7 +160,7 @@ identity** generates a key using the browser's cryptographic random source. Only
 its public identity is shown. The new key does not replace a connected account
 until the user prepares a recovery backup, saves the file or encrypted text,
 acknowledges preserving it and its passphrase, and chooses Continue. Closing the
-dialog discards an unused draft and cancels its cryptographic work.
+popup discards an unused draft and cancels its cryptographic work.
 
 **Back up private key** in a connected browser-key session exports that same key
 again. It is unavailable for extensions and remote signers: back those up through
@@ -175,8 +186,9 @@ use the encrypted device vault described above; backup passphrases are never sav
 The recovery file is downloaded locally; its temporary object URL is revoked when
 the backup view closes. Draft/active key bytes are wiped on disposal where possible;
 JavaScript cannot guarantee erasure of all runtime copies. Backup does not itself
-persist a login; the separate Remember choice controls device sessions. [Agenda A20](../AGENDA.md#a20--nostr-sessions-through-applesauce-sessions)
-records the local account-session implementation and release status.
+persist a login; the separate Remember choice controls device sessions. The website
+sign-in section above records the local account-session implementation; deployment
+status is recorded in [deployment history](DEPLOYMENT.md).
 
 Verification: key-format interoperability/bounds tests and the production browser
 integration cover generation, required backup acknowledgement, repeat export,
@@ -230,7 +242,7 @@ Tests cover reuse, independent process access, two generated projects, encrypted
 
 The service integration test uses one reopened creator to publish source through native ngit-grasp, upload HTML through Blossom, and sign a standard manifest on Khatru. An independent Git clone and relay/Blossom reader recover the expected source and playable bytes. All test services and signing traffic are loopback-only.
 
-The [resumable publisher](PUBLISHING.md) now uses these components. The standalone installer, gallery indexing and named routes are implemented; release evidence and remaining compatibility work are tracked in DEPLOYMENT.md and AGENDA.md.
+The [resumable publisher](PUBLISHING.md) now uses these components. The standalone installer, gallery indexing and named routes are implemented; release evidence and remaining compatibility work are tracked in [deployment history](DEPLOYMENT.md) and the relevant feature documents.
 
 ### Account-session verification — 2026-09-15
 

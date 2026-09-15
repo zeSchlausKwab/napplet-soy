@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { EventStoreProvider } from 'applesauce-react/providers';
 import { createNostrClient } from '../../../../packages/nostr/src/client';
 import { browserIdentity, type IdentityState } from '../lib/browser-identity';
-import { IdentityDialog } from './identity-dialog';
+import { IdentityMenu } from './identity-menu';
 
 const Context = createContext<{
   pubkey: string | null;
@@ -25,6 +25,12 @@ export function NostrProvider({ children }: { children: ReactNode }) {
   });
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const connect = async () => {
+    document
+      .getElementById('identity-button')
+      ?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    setOpen(true);
+  };
   useEffect(() => {
     setReady(true);
     const manager = browserIdentity();
@@ -36,7 +42,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     window.addEventListener('focus', sync);
     const unsubscribe = manager.subscribe(() => {
       setIdentity(manager.state);
-      if (manager.state.authorization) setOpen(true);
+      if (manager.state.authorization) void connect();
     });
     return () => {
       unsubscribe();
@@ -44,9 +50,6 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     };
   }, []);
   useEffect(() => client.connect(relayUrls), [client]);
-  const connect = async () => {
-    setOpen(true);
-  };
   return (
     <Context.Provider
       value={{
@@ -58,8 +61,11 @@ export function NostrProvider({ children }: { children: ReactNode }) {
         relayConfigured: relayUrls.length > 0,
       }}
     >
-      <EventStoreProvider eventStore={client.store}>{children}</EventStoreProvider>
-      <IdentityDialog open={open} setOpen={setOpen} identity={identity} />
+      <EventStoreProvider eventStore={client.store}>
+        <IdentityMenu open={open} setOpen={setOpen} identity={identity}>
+          {children}
+        </IdentityMenu>
+      </EventStoreProvider>
     </Context.Provider>
   );
 }

@@ -1,6 +1,6 @@
 # NAP concepts and expansion review
 
-Reviewed **2026-09-14** for [agenda A12](../AGENDA.md#a12--upstream-concept-and-interoperability-review-before-wider-launch).
+Reviewed **2026-09-14** for upstream concept and interoperability review before wider launch.
 This records an upstream reading and code comparison, not a completed conformance
 audit. The [compatibility inventory](COMPATIBILITY.md) now records the configuration
 milestone and actual test coverage. The site is already deployed; the remaining acceptance work precedes a wider
@@ -115,7 +115,7 @@ These remain launch acceptance steps. The configuration implementation does not
 claim native projection support, full cross-client conformance or a production
 multiplayer service.
 
-2026-09-14 source-browser slice: no upstream protocol/runtime pin changes. The web client now consumes existing optional signed archive provenance for read-only file inspection, with the same bounded tar policy as remix. Missing archive metadata does not gate playback or standard discovery. The creator asset audit records the unimplemented large-media pipeline in [A19](../AGENDA.md#a19--creator-asset-workflow); it does not claim new resource capabilities.
+2026-09-14 source-browser slice: no upstream protocol/runtime pin changes. The web client now consumes existing optional signed archive provenance for read-only file inspection, with the same bounded tar policy as remix. Missing archive metadata does not gate playback or standard discovery. The creator asset audit records the unimplemented large-media pipeline in [asset authoring](ASSETS.md); it does not claim new resource capabilities.
 
 ## Host account and curation update — 2026-09-15
 

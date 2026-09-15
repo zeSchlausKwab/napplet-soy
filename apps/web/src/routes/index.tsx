@@ -88,7 +88,9 @@ function Gallery() {
           <StarterCommand />
           <p className="hero-command-note">
             macOS &amp; Linux · Git required · No Bun or Node installation needed.{' '}
-            <Link to="/cli">Setup help ↗</Link>
+            <Link to="/create" hash="setup">
+              Setup help ↗
+            </Link>
           </p>
           <div className="hero-links">
             <a className="browse-link" href="#explore">

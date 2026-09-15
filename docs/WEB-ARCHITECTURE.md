@@ -55,7 +55,8 @@ Route loaders call a server function or API boundary that resolves identifiers a
 | URL | Meaning |
 | --- | --- |
 | `/` | Gallery; filters in query parameters, e.g. `?sort=new&tag=game` |
-| `/create` | Instructions, templates, installer command |
+| `/create` | Combined creator/soyLI guide, templates, installation, skills and downloads |
+| `/cli` | Permanent redirect to `/create`; `/cli/download/…` continues serving releases |
 | `/@alice` | Creator's site profile |
 | `/@alice/plasma-pet` | Human-readable napplet page, following its current release |
 | `/@alice/plasma-pet/source` | Source for the selected current release |

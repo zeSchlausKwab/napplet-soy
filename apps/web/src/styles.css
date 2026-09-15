@@ -1935,10 +1935,24 @@ pre:focus-visible {
 .gallery-pending .action-button { white-space: normal; height: auto; min-height: 32px; }
 
 /* One sign-in surface across the shell and community actions. */
-.identity-dialog {
-  max-height: 90dvh;
+.identity-menu {
+  display: grid;
+  gap: 16px;
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(720px, var(--radix-popover-content-available-height));
   overflow-y: auto;
+  overscroll-behavior: contain;
+  transform-origin: var(--radix-popover-content-transform-origin);
+  box-shadow: 0 12px 40px #27292124;
 }
+.identity-menu-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.identity-menu-heading h2 { font-weight: 600; font-size: 17px; letter-spacing: -.02em; }
+.identity-menu-description { font-size: 13px; line-height: 1.6; }
+.identity-menu .identity-current { font-size: 13px; }
+.identity-menu > .muted { font-size: 12px; line-height: 1.6; }
+.identity-menu .identity-methods { gap: 6px; }
+.identity-menu .identity-methods > button { font-size: 12px; }
+
 .identity-methods {
   display: flex;
   flex-wrap: wrap;
@@ -2768,3 +2782,17 @@ a.nostr-creator:hover .creator-name {
     padding-left: 25px;
   }
 }
+
+/* One creator guide, from a first idea to installation details. */
+.creator-guide-nav { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 28px 0 40px; font: 12px var(--mono); color: #547050; }
+.creator-guide-nav a { text-decoration: underline; text-underline-offset: 4px; }
+.creator-guide { min-width: 0; }
+.creator-guide .guide-heading { font-size: clamp(21px, 3vw, 28px); font-weight: 500; letter-spacing: -.04em; margin: 48px 0 16px; }
+.creator-guide .platform-steps { margin-top: 20px; }
+.creator-guide .command-note { overflow-wrap: anywhere; }
+.creator-guide .terminal-box { margin-top: 20px; }
+.cli-downloads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0; list-style: none; }
+.cli-downloads li { padding: 14px 18px; border-radius: 8px; background: #eeeee3; font: 12px var(--mono); }
+.cli-downloads a { text-decoration: underline; text-underline-offset: 3px; }
+.cli-downloads a:last-child { color: #61785b; font-size: 11px; }
+@media (max-width: 500px) { .cli-downloads { grid-template-columns: 1fr; } }

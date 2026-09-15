@@ -1,24 +1,20 @@
-import { createFileRoute, type SearchSchemaInput } from '@tanstack/react-router';
-import { z } from 'zod';
+import { createFileRoute } from '@tanstack/react-router';
 import { WandSparkles, ArrowUpRight } from 'lucide-react';
 import { StarterCommand } from '@/components/starter-command';
+import release from '../../../cli/distribution/version.json';
+import { creatorSearch } from '@/lib/creator-search';
 export const Route = createFileRoute('/create')({
-  validateSearch: (input: SearchSchemaInput & { template?: string }) =>
-    z
-      .object({
-        template: z
-          .enum([
-            'boilerplate',
-            'soft-orbit',
-            'tiny-tennis',
-            'plasma-garden',
-            'blob-friend',
-            'very-important',
-            'pixel-rain',
-          ])
-          .catch('boilerplate'),
-      })
-      .parse(input),
+  validateSearch: creatorSearch,
+  head: () => ({
+    meta: [
+      { title: 'Create with napplet soyLI — napplet.soy' },
+      {
+        name: 'description',
+        content:
+          'Install napplet soyLI, create with your own AI tools, preview and publish. Setup, skills and downloads in one guide. No website account needed.',
+      },
+    ],
+  }),
   component: Create,
 });
 function Create() {
@@ -40,37 +36,162 @@ function Create() {
       <StarterCommand template={template} />
       <p className="command-note">
         macOS and Linux. No Bun or Node installation needed. Git is required.
-        <a href="/cli"> Installation help and downloads ↗</a>
       </p>
       <p className="command-note">
         Publishing uses a Nostr identity. The CLI can create one or connect yours; you don’t need to
         sign in here.
       </p>
-      <div className="creation-steps">
-        <article>
-          <span>01</span>
-          <h2>Start with a spark</h2>
-          <p>
-            Get a working project, a Git repository, and Napplet skills for your coding agent. New
-            creations start from the creator-maintained Napplet boilerplate.
-          </p>
-        </article>
-        <article>
-          <span>02</span>
-          <h2>Make it your kind of weird</h2>
-          <p>
-            Run <code>soyli dev</code> in the new project. Make changes with the AI tool you
-            already use and see them in the sandbox preview.
-          </p>
-        </article>
-        <article>
-          <span>03</span>
-          <h2>Play it. Pass it around.</h2>
-          <p>
-            Build your latest changes, then run <code>soyli publish</code> to check your
-            creation, publish to Nostr, and get a link to share.
-          </p>
-        </article>
+      <nav className="creator-guide-nav" aria-label="Creator guide">
+        <a href="#setup">Getting started</a>
+        <a href="#skills">Skills & boilerplate</a>
+        <a href="#platforms">System setup</a>
+        <a href="#upgrade">Update soyLI</a>
+        <a href="#downloads">Downloads</a>
+      </nav>
+      <div id="setup" className="creator-guide">
+        <p className="command-note">
+          The installer checks the download’s SHA-256 checksum and installs in your home folder. It
+          needs no sudo and leaves shell profiles alone. Follow its PATH instruction if needed, then
+          run:
+        </p>
+        <div className="terminal-box">
+          <code>
+            cd my-napplet
+            <br />
+            soyli dev
+            <br />
+            soyli build
+            <br />
+            soyli publish
+          </code>
+        </div>
+        <div className="creation-steps">
+          <article>
+            <span>01</span>
+            <h2>Start with a spark</h2>
+            <p>
+              The CLI prepares a private Node/pnpm toolchain and installs the starter’s locked
+              dependencies. You get a Git repository and Napplet skills for your coding agent. No
+              global Bun, Node, or npm installation is needed. The TypeScript project builds into a
+              self-contained HTML napplet.
+            </p>
+          </article>
+          <article>
+            <span>02</span>
+            <h2>Make it your kind of weird</h2>
+            <p>
+              Run <code>soyli dev</code> in the new project. Make changes with the AI tool you
+              already use and see them in the sandbox preview.
+            </p>
+            <p>
+              Create an identity or connect a remote signer. Credentials stay in your OS credential
+              store. Set it up later if you just want to experiment.
+            </p>
+          </article>
+          <article>
+            <span>03</span>
+            <h2>Play it. Pass it around.</h2>
+            <p>
+              In the dev preview, switch to Listing to inspect the screenshot, title, description,
+              tags and upload destinations. Capture a screenshot there before sharing.
+            </p>
+            <p>
+              Build your latest changes, then run <code>soyli publish</code> to check your creation,
+              publish to Nostr, and get a link to share.
+            </p>
+            <p>
+              The first check or publication downloads a pinned Chromium browser into your cache.
+              Future checks reuse it. Use <code>soyli check</code> without publishing.
+            </p>
+          </article>
+        </div>
+        <h2 id="skills" className="guide-heading">
+          The upstream starter, with skills included
+        </h2>
+        <p className="command-note">
+          New projects use a pinned version of{' '}
+          <a href="https://github.com/napplet/boilerplate">napplet/boilerplate</a>, including its
+          SDK, Vite plugin, documentation, and eight official Napplet skills. Open your coding agent
+          in the project folder; AGENTS.md and CLAUDE.md point it to the instructions. Run{' '}
+          <code>soyli run verify</code> for the upstream checks or{' '}
+          <code>soyli run test:conformance</code> for its reference harness.
+        </p>
+        <p className="command-note">
+          For an existing creation, run <code>soyli skills update</code> in its folder after
+          updating the CLI. This adds the bundled skills and preserves your edits. The project’s{' '}
+          <code>docs/napplet-space.md</code> explains publishing and supported host capabilities.
+          Explicit example starters remain available through <code>--template</code>.
+        </p>
+        <h2 id="platforms" className="guide-heading">
+          Settle into your system.
+        </h2>
+        <div className="creation-steps platform-steps">
+          <article>
+            <h2>macOS</h2>
+            <p>
+              Apple Silicon and modern Intel (AVX2) builds. Git comes with Apple Command Line Tools:
+              run <code>xcode-select --install</code> if it is missing. Creator credentials use your
+              login Keychain.
+            </p>
+          </article>
+          <article>
+            <h2>Linux</h2>
+            <p>
+              Use an ARM64 or x86-64 (SSE4.2) glibc desktop distribution, such as Ubuntu 24.04, with
+              Git and an unlocked Secret Service keyring. Headless servers need a D-Bus/keyring
+              session for creator identity. Chromium also needs system browser libraries.
+            </p>
+          </article>
+          <article>
+            <h2>Need a hand?</h2>
+            <p>
+              Run <code>soyli doctor</code> for Git and browser diagnostics. Run{' '}
+              <code>soyli account check</code> to verify your signer. Alpine/musl and native Windows
+              packages are not supported yet.
+            </p>
+          </article>
+        </div>
+        <p className="command-note">
+          On Ubuntu 24.04, Chromium’s system libraries can be installed with{' '}
+          <code>
+            sudo apt-get install libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64
+            libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1
+            libasound2t64
+          </code>
+          . The CLI never runs sudo for you.
+        </p>
+        <h2 id="upgrade" className="guide-heading">
+          Upgrading from napplet-space
+        </h2>
+        <p className="command-note">
+          Run <code>curl -fsSL https://napplet.soy/install.sh | sh</code> to update without creating
+          a project. The command is now <code>soyli</code>. Your identities, backups and project
+          state stay in place; the old command remains a compatibility alias. Then run{' '}
+          <code>soyli skills update</code> in each project to refresh its coding guidance.
+        </p>
+        <h2 id="downloads" className="guide-heading">
+          Downloads · {release.version}
+        </h2>
+        <p className="command-note">
+          Extract the whole archive, including its lib folder. Keep them together. These downloads
+          include the Bun runtime.
+        </p>
+        <ul className="cli-downloads">
+          {(['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64'] as const).map((platform) => (
+            <li key={platform}>
+              <a href={`/cli/download/${release.version}/soyli-${platform}.tar.gz`}>
+                {platform.replace('darwin', 'macOS')}
+              </a>
+              {' · '}
+              <a href={`/cli/download/${release.version}/soyli-${platform}.tar.gz.sha256`}>
+                SHA-256
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p className="command-note">
+          <a href="/install.sh">Inspect the installer</a>
+        </p>
       </div>
       <div className="creation-footnote">
         <WandSparkles size={22} />

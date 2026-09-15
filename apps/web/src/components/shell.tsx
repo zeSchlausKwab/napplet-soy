@@ -3,9 +3,10 @@ import { ArrowUpRight, Asterisk, Check, CircleAlert, CircleHelp, Plus, Radio } f
 import { type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNostr } from './nostr-provider';
+import { PopoverTrigger } from './ui/popover';
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { pubkey, ready, connect, relayConfigured, needsReconnect } = useNostr();
+  const { pubkey, ready, relayConfigured, needsReconnect } = useNostr();
   return (
     <div className="site-shell">
       <a href="#main" className="skip-link">
@@ -39,26 +40,28 @@ export function Shell({ children }: { children: ReactNode }) {
           <Link to="/create" className="make-link">
             <Plus size={16} /> Create a napplet
           </Link>
-          <Button
-            variant="outline"
-            className="connect-button"
-            disabled={!ready}
-            onClick={connect}
-            title={
-              pubkey && needsReconnect
-                ? 'Account selected — unlock or reconnect your signer'
-                : 'Nostr account'
-            }
-          >
-            {pubkey ? (
-              <>
-                {needsReconnect ? <CircleAlert size={14} /> : <Check size={14} />}
-                {pubkey.slice(0, 6)}…
-              </>
-            ) : (
-              'Connect'
-            )}
-          </Button>
+          <PopoverTrigger asChild>
+            <Button
+              id="identity-button"
+              variant="outline"
+              className="connect-button"
+              disabled={!ready}
+              title={
+                pubkey && needsReconnect
+                  ? 'Account selected — unlock or reconnect your signer'
+                  : 'Nostr account'
+              }
+            >
+              {pubkey ? (
+                <>
+                  {needsReconnect ? <CircleAlert size={14} /> : <Check size={14} />}
+                  {pubkey.slice(0, 6)}…
+                </>
+              ) : (
+                'Connect'
+              )}
+            </Button>
+          </PopoverTrigger>
         </div>
       </header>
       <main id="main">{children}</main>

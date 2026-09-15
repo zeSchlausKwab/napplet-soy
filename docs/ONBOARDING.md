@@ -41,10 +41,21 @@ from the site's browser runtime.
 modal version was deployed on 2026-09-14 in `20260914192251320-98168`; the historical
 verification below describes that release. See [CLI upgrade compatibility](CLI.md#rename-and-upgrade--2026-09-15).
 
+## Combined creator guide — 2026-09-15
+
+`/create` is the single onboarding and soyLI help route. It retains the starter
+command and inline walkthrough, account-free creation, coding/publishing steps,
+listing/screenshot checks, upstream skills and verification commands, OS requirements,
+Chromium libraries, upgrade instructions and all platform downloads/checksums.
+Section links jump to setup, skills, platforms, upgrading and downloads.
+`/cli` permanently redirects (308) to `/create`, preserving the selected template
+and section fragment. Existing `/cli/download/<version>/<file>` links remain unchanged.
+The landing hero's Setup help links directly to `/create#setup`. Local, pending deployment.
+
 ## Maintaining the guide
 
 - `apps/web/src/lib/creator-commands.ts` owns copyable install/create/remix commands.
-  `StarterCommand` is shared by the landing hero, creation page and CLI help; the
+  `StarterCommand` is shared by the landing hero, combined creator guide; the
   remix dialog uses the same builder with its exact source URL and local-network rule.
 - `apps/web/src/lib/creator-walkthrough.ts` owns the scene copy, transcript, caption
   text and media paths. It has no Remotion imports.

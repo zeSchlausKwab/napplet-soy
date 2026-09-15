@@ -84,7 +84,7 @@ async function verify() {
     await browserExpect(page.getByRole('button', { name: 'Generate new identity' })).toBeDisabled();
     await page.getByLabel('I understand that I must preserve my private key.').check();
     await page.getByRole('button', { name: 'Generate new identity' }).click();
-    const npub = await page.locator('.identity-dialog .public-key').textContent();
+    const npub = await page.locator('.identity-menu .public-key').textContent();
     const decoded = nip19.decode(npub!);
     if (decoded.type !== 'npub') throw Error('Expected public identity');
     const pubkey = decoded.data;

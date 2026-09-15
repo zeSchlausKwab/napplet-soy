@@ -216,7 +216,7 @@ function About() {
             <h3>Source for this client</h3>
             {repositories.map((repo) => (
               <a key={repo.href} href={repo.href} target="_blank" rel="noreferrer">
-                Napplet Space on {repo.label} <ArrowUpRight size={15} />
+                napplet.soy on {repo.label} <ArrowUpRight size={15} />
               </a>
             ))}
           </div>

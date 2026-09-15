@@ -1,10 +1,10 @@
-# napplet.space
+# napplet.soy
 
 A playground for self-contained games, visual experiments, and digital nonsense.
 
-Upcoming work and current gaps live in the maintained [agenda](AGENDA.md), including
-the [NAP review before wider launch](docs/NAP-REVIEW.md). The original [plan](PLAN.md)
-is design history; it is not the current delivery checklist.
+Implementation details and current limits live in the feature documents and the
+[NAP review](docs/NAP-REVIEW.md). The original [plan](PLAN.md) is design history;
+[deployment evidence](docs/DEPLOYMENT.md) records what has shipped.
 
 This is the first working implementation slice: Bun + React + TanStack Start, shadcn/ui, and Applesauce. It includes six signed local examples, SSR and client navigation, named/Nostr/pinned URLs, hash-verified sandbox playback, source inspection, a standalone creator CLI, and Caddy/PM2 deployment tooling.
 
@@ -183,4 +183,4 @@ Creator profiles and the remix family tree are implemented and verified locally,
 pending deployment: [Nostr profiles](docs/PROFILES.md) and
 [genealogy](docs/REMIXING.md#genealogy-on-napplet-pages). Creator labels open portable
 `/p/<npub>` pages; connected authors can edit their optional kind-0 profile.
-The deployed website includes a [pinned original-source browser](docs/REMIXING.md#browsing-a-releases-original-files); its release status is recorded in [A01](AGENDA.md#a01--browse-the-original-source-files).
+The deployed website includes a [pinned original-source browser](docs/REMIXING.md#browsing-a-releases-original-files); its release status is recorded in [deployment history](docs/DEPLOYMENT.md).

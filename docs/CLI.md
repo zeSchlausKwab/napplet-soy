@@ -107,7 +107,7 @@ requirements; `account check` verifies the selected signer.
   changing executables. Signing has no file fallback; the nsec file is for recovery.
 - Linux: glibc, ARM64 or x86-64 with SSE4.2; Git; an unlocked Secret Service keyring
   and D-Bus session for identity. Ubuntu 24.04 is the tested desktop baseline.
-  Chromium system libraries are listed at `/cli`. The CLI never installs OS
+  Chromium system libraries are listed at `/create#platforms` (`/cli` redirects to the same guide). The CLI never installs OS
   packages or invokes sudo. Alpine/musl and native Windows are not supported.
 - Installer: curl, tar, tty, SHA-256 utilities; HTTPS downloads with checksum verification.
 - Binary/support files: `~/.local/share/napplet-space/releases/<version-platform-hash>`.

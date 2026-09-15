@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { nip19 } from 'nostr-tools';
 import { CreatorLink } from './creator-link';
@@ -10,23 +10,28 @@ import {
   Plus,
   ShieldCheck,
   Smartphone,
+  X,
 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { Popover, PopoverClose, PopoverContent } from './ui/popover';
 import { LightningCode } from './lightning-code';
 import { browserIdentity, type IdentityState } from '../lib/browser-identity';
 import { defaultSignerRelays } from '../../../../packages/identity/src/signer';
 import { CreateKeyPanel, KeyBackup } from './key-backup';
 
-export function IdentityDialog({
+export function IdentityMenu({
   open,
   setOpen,
   identity,
+  children,
 }: {
   open: boolean;
   setOpen: (open: boolean) => void;
   identity: IdentityState;
+  children: ReactNode;
 }) {
+  const titleId = useId(),
+    descriptionId = useId();
   const [method, setMethod] = useState<'extension' | 'remote' | 'key' | 'create'>('extension');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -89,17 +94,27 @@ export function IdentityDialog({
     }
   }
   return (
-    <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogContent className="identity-dialog">
-        <DialogHeader>
-          <DialogTitle>
+    <Popover open={open} onOpenChange={changeOpen}>
+      {children}
+      <PopoverContent
+        className="identity-menu"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+      >
+        <div className="identity-menu-heading">
+          <h2 id={titleId}>
             {identity.pubkey ? 'Your Nostr identity' : 'Bring your Nostr identity'}
-          </DialogTitle>
-          <DialogDescription>
-            One identity for comments, likes, zaps and your creations. Remembered accounts survive
-            reloads on this device for 30 days. Browsing and creating need no website account.
-          </DialogDescription>
-        </DialogHeader>
+          </h2>
+          <PopoverClose asChild>
+            <Button variant="ghost" size="icon-xs" aria-label="Close">
+              <X size={15} />
+            </Button>
+          </PopoverClose>
+        </div>
+        <p id={descriptionId} className="muted identity-menu-description">
+          One identity for comments, likes, zaps and your creations. Remembered accounts survive
+          reloads on this device for 30 days. Browsing and creating need no website account.
+        </p>
         {identity.pubkey && (
           <div className="identity-current">
             <span className="muted">
@@ -482,7 +497,7 @@ export function IdentityDialog({
             {error}
           </p>
         )}
-      </DialogContent>
-    </Dialog>
+      </PopoverContent>
+    </Popover>
   );
 }

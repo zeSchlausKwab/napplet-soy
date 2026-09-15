@@ -9,3 +9,6 @@ dist/
 test-results/
 playwright-report/
 .DS_Store
+
+# Local planning is private until explicitly published.
+/AGENDA.md

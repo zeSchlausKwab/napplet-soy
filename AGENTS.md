@@ -1,14 +1,15 @@
 # Project working context
 
-Read [AGENDA.md](AGENDA.md) before planning relevant product work. It is the
-maintained backlog; [PLAN.md](PLAN.md) is historical design context and may contain
-superseded implementation status.
+If a local `AGENDA.md` exists, read it before planning relevant product work. It is
+private and Git-ignored: keep it local, do not stage it or copy its roadmap into
+public documentation. Public checkouts can use README.md and the relevant feature
+documents; the agenda is optional, never a setup or contribution requirement.
+[PLAN.md](PLAN.md) is historical design context and may contain superseded status.
 
-When a change affects an agenda item, update its status, remaining scope, decisions
-and verification evidence in the same change. Keep stable IDs and distinguish
-implemented, verified and deployed. Update the relevant feature document too.
-Do not mark a feature complete merely because its foundation exists. Preserve
-unresolved requirements and user decisions rather than silently dropping them.
+Keep any local agenda current with stable IDs, decisions, remaining scope and
+verification evidence. Distinguish implemented, verified and deployed. Update public
+feature documents for changes to implemented behavior and limits. Do not mark a
+feature complete merely because its foundation exists.
 
 Before changing protocol-facing behavior, read [docs/PROTOCOL.md](docs/PROTOCOL.md)
 and [docs/NAP-REVIEW.md](docs/NAP-REVIEW.md). Keep the user's selected NIP-5D proposal

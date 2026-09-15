@@ -1,9 +1,8 @@
 # ContextVM and multiplayer
 
-2026-09-14 agenda update: [A15](../AGENDA.md#a15--generalized-multiplayer-contextvm-api)
-requires random 1v1, free-for-all and multiple named rooms with variable membership
-before freezing a generalized API. [A14](../AGENDA.md#a14--currently-playing-and-joinable-sessions)
-adds opt-in public activity and Join cards after the bridge and room contract exist.
+The generalized API requirements recorded on 2026-09-14 include random 1v1, free-for-all and multiple named rooms with variable membership
+before freezing a generalized API. Opt-in public activity and Join cards depend on
+the bridge and room contract.
 The three tools below remain the implemented starter, not that generalized API.
 
 2026-09-12. The service starter and tests below are implemented. Browser NAP-CVM mediation, game simulation, and managed deployment of creator code are subsequent slices.

@@ -1,10 +1,14 @@
 import { createServerFn } from '@tanstack/react-start';
 
-// Only explicitly configured public repository links cross the server boundary.
+// Only public repository links cross the server boundary; operators can override the upstream default.
 export const getProjectLinks = createServerFn({ method: 'GET' }).handler(() => {
   const links: { label: string; href: string }[] = [];
   for (const [label, value, host] of [
-    ['GitHub', process.env.SPACE_SOURCE_GITHUB_URL, 'github.com'],
+    [
+      'GitHub',
+      process.env.SPACE_SOURCE_GITHUB_URL ?? 'https://github.com/zeSchlausKwab/napplet-soy',
+      'github.com',
+    ],
     ['Gitworkshop', process.env.SPACE_SOURCE_GITWORKSHOP_URL, 'gitworkshop.dev'],
   ]) {
     if (!value) continue;

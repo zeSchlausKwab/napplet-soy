@@ -1,7 +1,5 @@
 # Relay, media, flavors, and protocol alignment
 
-Current follow-up: [AGENDA.md](../AGENDA.md), updated 2026-09-14, tracks remaining
-media, hero, config, identity and flavor work against today's implementation.
 The [NAP review](NAP-REVIEW.md) records upstream expansion boundaries. The dated
 recommendations below retain design context; screenshots, the managed relay and
 several former conformance gaps have since been implemented.

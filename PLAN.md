@@ -1,10 +1,10 @@
 # napplet.space — proposed v1 plan
 
-**Current planning entry point: [AGENDA.md](AGENDA.md), reconciled 2026-09-14.**
+**Historical design; see [README.md](README.md) and feature documents for current behavior.**
 This document preserves the original proposal and dated decisions. Statements below
 that indexing, naming, publication, remix or deployment are still pending are
 historical. The site is live with CLI 0.4.1; native PM2 services and SQLite replaced
-the initial Compose/Postgres proposal. Use the agenda and linked implementation
+the initial Compose/Postgres proposal. Use the README and linked implementation
 documents for current status. The new requests cover source browsing, immersive
 entry, signers/profiles, onboarding/curation/promotions, media/comments, NAP-CONFIG
 and generalized ContextVM sessions; see the [upstream review](docs/NAP-REVIEW.md).

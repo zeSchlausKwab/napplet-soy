@@ -2,8 +2,7 @@
 
 Audited **2026-09-14** against the vendored upstream boilerplate and its pinned
 `@napplet/vite-plugin` **0.11.2**. This is the supported small-asset workflow today.
-The complete large-media workflow is still missing; [A19](../AGENDA.md#a19--creator-asset-workflow)
-tracks the implementation and acceptance checks. Runtime assets and gallery previews
+The complete large-media workflow described below is still missing. Runtime assets and gallery previews
 are separate things.
 
 ## Small assets: keep them in the project and import them
