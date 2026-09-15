@@ -58,8 +58,18 @@ const rule = z.object({
   actor: z.string().regex(hex),
   at: z.number().int(),
 });
+const actions = [
+  'block',
+  'unblock',
+  'feature',
+  'unfeature',
+  'feature-up',
+  'feature-down',
+  'admin-add',
+  'admin-remove',
+] as const;
 const audit = rule.extend({
-  action: z.enum(['block', 'unblock', 'feature', 'unfeature']),
+  action: z.enum(actions),
   revision: z.number().int(),
   requestId: z.string().regex(hex),
 });
@@ -71,6 +81,7 @@ const schema = z.object({
     .array(rule.extend({ type: z.enum(['address', 'event']) }))
     .max(256)
     .default([]),
+  admins: z.array(z.string().regex(hex)).max(32).default([]),
   audit: z.array(audit).max(500),
   used: z.array(z.object({ id: z.string().regex(hex), expires: z.number().int() })).max(1000),
 });
@@ -80,6 +91,7 @@ const empty = (): Policy => ({
   revision: 0,
   rules: [],
   featured: [],
+  admins: [],
   audit: [],
   used: [],
 });
@@ -109,6 +121,7 @@ export function readPolicy(path = policyPath()) {
         throw new Error();
       keys.add(`${r.type}:${r.target}`);
     }
+    if (new Set(policy.admins).size !== policy.admins.length) throw new Error();
     const featured = new Set<string>();
     for (const r of policy.featured) {
       const key = `${r.type}:${r.target}`;
@@ -194,7 +207,7 @@ export function manifestFeatured(event: {
 }
 export const actionSchema = z
   .object({
-    action: z.enum(['block', 'unblock', 'feature', 'unfeature']),
+    action: z.enum(actions),
     type: z.enum(ruleTypes),
     target: z.string().min(1).max(4096),
     reason: z.string().trim().min(1).max(500),
@@ -203,9 +216,28 @@ export const actionSchema = z
   .strict()
   .refine(
     (input) =>
-      !['feature', 'unfeature'].includes(input.action) || ['address', 'event'].includes(input.type),
+      (!input.action.startsWith('feature') && input.action !== 'unfeature') ||
+      ['address', 'event'].includes(input.type),
     'Only napplets and revisions can be featured.',
+  )
+  .refine(
+    (input) => !input.action.startsWith('admin-') || input.type === 'pubkey',
+    'Administrators must be public keys.',
   );
+/** Environment keys are recovery administrators and cannot be removed through the UI. */
+export function configuredAdmins() {
+  return [
+    ...new Set(
+      (process.env.SPACE_ADMIN_PUBKEYS ?? '')
+        .split(',')
+        .filter((s) => s.trim())
+        .map((s) => normalizeTarget('pubkey', s)),
+    ),
+  ];
+}
+export function effectiveAdmins(policy = readPolicy()) {
+  return [...new Set([...configuredAdmins(), ...policy.admins])];
+}
 export type ModerationAction = z.infer<typeof actionSchema>;
 /** One atomic document contains rules, replay receipts and the bounded audit trail. */
 export function updatePolicy(
@@ -213,6 +245,7 @@ export function updatePolicy(
   actor: string,
   requestId: string,
   now = Math.floor(Date.now() / 1000),
+  authorize = false,
 ) {
   input = actionSchema.parse(input);
   const path = policyPath();
@@ -228,23 +261,58 @@ export function updatePolicy(
   }
   try {
     const current = readPolicy(path);
+    // Check again while holding the write lock: a revoked admin cannot race a request.
+    if (
+      (authorize || input.action.startsWith('admin-')) &&
+      !effectiveAdmins(current).includes(actor)
+    )
+      throw new PolicyError('This account is not an administrator.', 403);
     if (current.used.some((r) => r.id === requestId && r.expires >= now))
       throw new PolicyError('This signed request was already used.', 409);
     if (input.revision !== current.revision)
       throw new PolicyError('Policy changed. Refresh before trying again.', 409);
     const used = current.used.filter((r) => r.expires >= now);
     if (used.length >= 1000) throw new PolicyError('Admin request budget exceeded.', 429);
-    const curating = input.action === 'feature' || input.action === 'unfeature';
-    const rules = curating
-      ? [...current.rules]
-      : current.rules.filter((r) => r.type !== input.type || r.target !== target);
-    const featured = curating
-      ? current.featured.filter((r) => r.type !== input.type || r.target !== target)
-      : [...current.featured];
+    const rules = current.rules.filter(
+      (r) =>
+        !['block', 'unblock'].includes(input.action) ||
+        r.type !== input.type ||
+        r.target !== target,
+    );
+    const featured = current.featured.filter(
+      (r) =>
+        !['feature', 'unfeature'].includes(input.action) ||
+        r.type !== input.type ||
+        r.target !== target,
+    );
+    const admins = [...current.admins];
     const item = { type: input.type, target, reason: input.reason, actor, at: now };
     if (input.action === 'block') rules.push(item);
     if (input.action === 'feature' && (item.type === 'address' || item.type === 'event'))
       featured.push({ ...item, type: item.type });
+    if (['feature-up', 'feature-down'].includes(input.action)) {
+      const position = featured.findIndex((r) => r.type === input.type && r.target === target);
+      if (position < 0) throw new PolicyError('This selection is no longer featured.', 409);
+      const next = position + (input.action === 'feature-up' ? -1 : 1);
+      if (next < 0 || next >= featured.length)
+        throw new PolicyError('This selection cannot move further.', 409);
+      [featured[position], featured[next]] = [featured[next], featured[position]];
+    }
+    if (input.action === 'admin-add') {
+      if (effectiveAdmins(current).includes(target))
+        throw new PolicyError('This account is already an administrator.', 409);
+      if (admins.length >= 32) throw new PolicyError('Administrator limit reached.', 409);
+      admins.push(target);
+    }
+    if (input.action === 'admin-remove') {
+      if (configuredAdmins().includes(target))
+        throw new PolicyError('Recovery administrators are managed in server configuration.', 409);
+      const position = admins.indexOf(target);
+      if (position < 0) throw new PolicyError('This account is not an administrator.', 409);
+      if (effectiveAdmins(current).length <= 1)
+        throw new PolicyError('Keep at least one administrator.', 409);
+      admins.splice(position, 1);
+    }
     if (featured.length > 256) throw new PolicyError('Featured collection capacity reached.', 409);
     if (rules.length > 10000) throw new PolicyError('Block list capacity reached.', 409);
     const next: Policy = {
@@ -252,6 +320,7 @@ export function updatePolicy(
       revision: current.revision + 1,
       rules,
       featured,
+      admins,
       audit: [
         ...current.audit,
         { ...item, action: input.action, revision: current.revision + 1, requestId },

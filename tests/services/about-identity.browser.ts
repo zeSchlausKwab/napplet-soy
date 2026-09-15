@@ -173,7 +173,7 @@ async function verify() {
     await page.getByRole('button', { name: 'Use key for this session' }).click();
     await browserExpect(page.getByRole('dialog')).toHaveCount(0, { timeout: 15000 });
     await connected.click();
-    await page.getByRole('button', { name: 'Disconnect from this app' }).click();
+    await page.getByRole('button', { name: 'Sign out' }).click();
     await browserExpect(
       page.getByRole('button', { name: 'Back up private key', exact: true }),
     ).toHaveCount(0);

@@ -34,6 +34,8 @@ export function IdentityDialog({
   const [showBackup, setShowBackup] = useState(false);
   const [relay, setRelay] = useState(defaultSignerRelays[0]);
   const [accepted, setAccepted] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [rememberKey, setRememberKey] = useState(false);
   const attempt = useRef(0);
   function cancel() {
     attempt.current++;
@@ -91,14 +93,14 @@ export function IdentityDialog({
             {identity.pubkey ? 'Your Nostr identity' : 'Bring your Nostr identity'}
           </DialogTitle>
           <DialogDescription>
-            One identity for comments, likes, zaps and your creations. Connections last until you
-            disconnect or refresh this page.
+            One identity for comments, likes, zaps and your creations. Remembered accounts survive
+            reloads on this device for 30 days. Browsing and creating need no website account.
           </DialogDescription>
         </DialogHeader>
         {identity.pubkey && (
           <div className="identity-current">
             <span className="muted">
-              Connected through{' '}
+              {identity.reconnect ? 'Selected through ' : 'Connected through '}
               {identity.method === 'key'
                 ? 'a key in browser memory'
                 : identity.method === 'remote'
@@ -106,7 +108,7 @@ export function IdentityDialog({
                   : 'your extension'}
             </span>
             <code className="public-key">{identity.pubkey}</code>
-            {identity.method === 'key' && (
+            {identity.method === 'key' && !identity.reconnect && (
               <>
                 <Button variant="outline" onClick={() => setShowBackup(!showBackup)}>
                   {showBackup ? 'Close backup' : 'Back up private key'}
@@ -126,12 +128,14 @@ export function IdentityDialog({
               variant="outline"
               onClick={() => {
                 cancel();
-                browserIdentity().disconnect();
+                void browserIdentity().disconnect();
               }}
             >
-              Disconnect from this app
+              Sign out
             </Button>
-            <p className="muted">Or connect another account below.</p>
+            <p className="muted">
+              Sign out keeps remembered accounts here. Forget removes them from this browser.
+            </p>
           </div>
         )}
         {identity.reconnect && (
@@ -139,8 +143,68 @@ export function IdentityDialog({
             onClick={() => run((onAuth) => browserIdentity().reconnect({ onAuth }))}
             disabled={busy}
           >
-            Reconnect remote signer
+            Reconnect selected signer
           </Button>
+        )}
+        {identity.restoring && <p role="status">Restoring your selected account…</p>}
+        {identity.warning && (
+          <p role="alert" className="error-message">
+            {identity.warning}
+          </p>
+        )}
+        {!!identity.sessions?.length && (
+          <div className="saved-sessions">
+            <h3>Accounts on this device</h3>
+            {identity.sessions.map((session) => (
+              <div className="saved-session" key={session.id}>
+                <div>
+                  <code title={session.pubkey}>
+                    {session.pubkey.slice(0, 10)}…{session.pubkey.slice(-6)}
+                  </code>
+                  <span className="muted">
+                    {session.method === 'key'
+                      ? 'Private key'
+                      : session.method === 'remote'
+                        ? 'Remote signer'
+                        : 'Extension'}{' '}
+                    · {session.remembered ? 'Remembered' : 'This visit only'}
+                    {session.id === identity.activeId ? ' · Selected' : ''}
+                  </span>
+                </div>
+                <div className="identity-methods">
+                  {session.id !== identity.activeId && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      aria-label={`Use account ${session.pubkey.slice(0, 10)}`}
+                      onClick={() =>
+                        run((onAuth) => browserIdentity().useSession(session.id, { onAuth }))
+                      }
+                    >
+                      Use
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy}
+                    aria-label={`Forget account ${session.pubkey.slice(0, 10)}`}
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        await browserIdentity().forget(session.id);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Forget
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
         <div className="identity-methods" aria-label="Sign-in method">
           {(
@@ -165,12 +229,35 @@ export function IdentityDialog({
             </Button>
           ))}
         </div>
+        <label className="identity-consent">
+          <input
+            type="checkbox"
+            checked={method === 'key' || method === 'create' ? rememberKey : remember}
+            disabled={busy}
+            onChange={(event) =>
+              method === 'key' || method === 'create'
+                ? setRememberKey(event.target.checked)
+                : setRemember(event.target.checked)
+            }
+          />
+          Remember this {method === 'key' || method === 'create' ? 'private key' : 'connection'} on
+          this device
+        </label>
+        <p className="muted session-storage-note">
+          Saved credentials are encrypted in this browser, never saved on our server. Anyone with
+          access to this browser, or code running on this website, can use them. Use only a trusted
+          device; keep a separate recovery backup. Extensions keep your private key outside the
+          website.
+        </p>
         {method === 'extension' && (
           <>
             <p className="muted">
               Use your NIP-07 browser extension. Your private key stays with your signer.
             </p>
-            <Button disabled={busy} onClick={() => run(() => browserIdentity().extension())}>
+            <Button
+              disabled={busy}
+              onClick={() => run(() => browserIdentity().extension(remember))}
+            >
               Connect browser extension
             </Button>
           </>
@@ -198,7 +285,7 @@ export function IdentityDialog({
               disabled={busy}
               onClick={() =>
                 run((onAuth, onPairing) =>
-                  browserIdentity().pair([relay.trim()], onPairing, { onAuth }),
+                  browserIdentity().pair([relay.trim()], onPairing, { onAuth }, remember),
                 )
               }
             >
@@ -240,7 +327,7 @@ export function IdentityDialog({
                   event.preventDefault();
                   const link = secret;
                   setSecret('');
-                  void run((onAuth) => browserIdentity().bunker(link, { onAuth }));
+                  void run((onAuth) => browserIdentity().bunker(link, { onAuth }, remember));
                 }}
                 className="identity-form"
               >
@@ -263,7 +350,9 @@ export function IdentityDialog({
             )}
           </>
         )}
-        {open && method === 'create' && <CreateKeyPanel onConnected={() => changeOpen(false)} />}
+        {open && method === 'create' && (
+          <CreateKeyPanel remember={rememberKey} onConnected={() => changeOpen(false)} />
+        )}
         {method === 'key' && (
           <form
             className="identity-form"
@@ -274,15 +363,15 @@ export function IdentityDialog({
               const phrase = password;
               setSecret('');
               setPassword('');
-              void run(() => browserIdentity().importKey(key, phrase));
+              void run(() => browserIdentity().importKey(key, phrase, rememberKey));
             }}
           >
             <div className="identity-warning" role="note">
               <strong>Only paste a key you trust this website with.</strong>
               <p>
                 A private key grants control of your Nostr identity. Extensions and remote signers
-                keep it outside the website. Imported keys stay in this page’s memory and are
-                cleared on disconnect or refresh.
+                keep it outside the website. Without Remember, imported keys stay in this page’s
+                memory and are cleared on sign-out or refresh.
               </p>
             </div>
             <label className="identity-consent">

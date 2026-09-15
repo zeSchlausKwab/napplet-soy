@@ -1,7 +1,7 @@
 import { signForAccount } from '@/lib/community-client';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
-import { ShieldCheck, LoaderCircle, RefreshCw } from 'lucide-react';
+import { ShieldCheck, LoaderCircle, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNostr } from '@/components/nostr-provider';
 import type {
@@ -19,7 +19,10 @@ export const Route = createFileRoute('/admin')({
   }),
   component: Admin,
 });
-type State = Pick<Policy, 'revision' | 'rules' | 'featured' | 'audit'> & { admins: string[] };
+type State = Pick<Policy, 'revision' | 'rules' | 'featured' | 'audit'> & {
+  admins: string[];
+  recoveryAdmins: string[];
+};
 const labels: Record<RuleType, string> = {
   pubkey: 'Author',
   address: 'Napplet',
@@ -28,6 +31,9 @@ const labels: Record<RuleType, string> = {
 };
 function Admin() {
   const { pubkey } = useNostr();
+  const router = useRouter();
+  const [adminKey, setAdminKey] = useState('');
+  const [adminReason, setAdminReason] = useState('');
   const [state, setState] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +44,8 @@ function Admin() {
   const [action, setAction] = useState<ModerationAction['action']>('block');
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const visible = pubkey === loadedKey ? state : null;
-  async function request(mutate = false) {
+  async function request(input?: Omit<ModerationAction, 'revision'>) {
+    const mutate = !!input;
     setBusy(true);
     setError('');
     setNotice('');
@@ -48,9 +55,7 @@ function Admin() {
       if (mutate && !visible) throw new Error('Load the current policy first.');
       const url = new URL('/api/admin', location.origin).href;
       const method = mutate ? 'POST' : 'GET';
-      const body = mutate
-        ? JSON.stringify({ action, type, target, reason, revision: visible!.revision })
-        : undefined;
+      const body = mutate ? JSON.stringify({ ...input, revision: visible!.revision }) : undefined;
       const tags = [
         ['u', url],
         ['method', method],
@@ -92,8 +97,15 @@ function Admin() {
             unblock: 'Block removed.',
             feature: 'Featured napplet saved.',
             unfeature: 'Napplet removed from Featured.',
-          }[action],
+            'feature-up': 'Featured order saved.',
+            'feature-down': 'Featured order saved.',
+            'admin-add': 'Administrator added.',
+            'admin-remove': 'Administrator removed.',
+          }[input!.action],
         );
+        void router.invalidate();
+        setAdminKey('');
+        setAdminReason('');
         setTarget('');
         setReason('');
       }
@@ -139,7 +151,7 @@ function Admin() {
             className="admin-form"
             onSubmit={(e) => {
               e.preventDefault();
-              void request(true);
+              void request({ action, type, target, reason });
             }}
           >
             <h2>Update the collection</h2>
@@ -228,14 +240,52 @@ function Admin() {
             Select a napplet by naddr to follow its future releases, or an event ID to feature one
             revision. Nothing is featured automatically. Blocks still apply.
           </p>
+          <p className="muted">
+            The first 12 available selections appear in the hero in this order. Unavailable or
+            blocked entries are skipped.
+          </p>
           {!visible.featured.length && <p className="muted">The Featured collection is empty.</p>}
           <ul className="admin-rules">
-            {visible.featured.map((r) => (
+            {visible.featured.map((r, index) => (
               <li key={`${r.type}:${r.target}`}>
                 <div>
                   <span className="eyebrow">{labels[r.type]}</span>
                   <code>{r.target}</code>
                   <p>{r.reason}</p>
+                </div>
+                <div className="admin-order">
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    disabled={busy || index === 0}
+                    aria-label={`Move featured selection ${index + 1} earlier`}
+                    onClick={() =>
+                      void request({
+                        action: 'feature-up',
+                        type: r.type,
+                        target: r.target,
+                        reason: 'Move earlier in Featured rotation',
+                      })
+                    }
+                  >
+                    <ArrowUp size={15} />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    disabled={busy || index === visible.featured.length - 1}
+                    aria-label={`Move featured selection ${index + 1} later`}
+                    onClick={() =>
+                      void request({
+                        action: 'feature-down',
+                        type: r.type,
+                        target: r.target,
+                        reason: 'Move later in Featured rotation',
+                      })
+                    }
+                  >
+                    <ArrowDown size={15} />
+                  </Button>
                 </div>
                 <Button
                   variant="outline"
@@ -253,6 +303,78 @@ function Admin() {
               </li>
             ))}
           </ul>
+          <h2>Administrators</h2>
+          <p className="muted">
+            Administrators can curate, moderate and manage other admins. Server-configured recovery
+            admins always retain access.
+          </p>
+          <form
+            className="admin-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void request({
+                action: 'admin-add',
+                type: 'pubkey',
+                target: adminKey,
+                reason: adminReason,
+              });
+            }}
+          >
+            <label>
+              Administrator public key
+              <input
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                placeholder="npub1… or hex public key"
+                maxLength={128}
+                required
+                disabled={busy}
+              />
+            </label>
+            <label>
+              Administrator change reason
+              <input
+                value={adminReason}
+                onChange={(e) => setAdminReason(e.target.value)}
+                maxLength={500}
+                required
+                disabled={busy}
+              />
+            </label>
+            <Button disabled={busy || !adminKey.trim() || !adminReason.trim()}>
+              Add administrator
+            </Button>
+          </form>
+          <ul className="admin-rules">
+            {visible.admins.map((key) => (
+              <li key={key}>
+                <div>
+                  <code>{key}</code>
+                  {visible.recoveryAdmins.includes(key) && (
+                    <span className="muted">Recovery administrator · server configuration</span>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={busy || visible.recoveryAdmins.includes(key) || !adminReason.trim()}
+                  onClick={() =>
+                    void request({
+                      action: 'admin-remove',
+                      type: 'pubkey',
+                      target: key,
+                      reason: adminReason,
+                    })
+                  }
+                >
+                  Remove administrator
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <p className="muted">
+            Enter a change reason above before removing an administrator. Removal takes effect on
+            their next request.
+          </p>
           <h2>Active blocks</h2>
           {!visible.rules.length && <p className="muted">No content is blocked.</p>}
           <ul className="admin-rules">
@@ -281,8 +403,7 @@ function Admin() {
           </ul>
           <h2>Recent changes</h2>
           <p className="muted">
-            The latest 500 actions are retained. Administrators are configured by the server
-            operator.
+            The latest 500 actions are retained, including membership and Featured ordering changes.
           </p>
           <ol className="admin-audit">
             {[...visible.audit]
@@ -298,6 +419,10 @@ function Admin() {
                         unblock: 'Unblocked',
                         feature: 'Featured',
                         unfeature: 'Removed from Featured',
+                        'feature-up': 'Moved earlier',
+                        'feature-down': 'Moved later',
+                        'admin-add': 'Added administrator',
+                        'admin-remove': 'Removed administrator',
                       }[r.action]
                     }{' '}
                     {labels[r.type].toLowerCase()}

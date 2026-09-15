@@ -206,7 +206,7 @@ test('account changes notify the existing frame and replace storage, files and p
     }),
   ).toEqual({ level: null, identity: key, files: [] });
   await page.getByRole('button', { name: `${key.slice(0, 6)}…`, exact: true }).click();
-  await page.getByRole('button', { name: 'Disconnect from this app' }).click();
+  await page.getByRole('button', { name: 'Sign out' }).click();
   await expect.poll(() => frame.evaluate(() => (window as any).changes)).toEqual([key, '']);
   expect(await frame.evaluate(() => (window as any).napplet.storage.getItem('level'))).toBe(
     'guest-level',

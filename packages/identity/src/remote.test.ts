@@ -280,8 +280,8 @@ test('browser identity scopes signatures, reconnects the same user, cancels pair
       'permissions',
     );
     e.provider.onSignEvent = () => false;
-    await expect(identity.sign(creator, template)).rejects.toThrow('Reconnect');
-    expect(identity.state).toMatchObject({ pubkey: null, reconnect: true });
+    await expect(identity.sign(creator, template)).rejects.toThrow('still selected');
+    expect(identity.state).toMatchObject({ pubkey: creator, reconnect: true });
     e.provider.onSignEvent = () => true;
     await identity.reconnect();
     expect(identity.state.pubkey).toBe(creator);
@@ -305,7 +305,7 @@ test('browser identity scopes signatures, reconnects the same user, cancels pair
     const replacement = new PrivateKeySigner();
     await identity.importKey(Buffer.from(replacement.key).toString('hex'));
     release(true);
-    expect((await rejected)?.message).toContain('Reconnect');
+    expect((await rejected)?.message).toContain('Signing did not complete');
     expect(identity.state.pubkey).toBe(await replacement.getPublicKey());
     await expect(identity.sign(creator, template)).rejects.toThrow('correct account');
     const pairing = identity.pair([e.url], () => {
@@ -314,7 +314,7 @@ test('browser identity scopes signatures, reconnects the same user, cancels pair
     await expect(pairing).rejects.toThrow();
     expect(identity.state.pubkey).toBe(await replacement.getPublicKey());
     identity.disconnect();
-    expect(identity.state).toEqual({ pubkey: null, method: null, reconnect: false });
+    expect(identity.state).toMatchObject({ pubkey: null, method: null, reconnect: false });
   } finally {
     identity.disconnect();
     await e.close();

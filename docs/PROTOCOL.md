@@ -134,3 +134,12 @@ Store saves in host-owned storage scoped by viewer/anonymous local profile and f
 Rebuilding content does not recreate the site name registry, local curation, moderation history, private saves, or every event lost by all relays. Back up those operator/private datasets separately and state their portability limits. Portable Nostr routes continue to identify creations independently of the name registry.
 
 Source inspection (deployed 2026-09-14) consumes the existing optional `source-archive`/`source-commit` conventions without changing NIP-5D admission. It verifies the exact signed archive hash, labels commit/build correspondence as author-recorded, and offers a verified built-HTML fallback for all publishers. See [the source browser contract](REMIXING.md#browsing-a-releases-original-files). The large-original-media lockfile described above is still planned, not implemented; [A19](../AGENDA.md#a19--creator-asset-workflow) tracks that gap.
+
+## Host account and curation update — 2026-09-15
+
+Local A07/A20 work uses `applesauce-accounts@6.2.0` for website account sessions and
+extends site policy with administrator membership and Featured order. It does not
+change NIP-5D manifests, NAP permissions, artifact formats or publisher eligibility.
+NIP-98 remains the admin request protocol. Saved credentials stay in the trusted
+host; running napplets receive only the existing public identity notifications.
+See [identity](IDENTITY.md#website-sign-in) and [moderation](MODERATION.md).

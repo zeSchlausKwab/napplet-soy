@@ -85,6 +85,22 @@ moderation state and audited, never added to the creator's signed manifest. Feat
 content does not unblock it or import content that discovery has not indexed.
 
 
+The **2026-09-15 local revision** adds an ordered hero rotation beside the landing
+headline. Admin up/down controls determine priority. The first twelve available,
+unblocked selections appear; addresses resolve current releases, event IDs link
+to their exact `/r/<id>` revision. Duplicate revisions are shown once. Missing
+selections are skipped without deleting their saved policy, and an empty result
+retains the original hero artwork. Gallery filters and pagination do not narrow
+the editorial hero. The collection refreshes every thirty seconds in a visible tab
+and on focus; blocking remains enforced again when opening/playing content.
+
+A single preview rotates every seven seconds. Hover/focus, manual movement, hidden
+tabs, offscreen placement and reduced motion stop automatic rotation. Manual arrows
+and pause/resume remain available. No napplet executes until the normal player flow.
+The terminal remains first on mobile with Featured below it. These features are
+verified locally, pending deployment, and remain separate from paid placement.
+
+
 ## Gallery social discovery
 
 Every normal gallery card shows unique-author likes, visible comments/replies, verified

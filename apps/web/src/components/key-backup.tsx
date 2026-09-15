@@ -144,7 +144,13 @@ export function KeyBackup({
   );
 }
 
-export function CreateKeyPanel({ onConnected }: { onConnected: () => void }) {
+export function CreateKeyPanel({
+  onConnected,
+  remember = false,
+}: {
+  onConnected: () => void;
+  remember?: boolean;
+}) {
   const draft = useRef<ReturnType<typeof createKeyDraft> | undefined>(undefined);
   const [pubkey, setPubkey] = useState('');
   const [accepted, setAccepted] = useState(false);
@@ -165,9 +171,9 @@ export function CreateKeyPanel({ onConnected }: { onConnected: () => void }) {
       <div className="identity-warning" role="note">
         <strong>A new key is a new Nostr identity.</strong>
         <p>
-          This website will hold the key in browser memory. Save a backup before continuing:
-          refreshing or closing the page clears it. An extension or remote signer keeps keys outside
-          the website.
+          This website will hold the key. Save a backup before continuing: browser storage can be
+          cleared or lost, and Remember is not a backup. An extension or remote signer keeps keys
+          outside the website.
         </p>
       </div>
       {!pubkey ? (
@@ -224,7 +230,9 @@ export function CreateKeyPanel({ onConnected }: { onConnected: () => void }) {
               setBusy(true);
               setError('');
               try {
-                await draft.current!.connect((input) => browserIdentity().importKey(input));
+                await draft.current!.connect((input) =>
+                  browserIdentity().importKey(input, '', remember),
+                );
                 if (mounted.current) onConnected();
               } catch {
                 if (mounted.current)

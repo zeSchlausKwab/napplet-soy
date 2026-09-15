@@ -41,3 +41,7 @@ Verification covers the SSR route and metadata, resource links, unsafe configura
 omission, visible mobile header access and 320/390/1365px layouts without JavaScript.
 Desktop/mobile screenshots are kept under `.local/about-identity-check/`.
 All fourteen external resource/stack/protocol links returned HTTP 200 on 2026-09-14.
+
+The 2026-09-15 local revision updates the identity explanation to describe remembered
+connections and opt-in private-key storage. See [identity](IDENTITY.md#website-sign-in);
+this documentation change does not mark the revision deployed.

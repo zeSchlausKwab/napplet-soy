@@ -89,19 +89,53 @@ remote permissions are limited to kinds 5, 7, 1111, 9734 and 27235 plus public-k
 lookup; creator publishing retains its separate scope. NIP-46 auth challenges are
 shown as validated links in the chooser, including during later signing requests.
 
-All browser identity sessions are memory-only. A refresh requires reconnecting;
-there is no localStorage/sessionStorage persistence or Remember me checkbox. Imported
-keys are cleared from the input immediately. Disconnect drops the session and
-wipes owned key bytes where possible; JavaScript/runtime copies cannot be guaranteed
-to be erased. Neither private keys nor NIP-46 client credentials go to our server
-or napplet frames. The relay carries encrypted kind-24133 envelopes.
+The original deployed release is memory-only. **The 2026-09-15 local revision adds
+remembered accounts using `applesauce-accounts@6.2.0`; deployment is pending.** The
+[official AccountManager API](https://github.com/hzrd149/applesauce/blob/ec51f7d4ecfd3db6099e786e8eec0062255588d4/apps/docs/apps/accounts/manager.md)
+and custom `BaseAccount` adapter own selection, serialization and queued signing.
+This is the user-confirmed package; no `applesauce/session` export is used. It is
+compatible with our pinned core 6.2.0 and signers 6.2.2.
 
-Connecting another account retains the old selection until the new one verifies.
-Cancellation, late approvals and late signatures cannot replace a newer identity.
-A failed remote signing request locks writing and offers Reconnect, which verifies
-the same user again. Refreshing or disconnecting discards that recovery state.
+**Remember this connection** defaults on for extensions and NIP-46. **Remember this
+private key** defaults off for imported/generated keys and has an explicit device
+risk explanation. Without it, keys stay in the current tab's memory. The chooser
+lists up to eight accounts and allows selection or forgetting; connecting a different
+account retains the current one until the new signer verifies. Each remembered
+session expires thirty days after connection, rather than being silently renewed
+on every page load. Reconnect explicitly after expiry.
+
+Stored credentials and account metadata are encrypted together using AES-GCM with
+a random IV and origin-bound additional data. IndexedDB `napplet-sessions-v1` holds
+the envelope and a non-exportable AES-256 CryptoKey; there is no plaintext key in
+localStorage/sessionStorage. NIP-46 stores only the approved client key, signer
+transport pubkey and relay hints, not consumed pairing secrets or the user's remote
+private key. Nothing is copied to the server or napplet frames. The relay carries
+encrypted kind-24133 envelopes. At-rest encryption is not a separate unlock factor:
+same-origin code or someone using an unlocked browser profile can access/sign with
+saved credentials. Use a trusted device; external signers keep user keys outside
+this website. Browser storage is not a backup.
+
+Reload restores the active selection and checks the signer's public key again.
+Locked or revoked signers retain a selected/reconnect state; a changed signer key
+cannot silently assume the saved identity. A cancelled/failed signing prompt no
+longer logs out the account: retry reopens that same signer and checks the exact
+requested event, identity and allowed kind. Explicit connection cancellation,
+switching and sign-out still reject late approvals/signatures and close transports.
+
+**Sign out** stops the active signer and persists a null selection. Remembered
+accounts remain available; visit-only keys are dropped. **Forget** removes one
+account from the vault and stops it if active. BroadcastChannel and focus refresh
+synchronize account changes; atomic revision checks reject stale writes from other
+tabs. Restore/reconnect does not rewrite the vault or trigger cross-tab login loops.
+Storage errors show a warning and permit use in this tab. If forgetting cannot be
+saved, clear this site's browser data on a shared device. Retrying a revoked NIP-46
+client may require pairing again in the signer; forgetting here does not revoke the
+client in that external application. Owned key bytes are wiped where possible;
+JavaScript strings/runtime copies cannot be guaranteed erased.
+
 Browsing is anonymous; signed-out visitors can still request anonymous zap invoices.
 Anonymous zaps use a separate ephemeral key per invoice, never the selected signer.
+These sessions are separate from CLI OS-keystore accounts and multiplayer rooms.
 
 ## Recovery and automation
 
@@ -136,12 +170,13 @@ scrypt work factor (10–18) before decryption. Wrong passphrases and corrupt fi
 return generic errors. Encryption and decryption run in a cancellable worker with
 a 30-second timeout, so the login stays responsive.
 
-Keys and passphrases never go to our server, napplet frames or browser storage.
+Keys and passphrases never go to our server or napplet frames. Remembered active keys
+use the encrypted device vault described above; backup passphrases are never saved.
 The recovery file is downloaded locally; its temporary object URL is revoked when
 the backup view closes. Draft/active key bytes are wiped on disposal where possible;
-JavaScript cannot guarantee erasure of all runtime copies. Backup does not persist
-a login: refresh/disconnect still clears the browser identity. [Agenda A20](../AGENDA.md#a20--nostr-sessions-through-applesauce-sessions)
-tracks Applesauce Sessions separately.
+JavaScript cannot guarantee erasure of all runtime copies. Backup does not itself
+persist a login; the separate Remember choice controls device sessions. [Agenda A20](../AGENDA.md#a20--nostr-sessions-through-applesauce-sessions)
+records the local account-session implementation and release status.
 
 Verification: key-format interoperability/bounds tests and the production browser
 integration cover generation, required backup acknowledgement, repeat export,
@@ -196,3 +231,13 @@ Tests cover reuse, independent process access, two generated projects, encrypted
 The service integration test uses one reopened creator to publish source through native ngit-grasp, upload HTML through Blossom, and sign a standard manifest on Khatru. An independent Git clone and relay/Blossom reader recover the expected source and playable bytes. All test services and signing traffic are loopback-only.
 
 The [resumable publisher](PUBLISHING.md) now uses these components. The standalone installer, gallery indexing and named routes are implemented; release evidence and remaining compatibility work are tracked in DEPLOYMENT.md and AGENDA.md.
+
+### Account-session verification — 2026-09-15
+
+Local verification passed typecheck and production build; 195 repository tests plus
+the added Forget-failure regression (eight focused account-session tests); seven
+production-browser integrations for admin/Featured, extension/NIP-46, encrypted
+IndexedDB, key generation/recovery, onboarding and social behavior. A separate
+running-frame check confirms account changes retire pending prompts and isolate
+storage/files without restarting the napplet. No production events or payments
+were sent, and this revision has not been deployed.

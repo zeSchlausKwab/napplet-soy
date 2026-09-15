@@ -127,3 +127,8 @@ export const getCreatorNames = createServerFn({ method: 'GET' })
       ? communityStore().creator(data.slice(1)).filter(visibleAlias)
       : [],
   );
+
+export const getFeaturedGallery = createServerFn({ method: 'GET' }).handler(async () => {
+  const { featuredGallery } = await import('../../../../packages/backend/src/featured');
+  return featuredGallery();
+});

@@ -15,6 +15,7 @@ import { GallerySocialProvider, SocialRankings } from '@/components/gallery-soci
 import { useNostr } from '@/components/nostr-provider';
 import { Button } from '@/components/ui/button';
 import { publicLink } from '../../../../packages/backend/src/public-model';
+import { FeaturedHero } from '@/components/featured-hero';
 import { StarterCommand } from '@/components/starter-command';
 
 export const Route = createFileRoute('/')({
@@ -29,7 +30,7 @@ export const Route = createFileRoute('/')({
 });
 function Gallery() {
   const { ready } = useNostr();
-  const { napplets, topics, total, unavailableCount, status, page, pages, matches } =
+  const { napplets, topics, total, unavailableCount, status, page, pages, matches, featured } =
     Route.useLoaderData();
   const [showAllTags, setShowAllTags] = useState(false);
   const [active, setActive] = useState<string | null>(null);
@@ -95,29 +96,34 @@ function Gallery() {
             </a>
           </div>
         </div>
-        <div className="hero-side">
-          <div className="orbit-doodle" aria-hidden="true">
-            <svg viewBox="0 0 220 160">
-              <ellipse cx="110" cy="80" rx="92" ry="31" transform="rotate(-30 110 80)" />
-              <ellipse cx="110" cy="80" rx="92" ry="31" transform="rotate(30 110 80)" />
-              <path d="M110 50V110M80 80H140M89 59L131 101M89 101L131 59" />
-              <circle cx="177" cy="32" r="8" />
-            </svg>
-          </div>
-          <span className="remix-sticker">
-            OPEN SOURCE.
-            <br />
-            OPEN SEASON.
-          </span>
-          <p>
-            See something you like?
-            <br />
-            Peek at the code. Make it your own.
-          </p>
-          <Link to="/create">
-            Everyone starts somewhere <ArrowUpRight size={14} />
-          </Link>
-        </div>
+        <FeaturedHero
+          initial={featured}
+          empty={
+            <div className="hero-side">
+              <div className="orbit-doodle" aria-hidden="true">
+                <svg viewBox="0 0 220 160">
+                  <ellipse cx="110" cy="80" rx="92" ry="31" transform="rotate(-30 110 80)" />
+                  <ellipse cx="110" cy="80" rx="92" ry="31" transform="rotate(30 110 80)" />
+                  <path d="M110 50V110M80 80H140M89 59L131 101M89 101L131 59" />
+                  <circle cx="177" cy="32" r="8" />
+                </svg>
+              </div>
+              <span className="remix-sticker">
+                OPEN SOURCE.
+                <br />
+                OPEN SEASON.
+              </span>
+              <p>
+                See something you like?
+                <br />
+                Peek at the code. Make it your own.
+              </p>
+              <Link to="/create">
+                Everyone starts somewhere <ArrowUpRight size={14} />
+              </Link>
+            </div>
+          }
+        />
       </section>
       <section id="explore" className="explore-section" aria-label="Explore napplets">
         <div className="explore-top">

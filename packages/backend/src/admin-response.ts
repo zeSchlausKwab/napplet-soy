@@ -1,6 +1,8 @@
 import { sha256, verifiedEvent } from '../../protocol/src';
 import {
   actionSchema,
+  effectiveAdmins,
+  configuredAdmins,
   normalizeTarget,
   policyPath,
   PolicyError,
@@ -9,16 +11,7 @@ import {
 } from '../../moderation/src/policy';
 import { siteOrigin } from './site-origin';
 
-export function adminKeys() {
-  return [
-    ...new Set(
-      (process.env.SPACE_ADMIN_PUBKEYS ?? '')
-        .split(',')
-        .filter((s) => s.trim())
-        .map((s) => normalizeTarget('pubkey', s)),
-    ),
-  ];
-}
+export const adminKeys = effectiveAdmins;
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
 async function bodyText(request: Request) {
   if (!request.body) throw new PolicyError('A JSON request body is required.', 400);
@@ -102,7 +95,7 @@ export async function adminResponse(request: Request) {
       } catch {
         throw new PolicyError('Invalid moderation action or target.', 400);
       }
-      policy = updatePolicy(action, event.pubkey, event.id, now);
+      policy = updatePolicy(action, event.pubkey, event.id, now, true);
     }
     return Response.json(
       {
@@ -110,7 +103,8 @@ export async function adminResponse(request: Request) {
         rules: policy.rules,
         featured: policy.featured,
         audit: policy.audit,
-        admins,
+        admins: effectiveAdmins(policy),
+        recoveryAdmins: configuredAdmins(),
       },
       { headers },
     );

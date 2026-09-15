@@ -1,3 +1,4 @@
+import { featuredGallery } from './featured';
 import { manifestFeatured } from '../../moderation/src/policy';
 import type { GallerySearch } from '../../protocol/src';
 import { matchesGallery, topicFacets } from '../../protocol/src/topics';
@@ -28,5 +29,10 @@ export function galleryPage(entries: PublicNapplet[], search: GallerySearch) {
   };
 }
 export async function browseGallery(search: GallerySearch) {
-  return { ...galleryPage(await communityEntries(), search), status: await catalogStatus() };
+  const entries = await communityEntries();
+  return {
+    ...galleryPage(entries, search),
+    featured: await featuredGallery(entries),
+    status: await catalogStatus(),
+  };
 }

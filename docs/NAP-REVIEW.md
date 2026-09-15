@@ -116,3 +116,12 @@ claim native projection support, full cross-client conformance or a production
 multiplayer service.
 
 2026-09-14 source-browser slice: no upstream protocol/runtime pin changes. The web client now consumes existing optional signed archive provenance for read-only file inspection, with the same bounded tar policy as remix. Missing archive metadata does not gate playback or standard discovery. The creator asset audit records the unimplemented large-media pipeline in [A19](../AGENDA.md#a19--creator-asset-workflow); it does not claim new resource capabilities.
+
+## Host account and curation update — 2026-09-15
+
+Local A07/A20 work uses `applesauce-accounts@6.2.0` for website account sessions and
+extends site policy with administrator membership and Featured order. It does not
+change NIP-5D manifests, NAP permissions, artifact formats or publisher eligibility.
+NIP-98 remains the admin request protocol. Saved credentials stay in the trusted
+host; running napplets receive only the existing public identity notifications.
+See [identity](IDENTITY.md#website-sign-in) and [moderation](MODERATION.md).

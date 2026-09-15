@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, Asterisk, Check, CircleHelp, Plus, Radio } from 'lucide-react';
+import { ArrowUpRight, Asterisk, Check, CircleAlert, CircleHelp, Plus, Radio } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNostr } from './nostr-provider';
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { pubkey, ready, connect, relayConfigured } = useNostr();
+  const { pubkey, ready, connect, relayConfigured, needsReconnect } = useNostr();
   return (
     <div className="site-shell">
       <a href="#main" className="skip-link">
@@ -39,10 +39,20 @@ export function Shell({ children }: { children: ReactNode }) {
           <Link to="/create" className="make-link">
             <Plus size={16} /> Create a napplet
           </Link>
-          <Button variant="outline" className="connect-button" disabled={!ready} onClick={connect}>
+          <Button
+            variant="outline"
+            className="connect-button"
+            disabled={!ready}
+            onClick={connect}
+            title={
+              pubkey && needsReconnect
+                ? 'Account selected — unlock or reconnect your signer'
+                : 'Nostr account'
+            }
+          >
             {pubkey ? (
               <>
-                <Check size={14} />
+                {needsReconnect ? <CircleAlert size={14} /> : <Check size={14} />}
                 {pubkey.slice(0, 6)}…
               </>
             ) : (

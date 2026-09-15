@@ -180,9 +180,9 @@ function About() {
           <div>
             <h3>An identity you can bring along</h3>
             <p>
-              Connect an extension or remote signer, or use a private key in browser memory. You can
-              also create a key here and save an encrypted backup. Browser connections currently end
-              on refresh or disconnect.
+              Connect an extension or remote signer, or import or create a private key and save an
+              encrypted backup. Remembered connections survive reloads on this device. Private keys
+              are remembered only when you choose to save them here; use a trusted browser.
             </p>
             <p>
               Sign in to like or comment. Anyone can share a link or send an anonymous zap when the

@@ -239,3 +239,103 @@ test('author and hash rules apply to new manifests, snapshot links are author-bo
   expect(() => blocked('hash', fixture.artifactHash)).toThrow('unavailable');
   expect((await adminResponse(request(await signed()))).status).toBe(503);
 });
+
+test('admin membership is signed, audited, revocable and cannot remove recovery administrators', async () => {
+  const key = await outsider.getPublicKey();
+  const add = JSON.stringify({ ...action(), action: 'admin-add', type: 'pubkey', target: key });
+  expect((await adminResponse(request(await signed(add, undefined, outsider), add))).status).toBe(
+    403,
+  );
+  const token = await signed(add);
+  expect((await adminResponse(request(token, add))).status).toBe(200);
+  expect((await adminResponse(request(token, add))).status).toBe(409);
+  const response = await adminResponse(request(await signed(undefined, undefined, outsider)));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ admins: [actor, key], recoveryAdmins: [actor] });
+  const protect = JSON.stringify({
+    ...action(),
+    action: 'admin-remove',
+    type: 'pubkey',
+    target: actor,
+  });
+  expect(
+    (await adminResponse(request(await signed(protect, undefined, outsider), protect))).status,
+  ).toBe(409);
+  const oldAction = action();
+  const remove = JSON.stringify({
+    ...action(),
+    action: 'admin-remove',
+    type: 'pubkey',
+    target: key,
+  });
+  expect((await adminResponse(request(await signed(remove), remove))).status).toBe(200);
+  expect((await adminResponse(request(await signed(undefined, undefined, outsider)))).status).toBe(
+    403,
+  );
+  expect(() => updatePolicy(oldAction, key, '6'.repeat(64), undefined, true)).toThrow(
+    'not an administrator',
+  );
+  expect(readPolicy().audit.map((e) => e.action)).toEqual(['admin-add', 'admin-remove']);
+});
+test('a policy-only administrator cannot remove the final administrator', async () => {
+  const key = await outsider.getPublicKey();
+  updatePolicy(
+    { ...action(), action: 'admin-add', type: 'pubkey', target: key },
+    actor,
+    '5'.repeat(64),
+  );
+  delete process.env.SPACE_ADMIN_PUBKEYS;
+  expect(() =>
+    updatePolicy(
+      { ...action(), action: 'admin-remove', type: 'pubkey', target: key },
+      key,
+      '6'.repeat(64),
+    ),
+  ).toThrow('at least one');
+  expect(readPolicy().admins).toEqual([key]);
+});
+test('featured order resolves current addresses and pinned releases, skipping blocks and missing entries', async () => {
+  const { featuredGallery } = await import('./featured');
+  const { publicNapplet } = await import('./public-model');
+  const entries = await Promise.all(
+    fixtures.map(async (fixture) => ({
+      ...(await publicNapplet(fixture.current)),
+      availability: 'ready' as const,
+    })),
+  );
+  expect(await featuredGallery(entries)).toEqual([]);
+  const change = (
+    action: ModerationAction['action'],
+    index: number,
+    type: 'address' | 'event' = 'address',
+  ) =>
+    updatePolicy(
+      {
+        ...actionBase(),
+        action,
+        type,
+        target: type === 'address' ? fixtures[index].naddr : fixtures[index].current.id,
+      },
+      actor,
+      crypto.randomUUID().replaceAll('-', '').padEnd(64, '0'),
+    );
+  const actionBase = action;
+  change('feature', 0);
+  change('feature', 1, 'event');
+  change('feature', 2);
+  expect((await featuredGallery(entries)).map((e) => e.title)).toEqual(
+    fixtures.slice(0, 3).map((e) => e.title),
+  );
+  change('feature-up', 1, 'event');
+  let hero = await featuredGallery(entries);
+  expect(hero[0].revisionId).toBe(fixtures[1].current.id);
+  expect(hero[0].naddr).toBeNull();
+  expect(hero[1].naddr).toBe(fixtures[0].naddr);
+  expect(() => change('feature-up', 1, 'event')).toThrow('cannot move');
+  change('block', 1, 'event');
+  entries[0] = { ...entries[0], availability: 'unavailable' as any };
+  hero = await featuredGallery(entries);
+  expect(hero.map((e) => e.title)).toEqual([fixtures[2].title]);
+  change('unfeature', 2);
+  expect(await featuredGallery(entries)).toEqual([]);
+});

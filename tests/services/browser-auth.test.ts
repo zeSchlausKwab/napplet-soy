@@ -73,6 +73,7 @@ test('production sign-in supports memory-only key import, both NIP-46 directions
       await Bun.sleep(100);
     }
     const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+    page.setDefaultTimeout(12000);
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
     // Bridge only this explicit test host to our local relay, preserving encrypted traffic.
@@ -129,13 +130,17 @@ test('production sign-in supports memory-only key import, both NIP-46 directions
     const creatorLabel = `${(await creator.getPublicKey()).slice(0, 6)}…`;
     await page.getByRole('button', { name: creatorLabel, exact: true }).click();
     await page.getByText('Connected through a remote signer').waitFor();
-    await page.getByRole('button', { name: 'Disconnect from this app', exact: true }).click();
+    await page.reload();
+    await page.getByRole('button', { name: creatorLabel, exact: true }).click();
+    await page.getByText('Connected through a remote signer').waitFor();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await provider.stop();
     provider.client = undefined;
     await provider.start();
     const bunker = new URL(await provider.getBunkerURI());
     bunker.searchParams.delete('relay');
     bunker.searchParams.append('relay', 'wss://signer.test/');
+    await page.getByRole('button', { name: 'Remote signer', exact: true }).click();
     await page.getByLabel('Bunker link', { exact: true }).fill(bunker.href);
     await page.getByRole('button', { name: 'Connect bunker', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
@@ -144,7 +149,7 @@ test('production sign-in supports memory-only key import, both NIP-46 directions
     const output = join(root, '.local/identity-check');
     await mkdir(output, { recursive: true });
     await page.screenshot({ path: join(output, 'connected-desktop.png') });
-    await page.getByRole('button', { name: 'Disconnect from this app', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole('button', { name: 'Private key', exact: true }).click();
     await page.screenshot({ path: join(output, 'private-key-mobile.png') });
@@ -161,4 +166,4 @@ test('production sign-in supports memory-only key import, both NIP-46 directions
     await child.exited;
     await rm(directory, { recursive: true, force: true });
   }
-}, 30000);
+}, 60000);

@@ -1,6 +1,6 @@
 # Site administration and moderation
 
-The `/admin` page uses the connected NIP-07 account through Applesauce. Only public keys listed in `SPACE_ADMIN_PUBKEYS` (comma-separated hex or npub) may read or change policy. No website private key is needed. GRASP and optional ContextVM have separate service identities; neither grants website administration.
+The `/admin` page uses the selected Applesauce account (extension, NIP-46 or browser key). Administrators are the union of `SPACE_ADMIN_PUBKEYS` (comma-separated hex or npub) and the policy document’s managed admin keys. No website private key is needed. GRASP and optional ContextVM have separate service identities; neither grants website administration.
 
 The initial live administrator supplied by the operator is `3aa5817273c3b2f94f491840e0472f049d0f10009e23de63006166bca9b36ea3`.
 
@@ -11,6 +11,27 @@ Requests to `/api/admin` use [NIP-98](https://github.com/nostr-protocol/nips/blo
 `SPACE_MODERATION_FILE` points to a private JSON document shared by the website, indexer, native relay and Blossom. Rules, replay receipts and the latest 500 audit actions are replaced atomically after taking a writer lock. Reasons and the audit trail are visible only to admins. The document is limited to 10,000 rules and 8 MiB. Each process reloads changed policy without restarting. A missing or malformed **configured** policy denies affected operations. An unset path is the explicit unmoderated test profile.
 
 Initialize once with `bun scripts/moderation-init.ts /absolute/path/policy.json`. Normal startup never clears a policy. On the VPS it lives under `/var/lib/napplet-space/moderation`; releases and rollback preserve it. Back it up with the other persistent service data. If a process is killed during the brief write critical section, confirm no administrator write is running before removing a leftover `policy.json.lock`; never clear the policy itself to recover a lock.
+
+## Membership and Featured ordering (local revision, 2026-09-15)
+
+Administrators may add or remove another administrator using an npub/hex public key
+and required reason. All admins have the same curation, moderation and membership
+powers; scoped roles remain future work. Server-configured keys are protected recovery
+admins, removable only by editing server configuration. The final effective admin
+cannot remove itself. Managed membership is capped at 32 keys; old v1 policy files
+load with an empty managed list and retain environment-admin access.
+
+Membership and Featured ordering changes use the same NIP-98 endpoint, bounded
+audit/replay records and expected revision as content blocks. Authorization is
+rechecked inside the policy writer lock so revoked administrators cannot race an
+already-started mutation. Removal takes effect on the next request; old browser
+views confer no authority. There is no app-owned administrator private key.
+
+Feature/unfeature accepts a standard napplet address or pinned event ID. Up/down
+controls reorder the same policy collection, recording each action and signer.
+The hero takes the first twelve ready, unblocked, resolvable entries; an empty
+policy grants no automatic fixture privilege. See [hero behavior](COMMUNITY.md#gallery-and-featured).
+These changes are implemented locally; production remains on the recorded prior release.
 
 ## Rule scope
 

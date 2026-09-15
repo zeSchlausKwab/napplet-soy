@@ -7,6 +7,7 @@ import { IdentityDialog } from './identity-dialog';
 const Context = createContext<{
   pubkey: string | null;
   ready: boolean;
+  needsReconnect: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
   relayConfigured: boolean;
@@ -28,10 +29,19 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     setReady(true);
     const manager = browserIdentity();
     setIdentity(manager.state);
-    return manager.subscribe(() => {
+    void manager.initialize();
+    const sync = () => {
+      void manager.sync();
+    };
+    window.addEventListener('focus', sync);
+    const unsubscribe = manager.subscribe(() => {
       setIdentity(manager.state);
       if (manager.state.authorization) setOpen(true);
     });
+    return () => {
+      unsubscribe();
+      window.removeEventListener('focus', sync);
+    };
   }, []);
   useEffect(() => client.connect(relayUrls), [client]);
   const connect = async () => {
@@ -42,6 +52,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
       value={{
         pubkey: identity.pubkey,
         ready,
+        needsReconnect: identity.reconnect || !!identity.restoring,
         connect,
         disconnect: () => browserIdentity().disconnect(),
         relayConfigured: relayUrls.length > 0,
