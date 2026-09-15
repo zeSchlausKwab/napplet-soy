@@ -97,25 +97,23 @@ the same policy, bounds and cancellation. The standalone CLI needs no separate N
 installation for audio. Web and preview server idle timeouts are 60 seconds, above
 the transport's connection and idle deadlines.
 
-## Station lookup limitation — diagnosed 2026-09-15
+## Station lookup correction — soyLI 0.8.2
 
-The media transport can work while a radio napplet fails before creating a session.
-The website currently supplies a napplet's discovery relay list as its runtime read
-allowlist. An `outbox.query` relay hint outside that list is silently filtered out.
-The local preview uses `napplet.json`'s `relays` instead, so the two environments can
-return different station data despite sharing the same host implementation.
+Drone Zone exposed a shell routing defect before audio session creation: the website
+used discovery relays as an exclusive runtime allowlist and discarded its explicit
+Wavefunc hint. The same project worked locally because its preview configuration
+included that relay. The media transport itself could already play the stream.
 
-This was reproduced with Drone Zone: it explicitly requested Wavefunc's relay, but
-received no events with `incomplete: true` on the website. The same query with that
-relay allowed returned a verified station event; the unchanged published napplet
-then played and paused through the production media endpoint in a controlled browser
-session. Its own error label also treats incomplete empty results as 'Signal not
-found', hiding the difference between a limited lookup and confirmed absence.
+The shared runtime now honors public relay hints and NIP-65 plans through a bounded,
+guarded read service. Website and CLI use identical routing and transport policy;
+see [runtime relay reads](PUBLIC-RUNTIME.md#runtime-relay-routing--soyli-082).
+A failed empty lookup reports an error and incomplete results, rather than appearing
+as confirmed absence. The Drone Zone build needs no code change or republication.
 
-The previous streaming acceptance does not establish end-to-end station discovery
-parity. This remains a runtime relay-policy limitation; it is not corrected by the
-0.8.1 audio/HTTPS fixes. An empty incomplete query must not be presented as proof
-that the station event does not exist.
+An unchanged temporary copy of the build, with only our relay configured as the
+fallback, resolved the real station via its explicit hint and played/paused the
+256 kbps MP3 through its own controls. This verifies station lookup and media
+playback together; the earlier controlled media-only tests did not.
 
 ## Verification
 

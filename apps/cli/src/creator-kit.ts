@@ -162,6 +162,17 @@ operations, ContextVM and cross-napplet operations are not currently granted.
 A domain's presence does not promise that every operation will be permitted.
 Our host check complements upstream conformance; report each result separately.
 
+soyLI 0.8.2 supports public WSS relay hints through the shared host. napplet.json
+relays are fallback read destinations; they are separate from publish.networks
+relay/mirrors. Use outbox.query/getEvent with options.relays when an event lives on
+a particular relay. The host also resolves NIP-65 author write relays for reads.
+Public hints need WSS on port 443, without credentials or fragments; private/LAN
+destinations are denied. Local preview additionally permits explicitly configured
+literal-loopback WS relays. Check result.error and result.incomplete before treating
+an empty query as confirmed absence. Verify lookup and playback together on both
+preview and the deployed host. Do not republish another author's event to work
+around a lookup failure or bypass the iframe's network restrictions.
+
 Check host capability discovery before implementing a capability-dependent feature:
 an SDK export or passing upstream reference-shell test does not mean soyLI or the
 deployed website implements that domain. Local and deployed versions may differ.

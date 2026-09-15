@@ -23,7 +23,7 @@ References: [NAP registry and web projection](https://github.com/napplet/naps), 
 | `identity` | Connected key, user NIP-65 relay preferences, profile, follows, public mute list                      | Guest key is the empty string; extra list projections return explicit errors; no private lists or signer access                                                     |
 | `theme`    | Space's current light theme                                                                      | Fixed theme; no user theme settings yet                                                                                                                             |
 | `relay`    | Filtered query and live subscribe/close                                                          | Guarded public WSS reads; signatures checked, duplicates removed, filters reapplied; publishing/encryption denied                                                       |
-| `outbox`   | Query, getEvent, subscriptions, close, resolveRelays                                             | NIP-65 selection within the operator allowlist, fallback when needed, partial results marked; publishing denied                                                     |
+| `outbox`   | Query, getEvent, subscriptions, close, resolveRelays                                             | NIP-65 selection and public relay hints under the shared read policy, fallback when needed, partial results marked; publishing denied                                                     |
 | `common`   | Public NIP-19 encoding/decoding and profile/follows reads                                        | Secret identifiers, nrelay encoding, follow/unfollow/react/report writes denied                                                                                     |
 | `resource` | HTTPS and hash-verified Blossom bytes, ordered bulk responses, cancellation, scheme discovery    | `data:` handled locally by upstream shim; no htree/nostr resolver; raw SVG/HTML/XML denied                                                                          |
 | `link`     | HTTPS links presented in a host-owned confirmation                                               | User clicks to open; no automatic navigation                                                                                                                        |
@@ -33,8 +33,7 @@ References: [NAP registry and web projection](https://github.com/napplet/naps), 
 `fs.pickSaveFile()` opens a host prompt. After writes complete, files appear below the player with download links. This does not write into the user's filesystem without a download action. Download session files before stopping the player. Virtual paths are restricted to `/files`; they never map to server or device paths.
 
 The 2026-09-15 source update adds `media` for shell-owned MP3/Ogg/WAV audio,
-including live streams and play/pause/stop/volume. It is prepared for soyLI 0.8.0
-and the next web deployment; see [the complete media contract](MEDIA.md) for policy,
+including live streams and play/pause/stop/volume. It is deployed and available in soyLI 0.8.0 and later; see [the complete media contract](MEDIA.md) for policy,
 unsupported ownership/source modes, limits and evidence. The runtime profile changes
 to `space-playback-2` so the index retries formerly unsupported media creations.
 

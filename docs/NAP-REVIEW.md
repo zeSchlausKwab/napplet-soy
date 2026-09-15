@@ -165,3 +165,16 @@ matches its content. No new signed event kind, manifest field, NAP operation or
 iframe permission is introduced. Unknown references require verified napplet
 resolution before playback. Site aliases remain site-local; optional presentation
 does not change interoperability. See [rich comment limits](COMMUNITY.md#rich-comment-presentation--2026-09-15).
+
+
+## Runtime relay routing correction — 2026-09-15
+
+Rechecked [NAP-OUTBOX proposal 32](https://github.com/napplet/naps/pull/32) and
+[NAP-RELAY proposal 2](https://github.com/napplet/naps/pull/2) read semantics against
+the existing pinned bindings. Explicit read relay hints are policy candidates;
+NIP-65 author write relays can supply reads even when absent from catalog discovery.
+No binding, manifest, SDK or proposal pin changed. The shared host now mediates these
+reads with public destination checks, bounded filters/streams, TLS and cancellation.
+Publishing remains disabled in playback. This fixes the discovery/runtime allowlist
+conflation; it does not claim full outbox intelligence or publishing conformance.
+See [implemented routing policy](PUBLIC-RUNTIME.md#runtime-relay-routing--soyli-082).

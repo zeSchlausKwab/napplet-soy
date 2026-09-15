@@ -71,7 +71,7 @@ Validation: 60 unit/integration tests, type checking, production build/startup, 
 
 ## Focused NIP-5D/NAP conformance repairs
 
-Unknown message types are silently ignored, including future operations in recognized domains, before quota accounting. Known denied operations still return policy errors. `identity.getPublicKey` is an immediate successful snapshot even when asynchronous services are at quota. `identity.getRelays` reads the newest verified user kind-10002 event, preserves read/write directions, and keeps the operator allowlist independent.
+Unknown message types are silently ignored, including future operations in recognized domains, before quota accounting. Known denied operations still return policy errors. `identity.getPublicKey` is an immediate successful snapshot even when asynchronous services are at quota. `identity.getRelays` reads the newest verified user kind-10002 event, preserves read/write directions, and keeps actual connections subject to the shared public runtime read policy.
 
 Connecting or disconnecting preserves the running frame and sends `identity.changed` after cancelling outstanding requests, prompts, resources and subscriptions. Shared saves are isolated by account; instance storage and virtual files are fresh for each account scope. Late callbacks cannot reply into the new scope, including when request IDs are reused. Napplets must react to identity changes to clear their own in-memory state.
 
