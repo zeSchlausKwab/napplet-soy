@@ -1,6 +1,6 @@
 # Nostr creator profiles
 
-Implemented and verified locally on **2026-09-15** (A13); **not deployed**. The
+Implemented, verified and deployed on **2026-09-15** in `20260915084016730-23084`. The
 website requires no new service, secret, or dependency. The existing persistent
 `SPACE_COMMUNITY_DIR` database receives an additive `profiles` table; include it in
 the normal SQLite backup. No private key is stored there.
@@ -52,7 +52,7 @@ Destinations are visible in the editor: operator `SPACE_INDEX_RELAYS`, then inde
 and publicdev relay hints, deduplicated and capped at six, through the existing
 bounded Applesauce relay adapter. A cold read failure cannot silently create a
 blank edit base. Success requires at least one positive relay `OK`. Local polish
-(2026-09-15, pending deployment) keeps signing/publishing spinners, success and
+(deployed 2026-09-15) keeps signing/publishing spinners, success and
 error/retry feedback inside the action button; full errors are its accessible
 description and tooltip. A stale-profile conflict still offers Reload and preserves
 visible draft text. Uncertain delivery retains the exact signed event for

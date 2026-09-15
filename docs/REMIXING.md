@@ -17,11 +17,11 @@ The new project gets a fresh identifier, no original creator credentials or publ
 
 Publication emits [NIP-5A ancestry](https://github.com/nostr-protocol/nips/blob/master/5A.md): a current remix's `a` is its immediate parent and `A` its original ancestor. A snapshot's `a` remains its own napplet address, with `A` inherited. The optional `remix-version` tag records the exact selected event; other clients can ignore it and still discover and run the remix normally.
 
-Remix has shipped since CLI 0.3.0; the deployed CLI baseline is now 0.5.0. See the [release record](DEPLOYMENT.md#identity-configuration-and-social-release--2026-09-14).
+Remix has shipped since CLI 0.3.0; the deployed CLI baseline is now soyLI 0.7.0. See the [release record](DEPLOYMENT.md#rich-comments-and-soyli-070-release--2026-09-15).
 
 ## Genealogy on napplet pages
 
-Implemented and verified locally on **2026-09-15**, agenda A21; not deployed.
+Implemented, verified and deployed on **2026-09-15** in `20260915084016730-23084`.
 **The family tree** appears on detail pages when the selected signed manifest
 declares ancestry. It connects known ancestors down to **You are here**, linking
 each parent release and its creator’s Nostr profile. It loads separately from the
@@ -102,7 +102,7 @@ and source-to-build correspondence remain author claims, not a verified rebuild.
 
 ### README excerpt on detail pages
 
-Local addition (2026-09-15, pending deployment): “Peek at the source” lazily loads a
+Deployed addition (2026-09-15): “Peek at the source” lazily loads a
 root README as the section nears the viewport. Names are case-insensitive, preferring
 `README.md`, then `README.markdown`, `README`, and `.txt`/`.rst`; nested dependency/docs
 READMEs are not substituted. The terminal shows the first ten physical lines, keeping

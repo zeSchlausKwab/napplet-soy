@@ -7,12 +7,12 @@ this is not an alternative runtime implementation for users who reject Bun itsel
 
 ## Rename and upgrade — 2026-09-15
 
-CLI **0.6.0 is locally built and verified; publication/deployment is pending**.
-The public site still distributes 0.5.0 until the four new archives are uploaded
-and the updated installer is deployed. The website remains napplet.soy; this is
+CLI **0.7.0 is published**, including the 0.6.0 rename and preview recording.
+All four archives were verified and uploaded before the installer was activated in
+website release `20260915084016730-23084`. The website remains napplet.soy; this is
 only a CLI rename, with no change to Nostr manifests or infrastructure.
 
-Once released, rerun the installer without arguments to upgrade in place:
+Rerun the installer without arguments to upgrade in place:
 
 ```sh
 curl -fsSL https://napplet.soy/install.sh | sh

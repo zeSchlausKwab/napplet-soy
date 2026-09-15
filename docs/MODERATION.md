@@ -12,7 +12,10 @@ Requests to `/api/admin` use [NIP-98](https://github.com/nostr-protocol/nips/blo
 
 Initialize once with `bun scripts/moderation-init.ts /absolute/path/policy.json`. Normal startup never clears a policy. On the VPS it lives under `/var/lib/napplet-space/moderation`; releases and rollback preserve it. Back it up with the other persistent service data. If a process is killed during the brief write critical section, confirm no administrator write is running before removing a leftover `policy.json.lock`; never clear the policy itself to recover a lock.
 
-## Membership and Featured ordering (local revision, 2026-09-15)
+## Membership and Featured ordering (deployed, 2026-09-15)
+
+Included in release `20260915084016730-23084`, together with reactive administrator
+access and the entity-specific search/actions described below.
 
 Administrators may add or remove another administrator using an npub/hex public key
 and required reason. All admins have the same curation, moderation and membership
@@ -69,7 +72,7 @@ and remove buttons, sharing a required ordering reason. Button feedback carries
 pending/success/error/retry states. A stale revision refreshes the policy while
 retaining the draft for an explicit retry; failed requests never auto-apply changes.
 
-These changes are local and awaiting deployment. Browser verification covers immediate
+These changes are deployed in `20260915084016730-23084`. Browser verification covers immediate
 sign-in access, declined signatures and retries, identifier/title search, protected
 keys, live grants/revocation, late responses after sign-out and narrow layouts.
 

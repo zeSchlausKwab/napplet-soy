@@ -1,6 +1,6 @@
 # Names and community
 
-Local A13/A21 additions (2026-09-15, pending deployment): creator links now open
+Deployed additions (2026-09-15, `20260915084016730-23084`): creator links now open
 portable `/p/<npub>` pages with ordinary Nostr metadata, all discovered creations,
 and an own-profile editor. `@handle` remains a site alias service. Comments and
 saved accounts resolve the shared latest kind-0 cache. See [profiles](PROFILES.md)
@@ -36,7 +36,7 @@ the local community integration (including both like controls and exact-event re
 gallery/player regressions and desktop/mobile browser checks; no production actions
 or payments were sent.
 
-**Button feedback (local, 2026-09-15; pending deployment):** preparing/signing/publishing
+**Button feedback (deployed, 2026-09-15):** preparing/signing/publishing
 spinners replace the initiating icon or label. Failures turn that control into Retry;
 error details are available through its title and screen-reader description. A small
 cancel control stops retrying and refreshes the conversation. Success uses the filled
@@ -153,7 +153,7 @@ signed requests, revision checks and replay protection. Selections are stored al
 moderation state and audited, never added to the creator's signed manifest. Featuring
 content does not unblock it or import content that discovery has not indexed.
 
-The **2026-09-15 local revision** adds an ordered hero rotation beside the landing
+The **2026-09-15 deployed revision** adds an ordered hero rotation beside the landing
 headline. Admin up/down controls determine priority. The first twelve available,
 unblocked selections appear; addresses resolve current releases, event IDs link
 to their exact `/r/<id>` revision. Duplicate revisions are shown once. Missing
@@ -166,7 +166,7 @@ A single preview rotates every seven seconds. Hover/focus, manual movement, hidd
 tabs, offscreen placement and reduced motion stop automatic rotation. Manual arrows
 and pause/resume remain available. No napplet executes until the normal player flow.
 The terminal remains first on mobile with Featured below it. These features are
-verified locally, pending deployment, and remain separate from paid placement.
+verified and deployed in `20260915084016730-23084`, and remain separate from paid placement.
 
 ## Gallery social discovery
 

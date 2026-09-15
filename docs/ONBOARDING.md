@@ -37,7 +37,7 @@ creator guidance match the renamed executable. The hero's right column remains
 available for A07's featured work. Remotion still renders offline and is absent
 from the site's browser runtime.
 
-**This revision and CLI 0.6.0 are local; release/deployment is pending.** The original
+**This revision is deployed with CLI 0.7.0 in `20260915084016730-23084`.** The original
 modal version was deployed on 2026-09-14 in `20260914192251320-98168`; the historical
 verification below describes that release. See [CLI upgrade compatibility](CLI.md#rename-and-upgrade--2026-09-15).
 
@@ -50,7 +50,7 @@ Chromium libraries, upgrade instructions and all platform downloads/checksums.
 Section links jump to setup, skills, platforms, upgrading and downloads.
 `/cli` permanently redirects (308) to `/create`, preserving the selected template
 and section fragment. Existing `/cli/download/<version>/<file>` links remain unchanged.
-The landing hero's Setup help links directly to `/create#setup`. Local, pending deployment.
+The landing hero's Setup help links directly to `/create#setup`. Deployed 2026-09-15.
 
 ## Maintaining the guide
 

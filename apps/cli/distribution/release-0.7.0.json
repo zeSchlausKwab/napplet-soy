@@ -14,7 +14,7 @@
   "command": "soyli",
   "compatibilityCommand": "napplet-space",
   "sourceCommit": "4cbde3e400836d3c5d68a4761572eed1190d9656",
-  "status": "built",
+  "status": "published",
   "verifiedAt": "2026-09-15",
   "verification": [
     "217 repository tests, typecheck and production web build",
@@ -32,7 +32,7 @@
     "linux-arm64",
     "linux-x64"
   ],
-  "deployment": "pending",
+  "deployment": "active",
   "artifacts": {
     "darwin-arm64": {
       "filename": "soyli-darwin-arm64.tar.gz",
@@ -54,5 +54,12 @@
       "bytes": 42240669,
       "sha256": "be6e9061057541df324323c6d49eb03d6239a6d8da3637ad2743f2297ad78f28"
     }
-  }
+  },
+  "websiteRelease": "20260915084016730-23084",
+  "publishedAt": "2026-09-15T08:24:42.687Z",
+  "deploymentVerification": [
+    "All four remote archive hashes verified before installer activation",
+    "Public download sizes and checksum files verified",
+    "Production installer selects soyLI 0.7.0"
+  ]
 }

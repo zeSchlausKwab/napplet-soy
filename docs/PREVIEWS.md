@@ -1,5 +1,9 @@
 # Linked napplet previews
 
+Release `20260915084016730-23084` (2026-09-15) includes the short-video presentation
+and serves soyLI 0.7.0 with recording support. All four CLI downloads were uploaded
+before installer activation. See the [release evidence](DEPLOYMENT.md#rich-comments-and-soyli-070-release--2026-09-15).
+
 Implemented 2026-09-12. Catalog refresh follows standard manifest `app` references through Applesauce, verifies the linked signed metadata, and caches a normalized image. The gallery and player use that image; the existing 1200 × 630 OG card incorporates it. The catalog never executes downloaded napplets to generate previews, and page/image requests perform no remote metadata or image fetches.
 
 ## Supported metadata

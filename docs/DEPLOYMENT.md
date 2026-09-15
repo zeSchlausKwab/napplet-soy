@@ -725,3 +725,61 @@ website/installer with the normal deploy command. Existing 0.6.0 artifacts remai
 unchanged. The index worker's `app-descriptors-2` cache profile refreshes optional
 media after deployment. Creators add clips by recording and republishing; existing
 napplets retain their static covers and playback behavior.
+
+## Rich comments and soyLI 0.7.0 release — 2026-09-15
+
+Active release **`20260915084016730-23084`**, source **`1220634`**, serves napplet.soy,
+relay.napplet.soy, blossom.napplet.soy and git.napplet.soy. soyLI **0.7.0** is
+published for macOS/Linux arm64/x64. The unchanged built artifacts' hashes and
+native-vs-build-only coverage are recorded in
+[release-0.7.0.json](../apps/cli/distribution/release-0.7.0.json).
+
+The user authorized rich comments followed by this upload/deploy checkpoint.
+Preflight found the operator-deployed release `20260915065532698-61224` and CLI
+downloads through 0.6.0. All four 0.7.0 archives were uploaded with chunk retries
+and complete remote hash checks before activating the new installer.
+
+Rich comments first activated in `20260915082613203-96523` from `2e303e8`.
+Broad browser verification then exposed a pending file prompt that stole focus
+and cancelled account connection. Commit `1220634` makes its focus callback
+stable; the same execution context now survives sign-in/out while scoped storage,
+exports and pending prompts are correctly retired. This follow-up went through
+the same full deployment script. Older browser fixture assumptions were corrected
+for explicit legacy single-file editing, inline gallery play and the combined guide.
+
+The source includes rich comments, optional short video previews, immersive sharing,
+reactive administration/entity search, managed admins/Featured order, remembered
+Applesauce accounts, profiles/genealogy, README excerpts, button feedback, the
+anchored identity popup, combined creator guide and the GitHub About link.
+Rich-comment behavior and bounds are documented in [COMMUNITY.md](COMMUNITY.md#rich-comment-presentation--2026-09-15).
+
+Verification:
+
+- **227 repository tests**, typecheck, Go race checks, **4 relay**, **16 Blossom**
+  and **8 GRASP** service tests passed locally and on the legacy Linux VPS. The
+  candidate production build and health checks passed before activation.
+- Four focused local browser flows passed for rich comments, social writes,
+  immersive sessions and gallery clips. The pending-prompt sign-in regression
+  also passed against the corrected local production build.
+- **17 browser regressions passed**, including 13 against production and four
+  self-contained local fixtures. Four opt-in catalog/service checks were skipped.
+  These cover gallery/navigation, sandbox/hash rules, installer/downloads, source,
+  OG, configuration, storage/files and account changes.
+- A separate live mobile/desktop rich-comment check exercised click-to-play,
+  verified canvas, opaque sandbox, Stop and responsive width. Its signed comment
+  was a browser-only fixture; no production test comments or payments were posted.
+- HTTPS health matched the exact release; discovery was fresh and error-free.
+  Managed/legacy relay NIP-11 and WebSocket reads, GRASP NIP-11, Blossom health,
+  unauthenticated admin rejection, unknown comment-media rejection, installer
+  version and all four CLI download sizes/checksum files passed.
+
+All five PM2 services are online with zero restarts. Caddy is active and Napplet
+startup is enabled. Shared proxy hashes stayed unchanged:
+
+- Parent: `be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f`.
+- Napplet fragment: `ef99cf551dca7c36d7ab82b6075c36bd537034f19e402d63648784b9d65e3c5e`.
+
+schlaustronics.com returned HTTPS 200 during builds and after activation. The release
+archive includes the WebM test fixture and excludes private planning, credentials,
+Git metadata and local artifacts. Logs and inspected screenshots remain under
+`.local/rich-comments/` and `.local/rich-comments-*.log`.

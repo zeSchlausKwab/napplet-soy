@@ -81,7 +81,7 @@ backed up in their signer application, not exported as local creator keys.
 
 ## Website sign-in
 
-Local presentation revision (2026-09-15, pending deployment): the identity button
+Presentation revision (deployed 2026-09-15 in `20260915084016730-23084`): the identity button
 opens a non-modal popup anchored directly beneath it. It contains the same saved
 accounts, profile link, extension/NIP-46/private-key methods, key creation and recovery.
 There is no page-dimming overlay. Escape, the close button, a second trigger click,
@@ -100,8 +100,8 @@ remote permissions are limited to kinds 0, 5, 7, 1111, 9734 and 27235 plus publi
 lookup; creator publishing retains its separate scope. NIP-46 auth challenges are
 shown as validated links in the chooser, including during later signing requests.
 
-The original deployed release is memory-only. **The 2026-09-15 local revision adds
-remembered accounts using `applesauce-accounts@6.2.0`; deployment is pending.** The
+The original release was memory-only. **The 2026-09-15 deployed revision adds
+remembered accounts using `applesauce-accounts@6.2.0`.** The
 [official AccountManager API](https://github.com/hzrd149/applesauce/blob/ec51f7d4ecfd3db6099e786e8eec0062255588d4/apps/docs/apps/accounts/manager.md)
 and custom `BaseAccount` adapter own selection, serialization and queued signing.
 This is the user-confirmed package; no `applesauce/session` export is used. It is
@@ -251,8 +251,8 @@ and public names/avatars in the saved-account chooser. Existing remote signers m
 need to approve the added `sign_event:0` permission when reconnecting. Profile
 publication stays optional; generated key recovery and account storage behavior do
 not change. The profile browser test covers acknowledged editing, exact-event retry,
-and session restoration alongside the existing identity regressions. This is local
-work pending deployment.
+and session restoration alongside the existing identity regressions. This is
+deployed in `20260915084016730-23084`.
 
 Local verification passed typecheck and production build; 195 repository tests plus
 the added Forget-failure regression (eight focused account-session tests); seven
