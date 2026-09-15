@@ -16,6 +16,8 @@ import type { ExportFile } from '../../../../packages/runtime/src/filesystem';
 import { declaredConfig } from '../../../../packages/runtime/src/config-schema';
 import type { NappletConfig } from '../../../../packages/runtime/src/config-session';
 import { SettingsControl } from '../../../../packages/runtime/src/settings-panel';
+import { MediaControls } from '../../../../packages/runtime/src/media-controls';
+import type { NappletMedia } from '../../../../packages/runtime/src/media-session';
 
 function FileExports({ files }: { files: ExportFile[] }) {
   const [downloads, setDownloads] = useState<{ name: string; url: string }[]>([]);
@@ -68,6 +70,7 @@ export function Player({
   const [exports, setExports] = useState<ExportFile[]>([]);
   const [configuration, setConfiguration] = useState<NappletConfig | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [media, setMedia] = useState<NappletMedia | null>(null);
   const declaration = useRef<ReturnType<typeof declaredConfig>>({});
   const host = useRef<ReturnType<typeof attachNappletHost> | undefined>(undefined);
   const currentPubkey = useRef(pubkey);
@@ -156,6 +159,7 @@ export function Player({
         files: setExports,
         declaration: declaration.current,
         configuration: setConfiguration,
+        media: setMedia,
       });
     },
     [release],
@@ -248,7 +252,13 @@ export function Player({
               className="host-prompt"
               role="dialog"
               aria-modal="true"
-              aria-label={prompt.kind === 'save' ? 'Save napplet file' : 'Open external link'}
+              aria-label={
+                prompt.kind === 'media'
+                  ? 'Allow audio playback'
+                  : prompt.kind === 'save'
+                    ? 'Save napplet file'
+                    : 'Open external link'
+              }
               ref={focusPrompt}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
@@ -268,7 +278,11 @@ export function Player({
               }}
             >
               <strong>
-                {prompt.kind === 'save' ? 'Save a file from this napplet?' : 'Open this link?'}
+                {prompt.kind === 'media'
+                  ? 'Ready to listen?'
+                  : prompt.kind === 'save'
+                    ? 'Save a file from this napplet?'
+                    : 'Open this link?'}
               </strong>
               <p>{prompt.value}</p>
               {prompt.kind === 'save' && (
@@ -278,8 +292,10 @@ export function Player({
                 <Button variant="outline" onClick={() => prompt.answer(false)}>
                   Cancel
                 </Button>
-                {prompt.kind === 'save' ? (
-                  <Button onClick={() => prompt.answer(true)}>Save file</Button>
+                {prompt.kind !== 'link' ? (
+                  <Button onClick={() => prompt.answer(true)}>
+                    {prompt.kind === 'media' ? 'Play audio' : 'Save file'}
+                  </Button>
                 ) : (
                   <Button asChild>
                     <a
@@ -306,6 +322,7 @@ export function Player({
           onExit={leave}
         >
           <FileExports files={exports} />
+          {media && <MediaControls media={media} />}
           <div className="player-controls">
             <span>
               {playing && doc ? (

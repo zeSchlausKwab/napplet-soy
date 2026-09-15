@@ -31,7 +31,7 @@ test('publication startup rejects script failures and direct networking, then ac
   ])
     await expect(checkPublication(contents(html))).rejects.toMatchObject({ code: 'BROWSER_CHECK' });
   expect(await checkPublication(contents('<!doctype html><p>Working creation</p>'))).toMatchObject({
-    profile: 'space-playback-1',
+    profile: 'space-playback-2',
   });
 }, 30000);
 

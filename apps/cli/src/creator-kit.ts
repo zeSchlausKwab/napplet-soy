@@ -158,18 +158,29 @@ SDK; do not add a bootstrap or a private protocol extension to app code.
 
 This host provides configuration, identity, storage, theme, resource, relay/outbox reads,
 common reads, user-confirmed links and session files. Social writes, signer
-operations, media sessions, ContextVM and cross-napplet operations are not currently granted.
+operations, ContextVM and cross-napplet operations are not currently granted.
 A domain's presence does not promise that every operation will be permitted.
 Our host check complements upstream conformance; report each result separately.
 
 Check host capability discovery before implementing a capability-dependent feature:
 an SDK export or passing upstream reference-shell test does not mean soyLI or the
 deployed website implements that domain. Local and deployed versions may differ.
-NAP-MEDIA shell-owned audio/stream playback is currently unsupported in both hosts.
+soyLI 0.8.0 adds NAP-MEDIA shell-owned audio/stream playback. The website needs the
+matching deployment; upgrading one does not upgrade the other. Use the upstream SDK
+media.createSession with owner: 'shell', source.url (public HTTPS), optional audio
+metadata, live: true for radio, and autoplay: false when showing your own play button.
+Wait for the result's canonical sessionId, subscribe with onState/onCapabilities,
+then sendCommand for play/pause/stop/volume. Destroy sessions when leaving the view.
+MP3, Ogg audio and WAV are supported subject to browser codecs. The host handles
+streaming, source checks and gesture prompts. Only use advertised controls; no seek,
+playlists/HLS/DASH, video, napplet-owned sessions or hash/Nostr-only source resolution
+is implemented. Nostr hints and session context are metadata, not network authority.
+Artwork is not loaded by this audio host. Four sessions per frame are allowed; one
+plays at a time. Streams stop at 128 MiB or two hours and close with the napplet.
 Small embedded data/blob audio and Web Audio are separate browser features, subject
 to user activation and codec support. Do not work around missing media support by
 adding direct remote URLs, fetch, an unbounded resource download or a looser CSP.
-For an optional radio feature, keep a clear unavailable state or user-confirmed link
+For clients without media, keep a clear unavailable state or user-confirmed link
 fallback; if playback is the core purpose, declare media required and report the
 host gap. Test the actual play/pause/volume flow, not only build/startup or relay lookup.
 

@@ -5,9 +5,10 @@ import { NappletFiles, type ExportFile } from './filesystem';
 import { PlaybackNostr } from '../../nostr/src/playback';
 import { WorkQueue } from './work-queue';
 import { NappletConfig } from './config-session';
+import { NappletMedia } from './media-session';
 
 export type HostPrompt = {
-  kind: 'link' | 'save';
+  kind: 'link' | 'save' | 'media';
   value: string;
   answer: (accepted: boolean) => void;
 };
@@ -21,12 +22,13 @@ export type HostOptions = {
   files: (files: ExportFile[]) => void;
   declaration?: { schema?: unknown; error?: string };
   configuration?: (config: NappletConfig | null) => void;
+  media?: (media: NappletMedia | null) => void;
 };
 const envelope = z
   .object({
     type: z
       .string()
-      .regex(/^[a-z]+\.[A-Za-z]+$/)
+      .regex(/^[a-z]+\.[A-Za-z]+(?:\.[A-Za-z]+)?$/)
       .max(80),
     id: z.string().max(128).optional(),
   })
@@ -66,7 +68,7 @@ export function attachNappletHost(options: HostOptions) {
       `${options.identity}:${pubkey ?? 'guest'}`,
       crypto.randomUUID(),
     );
-    const choose = (kind: HostPrompt['kind'], value: string) =>
+    const choose = (kind: HostPrompt['kind'], value: string, acceptedAction?: () => void) =>
       new Promise<boolean>((resolve) => {
         if (answer || !alive || !active) {
           resolve(false);
@@ -78,11 +80,23 @@ export function attachNappletHost(options: HostOptions) {
           clearTimeout(timer);
           answer = undefined;
           options.prompt(null);
+          if (alive && active && accepted) acceptedAction?.();
           resolve(alive && active && accepted);
         };
         answer = complete;
         options.prompt({ kind, value, answer: complete });
       });
+    const media = new NappletMedia({
+      manifest: options.manifestId,
+      send: sendScoped,
+      activate: (label, play) => {
+        const previous = answer;
+        void choose('media', label, play);
+        const own = answer !== previous ? answer : undefined;
+        return () => own?.(false);
+      },
+    });
+    options.media?.(media);
     const resource = async (input: unknown, signal: AbortSignal) => {
       const request = z
         .object({
@@ -186,6 +200,7 @@ export function attachNappletHost(options: HostOptions) {
       pubkey,
       requests,
       handle,
+      media,
       send: sendScoped,
       cancel: (id: string) => resources.get(id)?.abort(),
       resetBudget: () => {
@@ -195,6 +210,7 @@ export function attachNappletHost(options: HostOptions) {
         for (const fail of requests) fail(new Error(reason));
         requests.clear();
         answer?.(false);
+        media.close();
         // close() synchronously notifies live subscriptions; late query completions
         // are suppressed once this scope becomes inactive below.
         nostr.close();
@@ -216,6 +232,8 @@ export function attachNappletHost(options: HostOptions) {
   options.configuration?.(config);
   let configCalls = 0,
     configWindow = Date.now();
+  let mediaCalls = 0,
+    mediaWindow = Date.now();
   const listener = (event: MessageEvent) => {
     if (!alive || event.source !== source || event.origin !== 'null') return;
     const parsed = envelope.safeParse(event.data);
@@ -226,6 +244,35 @@ export function attachNappletHost(options: HostOptions) {
       initialized = true;
       send({ type: 'shell.init', capabilities: { domains: [...RUNTIME_DOMAINS] }, services: [] });
       config.ready();
+      return;
+    }
+    if (
+      initialized &&
+      [
+        'media.session.create',
+        'media.session.update',
+        'media.session.destroy',
+        'media.command',
+      ].includes(message.type)
+    ) {
+      if (Date.now() - mediaWindow >= 60000) {
+        mediaWindow = Date.now();
+        mediaCalls = 0;
+      }
+      if (++mediaCalls > 360) {
+        if (message.type === 'media.session.create' && message.id)
+          send({
+            type: 'media.session.create.result',
+            id: message.id,
+            error: 'session limit exceeded',
+          });
+        return;
+      }
+      try {
+        if (JSON.stringify(message).length <= 16384) account.media.handle(message);
+      } catch {
+        /* Invalid input has no authority. */
+      }
       return;
     }
     if (initialized && message.type.startsWith('config.') && HOST_REQUESTS.has(message.type)) {
@@ -332,6 +379,7 @@ export function attachNappletHost(options: HostOptions) {
       account.close('Player closed');
       config.close();
       options.configuration?.(null);
+      options.media?.(null);
       options.files([]);
     },
   };

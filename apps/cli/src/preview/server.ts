@@ -2,6 +2,7 @@ import { recordingSchema, type Recording } from '../../../../packages/publish/sr
 import { videoBytesResponse } from '../../../../packages/backend/src/preview-videos';
 import { z } from 'zod';
 import { createResourceResponder } from '../../../../packages/backend/src/resource-response';
+import { createAudioResponder } from '../../../../packages/backend/src/audio-response';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../../../packages/protocol/src/artifact';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
 import type { PreviewAssets } from './assets';
@@ -79,6 +80,10 @@ export function startPreviewServer(
     return current.info.id === id && !missingDomains(current.info.requires).length ? current : null;
   });
   const noStore = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
+  const audioResponse = createAudioResponder(async (id) => {
+    const current = await revision();
+    return current.info.id === id && !missingDomains(current.info.requires).length;
+  });
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port,
@@ -91,6 +96,7 @@ export function startPreviewServer(
       )
         return new Response('Forbidden', { status: 403, headers: noStore });
       try {
+        if (url.pathname === '/api/media') return await audioResponse(request);
         if (url.pathname === '/api/resources' && request.method === 'POST')
           return await resourceResponse(request);
         if (

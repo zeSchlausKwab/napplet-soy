@@ -11,8 +11,9 @@ export const RUNTIME_DOMAINS = [
   'link',
   'fs',
   'config',
+  'media',
 ] as const;
-export const RUNTIME_PROFILE = 'space-playback-1';
+export const RUNTIME_PROFILE = 'space-playback-2';
 
 // Only request types understood by this host. Notifications, responses and future
 // operations must be ignored, including unknown operations in supported domains.

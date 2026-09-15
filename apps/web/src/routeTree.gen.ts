@@ -22,6 +22,7 @@ import { Route as ApiGallerySocialRouteImport } from './routes/api.gallery-socia
 import { Route as ApiGenealogyRouteImport } from './routes/api.genealogy'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiManifestRouteImport } from './routes/api.manifest'
+import { Route as ApiMediaRouteImport } from './routes/api.media'
 import { Route as ApiNamesRouteImport } from './routes/api.names'
 import { Route as ApiProfileRouteImport } from './routes/api.profile'
 import { Route as ApiProfileImageRouteImport } from './routes/api.profile-image'
@@ -109,6 +110,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const ApiManifestRoute = ApiManifestRouteImport.update({
   id: '/api/manifest',
   path: '/api/manifest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaRoute = ApiMediaRouteImport.update({
+  id: '/api/media',
+  path: '/api/media',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiNamesRoute = ApiNamesRouteImport.update({
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
+  '/api/media': typeof ApiMediaRoute
   '/api/names': typeof ApiNamesRoute
   '/api/profile': typeof ApiProfileRoute
   '/api/profile-image': typeof ApiProfileImageRoute
@@ -279,6 +286,7 @@ export interface FileRoutesByTo {
   '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
+  '/api/media': typeof ApiMediaRoute
   '/api/names': typeof ApiNamesRoute
   '/api/profile': typeof ApiProfileRoute
   '/api/profile-image': typeof ApiProfileImageRoute
@@ -318,6 +326,7 @@ export interface FileRoutesById {
   '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
+  '/api/media': typeof ApiMediaRoute
   '/api/names': typeof ApiNamesRoute
   '/api/profile': typeof ApiProfileRoute
   '/api/profile-image': typeof ApiProfileImageRoute
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/api/genealogy'
     | '/api/health'
     | '/api/manifest'
+    | '/api/media'
     | '/api/names'
     | '/api/profile'
     | '/api/profile-image'
@@ -396,6 +406,7 @@ export interface FileRouteTypes {
     | '/api/genealogy'
     | '/api/health'
     | '/api/manifest'
+    | '/api/media'
     | '/api/names'
     | '/api/profile'
     | '/api/profile-image'
@@ -434,6 +445,7 @@ export interface FileRouteTypes {
     | '/api/genealogy'
     | '/api/health'
     | '/api/manifest'
+    | '/api/media'
     | '/api/names'
     | '/api/profile'
     | '/api/profile-image'
@@ -472,6 +484,7 @@ export interface RootRouteChildren {
   ApiGenealogyRoute: typeof ApiGenealogyRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiManifestRoute: typeof ApiManifestRoute
+  ApiMediaRoute: typeof ApiMediaRoute
   ApiNamesRoute: typeof ApiNamesRoute
   ApiProfileRoute: typeof ApiProfileRoute
   ApiProfileImageRoute: typeof ApiProfileImageRoute
@@ -583,6 +596,13 @@ declare module '@tanstack/react-router' {
       path: '/api/manifest'
       fullPath: '/api/manifest'
       preLoaderRoute: typeof ApiManifestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media': {
+      id: '/api/media'
+      path: '/api/media'
+      fullPath: '/api/media'
+      preLoaderRoute: typeof ApiMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/names': {
@@ -820,6 +840,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGenealogyRoute: ApiGenealogyRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiManifestRoute: ApiManifestRoute,
+  ApiMediaRoute: ApiMediaRoute,
   ApiNamesRoute: ApiNamesRoute,
   ApiProfileRoute: ApiProfileRoute,
   ApiProfileImageRoute: ApiProfileImageRoute,

@@ -70,19 +70,19 @@ host capability for media sessions, including shell-owned playback: the napplet 
 the host a source and requests playback/control; the host owns the player and policy.
 This is different from embedded sound effects or Web Audio inside the sandbox.
 
-As of **2026-09-15**, neither soyLI's local host nor the website implements `media`.
-The upstream SDK exposing `media.createSession` does not make it available in our
-host. Capability discovery omits it, and a manifest requiring `media` cannot launch.
-An optional media feature should report unavailability or offer a user-confirmed
-external link. A successful relay lookup only proves the station metadata is readable;
-it does not prove the host can play its stream.
+The shared host now implements shell-owned audio, prepared for **soyLI 0.8.0** and
+the corresponding website deployment (not yet released). The currently deployed
+0.7.0 host lacks this domain. Check runtime support; on other clients an optional
+media feature should report unavailability or offer a user-confirmed external link.
+A successful relay lookup only proves station metadata is readable; it does not
+prove playback. See [the audio contract](MEDIA.md) for exact operations and limits.
 
 Do not substitute direct remote `<audio src>` URLs or loosen the sandbox CSP.
 `resource.bytes` downloads a bounded complete resource; its 10 MiB/20-second limits
-make it unsuitable for an indefinite live radio stream. Shell-owned streaming needs
-a NAP-MEDIA implementation, with source policy, user activation, supported actions,
-state/errors and lifecycle cleanup shared by CLI preview and deployed playback.
-This gap is not fixed by refreshing skills or reinstalling the same CLI version.
+make it unsuitable for an indefinite live radio stream. The new media host instead
+streams through a separate bounded HTTPS proxy, with source policy, user activation,
+supported actions, state/errors and lifecycle cleanup shared by CLI and web.
+Refreshing skills or reinstalling the same old CLI does not update runtime support.
 
 ## Where the bytes go
 

@@ -19,6 +19,7 @@ See [profiles](PROFILES.md) and [ancestry semantics](REMIXING.md#genealogy-on-na
 | NIP-5D | [PR 2303, 24711d9c47bbdd07908bf1d52bf677d9cbc530f0](https://github.com/dskvr/nips/blob/24711d9c47bbdd07908bf1d52bf677d9cbc530f0/5D.md); rechecked current proposal head on 2026-09-14 |
 | Registry concepts | [naps a040914b4bbd3a5cd8a14b0f316a723c968ebfb2](https://github.com/napplet/naps/tree/a040914b4bbd3a5cd8a14b0f316a723c968ebfb2); overview does not override NIP-5D |
 | NAP-CONFIG | [PR 14, 448013e6d8cb8c75dce49576b3e7c0d46d960eac](https://github.com/napplet/naps/blob/448013e6d8cb8c75dce49576b3e7c0d46d960eac/naps/NAP-CONFIG.md) |
+| NAP-MEDIA | [PR 10, 2b2d29e90c30b994bf5035a65b57e5fe7f08a9a2](https://github.com/napplet/naps/blob/2b2d29e90c30b994bf5035a65b57e5fe7f08a9a2/naps/NAP-MEDIA.md); shared audio subset, source verified 2026-09-15, not yet deployed |
 | Host bindings | `@napplet/shim` 0.30.0, `@napplet/nap` and `@napplet/core` 0.32.0; root bun.lock |
 | Maintained starter | [boilerplate cbbebe9bd56271277b054535c0a8d720a588f61d](https://github.com/napplet/boilerplate/tree/cbbebe9bd56271277b054535c0a8d720a588f61d) |
 | Creator tooling | Starter pnpm-lock: SDK 0.24.4 / nap+core 0.28.0, Vite plugin 0.11.2, conformance CLI 0.2.15 / engine 0.13.0, Vite 6.4.3, TypeScript 5.9.3 |
@@ -62,7 +63,15 @@ domains to individual NAP revisions/dependencies is still open before wider laun
 | `fs` | info, stat/list/read/write/mkdir/remove/move/watch/unwatch, pickSaveFile; pickFile/pickFiles/pickDirectory explicitly unsupported; paths confined to session /files | `runtime/filesystem.ts` and tests; browser user choice/download/cleanup; no native filesystem grant |
 | `config` | registerSchema/get/subscribe/unsubscribe/openSettings; schema snapshot and schemaError notifications; validated host-owned edits | `runtime/config-*`, shared settings panel; configuration unit/service/browser tests; [precise limits](CONFIGURATION.md) |
 
-No `cvm`, `inc`, `intent`, `keys`, `media`, `notify`, `upload`, payment, raw-device
+MEDIA update, 2026-09-15: the shared source host advertises `media`, using the pinned
+proposal's Wire Protocol spellings (matching shim 0.30.0). Shell-owned HTTPS audio
+supports create/update/destroy, play/pause/stop/volume and state/capabilities/controls.
+Napplet-owned sessions, video, playlists, seeking and non-URL source resolution are
+explicitly unsupported. Artwork/context do not cause fetching. Session/transport
+unit tests, the real-shim CLI browser test, the Drone Zone live stream and the VPS
+Node fallback were exercised. See [MEDIA.md](MEDIA.md) for limits and release status.
+
+No `cvm`, `inc`, `intent`, `keys`, `notify`, `upload`, payment, raw-device
 or unrestricted signing capability is advertised. Required unavailable domains
 gate playback uniformly for every publisher. Website social signing is separate
 from a napplet's grants. The ContextVM process does not imply a browser CVM bridge.

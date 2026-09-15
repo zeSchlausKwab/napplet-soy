@@ -124,9 +124,10 @@ if any, need their own explicit release instructions. `publish --resume` is unre
 to authoring: it continues uploading a frozen release, even when newer edits exist.
 
 Runtime capability support comes from the host, not from the presence of an SDK
-export. **NAP-MEDIA is not implemented** in soyLI's preview or the website; reinstalling
-the currently published 0.7.0 executable does not add it. Embedded audio is distinct
-from host-owned radio streaming; see [audio and media sessions](ASSETS.md#audio-and-host-media-sessions).
+export. The prepared **0.8.0** CLI adds NAP-MEDIA shell-owned audio; the currently
+published 0.7.0 does not include it. The website needs the matching deployment.
+Embedded audio is distinct from host-owned radio streaming; see
+[audio and media sessions](MEDIA.md) for the supported subset and verification.
 
 `check` validates the source selection and runs frozen HTML in the same restricted
 sandbox as publication. It needs no identity and publishes nothing. The first

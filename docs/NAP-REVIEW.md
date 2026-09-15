@@ -50,6 +50,14 @@ was also identified in [earlier research](RESEARCH.md).
 
 ## What the current code actually exposes
 
+2026-09-15 media update: reviewed [NAP-MEDIA PR 10 at 2b2d29e90c30b994bf5035a65b57e5fe7f08a9a2](https://github.com/napplet/naps/blob/2b2d29e90c30b994bf5035a65b57e5fe7f08a9a2/naps/NAP-MEDIA.md)
+against shim 0.30.0 and starter SDK 0.24.4. The shared host now adds a bounded
+shell-owned audio subset. Use the proposal's detailed Wire Protocol table, matching
+the installed shim's three-part session names, rather than its conflicting API-table
+spellings. No upstream package, NIP-5D kind or iframe permission is changed.
+Owner/source subsets are explicitly permitted by the proposal; unsupported modes
+return creation errors. See [MEDIA.md](MEDIA.md) for remaining modes and verification.
+
 The [runtime domain registry](../packages/runtime/src/capabilities.ts) advertises
 `shell`, `identity`, `storage`, `theme`, `resource`, `relay`, `outbox`, `common`,
 `link`, `fs` and, in the new source milestone, `config`. Several write operations are denied by current policy; domain

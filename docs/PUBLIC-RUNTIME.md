@@ -32,7 +32,13 @@ References: [NAP registry and web projection](https://github.com/napplet/naps), 
 
 `fs.pickSaveFile()` opens a host prompt. After writes complete, files appear below the player with download links. This does not write into the user's filesystem without a download action. Download session files before stopping the player. Virtual paths are restricted to `/files`; they never map to server or device paths.
 
-Required unsupported domains still gate launch: for example `inc`, `intent`, `keys`, `media`, `upload`, and `cvm`. Composability, napplet signing grants, extended identity lists, arbitrary custom relay connections, filesystem imports, and ContextVM game sessions remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
+The 2026-09-15 source update adds `media` for shell-owned MP3/Ogg/WAV audio,
+including live streams and play/pause/stop/volume. It is prepared for soyLI 0.8.0
+and the next web deployment; see [the complete media contract](MEDIA.md) for policy,
+unsupported ownership/source modes, limits and evidence. The runtime profile changes
+to `space-playback-2` so the index retries formerly unsupported media creations.
+
+Required unsupported domains still gate launch: for example `inc`, `intent`, `keys`, `upload`, and `cvm`. Composability, napplet signing grants, extended identity lists, arbitrary custom relay connections, filesystem imports, and ContextVM game sessions remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
 
 ## Resource and lifecycle boundaries
 

@@ -9,6 +9,7 @@ import { setupListing } from './listing-client';
 import { createRoot } from 'react-dom/client';
 import { createElement } from 'react';
 import { SettingsControl } from '../../../../packages/runtime/src/settings-panel';
+import { MediaControls } from '../../../../packages/runtime/src/media-controls';
 import { declaredConfig } from '../../../../packages/runtime/src/config-schema';
 
 const stage = document.querySelector<HTMLElement>('#stage')!;
@@ -20,6 +21,7 @@ const cancel = document.querySelector<HTMLButtonElement>('#cancel')!;
 const link = document.querySelector<HTMLAnchorElement>('#open-link')!;
 const exports = document.querySelector<HTMLElement>('#files')!;
 const settingsRoot = createRoot(document.querySelector('#settings')!);
+const mediaRoot = createRoot(document.querySelector('#media')!);
 let settingsOpen = false;
 function settingsChanged(open: boolean) {
   settingsOpen = open;
@@ -45,7 +47,8 @@ function showPrompt(prompt: HostPrompt | null) {
     prompt.kind === 'save'
       ? `Save ${prompt.value}? It will appear below for download.`
       : prompt.value;
-  confirm.hidden = prompt.kind !== 'save';
+  confirm.hidden = prompt.kind === 'link';
+  confirm.textContent = prompt.kind === 'media' ? 'Play audio' : 'Save file';
   link.hidden = prompt.kind !== 'link';
   if (prompt.kind === 'link') link.href = prompt.value;
   if (!dialog.open) dialog.showModal();
@@ -125,6 +128,8 @@ async function refresh() {
     // Attach before the child's bootstrap can post shell.ready.
     stage.replaceChildren(frame);
     host = attachNappletHost({
+      media: (session) =>
+        mediaRoot.render(session ? createElement(MediaControls, { media: session }) : null),
       frame,
       identity: info.hostIdentity,
       manifestId: info.id,
@@ -161,6 +166,7 @@ window.addEventListener('pagehide', () => {
   lifetime.abort();
   host?.close();
   settingsRoot.unmount();
+  mediaRoot.unmount();
   showFiles([]);
 });
 void refresh();
