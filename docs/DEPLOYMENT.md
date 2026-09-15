@@ -710,3 +710,18 @@ Both shared proxy configuration hashes match the pre-deploy values:
 Live screenshots were inspected. Logs, focused live browser scripts and captures
 are retained under `.local/onboarding-deploy/`. A04/A05/A06 and their feature docs
 now record this deployment; A07's featured hero rotation is next.
+
+## Preview video release preparation — 2026-09-15
+
+Source now includes immersive link choices and optional signed WebM previews.
+soyLI **0.7.0** packages are built locally; the
+[release record](../apps/cli/distribution/release-0.7.0.json) contains their hashes,
+source commit and verification coverage. macOS arm64 executed the packaged capture
+flow without Bun/Node on PATH; the other three targets have build-only evidence.
+
+No CLI upload or VPS deployment was performed for this slice. Upload the versioned
+CLI downloads with `bun run cli:release --host <ssh-target>` before deploying the
+website/installer with the normal deploy command. Existing 0.6.0 artifacts remain
+unchanged. The index worker's `app-descriptors-2` cache profile refreshes optional
+media after deployment. Creators add clips by recording and republishing; existing
+napplets retain their static covers and playback behavior.
