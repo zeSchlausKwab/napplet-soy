@@ -37,6 +37,7 @@ import { Route as PPubkeyRouteImport } from './routes/p.$pubkey'
 import { Route as RSnapshotRouteImport } from './routes/r.$snapshot'
 import { Route as CreatorSlugPlayRouteImport } from './routes/$creator.$slug.play'
 import { Route as ApiArtifactsHashRouteImport } from './routes/api.artifacts.$hash'
+import { Route as ApiCommentMediaIdRouteImport } from './routes/api.comment-media.$id'
 import { Route as ApiOgIdRouteImport } from './routes/api.og.$id'
 import { Route as ApiPreviewVideosIdRouteImport } from './routes/api.preview-videos.$id'
 import { Route as ApiPreviewsIdRouteImport } from './routes/api.previews.$id'
@@ -185,6 +186,11 @@ const ApiArtifactsHashRoute = ApiArtifactsHashRouteImport.update({
   path: '/api/artifacts/$hash',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCommentMediaIdRoute = ApiCommentMediaIdRouteImport.update({
+  id: '/api/comment-media/$id',
+  path: '/api/comment-media/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOgIdRoute = ApiOgIdRouteImport.update({
   id: '/api/og/$id',
   path: '/api/og/$id',
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
+  '/api/comment-media/$id': typeof ApiCommentMediaIdRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/preview-videos/$id': typeof ApiPreviewVideosIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
@@ -287,6 +294,7 @@ export interface FileRoutesByTo {
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
+  '/api/comment-media/$id': typeof ApiCommentMediaIdRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/preview-videos/$id': typeof ApiPreviewVideosIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
@@ -325,6 +333,7 @@ export interface FileRoutesById {
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
+  '/api/comment-media/$id': typeof ApiCommentMediaIdRoute
   '/api/og/$id': typeof ApiOgIdRoute
   '/api/preview-videos/$id': typeof ApiPreviewVideosIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
@@ -364,6 +373,7 @@ export interface FileRouteTypes {
     | '/r/$snapshot'
     | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
+    | '/api/comment-media/$id'
     | '/api/og/$id'
     | '/api/preview-videos/$id'
     | '/api/previews/$id'
@@ -401,6 +411,7 @@ export interface FileRouteTypes {
     | '/r/$snapshot'
     | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
+    | '/api/comment-media/$id'
     | '/api/og/$id'
     | '/api/preview-videos/$id'
     | '/api/previews/$id'
@@ -438,6 +449,7 @@ export interface FileRouteTypes {
     | '/r/$snapshot'
     | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
+    | '/api/comment-media/$id'
     | '/api/og/$id'
     | '/api/preview-videos/$id'
     | '/api/previews/$id'
@@ -474,6 +486,7 @@ export interface RootRouteChildren {
   PPubkeyRoute: typeof PPubkeyRoute
   RSnapshotRoute: typeof RSnapshotRouteWithChildren
   ApiArtifactsHashRoute: typeof ApiArtifactsHashRoute
+  ApiCommentMediaIdRoute: typeof ApiCommentMediaIdRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
   ApiPreviewVideosIdRoute: typeof ApiPreviewVideosIdRoute
   ApiPreviewsIdRoute: typeof ApiPreviewsIdRoute
@@ -677,6 +690,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiArtifactsHashRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/comment-media/$id': {
+      id: '/api/comment-media/$id'
+      path: '/api/comment-media/$id'
+      fullPath: '/api/comment-media/$id'
+      preLoaderRoute: typeof ApiCommentMediaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/og/$id': {
       id: '/api/og/$id'
       path: '/api/og/$id'
@@ -814,6 +834,7 @@ const rootRouteChildren: RootRouteChildren = {
   PPubkeyRoute: PPubkeyRoute,
   RSnapshotRoute: RSnapshotRouteWithChildren,
   ApiArtifactsHashRoute: ApiArtifactsHashRoute,
+  ApiCommentMediaIdRoute: ApiCommentMediaIdRoute,
   ApiOgIdRoute: ApiOgIdRoute,
   ApiPreviewVideosIdRoute: ApiPreviewVideosIdRoute,
   ApiPreviewsIdRoute: ApiPreviewsIdRoute,

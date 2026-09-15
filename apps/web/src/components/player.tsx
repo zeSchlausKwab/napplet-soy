@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Square,
 } from 'lucide-react';
+import { playback } from '@/lib/playback-coordinator';
 import { usePlayerPresentation } from '@/lib/use-player-presentation';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
@@ -55,6 +56,7 @@ export function Player({
   onEnter,
   onExit,
   detailPath,
+  returnLabel = 'Back to gallery',
 }: {
   napplet: Napplet | PublicNapplet;
   pinned?: boolean;
@@ -65,6 +67,7 @@ export function Player({
   onEnter?: () => void;
   onExit?: () => void;
   detailPath?: string;
+  returnLabel?: string;
 }) {
   const external = 'provenance' in napplet;
   const manifest = external ? napplet.manifest : pinned ? napplet.snapshot : napplet.current;
@@ -108,6 +111,35 @@ export function Player({
     onEnter,
     onExit,
   );
+  const owner = useRef({});
+  const stopCurrent = useRef<() => void>(() => {});
+  stopCurrent.current = () => {
+    host.current?.close();
+    setPlaying(false);
+    if (expanded) leave();
+    onStop?.();
+  };
+  useEffect(() => {
+    if (!playing) return;
+    const token = owner.current;
+    playback.claim(token, 'napplet', () => stopCurrent.current());
+    const hide = () => {
+      if (document.hidden) stopCurrent.current();
+    };
+    document.addEventListener('visibilitychange', hide);
+    const observer = compact
+      ? new IntersectionObserver(([entry]) => {
+          if (!entry.isIntersecting && !wrapper.current?.matches(':fullscreen, .player-expanded'))
+            stopCurrent.current();
+        })
+      : null;
+    if (wrapper.current) observer?.observe(wrapper.current);
+    return () => {
+      playback.release(token);
+      observer?.disconnect();
+      document.removeEventListener('visibilitychange', hide);
+    };
+  }, [playing, compact]);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState('');
   // Parent route revalidation can recreate the model without changing the session.
@@ -194,7 +226,7 @@ export function Player({
             ) : (
               <Button variant="ghost" onClick={leave} className="player-back">
                 <ArrowLeft size={17} />
-                <span>Back to gallery</span>
+                <span>{returnLabel}</span>
               </Button>
             )}
             <div className="player-bar-title">
@@ -376,10 +408,7 @@ export function Player({
               size="icon"
               disabled={!playing}
               aria-label="Stop napplet"
-              onClick={() => {
-                setPlaying(false);
-                onStop?.();
-              }}
+              onClick={() => stopCurrent.current()}
             >
               <Square size={16} />
             </Button>

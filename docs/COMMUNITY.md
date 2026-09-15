@@ -53,7 +53,53 @@ seconds and writes after 20; signer approval remains user-driven. Named-link cla
 also keep progress/errors/success in their button; their retry uses fresh NIP-98 HTTP
 authorization, not a replayed auth event. The claim itself remains idempotent.
 
-Comments use [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md) kind 1111 with address-qualified root and parent tags (including the current event reference when available). Replies retain the root and reference their parent comment. Rooted threads survive title changes, aliases and new versions. A snapshot can join an author's address thread only if its signed parent address has the same author; foreign snapshots keep an event-rooted thread. Text is rendered as text, including HTML-looking strings.
+Comments use [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md) kind 1111 with address-qualified root and parent tags (including the current event reference when available). Replies retain the root and reference their parent comment. Rooted threads survive title changes, aliases and new versions. A snapshot can join an author's address thread only if its signed parent address has the same author; foreign snapshots keep an event-rooted thread. HTML-looking strings remain escaped text; recognized references receive the presentation described below.
+
+### Rich comment presentation — 2026-09-15
+
+Paste a napplet link, `nostr:naddr`, `note` or `nevent` into a comment to offer **Play
+here**. Portable `/n/` and `/r/` links work across clients; readable `/@handle/slug`
+links resolve only on the site that owns the alias. `/play` links are also recognized.
+Profile references link to the profile page. Ordinary links remain links and no
+remote website HTML is embedded. These are ordinary signed kind-1111 comments,
+readable in clients without this presentation.
+
+Each comment admits up to four distinct media/napplet embeds and 24 recognized
+references within 4,000 characters. Known napplet previews load from the local
+catalog when visible. Explicit Play admits bounded relay discovery for a missing
+reference, then uses the existing verified-artifact sandbox. Unknown references,
+blocked creations and unsupported capabilities never create a frame. Stop,
+fullscreen and **Back to comments** use the shared player; fullscreen preserves the
+session. Starting another napplet or a manual clip stops the previous player across
+the shell. Decorative gallery clips cannot interrupt explicit playback. Compact
+players stop offscreen; all players stop when the tab is hidden or they unmount.
+Threads are not recursively embedded. Likes, replies, zaps and owned deletion retain
+their existing signature, permission and receipt rules.
+
+HTTPS PNG/JPEG/GIF/WebP URLs render as lazy images; WebM/MP4 URLs offer **Load video**
+followed by native playback controls, without autoplay. Optional NIP-92 `imeta`
+can identify extensionless media, alt text and SHA-256, but must match the exact URL
+in the signed content. Images are normalized to static PNG (including the first
+GIF frame), at most 1200×750 and 5 MiB input. Videos have a 20 MiB input limit;
+container signatures are checked and the browser decides codec support. The stricter
+silent, short-WebM publication-preview profile is a separate feature.
+
+Media goes through `/api/comment-media/<comment-id>?reference=<root>&part=<index>`;
+it does not expose an arbitrary URL proxy. The server verifies membership, signature,
+author deletion and moderation before fetching and again before returning bytes,
+including on cache hits. Declared digests and content-addressed URL hashes must match.
+The downloader allows public HTTPS only, checks DNS at connection time, refuses
+redirects/private networks and enforces an eight-second deadline. Responses are
+`no-store`, `nosniff` and sandboxed. Videos support bounded ranges and HEAD.
+Per-process limits: four concurrent fetches, 60 attempts/100 MiB reserved per minute,
+128 cache entries/64 MiB, ten-minute success and 30-second failure caching. Images
+and clips release their DOM/decoder resources when offscreen or hidden. Unavailable
+media offers retry and an explicit original link; unsupported formats remain links.
+
+Verification: parser/cache/thread/moderation tests plus
+`bun test tests/services/rich-comments.test.ts`. Browser coverage includes no eager
+execution or foreign media requests, fullscreen session preservation, main-player
+handoff, lazy images, manual video, cleanup, errors, deletion and mobile width.
 
 Likes use [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md) kind 7, with `e`, `p`, `k` and `a` references. Only known verified target manifests contribute, and one actor counts once per creation. Unlike and comment deletion use kind 5, applied only to matching events from the same author. Deleting an older like cannot delete a later like. Deleted comments retain a placeholder for replies.
 

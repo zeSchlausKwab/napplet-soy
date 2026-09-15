@@ -3,6 +3,7 @@ import { Heart, MessageCircle, Reply, Trash2, RefreshCw, Zap } from 'lucide-reac
 import { Button } from './ui/button';
 import { ActionButton } from './action-button';
 import { CreatorLink } from './creator-link';
+import { RichComment } from './rich-comment';
 import { useNostr } from './nostr-provider';
 import { useLocation } from '@tanstack/react-router';
 import { ZapButton } from './zap-button';
@@ -367,9 +368,11 @@ export function NappletSocial({
                             : 'an earlier comment'}
                         </a>
                       )}
-                      <p className={comment.deleted ? 'muted' : ''}>
-                        {comment.deleted ? 'Comment deleted by its author.' : comment.content}
-                      </p>
+                      {comment.deleted ? (
+                        <p className="muted">Comment deleted by its author.</p>
+                      ) : (
+                        <RichComment event={comment} reference={reference} />
+                      )}
                       <div className="comment-tools">
                         {!comment.deleted && (
                           <>

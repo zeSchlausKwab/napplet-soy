@@ -190,9 +190,13 @@ export async function prunePreviewVideos(
 }
 
 /** Same-origin cached bytes only; normal byte ranges support browser media seeking. */
-export function videoBytesResponse(bytes: Uint8Array, request: Request) {
+export function videoBytesResponse(
+  bytes: Uint8Array,
+  request: Request,
+  mime: 'video/webm' | 'video/mp4' = 'video/webm',
+) {
   const headers: Record<string, string> = {
-    'Content-Type': 'video/webm',
+    'Content-Type': mime,
     'X-Content-Type-Options': 'nosniff',
     'Cache-Control': 'no-store',
     'Accept-Ranges': 'bytes',

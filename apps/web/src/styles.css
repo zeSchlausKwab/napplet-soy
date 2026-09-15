@@ -2870,3 +2870,20 @@ a.nostr-creator:hover .creator-name {
   .admin-form { padding: 18px 14px; }
   .admin-form input { min-width: 0; }
 }
+
+/* Rich comments keep media and opt-in players within the conversation column. */
+.rich-comment { min-width: 0; }
+.rich-comment > p a { color: #4d724c; text-decoration: underline; text-underline-offset: .2em; }
+.comment-attachment { max-width: 620px; margin: 1rem 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--background); }
+.comment-attachment-link { display: block; padding: .6rem .85rem; font-size: .75rem; color: var(--muted-foreground); }
+.comment-media > img, .comment-media > video { display: block; width: 100%; max-height: 440px; object-fit: contain; background: #25291f; }
+.comment-attachment-placeholder { min-height: 150px; display: grid; place-items: center; background: #eeeee4; }
+.comment-napplet-cover { background: #e5eadc; }
+.comment-napplet-cover > img { display: block; width: 100%; aspect-ratio: 16/10; max-height: 320px; object-fit: contain; }
+.comment-napplet-caption { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; padding: .9rem; background: var(--background); }
+.comment-napplet-caption .eyebrow { width: 100%; margin: 0; font-size: .65rem; }
+.comment-napplet-caption > a { flex: 1; min-width: 100px; overflow-wrap: anywhere; font-weight: 600; }
+.comment-napplet .player-wrap { border: 0; border-radius: 0; }
+.comment-napplet .player-expanded { border-radius: 0; }
+.comment-napplet .player-controls { flex-wrap: wrap; }
+@media(max-width: 480px) { .comment-media > img, .comment-media > video { max-height: 320px; } }

@@ -147,3 +147,13 @@ format and NAP operations remain unchanged. This is a generic NIP-92 application
 not an assertion of a dedicated cross-client trailer contract. Every publisher uses
 the same adapter; missing video cannot change playback eligibility. See
 [preview delivery and local evidence](PREVIEWS.md#short-video-previews--soyli-070).
+
+## Rich comments — 2026-09-15
+
+Reviewed [NIP-27](https://github.com/nostr-protocol/nips/blob/a2494f4f81d46684e5814a9bf35e2b1df978f955/27.md)
+and [NIP-92](https://github.com/nostr-protocol/nips/blob/a2494f4f81d46684e5814a9bf35e2b1df978f955/92.md).
+Kind-1111 text can display NIP-19 references and media whose optional `imeta` URL
+matches its content. No new signed event kind, manifest field, NAP operation or
+iframe permission is introduced. Unknown references require verified napplet
+resolution before playback. Site aliases remain site-local; optional presentation
+does not change interoperability. See [rich comment limits](COMMUNITY.md#rich-comment-presentation--2026-09-15).

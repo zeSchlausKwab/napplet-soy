@@ -148,9 +148,7 @@ test('immersive routes preserve the verified frame and host session across nativ
       `${origin}/r/${pinned.id}`,
     );
     await page.keyboard.press('Escape');
-    expect(await page.locator('.card-share').evaluate((el) => el === document.activeElement)).toBe(
-      true,
-    );
+    await browserExpect(page.locator('.card-share')).toBeFocused();
     expect(await page.locator('iframe').count()).toBe(0);
     await page.evaluate(() =>
       Object.defineProperty(navigator, 'clipboard', {

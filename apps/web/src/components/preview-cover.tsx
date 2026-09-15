@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Film, Pause } from 'lucide-react';
 import type { CachedVideo } from '../../../../packages/protocol/src/preview-video';
 
-// One decoded preview at a time, even when a napplet appears in several gallery rails.
-let stopCurrent: (() => void) | undefined;
+import { playback } from '@/lib/playback-coordinator';
 export function PreviewCover({
   children,
   video,
@@ -22,6 +21,7 @@ export function PreviewCover({
   const visible = useRef(false),
     automatic = useRef(false);
   const stop = useRef(() => setActive(false));
+  const owner = useRef({});
   function begin(explicit = false) {
     if (
       !video ||
@@ -31,9 +31,8 @@ export function PreviewCover({
       (!explicit && !automatic.current)
     )
       return;
-    if (stopCurrent !== stop.current) stopCurrent?.();
-    stopCurrent = stop.current;
-    setActive(true);
+    if (playback.claim(owner.current, explicit ? 'media' : 'preview', stop.current))
+      setActive(true);
   }
   useEffect(() => {
     setFailed(false);
@@ -64,7 +63,7 @@ export function PreviewCover({
       observer.disconnect();
       motion.removeEventListener('change', preferences);
       document.removeEventListener('visibilitychange', hide);
-      if (stopCurrent === stop.current) stopCurrent = undefined;
+      playback.release(owner.current);
     };
   }, [video?.hash, revision]);
   useEffect(() => {
@@ -81,6 +80,7 @@ export function PreviewCover({
     });
     return () => {
       alive = false;
+      playback.release(owner.current);
       node.pause();
       node.removeAttribute('src');
       node.load();

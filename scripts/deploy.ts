@@ -157,6 +157,7 @@ if (import.meta.main) {
         'infra',
         'services',
         'tests/services',
+        'tests/fixtures',
       ]);
       await run(['scp', ...sshOptions, archive, `${host}:/tmp/napplet-${release}.tar.gz`]);
       const script = await Bun.file(new URL('./deploy-remote.sh', import.meta.url)).text();
