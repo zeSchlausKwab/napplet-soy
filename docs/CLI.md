@@ -7,11 +7,9 @@ this is not an alternative runtime implementation for users who reject Bun itsel
 
 ## Rename and upgrade — 2026-09-15
 
-CLI **0.8.1 is published**, including shared-host audio, checkpoint/resume guidance
-and the Blossom upload/verification timeout correction. The public installer,
-all four archives and checksum files match the [release record](../apps/cli/distribution/release-0.8.1.json).
-A fresh macOS arm64 installation from the website was verified with Bun and Node
-absent from PATH. See [the transfer policy](BLOSSOM.md#upload-timeout-correction--soyli-081).
+CLI **0.8.2 is prepared** with shared public runtime relay reads. Explicit relay
+hints no longer have to appear in the site's discovery list. It retains 0.8.1's
+shared audio host and transfer timeout fixes. See [runtime routing](PUBLIC-RUNTIME.md#runtime-relay-routing--soyli-082).
 
 Rerun the installer without arguments to upgrade in place:
 

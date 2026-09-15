@@ -29,6 +29,7 @@ import { Route as ApiProfileImageRouteImport } from './routes/api.profile-image'
 import { Route as ApiProfileOgRouteImport } from './routes/api.profile-og'
 import { Route as ApiProfilesRouteImport } from './routes/api.profiles'
 import { Route as ApiPublicationsRouteImport } from './routes/api.publications'
+import { Route as ApiRelayReadRouteImport } from './routes/api.relay-read'
 import { Route as ApiResourcesRouteImport } from './routes/api.resources'
 import { Route as ApiSocialRouteImport } from './routes/api.social'
 import { Route as ApiSourceRouteImport } from './routes/api.source'
@@ -147,6 +148,11 @@ const ApiPublicationsRoute = ApiPublicationsRouteImport.update({
   path: '/api/publications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRelayReadRoute = ApiRelayReadRouteImport.update({
+  id: '/api/relay-read',
+  path: '/api/relay-read',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiResourcesRoute = ApiResourcesRouteImport.update({
   id: '/api/resources',
   path: '/api/resources',
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/api/profile-og': typeof ApiProfileOgRoute
   '/api/profiles': typeof ApiProfilesRoute
   '/api/publications': typeof ApiPublicationsRoute
+  '/api/relay-read': typeof ApiRelayReadRoute
   '/api/resources': typeof ApiResourcesRoute
   '/api/social': typeof ApiSocialRoute
   '/api/source': typeof ApiSourceRoute
@@ -293,6 +300,7 @@ export interface FileRoutesByTo {
   '/api/profile-og': typeof ApiProfileOgRoute
   '/api/profiles': typeof ApiProfilesRoute
   '/api/publications': typeof ApiPublicationsRoute
+  '/api/relay-read': typeof ApiRelayReadRoute
   '/api/resources': typeof ApiResourcesRoute
   '/api/social': typeof ApiSocialRoute
   '/api/source': typeof ApiSourceRoute
@@ -333,6 +341,7 @@ export interface FileRoutesById {
   '/api/profile-og': typeof ApiProfileOgRoute
   '/api/profiles': typeof ApiProfilesRoute
   '/api/publications': typeof ApiPublicationsRoute
+  '/api/relay-read': typeof ApiRelayReadRoute
   '/api/resources': typeof ApiResourcesRoute
   '/api/social': typeof ApiSocialRoute
   '/api/source': typeof ApiSourceRoute
@@ -374,6 +383,7 @@ export interface FileRouteTypes {
     | '/api/profile-og'
     | '/api/profiles'
     | '/api/publications'
+    | '/api/relay-read'
     | '/api/resources'
     | '/api/social'
     | '/api/source'
@@ -413,6 +423,7 @@ export interface FileRouteTypes {
     | '/api/profile-og'
     | '/api/profiles'
     | '/api/publications'
+    | '/api/relay-read'
     | '/api/resources'
     | '/api/social'
     | '/api/source'
@@ -452,6 +463,7 @@ export interface FileRouteTypes {
     | '/api/profile-og'
     | '/api/profiles'
     | '/api/publications'
+    | '/api/relay-read'
     | '/api/resources'
     | '/api/social'
     | '/api/source'
@@ -491,6 +503,7 @@ export interface RootRouteChildren {
   ApiProfileOgRoute: typeof ApiProfileOgRoute
   ApiProfilesRoute: typeof ApiProfilesRoute
   ApiPublicationsRoute: typeof ApiPublicationsRoute
+  ApiRelayReadRoute: typeof ApiRelayReadRoute
   ApiResourcesRoute: typeof ApiResourcesRoute
   ApiSocialRoute: typeof ApiSocialRoute
   ApiSourceRoute: typeof ApiSourceRoute
@@ -645,6 +658,13 @@ declare module '@tanstack/react-router' {
       path: '/api/publications'
       fullPath: '/api/publications'
       preLoaderRoute: typeof ApiPublicationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/relay-read': {
+      id: '/api/relay-read'
+      path: '/api/relay-read'
+      fullPath: '/api/relay-read'
+      preLoaderRoute: typeof ApiRelayReadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/resources': {
@@ -847,6 +867,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProfileOgRoute: ApiProfileOgRoute,
   ApiProfilesRoute: ApiProfilesRoute,
   ApiPublicationsRoute: ApiPublicationsRoute,
+  ApiRelayReadRoute: ApiRelayReadRoute,
   ApiResourcesRoute: ApiResourcesRoute,
   ApiSocialRoute: ApiSocialRoute,
   ApiSourceRoute: ApiSourceRoute,

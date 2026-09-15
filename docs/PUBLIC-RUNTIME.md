@@ -22,7 +22,7 @@ References: [NAP registry and web projection](https://github.com/napplet/naps), 
 | `storage`  | String get/set/remove/keys, shared and instance scopes                                           | Shared data persists in this browser per author/address/build/account; instance data lasts for one play session; 256 keys / approximately 1 Mi characters per scope |
 | `identity` | Connected key, user NIP-65 relay preferences, profile, follows, public mute list                      | Guest key is the empty string; extra list projections return explicit errors; no private lists or signer access                                                     |
 | `theme`    | Space's current light theme                                                                      | Fixed theme; no user theme settings yet                                                                                                                             |
-| `relay`    | Filtered query and live subscribe/close                                                          | Host relay allowlist; signatures checked, duplicates removed, filters reapplied; publishing/encryption denied                                                       |
+| `relay`    | Filtered query and live subscribe/close                                                          | Guarded public WSS reads; signatures checked, duplicates removed, filters reapplied; publishing/encryption denied                                                       |
 | `outbox`   | Query, getEvent, subscriptions, close, resolveRelays                                             | NIP-65 selection within the operator allowlist, fallback when needed, partial results marked; publishing denied                                                     |
 | `common`   | Public NIP-19 encoding/decoding and profile/follows reads                                        | Secret identifiers, nrelay encoding, follow/unfollow/react/report writes denied                                                                                     |
 | `resource` | HTTPS and hash-verified Blossom bytes, ordered bulk responses, cancellation, scheme discovery    | `data:` handled locally by upstream shim; no htree/nostr resolver; raw SVG/HTML/XML denied                                                                          |
@@ -38,7 +38,7 @@ and the next web deployment; see [the complete media contract](MEDIA.md) for pol
 unsupported ownership/source modes, limits and evidence. The runtime profile changes
 to `space-playback-2` so the index retries formerly unsupported media creations.
 
-Required unsupported domains still gate launch: for example `inc`, `intent`, `keys`, `upload`, and `cvm`. Composability, napplet signing grants, extended identity lists, arbitrary custom relay connections, filesystem imports, and ContextVM game sessions remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
+Required unsupported domains still gate launch: for example `inc`, `intent`, `keys`, `upload`, and `cvm`. Composability, napplet signing grants, extended identity lists, filesystem imports, and ContextVM game sessions remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
 
 ## Resource and lifecycle boundaries
 
@@ -146,7 +146,7 @@ TEST_ORIGIN=http://localhost:8080 TEST_PUBLICDEV=1 TEST_LARGE_PUBLIC=1 \
 
 New CLI projects include the same prelude builder, host and resource responder as the website. The browser hash-checks local bytes before injecting `srcdoc`; the opaque iframe has the same CSP and capability set. The host page permits the inline code/WebAssembly required by inherited `srcdoc` policy, while the frame's stricter CSP removes all network access. Save/link confirmations and downloads are host-owned, and browser-extension connection exercises the same identity lifecycle.
 
-`napplet.json` accepts `requires` (mandatory domains), `relays` (explicit host allowlist) and `servers` (Blossom hints). Empty arrays support self-contained experiments. The preview server binds loopback, checks Host/Origin, and admits resource requests only for the current compatible local revision. It reuses production origin, URL/IP, MIME, quota and timeout checks. Local source authority and `previewId` do not impersonate a signed publication or creator key. Publishing is available through the separate CLI publish flow. Updating the CLI updates its preview host; older self-contained generated harness copies retain their old bundled runtime.
+`napplet.json` accepts `requires` (mandatory domains), `relays` (fallback read destinations; explicitly configured literal-loopback WS is also permitted in local preview) and `servers` (Blossom hints). Empty arrays support self-contained experiments. The preview server binds loopback, checks Host/Origin, and admits resource requests only for the current compatible local revision. It reuses production origin, URL/IP, MIME, quota and timeout checks. Local source authority and `previewId` do not impersonate a signed publication or creator key. Publishing is available through the separate CLI publish flow. Updating the CLI updates its preview host; older self-contained generated harness copies retain their old bundled runtime.
 
 This conformance checkpoint passed type checking, 62 unit/integration tests, 15 Chromium checks, and a production build/startup. The separate 78 MiB packaged-resource integration test remains opt-in and was not repeated.
 
@@ -157,3 +157,40 @@ fullscreen wrapper and a static-schema example in new boilerplates. See
 [CONFIGURATION.md](CONFIGURATION.md) for semantics and [COMPATIBILITY.md](COMPATIBILITY.md)
 for the operation inventory, tested pins and upstream conformance-runner limitations.
 A broader release and independent-client acceptance remain separate agenda work.
+
+## Runtime relay routing — soyLI 0.8.2
+
+Discovery/publication relay lists are fallback destinations, not an exclusive runtime
+allowlist. Explicit `outbox` relay hints and verified NIP-65 author write relays can
+be read through the shared host. Explicit hints take precedence within the eight-relay
+fanout cap; NIP-65 discovery uses at most one third of the query deadline (up to two
+seconds). Discovery and the final query share the caller's total time budget.
+
+The website and soyLI use the same same-origin `/api/relay-read` service. It admits
+a verified playable manifest (or the current compatible local preview revision),
+accepts only bounded Nostr filters, and uses Applesauce without AUTH, signing or
+publication. Public reads require WSS on port 443, no URL credentials/fragments,
+and public IPs checked at DNS resolution. A temporary authenticated loopback CONNECT
+tunnel pins the resolved TCP peer while Bun's native WebSocket validates TLS for the
+original hostname. This avoids Bun's Node HTTPS-upgrade defect without changing TLS
+verification. Each tunnel accepts one destination/connection, disables compression,
+caps incoming wire bytes at 8 MiB and is destroyed on cancellation or deadline.
+
+Local preview additionally permits only literal-loopback WS URLs explicitly listed
+in the project's `relays`; this exception is never granted by a website manifest.
+The iframe retains `connect-src 'none'`. Private/LAN relays, arbitrary HTTP proxying,
+redirects to other destinations and publishing remain unavailable.
+
+Reads retain signature/filter verification and deduplication. Invalid explicit
+relay URLs produce a policy error; failed or timed-out queries return incomplete
+results, with an error when no events arrived. An empty completed read stays distinct
+from a failed lookup. Live streams survive EOSE and close with the player/account.
+The service allows 64 concurrent relay reads overall, 32 per manifest and 240 starts
+per manifest per minute; each stream is bounded to 8 MiB/2,000 messages and five
+minutes for live subscriptions. The existing host caps still apply. A quiet live
+subscription sends transport heartbeats to avoid idle HTTP timeouts.
+
+Regression coverage includes a hinted station absent from discovery relays through
+the real shared HTTP adapter, forged events, NIP-65 routing, blocked URLs/origins,
+current-revision admission, live EOSE, cancellation and quota recovery. External
+relay availability remains outside the host's control.

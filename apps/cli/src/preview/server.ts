@@ -3,6 +3,7 @@ import { videoBytesResponse } from '../../../../packages/backend/src/preview-vid
 import { z } from 'zod';
 import { createResourceResponder } from '../../../../packages/backend/src/resource-response';
 import { createAudioResponder } from '../../../../packages/backend/src/audio-response';
+import { createPlaybackRelayResponder } from '../../../../packages/backend/src/playback-relay-response';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../../../packages/protocol/src/artifact';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
 import type { PreviewAssets } from './assets';
@@ -84,6 +85,12 @@ export function startPreviewServer(
     const current = await revision();
     return current.info.id === id && !missingDomains(current.info.requires).length;
   });
+  const relayResponse = createPlaybackRelayResponder(async (id) => {
+    const current = await revision();
+    return current.info.id === id && !missingDomains(current.info.requires).length
+      ? { localRelays: current.info.relays }
+      : null;
+  });
   const server = Bun.serve({
     idleTimeout: 60,
     hostname: '127.0.0.1',
@@ -98,6 +105,7 @@ export function startPreviewServer(
         return new Response('Forbidden', { status: 403, headers: noStore });
       try {
         if (url.pathname === '/api/media') return await audioResponse(request);
+        if (url.pathname === '/api/relay-read') return await relayResponse(request);
         if (url.pathname === '/api/resources' && request.method === 'POST')
           return await resourceResponse(request);
         if (

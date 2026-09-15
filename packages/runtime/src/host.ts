@@ -3,6 +3,7 @@ import { HOST_REQUESTS, RUNTIME_DOMAINS } from './capabilities';
 import { scopedStorage } from './storage';
 import { NappletFiles, type ExportFile } from './filesystem';
 import { PlaybackNostr } from '../../nostr/src/playback';
+import { hostReadPool } from './relay-reads';
 import { WorkQueue } from './work-queue';
 import { NappletConfig } from './config-session';
 import { NappletMedia } from './media-session';
@@ -59,7 +60,12 @@ export function attachNappletHost(options: HostOptions) {
     let answer: ((accepted: boolean) => void) | undefined;
     const lifetime = new AbortController();
     const resources = new Map<string, AbortController>();
-    const nostr = new PlaybackNostr(options.relays, sendScoped, () => pubkey);
+    const nostr = new PlaybackNostr(
+      options.relays,
+      sendScoped,
+      () => pubkey,
+      hostReadPool(options.manifestId),
+    );
     const files = new NappletFiles(sendScoped, (value) => {
       if (active && alive) options.files(value);
     });

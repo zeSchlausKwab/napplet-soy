@@ -1,8 +1,9 @@
 import { RelayPool } from 'applesauce-relay';
 import { matchFilters, nip19, type Filter } from 'nostr-tools';
-import { Subscription, take, takeUntil, timer } from 'rxjs';
+import { Subscription, take, takeUntil, timer, type Observable } from 'rxjs';
 import { z } from 'zod';
 import { verifiedEvent, type SignedEvent } from '../../protocol/src';
+import { readRelayUrl } from './relay-policy';
 
 const hex = z.string().regex(/^[a-f0-9]{64}$/);
 const hexes = z.array(hex).max(64);
@@ -34,16 +35,31 @@ export function playbackFilters(input: unknown): Filter[] {
 }
 type Result = { event: SignedEvent };
 type Send = (message: Record<string, unknown>) => void;
+export type ReadMessage = { type: string; from: string; event?: unknown; reason?: string };
+export interface PlaybackReadPool {
+  req(
+    relays: string[],
+    filters: Filter[],
+    options: { live: boolean; timeoutMs: number },
+  ): Observable<ReadMessage>;
+  close(): void;
+}
+export function directReadPool(pool = new RelayPool()): PlaybackReadPool {
+  return {
+    req: (relays, filters) => pool.req(relays, filters, { reconnect: false, waitForAuth: false }),
+    close: () => pool.close(),
+  };
+}
 
-/** Host-owned read access. Only operator-selected relays are ever contacted. */
+/** Discovery relays are fallbacks. Public runtime hints are mediated by the host transport. */
 export class PlaybackNostr {
-  private pool = new RelayPool();
   private subscriptions = new Map<string, Subscription>();
   private scope = new Subscription();
   constructor(
     readonly relays: string[],
     private send: Send,
     private pubkey: () => string | null,
+    private pool: PlaybackReadPool = directReadPool(),
   ) {}
   close() {
     this.scope.unsubscribe();
@@ -74,7 +90,7 @@ export class PlaybackNostr {
       }
     };
     const stream = this.pool
-      .req(relays, filters, { reconnect: false, waitForAuth: false })
+      .req(relays, filters, { live, timeoutMs: timeout })
       .pipe(take(2000), takeUntil(timer(live ? 300000 : timeout)))
       .subscribe({
         next: (message) => {
@@ -138,12 +154,12 @@ export class PlaybackNostr {
       sub.add(() => resolve({ events, incomplete: true }));
     });
   }
-  async plan(authors: string[], direction = 'read') {
+  async plan(authors: string[], direction = 'read', timeout = 2000) {
     if (!authors.length) return { relays: this.relays, source: 'fallback', missingAuthors: [] };
     const records = await this.query(
       [{ kinds: [10002], authors: authors.slice(0, 16), limit: 32 }],
       this.relays,
-      2000,
+      timeout,
     );
     const latest = new Map<string, SignedEvent>();
     for (const { event } of records) {
@@ -165,18 +181,18 @@ export class PlaybackNostr {
         )
         .map((t) => {
           try {
-            return new URL(t[1]).href;
+            return readRelayUrl(t[1], this.relays);
           } catch {
             return '';
           }
         })
-        .filter((url) => this.relays.includes(url));
+        .filter(Boolean);
       if (!found.length) missing.push(author);
       found.forEach((url) => selected.add(url));
     }
     return {
-      relays: selected.size ? [...selected] : this.relays,
-      source: selected.size ? 'policy' : 'fallback',
+      relays: selected.size ? [...selected].slice(0, 8) : this.relays,
+      source: selected.size ? 'nip65' : 'fallback',
       missingAuthors: missing,
     };
   }
@@ -219,9 +235,14 @@ export class PlaybackNostr {
         limit: z.number().int().min(1).max(200).optional(),
       })
       .parse(message.options ?? {});
+    const deadline = Date.now() + (options.timeoutMs ?? 5000);
+    const hints = (options.relays ?? []).map((r) => readRelayUrl(r, this.relays));
+    const explicit = message.relay
+      ? readRelayUrl(z.string().parse(message.relay), this.relays)
+      : undefined;
     let relays = this.relays;
     let incomplete = false;
-    if (domain === 'outbox') {
+    if (domain === 'outbox' && !explicit) {
       const authors = [
         ...new Set([
           ...(options.authors ?? []),
@@ -229,30 +250,15 @@ export class PlaybackNostr {
           ...filters.flatMap((f) => f.authors ?? []),
         ]),
       ].slice(0, 16);
-      const plan = await this.plan(authors);
+      const plan = await this.plan(
+        authors,
+        'read',
+        Math.min(2000, Math.floor((options.timeoutMs ?? 5000) / 3)),
+      );
       relays = plan.relays;
       incomplete = plan.missingAuthors.length > 0;
     }
-    if (message.relay) {
-      const relay = new URL(z.string().max(256).parse(message.relay)).href;
-      if (!this.relays.includes(relay)) throw new Error('This relay is not allowed by host policy');
-      relays = [relay];
-    }
-    if (options.relays)
-      relays = [
-        ...new Set([
-          ...relays,
-          ...options.relays
-            .map((r) => {
-              try {
-                return new URL(r).href;
-              } catch {
-                return '';
-              }
-            })
-            .filter((r) => this.relays.includes(r)),
-        ]),
-      ];
+    relays = explicit ? [explicit] : [...new Set([...hints, ...relays])].slice(0, 8);
     if (this.scope.closed) throw new Error('Player closed');
     if (type.endsWith('.subscribe')) {
       const subId = z.string().max(128).parse(message.subId);
@@ -279,12 +285,24 @@ export class PlaybackNostr {
       return {};
     }
     if (type === 'outbox.getEvent' || type.endsWith('.query')) {
-      const collected = await this.collect(filters, relays, options.timeoutMs);
+      const collected = await this.collect(filters, relays, Math.max(1, deadline - Date.now()));
       const events = collected.events.slice(0, options.limit ?? 200);
       incomplete ||= collected.incomplete;
       return type === 'outbox.getEvent'
-        ? { result: events[0], incomplete }
-        : { events, ...(domain === 'outbox' ? { incomplete } : {}) };
+        ? {
+            result: events[0],
+            incomplete,
+            ...(collected.incomplete && !events.length
+              ? { error: 'Relay read did not complete. Please retry.' }
+              : {}),
+          }
+        : {
+            events,
+            ...(domain === 'outbox' ? { incomplete } : {}),
+            ...(collected.incomplete && !events.length
+              ? { error: 'Relay read did not complete. Please retry.' }
+              : {}),
+          };
     }
     throw new Error('Unsupported relay operation');
   }

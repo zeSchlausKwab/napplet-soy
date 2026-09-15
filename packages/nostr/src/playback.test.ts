@@ -55,7 +55,7 @@ test('playback relay reads validate signatures and filters, deduplicate, and clo
       client.handle({
         type: 'relay.subscribe',
         subId: 'escape',
-        relay: 'wss://attacker.example/',
+        relay: 'wss://127.0.0.1/',
         filters: {},
       }),
     ).rejects.toThrow('not allowed');
@@ -94,7 +94,7 @@ test('playback filters are bounded and guest identity is explicit', async () => 
   client.close();
 });
 
-test('identity relay preferences come from the latest verified NIP-65 record without granting access', async () => {
+test('identity relay preferences use the latest verified NIP-65 record and route public write relays', async () => {
   const key = new Uint8Array(32);
   key[31] = 3;
   const now = Math.floor(Date.now() / 1000);
@@ -148,11 +148,11 @@ test('identity relay preferences come from the latest verified NIP-65 record wit
       },
     });
     expect(await client.plan([latest.pubkey])).toMatchObject({
-      relays: allowed,
-      source: 'fallback',
+      relays: ['wss://both.example/', 'wss://write.example/', 'wss://merge.example/'],
+      source: 'nip65',
     });
     await expect(
-      client.handle({ type: 'relay.query', relay: 'wss://read.example/', filters: {} }),
+      client.handle({ type: 'relay.query', relay: 'wss://192.168.1.1/', filters: {} }),
     ).rejects.toThrow('not allowed');
     const before = reads;
     pubkey = null;
