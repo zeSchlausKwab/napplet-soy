@@ -22,7 +22,7 @@
   ],
   "version": "0.8.3",
   "sourceCommit": "0589a763fd27b4f0eb7d2cb5eda9ba22ec688834",
-  "status": "prepared",
+  "status": "published",
   "verifiedAt": "2026-09-15",
   "artifacts": {
     "darwin-arm64": {
@@ -53,5 +53,24 @@
     "Exact unchanged published Drone Zone reproduces the original failure when only fallback requests are delayed",
     "Unchanged Drone Zone build resolves the real station, decodes MP3 and pauses through its own controls in source and packaged CLI preview with all fallback requests stalled",
     "Packaged darwin-arm64 CLI passes seven distribution, piped-terminal and preview tests, 77 assertions, without Bun/Node on PATH"
+  ],
+  "deployment": "active",
+  "websiteRelease": "20260915163830615-43690",
+  "websiteSourceCommit": "d046596d3d7ede0a4ed1eea2270afb6dfc81b1ea",
+  "deploymentVerifiedAt": "2026-09-15T16:43:51.798527+00:00",
+  "publicationVerification": [
+    "Four immutable archives uploaded with verified chunks and checked before installer activation",
+    "Public installer freshly downloads and verifies soyLI 0.8.3 in isolated macOS arm64 directories without Bun/Node on PATH; existing installation and identities untouched",
+    "All four public archive sizes and checksum files match this record"
+  ],
+  "deploymentVerification": [
+    "Initial candidate passed 245 repository tests, Go race checks, 4 relay, 18 Blossom and 8 GRASP tests locally and on the VPS, then rolled back at indexer readiness",
+    "Readiness regression proved a live worker was rejected while its first scan was pending; a separate expiring heartbeat fixes this without replacing scan status/errors",
+    "Retry uses a fresh copy of the tested candidate service builds plus committed readiness files; 246 repository tests and web build rerun on the VPS, with original preflight, HTTPS Origin probes, Caddy validation, activation checks and rollback retained",
+    "Exact published Drone Zone /play route passes four sequential tests: desktop normal, desktop stalled fallbacks, touch/mobile normal, touch/mobile stalled fallbacks. Each resolves the real station, decodes MP3 and pauses through its own controls; only fallback requests are delayed in stress cases, no station response overrides or napplet changes",
+    "All five PM2 processes online with zero restarts; both Caddy hashes unchanged; owned catalog/relay/Blossom/Git endpoints pass and schlaustronics.com returns HTTPS 200"
+  ],
+  "knownOperationalWarnings": [
+    "Fresh candidate index scan reports external relay.damus.io discovery timeouts; these remain visible separately from worker liveness and do not block station playback."
   ]
 }
