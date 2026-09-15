@@ -1,0 +1,59 @@
+{
+  "bun": "1.3.11",
+  "playwright": "1.63.0",
+  "upstream": {
+    "boilerplate": "cbbebe9bd56271277b054535c0a8d720a588f61d",
+    "skills": "976ad0549c38f93d4ed418d3ea59a615a7e5fd7f"
+  },
+  "toolchain": {
+    "node": "24.21.0",
+    "pnpm": "10.8.0"
+  },
+  "product": "napplet soyLI",
+  "command": "soyli",
+  "compatibilityCommand": "napplet-space",
+  "executionCoverage": [
+    "darwin-arm64"
+  ],
+  "buildOnlyTargets": [
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64"
+  ],
+  "version": "0.9.0",
+  "sourceCommit": "32e33244523cb899d5f26f5465348d54c5e88a9f",
+  "status": "published",
+  "verifiedAt": "2026-09-15",
+  "artifacts": {
+    "darwin-arm64": {
+      "filename": "soyli-darwin-arm64.tar.gz",
+      "bytes": 26633114,
+      "sha256": "64d914652f423188ca9509499f430ee9d2408d2e8e85e88e81848550e206f72c"
+    },
+    "darwin-x64": {
+      "filename": "soyli-darwin-x64.tar.gz",
+      "bytes": 28942836,
+      "sha256": "f7a13d4bf0bc403e5661592b8dad05194a1555167ef3b0ecf8a4eafdfe8ba7f0"
+    },
+    "linux-arm64": {
+      "filename": "soyli-linux-arm64.tar.gz",
+      "bytes": 42226558,
+      "sha256": "8adb7761b594a4e23718dc27db7510dbd4984df5c93320ef04a4540934711fb8"
+    },
+    "linux-x64": {
+      "filename": "soyli-linux-x64.tar.gz",
+      "bytes": 42246853,
+      "sha256": "598f2eb4d2461f5031394d0653694a15115fbfabcb6c62ce673061ab5288a373"
+    }
+  },
+  "verification": [
+    "Shared preview and remix use direct relay/Blossom transports; compiled standalone remix against isolated protocol fixtures passes",
+    "Packaged darwin-arm64 release passes seven distribution, piped-terminal and creator preview checks (77 assertions) with no Bun or Node on execution PATH",
+    "All four archives built with pinned Bun 1.3.11 and checksummed; only darwin-arm64 executed for this release",
+    "Existing source transport suite covers verified hash fallback, direct relay filtering, cancellation and shared audio host behavior"
+  ],
+  "deployment": "pending",
+  "publicationVerification": [
+    "All four immutable archives uploaded in 67 verified chunks and SHA-256 checked on the VPS; prior versions preserved"
+  ]
+}
