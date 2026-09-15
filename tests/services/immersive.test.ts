@@ -21,7 +21,10 @@ test('immersive routes preserve the verified frame and host session across nativ
   const tags = [
     ['d', 'little-orbit'],
     ['title', 'Little orbit'],
-    ['description', 'A live session, wherever you play.'],
+    [
+      'description',
+      'A live session, wherever you play. ' + 'A little world to explore together. '.repeat(12),
+    ],
     ['path', '/index.html', hash],
     ['x', await aggregateHash([{ path: '/index.html', hash }]), 'aggregate'],
   ];
@@ -129,9 +132,14 @@ test('immersive routes preserve the verified frame and host session across nativ
       expect(ssr).toContain(`href="${path}"`); // Back works even before hydration.
       await page.goto(`${origin}${path}/play`);
       await browserExpect(page.locator('.player-expanded')).toBeVisible();
-      await browserExpect(page.locator('.player-cover')).toBeEnabled();
+      await readyFrame(page);
+      await page.mouse.move(0, 0);
       expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
-      expect(await page.locator('iframe').count()).toBe(0);
+      await browserExpect(page.locator('.player-cover, .player-bar')).toHaveCount(0);
+      await browserExpect(page.locator('.player-chrome-panel')).not.toBeVisible();
+      await browserExpect(page.locator('.player-corner-trigger')).toBeVisible();
+      const bounds = (await page.locator('iframe').boundingBox())!;
+      expect(bounds).toMatchObject({ x: 0, y: 0, width: 1365, height: 1000 });
       const canonical = await page.locator('link[rel=canonical]').getAttribute('href');
       expect(canonical).not.toEndWith('/play');
     }
@@ -164,10 +172,27 @@ test('immersive routes preserve the verified frame and host session across nativ
     await page.keyboard.press('Escape');
     await page.evaluate(() => delete (navigator as any).clipboard);
 
-    // A fresh pinned link offers a real, immediate fullscreen gesture.
+    // Cold links play with only the corner exit visible; hover and keyboard reveal controls.
     await page.goto(`${origin}/r/${pinned.id}/play`);
-    await page.locator('.player-cover').click();
     const directFrame = await readyFrame(page);
+    await page.mouse.move(0, 0);
+    await browserExpect(page.locator('.player-chrome-panel')).not.toBeVisible();
+    await page.locator('.player-corner-trigger').hover();
+    await browserExpect(page.locator('.player-corner-info')).toBeVisible();
+    expect((await page.locator('.player-corner-info p').textContent())!.length).toBe(161);
+    await browserExpect(page.locator('.player-chrome-panel')).toHaveCSS('opacity', '1');
+    await page.screenshot({ path: '/tmp/napplet-corner-desktop-open.png' });
+    await page.mouse.move(0, 0);
+    await browserExpect(page.locator('.player-chrome-panel')).not.toBeVisible();
+    await page.screenshot({ path: '/tmp/napplet-corner-desktop.png' });
+    await page.keyboard.press('Shift+Tab');
+    await browserExpect(page.locator('.player-corner-trigger')).toBeFocused();
+    await browserExpect(page.locator('.player-chrome-panel')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await browserExpect(page.locator('.player-chrome-panel')).not.toBeVisible();
+    await browserExpect(page).toHaveURL(`${origin}/r/${pinned.id}/play`);
+    await page.locator('.player-corner-trigger').hover();
+    await page.getByRole('button', { name: 'Enter browser fullscreen' }).click();
     await browserExpect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
     await page.getByRole('link', { name: 'Back to details', exact: true }).click();
     await browserExpect(page).toHaveURL(`${origin}/r/${pinned.id}`);
@@ -192,6 +217,8 @@ test('immersive routes preserve the verified frame and host session across nativ
       });
     });
     const continuity = async () => {
+      if (await page.locator('.player-expanded').count())
+        await page.locator('.player-corner-trigger').hover();
       expect(frame.isDetached()).toBe(false);
       expect(await page.locator('iframe').count()).toBe(1);
       expect(
@@ -248,6 +275,7 @@ test('immersive routes preserve the verified frame and host session across nativ
     await continuity();
     await page.goForward();
     await browserExpect(page).toHaveURL(origin + detail + '/play');
+    await page.locator('.player-corner-trigger').hover();
     await page.getByRole('button', { name: 'Enter browser fullscreen' }).click();
     await browserExpect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
     await page.goBack();
@@ -279,8 +307,17 @@ test('immersive routes preserve the verified frame and host session across nativ
     });
     const touch = await mobile.newPage();
     await touch.goto(`${origin}/@${fixtures[0].handle}/${fixtures[0].slug}/play`);
-    await touch.locator('.player-cover').tap();
     const mobileFrame = await readyFrame(touch);
+    await browserExpect(touch.locator('.player-chrome-panel')).not.toBeVisible();
+    await touch.locator('.player-corner-trigger').tap();
+    await browserExpect(touch.locator('.player-chrome-panel')).toBeVisible();
+    await browserExpect(touch).toHaveURL(
+      `${origin}/@${fixtures[0].handle}/${fixtures[0].slug}/play`,
+    );
+    const target = (await touch.locator('.player-corner-trigger').boundingBox())!;
+    expect(target.width).toBeGreaterThanOrEqual(44);
+    expect(target.height).toBeGreaterThanOrEqual(44);
+    await touch.getByRole('button', { name: 'Enter browser fullscreen' }).tap();
     expect(await touch.evaluate(() => (window as any).fullscreenActivation)).toBe(true);
     expect(await touch.evaluate(() => document.fullscreenElement)).toBeNull();
     await browserExpect(touch.locator('.player-expanded')).toBeVisible();
@@ -291,10 +328,31 @@ test('immersive routes preserve the verified frame and host session across nativ
       true,
     );
     await touch.screenshot({ path: '/tmp/napplet-immersive-mobile.png' });
+    await touch.setViewportSize({ width: 320, height: 568 });
+    expect(await touch.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    const panel = (await touch.locator('.player-chrome-panel').boundingBox())!;
+    expect(panel.x).toBeGreaterThanOrEqual(0);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(320);
+    for (const control of await touch.locator('.player-controls button').all()) {
+      const bounds = (await control.boundingBox())!;
+      expect(bounds.width).toBeGreaterThanOrEqual(44);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(320);
+    }
+    await touch.screenshot({ path: '/tmp/napplet-corner-mobile-small.png' });
     await touch.setViewportSize({ width: 844, height: 390 });
     await browserExpect(touch.locator('iframe')).toBeVisible();
-    expect((await touch.locator('iframe').boundingBox())!.height).toBeGreaterThan(200);
+    expect((await touch.locator('iframe').boundingBox())!.height).toBe(390);
+    expect(await touch.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
     await touch.screenshot({ path: '/tmp/napplet-immersive-landscape.png' });
+    // A touch in the app dismisses the panel without a blocking page-sized overlay.
+    await mobileFrame.locator('canvas').tap({ position: { x: 50, y: 50 } });
+    await browserExpect(touch.locator('.player-chrome-panel')).not.toBeVisible();
+    await touch.locator('.player-corner-trigger').tap();
+    await browserExpect(touch.locator('.player-chrome-panel')).toBeVisible();
     await touch.getByRole('link', { name: 'Back to details', exact: true }).tap();
     await browserExpect(touch.locator('.player-expanded')).toHaveCount(0);
     expect(mobileFrame.isDetached()).toBe(false);
@@ -319,7 +377,6 @@ test('immersive routes preserve the verified frame and host session across nativ
       route.fulfill({ body: '<script>parent.hacked=true</script>', contentType: 'text/html' }),
     );
     await page.goto(origin + detail + '/play');
-    await page.locator('.player-cover').click();
     await browserExpect(page.getByRole('alert')).toBeVisible();
     expect(await page.locator('iframe').count()).toBe(0);
     expect(await page.evaluate(() => (window as any).hacked)).toBeUndefined();
@@ -338,6 +395,7 @@ test('immersive routes preserve the verified frame and host session across nativ
 async function readyFrame(page: Page) {
   await browserExpect(page.locator('iframe')).toBeVisible();
   const frame = page.frames().find((f) => f.parentFrame())!;
+  await frame.waitForFunction(() => typeof (window as any).napplet?.shell?.ready === 'function');
   await frame.evaluate(() => (window as any).napplet.shell.ready());
   return frame;
 }

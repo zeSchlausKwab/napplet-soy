@@ -49,15 +49,32 @@ Relay access is through a frame-owned Applesauce pool. Filters, event counts, re
 Implemented, verified and deployed on **2026-09-14** in `20260914171728494-21459`.
 Append `/play` to a portable `/n/<naddr>`, pinned `/r/<event-id>` or named
 `/@<handle>/<slug>` URL. **Open player** on the detail page opens that presentation;
-the trusted bar can copy its link. The parent route keeps its canonical detail URL
+the corner controls can copy its link. The parent route keeps its canonical detail URL
 and server-rendered OG metadata. Cold links use the ordinary bounded discovery
 queue. Unsupported capabilities and unavailable or tampered downloads still prevent
 execution; optional metadata is not a playback requirement.
 
-A fresh link shows the poster in a full-viewport player. **Play in fullscreen**
-requests browser fullscreen synchronously with the gesture and then starts ordinary
-artifact verification. The same verified, opaque iframe runs beneath the trusted
-bar, configuration dialog, save/link prompts and download controls. Fullscreen is
+The corner-control revision (2026-09-15, locally implemented and verified; not yet deployed)
+starts a fresh play link automatically after ordinary artifact verification. The
+iframe fills the viewport; only a small bottom-right triangle remains visible at
+rest. Hover or keyboard focus reveals the title, a description excerpt of at most
+160 characters plus an ellipsis (clamped to two lines), and the existing share,
+settings, restart, stop and fullscreen controls. Session-file downloads appear in
+that panel as well. Loading errors and required host permission dialogs remain
+visible when needed; the corner control stays available during loading/failure.
+
+Clicking the triangle returns to details. On touchscreens, the first tap reveals
+the panel and a second tap on the triangle returns to details; touching the napplet
+again dismisses the panel. The triangle has a 48px target, other controls at least
+44px, and the panel respects safe-area insets and narrow/landscape viewports.
+Hidden controls are inert. Escape dismisses an open corner panel before leaving
+CSS expansion; settings/save dialogs retain their own keyboard handling.
+
+**Enter browser fullscreen** requests native fullscreen synchronously with that
+control's gesture. Automatic playback uses CSS expansion and does not request it.
+The same verified, opaque iframe runs beneath the corner panel, configuration
+dialog and save/link prompts. Audio still depends on the browser's user-activation
+policy and the napplet's own interaction. Fullscreen is
 [subject to browser support and transient activation](https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen);
 rejection keeps the CSS-expanded player usable.
 
@@ -65,14 +82,14 @@ Browser/system fullscreen exit returns to CSS expansion. **Back to details**, th
 second exit control, or Escape while host controls have focus returns to the detail
 view. A single native-exit Escape cannot also collapse the expanded player. Settings
 and save dialogs get their own Escape first; keystrokes inside the opaque iframe
-belong to the napplet, so the visible Back control is always available. Background
+belong to the napplet, so the corner control remains available. Background
 branches become inert while expanded; focus and scrolling restore on exit.
 
 Entering from details pushes a history entry; Back/Forward changes only presentation.
 The explicit Back to details action replaces the play entry with its detail URL,
 including for a fresh external link; it never sends the visitor to an unknown
-previous site. A stopped player stays in its current presentation and offers Play
-again. Gallery expansion has the same two exit layers and returns to its card.
+previous site. Stop ends the session and returns to details (or the gallery card),
+where Play can start it again. Gallery expansion has the same two exit layers and returns to its card.
 
 For the same selected release, the parent detail component, iframe and NAP host stay
 mounted. Runtime state, instance storage, session files, settings and subscriptions
@@ -89,6 +106,14 @@ Chromium touch emulation in portrait/landscape; a real-device Safari/iOS matrix
 remains a follow-up.
 This checkpoint passed all 181 repository tests, three service/browser integrations
 and 12 existing app/runtime browser tests, alongside typecheck and the production build.
+
+The 2026-09-15 corner revision passed typecheck, the production build, all 227
+repository tests, the immersive and discovery browser integrations, and all five
+runtime browser checks. Coverage includes cold-link autoplay, full-viewport bounds,
+hover/keyboard disclosure, touch reveal/dismiss/return, 320px and 390px portrait and
+844px landscape layouts, native fullscreen exit, settings and preserved host state.
+Desktop and touch screenshots were inspected locally. This revision has not been
+deployed; mobile evidence remains Chromium emulation rather than physical iOS.
 
 The gallery and detail-page share icon opens an anchored choice of **Detail link**
 and **Player link**. Both work while signed out. Player links append `/play` to the

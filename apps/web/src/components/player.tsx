@@ -1,19 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import {
-  ArrowLeft,
-  Check,
-  Copy,
-  Expand,
-  Minimize,
-  LoaderCircle,
-  Play,
-  RotateCcw,
-  Square,
-} from 'lucide-react';
+import { Check, Copy, Expand, Minimize, LoaderCircle, Play, RotateCcw, Square } from 'lucide-react';
 import { playback } from '@/lib/playback-coordinator';
 import { usePlayerPresentation } from '@/lib/use-player-presentation';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
+import { PlayerChrome } from './player-chrome';
 import { loadArtifact, PLAYER_SANDBOX } from '../../../../packages/runtime/src';
 import { preparePlayback } from '../../../../packages/runtime/src/playback';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
@@ -87,7 +78,7 @@ export function Player({
     currentPubkey.current = pubkey;
     host.current?.updateIdentity(pubkey);
   }, [pubkey]);
-  const [playing, setPlaying] = useState(autoPlay),
+  const [playing, setPlaying] = useState(autoPlay || immersive),
     [doc, setDoc] = useState(''),
     [release, setRelease] = useState<
       (Awaited<ReturnType<typeof preparePlayback>> & { relays: string[] }) | null
@@ -143,6 +134,9 @@ export function Player({
       document.removeEventListener('visibilitychange', hide);
     };
   }, [playing, compact]);
+  useEffect(() => {
+    if (immersive) setPlaying(true);
+  }, [immersive]);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState('');
   // Parent route revalidation can recreate the model without changing the session.
@@ -203,77 +197,6 @@ export function Player({
         aria-label={`${napplet.title} player`}
         className={`player-wrap${compact ? ' player-compact' : ''}${expanded ? ' player-expanded' : ''}`}
       >
-        {expanded && (
-          <div className="player-bar" inert={prompt !== null || settingsOpen}>
-            {detailPath ? (
-              <Button variant="ghost" asChild className="player-back">
-                <a
-                  href={detailPath}
-                  onClick={(event) => {
-                    if (
-                      event.button ||
-                      event.metaKey ||
-                      event.ctrlKey ||
-                      event.shiftKey ||
-                      event.altKey
-                    )
-                      return;
-                    event.preventDefault();
-                    leave();
-                  }}
-                >
-                  <ArrowLeft size={17} />
-                  <span>Back to details</span>
-                </a>
-              </Button>
-            ) : (
-              <Button variant="ghost" onClick={leave} className="player-back">
-                <ArrowLeft size={17} />
-                <span>{returnLabel}</span>
-              </Button>
-            )}
-            <div className="player-bar-title">
-              <strong>{napplet.title}</strong>
-              <span>Esc exits browser fullscreen. Back keeps your session.</span>
-            </div>
-            <div className="player-bar-actions">
-              {immersive && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={copied ? 'Play link copied' : 'Copy play link'}
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(location.origin + location.pathname);
-                      setCopied(true);
-                      setCopyError('');
-                    } catch {
-                      setCopyError('Copy this page’s address to share the player.');
-                    }
-                  }}
-                >
-                  {copied ? <Check size={17} /> : <Copy size={17} />}
-                </Button>
-              )}
-              {!fullscreen && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Enter browser fullscreen"
-                  onClick={enterNative}
-                >
-                  <Expand size={17} />
-                </Button>
-              )}
-            </div>
-            {copyError && (
-              <p role="status" className="player-copy-error">
-                {copyError}
-              </p>
-            )}
-            <noscript>Enable JavaScript to play this napplet.</noscript>
-          </div>
-        )}
         <div className="player-stage">
           {!playing ? (
             <button
@@ -373,66 +296,114 @@ export function Player({
             </div>
           )}
         </div>
-        <FileExports files={exports} />
-        <div className="player-controls" inert={prompt !== null || settingsOpen}>
-          <span>
-            {playing && doc ? (
-              <>
-                <span className="status-dot" />
-                Playing · verified artifact
-              </>
-            ) : (
-              'A small world, ready when you are.'
-            )}
-          </span>
-          <div>
-            {configuration && (
-              <SettingsControl
-                session={configuration}
-                container={wrapper.current}
-                title={napplet.title}
-                iconOnly
-                onOpenChange={setSettingsOpen}
-              />
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={!playing}
-              aria-label="Restart napplet"
-              onClick={() => setRevision((r) => r + 1)}
-            >
-              <RotateCcw size={16} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={!playing}
-              aria-label="Stop napplet"
-              onClick={() => stopCurrent.current()}
-            >
-              <Square size={16} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={fullscreen || expanded ? 'Exit fullscreen' : 'Fullscreen'}
-              onClick={() => {
-                if (document.fullscreenElement === wrapper.current) {
-                  exitNative();
-                  return;
-                }
-                if (expanded) {
-                  leave();
-                  return;
-                }
-                enterNative();
-              }}
-            >
-              {fullscreen || expanded ? <Minimize size={17} /> : <Expand size={17} />}
-            </Button>
+        <PlayerChrome
+          expanded={expanded}
+          blocked={prompt !== null || settingsOpen}
+          title={napplet.title}
+          description={napplet.description}
+          detailPath={detailPath}
+          returnLabel={returnLabel}
+          onExit={leave}
+        >
+          <FileExports files={exports} />
+          <div className="player-controls">
+            <span>
+              {playing && doc ? (
+                <>
+                  <span className="status-dot" />
+                  Playing · verified artifact
+                </>
+              ) : (
+                'A small world, ready when you are.'
+              )}
+            </span>
+            <div>
+              {expanded && immersive && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={
+                    copied
+                      ? 'Play link copied'
+                      : copyError
+                        ? 'Retry copying play link'
+                        : 'Copy play link'
+                  }
+                  title={copyError || (copied ? 'Play link copied' : 'Copy play link')}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(location.origin + location.pathname);
+                      setCopied(true);
+                      setCopyError('');
+                    } catch {
+                      setCopyError('Copy failed. Retry or copy this page’s address.');
+                    }
+                  }}
+                >
+                  {copied ? <Check size={17} /> : <Copy size={17} />}
+                </Button>
+              )}
+              {expanded && !fullscreen && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Enter browser fullscreen"
+                  title="Enter browser fullscreen"
+                  onClick={enterNative}
+                >
+                  <Expand size={17} />
+                </Button>
+              )}
+              {configuration && (
+                <SettingsControl
+                  session={configuration}
+                  container={wrapper.current}
+                  title={napplet.title}
+                  iconOnly
+                  onOpenChange={setSettingsOpen}
+                />
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={!playing}
+                aria-label="Restart napplet"
+                title="Restart napplet"
+                onClick={() => setRevision((r) => r + 1)}
+              >
+                <RotateCcw size={16} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={!playing}
+                aria-label="Stop napplet"
+                title="Stop napplet"
+                onClick={() => stopCurrent.current()}
+              >
+                <Square size={16} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={fullscreen || expanded ? 'Exit fullscreen' : 'Fullscreen'}
+                onClick={() => {
+                  if (document.fullscreenElement === wrapper.current) {
+                    exitNative();
+                    return;
+                  }
+                  if (expanded) {
+                    leave();
+                    return;
+                  }
+                  enterNative();
+                }}
+              >
+                {fullscreen || expanded ? <Minimize size={17} /> : <Expand size={17} />}
+              </Button>
+            </div>
           </div>
-        </div>
+        </PlayerChrome>
       </div>
     </div>
   );

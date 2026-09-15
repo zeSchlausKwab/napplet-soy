@@ -157,13 +157,16 @@ test('cold portable links discover signed manifests, provide SSR OG and play inl
     const scroll = await page.evaluate(() => scrollY);
     await page.getByLabel('Fullscreen', { exact: true }).click();
     await page.waitForFunction(() => !!document.fullscreenElement);
+    await page.locator('.player-corner-trigger').hover();
     await page.getByLabel('Exit fullscreen', { exact: true }).waitFor();
     expect(await frame.locator('button').textContent()).toBe('1');
     await page.getByLabel('Exit fullscreen', { exact: true }).click();
     await page.waitForFunction(() => !document.fullscreenElement);
     // Native fullscreen exits into CSS expansion; the next exit restores the gallery.
-    if (await page.locator('.player-expanded').count())
+    if (await page.locator('.player-expanded').count()) {
+      await page.locator('.player-corner-trigger').hover();
       await page.getByLabel('Exit fullscreen', { exact: true }).click();
+    }
     await page.waitForFunction(() => !document.querySelector('.player-expanded'));
     expect(await frame.locator('button').textContent()).toBe('1');
     expect(await page.evaluate(() => scrollY)).toBe(scroll);

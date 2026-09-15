@@ -30,6 +30,7 @@ test('napplet settings stay usable in fullscreen, apply only on save and survive
     }, schema);
   expect(await register()).toEqual({ speed: 1 });
   await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
+  await page.locator('.player-corner-trigger').hover();
   await page.getByRole('button', { name: 'Napplet settings', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Make it feel like yours.' })).toBeVisible();
   expect(
@@ -44,6 +45,7 @@ test('napplet settings stay usable in fullscreen, apply only on save and survive
   await expect
     .poll(() => frame.evaluate(() => (window as any).settings.at(-1)))
     .toEqual({ speed: 2.5, token: 'session-only' });
+  await page.locator('.player-corner-trigger').hover();
   await page.getByRole('button', { name: 'Napplet settings', exact: true }).click();
   await page.getByRole('button', { name: 'Reset defaults' }).click();
   await expect(page.getByLabel('Speed', { exact: true })).toHaveValue('1');
@@ -52,7 +54,9 @@ test('napplet settings stay usable in fullscreen, apply only on save and survive
     speed: 2.5,
     token: 'session-only',
   });
+  await page.locator('.player-corner-trigger').hover();
   await page.getByRole('button', { name: 'Exit fullscreen' }).click();
+  await page.locator('.player-corner-trigger').hover();
   await page.getByRole('button', { name: 'Restart napplet' }).click();
   await expect(page.frameLocator('iframe').locator('canvas')).toBeVisible();
   frame = page.frames().find((f) => f.parentFrame())!;
