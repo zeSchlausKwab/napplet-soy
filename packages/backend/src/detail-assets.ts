@@ -12,7 +12,6 @@ export type DetailAsset = {
   href: string;
   detail: string;
   thumbnail?: string;
-  download?: string;
 };
 
 const size = (bytes: number) =>
@@ -20,9 +19,10 @@ const size = (bytes: number) =>
 function linkedUrl(value: string) {
   try {
     const url = new URL(value);
-    return value.length <= 4096 && url.protocol === 'https:' && !url.username && !url.password
-      ? url
-      : null;
+    const transport =
+      url.protocol === 'https:' ||
+      (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname));
+    return value.length <= 4096 && transport && !url.username && !url.password ? url : null;
   } catch {
     return null;
   }
@@ -38,23 +38,25 @@ export function detailAssets(
   const video = validatedVideo(manifest, clip);
   const assets: DetailAsset[] = [];
   const seen = new Set<string>();
-  if (preview) {
-    const href = `/api/previews/${manifest.id}?v=${preview.hash}`;
+  const imageUrl = preview && linkedUrl(preview.url);
+  if (preview && imageUrl) {
     assets.push({
       kind: 'image',
       title: 'Preview image',
-      href,
-      thumbnail: href,
-      detail: `PNG · ${preview.width} × ${preview.height} · ${size(preview.bytes)}`,
+      href: preview.url,
+      thumbnail: preview.url,
+      // Cached PNG dimensions/size describe a derivative, not the original image.
+      detail: imageUrl.host,
     });
     seen.add(preview.url);
   }
-  if (video) {
+  const videoUrl = video && linkedUrl(video.url);
+  if (video && videoUrl) {
     assets.push({
       kind: 'video',
       title: 'Preview clip',
-      href: `/api/preview-videos/${manifest.id}?v=${video.hash}`,
-      detail: `WebM · ${(video.durationMs / 1000).toFixed(1)} sec · ${size(video.bytes)}`,
+      href: video.url,
+      detail: `${videoUrl.host} · ${(video.durationMs / 1000).toFixed(1)} sec · ${size(video.bytes)}`,
     });
     seen.add(video.url);
   }
@@ -78,32 +80,23 @@ export function detailAssets(
       seen.add(url.href);
       assets.push({
         kind: link.kind,
-        href: url.href,
+        href: link.url,
         title:
           link.kind === 'image' ? `Additional image ${++images}` : `Additional clip ${++videos}`,
-        detail: `Original file · ${url.hostname}`,
+        detail: url.host,
       });
     }
   }
   const archives = manifest.tags.filter((tag) => tag[0] === 'source-archive');
   if (archives.length === 1 && archives[0][1]?.length <= 4096) {
     try {
-      const url = new URL(archives[0][1]);
-      // The existing source endpoint owns download policy and hash/tar checks,
-      // including the operator's local development storage configuration.
-      if (
-        ['https:', 'http:'].includes(url.protocol) &&
-        !url.username &&
-        !url.password &&
-        !url.hash &&
-        /\/[a-f0-9]{64}(?:\.tar)?$/.test(url.pathname)
-      )
+      const url = linkedUrl(archives[0][1]);
+      if (url && !url.hash && /\/[a-f0-9]{64}(?:\.tar)?$/.test(url.pathname))
         assets.push({
           kind: 'source',
           title: 'Source archive',
-          href: `/api/source?${new URLSearchParams({ revision: manifest.id, view: 'project', archive: '1' })}`,
-          detail: 'TAR · original project files',
-          download: 'source.tar',
+          href: archives[0][1],
+          detail: url.host,
         });
     } catch {
       /* A malformed optional reference does not become a download. */

@@ -51,21 +51,22 @@ function fixture(extra: string[][] = []) {
   };
 }
 
-test('linked files use the selected revision and existing verified delivery endpoints', () => {
+test('linked files use the exact published URLs without client API dependencies', () => {
   const { manifest, image, video } = fixture();
   const assets = detailAssets(manifest, image, video);
   expect(assets.map((a) => a.title)).toEqual(['Preview image', 'Preview clip', 'Source archive']);
   expect(assets[0]).toMatchObject({
-    href: `/api/previews/${manifest.id}?v=${hash}`,
-    detail: 'PNG · 960 × 600 · 2.0 KB',
+    href: imageUrl,
+    thumbnail: imageUrl,
+    detail: 'assets.example',
   });
   expect(assets[1]).toMatchObject({
-    href: `/api/preview-videos/${manifest.id}?v=${hash}`,
-    detail: 'WebM · 2.6 sec · 22.0 KB',
+    href: clipUrl,
+    detail: 'assets.example · 2.6 sec · 22.0 KB',
   });
   expect(assets[2]).toMatchObject({
-    href: `/api/source?revision=${manifest.id}&view=project&archive=1`,
-    download: 'source.tar',
+    href: `https://assets.example/${hash}.tar`,
+    detail: 'assets.example',
   });
 });
 
@@ -83,7 +84,7 @@ test('additional declared files are opt-in links, deduplicated and never active 
       kind: 'image',
       title: 'Additional image 1',
       href: 'https://assets.example/another.png',
-      detail: 'Original file · assets.example',
+      detail: 'assets.example',
     },
   ]);
   for (const url of [

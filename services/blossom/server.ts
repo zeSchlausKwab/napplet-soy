@@ -239,6 +239,13 @@ export async function createBlossom(config: BlossomConfig) {
           });
         }
         for (const [key, value] of Object.entries(cors)) response.headers.set(key, value);
+        // A top-level audio/video document must be able to load its own bytes.
+        // Scripts, other resources, forms and framing remain disabled for blobs.
+        if (/^(audio|video)\//.test(response.headers.get('content-type') ?? ''))
+          response.headers.set(
+            'Content-Security-Policy',
+            `${cors['Content-Security-Policy']}; media-src 'self'`,
+          );
         return response;
       },
     });

@@ -208,14 +208,16 @@ the selected supported app descriptors, and its pinned source archive. The same
 presentation applies to every publisher and hides when there are no attachments
 or while the player is immersive.
 
-Images and clips open in a new tab through the existing verified cache endpoints.
-The image is the normalized PNG used by this client; dimensions and byte size are
-shown. Clips show their format, duration and size. Additional declared files are
-labelled as originals on their publisher's host and open only on request: they are
-not fetched or embedded by the list. They carry a verified signed URL association,
-not a claim that this client has checked their bytes. Duplicate URLs and unsafe URL
-schemes/credentials are omitted. Source archives download through the existing
-hash-checked, moderated source endpoint, including current listings in public-dev.
+Images, clips and source archives open their exact published URLs in a new tab.
+The list shows the destination hostname. Normalized cache dimensions are not
+presented as properties of the original image. Additional signed descriptor links
+remain opt-in; a signed URL association is not a claim that its bytes were checked.
+Unsafe schemes and credential-bearing URLs are omitted.
+
+Native audio/video documents need `media-src 'self'` in their response CSP. Blossom
+now grants that permission only to audio/video responses while retaining its
+script-blocking sandbox. The browser regression checks advancing playback time,
+original image URLs, source archive bytes and mobile layout.
 
 Generated OG fallback artwork is not presented as an author-supplied attachment.
 This view does not enumerate files inside executable packages, invent preview

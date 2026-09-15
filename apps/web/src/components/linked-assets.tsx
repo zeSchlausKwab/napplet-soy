@@ -1,4 +1,4 @@
-import { ArrowUpRight, Download, FileArchive, Film, Image } from 'lucide-react';
+import { ArrowUpRight, FileArchive, Film, Image } from 'lucide-react';
 import { useMemo } from 'react';
 import { detailAssets } from '../../../../packages/backend/src/detail-assets';
 import type { SignedEvent } from '../../../../packages/protocol/src';
@@ -29,10 +29,9 @@ export function LinkedAssets({
             <li key={asset.href}>
               <a
                 href={asset.href}
-                target={asset.download ? undefined : '_blank'}
+                target="_blank"
                 rel="noopener noreferrer"
-                download={asset.download}
-                aria-label={`${asset.download ? 'Download' : 'Open'} ${asset.title.toLowerCase()}${asset.download ? '' : ' (new tab)'}`}
+                aria-label={`Open ${asset.title.toLowerCase()} (new tab)`}
               >
                 <span className="linked-asset-icon" aria-hidden="true">
                   <Icon size={22} />
@@ -52,11 +51,7 @@ export function LinkedAssets({
                   <strong>{asset.title}</strong>
                   <small>{asset.detail}</small>
                 </span>
-                {asset.download ? (
-                  <Download size={17} aria-hidden="true" />
-                ) : (
-                  <ArrowUpRight size={17} aria-hidden="true" />
-                )}
+                <ArrowUpRight size={17} aria-hidden="true" />
               </a>
             </li>
           );

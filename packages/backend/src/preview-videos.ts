@@ -200,7 +200,8 @@ export function videoBytesResponse(
     'X-Content-Type-Options': 'nosniff',
     'Cache-Control': 'no-store',
     'Accept-Ranges': 'bytes',
-    'Content-Security-Policy': "default-src 'none'; sandbox",
+    'Access-Control-Allow-Origin': '*',
+    'Content-Security-Policy': "default-src 'none'; media-src 'self'; sandbox",
   };
   let start = 0,
     end = bytes.length - 1,

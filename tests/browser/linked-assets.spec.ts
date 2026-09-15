@@ -1,33 +1,26 @@
-import { test, expect } from '@playwright/test';
-import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { test, expect, type BrowserContext } from '@playwright/test';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-let directory: string, origin: string, server: ChildProcess, storage: Server;
+let directory: string,
+  origin: string,
+  storageOrigin: string,
+  server: ChildProcess,
+  storage: ChildProcess;
 let entry: {
   naddr: string;
   revisionId: string;
-  preview: { hash: string };
-  video: { hash: string };
+  preview: { hash: string; url: string };
+  video: { hash: string; url: string };
 };
 test.beforeAll(async () => {
   directory = await mkdtemp(join(tmpdir(), 'space-linked-assets-'));
-  storage = createServer(async (_req, res) => {
-    try {
-      res.end(await readFile(join(directory, 'source/source.tar')));
-    } catch {
-      res.writeHead(404).end();
-    }
+  storage = spawn('bun', ['tests/fixtures/linked-assets-server.ts', directory], {
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
-  await new Promise<void>((done) => storage.listen(0, '127.0.0.1', done));
-  const address = storage.address();
-  if (!address || typeof address === 'string') throw new Error('Expected TCP storage');
-  const storageOrigin = `http://127.0.0.1:${address.port}`;
-  execFileSync('bun', ['tests/fixtures/linked-preview.ts', directory, 'assets'], {
-    env: { ...process.env, FIXTURE_ASSET_ORIGIN: storageOrigin },
-  });
+  storageOrigin = await listening(storage);
   entry = JSON.parse(await readFile(join(directory, 'fixture.json'), 'utf8'));
   await writeFile(
     join(directory, 'policy.json'),
@@ -48,13 +41,16 @@ test.beforeAll(async () => {
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  origin = await new Promise<string>((accept, reject) => {
+  origin = await listening(server);
+});
+function listening(child: ChildProcess) {
+  return new Promise<string>((accept, reject) => {
     const timer = setTimeout(() => reject(new Error('Asset test server did not start')), 10000);
-    server.once('exit', (code) => {
+    child.once('exit', (code) => {
       clearTimeout(timer);
       reject(new Error(`Server exited: ${code}`));
     });
-    server.stdout!.on('data', (data) => {
+    child.stdout!.on('data', (data) => {
       const match = String(data).match(/listening on (http:\/\/[^\s/]+)/);
       if (match) {
         clearTimeout(timer);
@@ -62,22 +58,24 @@ test.beforeAll(async () => {
       }
     });
   });
-});
+}
 test.afterAll(async () => {
-  if (server && server.exitCode === null) {
-    const stopped = new Promise<void>((done) => server.once('exit', () => done()));
-    server.kill();
-    await stopped;
-  }
-  if (storage) await new Promise<void>((done) => storage.close(() => done()));
+  for (const child of [server, storage])
+    if (child && child.exitCode === null) {
+      const stopped = new Promise<void>((done) => child.once('exit', () => done()));
+      child.kill();
+      await stopped;
+    }
   if (directory) await rm(directory, { recursive: true, force: true });
 });
 
-test('linked assets work below the player on desktop and mobile, without automatic external loads', async ({
+test('linked assets open original storage URLs and play on desktop and mobile', async ({
   page,
   request,
   browser,
+  context,
 }) => {
+  await storageMapping(context);
   const remote: string[] = [];
   page.on('request', (r) => {
     if (/^https?:/.test(r.url()) && !r.url().startsWith(origin)) remote.push(r.url());
@@ -93,20 +91,38 @@ test('linked assets work below the player on desktop and mobile, without automat
   const popupPromise = page.waitForEvent('popup');
   await image.click();
   const popup = await popupPromise;
-  await expect(popup).toHaveURL(
-    `${origin}/api/previews/${entry.revisionId}?v=${entry.preview.hash}`,
-  );
+  await expect(popup).toHaveURL(entry.preview.url);
+  await expect(assets.locator('img')).toHaveAttribute('src', entry.preview.url);
   await popup.close();
   const clip = assets.getByRole('link', { name: 'Open preview clip (new tab)', exact: true });
-  const clipResponse = await request.get(`${origin}${await clip.getAttribute('href')}`);
+  const videoPopupPromise = page.waitForEvent('popup');
+  await clip.click();
+  const videoPopup = await videoPopupPromise;
+  await videoPopup.waitForLoadState('domcontentloaded');
+  const playerVideo = videoPopup.locator('video');
+  await expect(playerVideo).toHaveCount(1);
+  await playerVideo.evaluate((video: HTMLVideoElement) => {
+    video.muted = true;
+    video.play().catch(() => {});
+  });
+  await expect
+    .poll(() => playerVideo.evaluate((video: HTMLVideoElement) => video.currentTime), {
+      timeout: 5000,
+    })
+    .toBeGreaterThan(0.3);
+  await expect(videoPopup).toHaveURL(entry.video.url);
+  await videoPopup.close();
+  const clipResponse = await request.get(`${storageOrigin}${new URL(entry.video.url).pathname}`);
   expect(clipResponse.headers()['content-type']).toBe('video/webm');
   expect(await clipResponse.body()).toEqual(await readFile('tests/fixtures/preview.webm'));
   const archiveResponse = await request.get(
-    `${origin}${await assets.getByRole('link', { name: 'Download source archive' }).getAttribute('href')}`,
+    (await assets
+      .getByRole('link', { name: 'Open source archive (new tab)' })
+      .getAttribute('href'))!,
   );
   expect(archiveResponse.status(), await archiveResponse.text()).toBe(200);
   const downloadPromise = page.waitForEvent('download');
-  await assets.getByRole('link', { name: 'Download source archive' }).click();
+  await assets.getByRole('link', { name: 'Open source archive (new tab)' }).click();
   const download = await downloadPromise;
   expect(await readFile((await download.path())!)).toEqual(
     await readFile(join(directory, 'source/source.tar')),
@@ -114,23 +130,70 @@ test('linked assets work below the player on desktop and mobile, without automat
   await expect(
     assets.getByRole('link', { name: 'Open additional image 1 (new tab)' }),
   ).toHaveAttribute('href', 'https://images.example/another-screenshot.png');
-  expect(remote).toEqual([]);
+  expect(
+    remote.filter((url) => url !== entry.preview.url && !url.startsWith(storageOrigin)),
+  ).toEqual([]);
+  expect(
+    await assets
+      .getByRole('link')
+      .evaluateAll((links) =>
+        links.every((link) => !link.getAttribute('href')?.startsWith('/api/')),
+      ),
+  ).toBe(true);
   await assets.screenshot({ path: resolve('.local/linked-assets-desktop.png') });
   await page.setViewportSize({ width: 390, height: 844 });
   await assets.scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await expect(assets.getByRole('link', { name: 'Download source archive' })).toBeVisible();
+  await expect(assets.getByRole('link', { name: 'Open source archive (new tab)' })).toBeVisible();
   await assets.screenshot({ path: resolve('.local/linked-assets-mobile.png') });
   await page.goto(`${origin}/n/${entry.naddr}/play`);
   await expect(assets).not.toBeVisible();
-  const context = await browser.newContext({ javaScriptEnabled: false });
+  const noJsContext = await browser.newContext({ javaScriptEnabled: false });
+  await storageMapping(noJsContext);
   try {
-    const noJs = await context.newPage();
+    const noJs = await noJsContext.newPage();
     await noJs.goto(`${origin}/n/${entry.naddr}`);
     await expect(noJs.getByRole('region', { name: 'Linked assets' }).getByRole('link')).toHaveCount(
       4,
     );
   } finally {
-    await context.close();
+    await noJsContext.close();
   }
 });
+
+test('original Blossom video and the existing cached URL play in native media tabs', async ({
+  page,
+}) => {
+  for (const url of [
+    `${storageOrigin}/${entry.video.hash}`,
+    `${origin}/api/preview-videos/${entry.revisionId}`,
+  ]) {
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    const video = page.locator('video');
+    await expect(video).toHaveCount(1);
+    await video.evaluate((element: HTMLVideoElement) => {
+      element.muted = true;
+      element.play().catch(() => {});
+    });
+    await expect
+      .poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime), {
+        timeout: 5000,
+      })
+      .toBeGreaterThan(0.3);
+  }
+});
+
+async function storageMapping(context: BrowserContext) {
+  // Map the fixture's declared HTTPS origin to our real offline Blossom service.
+  // Preserve its bytes, media headers and Range handling, including in new tabs.
+  await context.route('https://images.example/**', async (route) => {
+    const range = route.request().headers().range;
+    const response = await context.request.get(
+      `${storageOrigin}${new URL(route.request().url()).pathname}`,
+      {
+        headers: range ? { Range: range } : {},
+      },
+    );
+    await route.fulfill({ response });
+  });
+}

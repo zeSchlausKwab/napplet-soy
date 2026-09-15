@@ -24,6 +24,7 @@ const clipHash = await sha256(clip);
 const clipUrl = `https://images.example/${clipHash}.webm`;
 let sourceUrl: string | undefined;
 if (withAssets) {
+  await Bun.write(join(directory, 'original.png'), image);
   await freezeSource(
     join(directory, 'source'),
     new Map([
