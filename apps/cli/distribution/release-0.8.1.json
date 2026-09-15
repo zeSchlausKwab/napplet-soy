@@ -54,5 +54,10 @@
       "bytes": 42246416,
       "sha256": "283db939ad896fa6aa224c2be999619363e9ceb20e8f41351a213b6c73a99042"
     }
-  }
+  },
+  "compatibilityVerification": [
+    "2026-09-15: corrected test-only HTTP framing; Bun 1.3.8 node:http omitted Content-Length for streamed test writes",
+    "21 Blossom service/process and shared-uploader tests pass on the VPS under Bun 1.3.8 using isolated temporary storage and loopback ports",
+    "18 local Blossom service/process tests and typecheck pass; compiled CLI artifacts are unchanged"
+  ]
 }

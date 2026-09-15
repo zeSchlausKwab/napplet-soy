@@ -845,3 +845,25 @@ CLI-upload-then-deploy command above. Both the service and creator CLI need upda
 After installation, verify `soyli --version` reports 0.8.1, then retry the existing
 project with `soyli publish --resume`. Incomplete blobs restart with their existing
 frozen bytes; completed, owned and hash-verified blobs are reused.
+
+### Legacy-runtime test framing correction
+
+Operator candidate `20260915140419482-99477` stopped during the Blossom checks,
+before activation. The previous release `20260915113546965-84858` remained active.
+The paced-upload test reproduced HTTP 411 under the VPS's Bun 1.3.8. A synthetic
+raw-header capture confirmed that its `node:http` adapter replaced streamed writes
+with `Transfer-Encoding: chunked` and omitted the explicitly supplied Content-Length.
+The Blossom service correctly rejected that request; the product uploader uses native
+fetch with a byte array and does not use this test transport.
+
+The timeout tests now share a bounded raw HTTP helper that sends literal
+Content-Length framing, handles early failures and preserves incremental body writes.
+The same 11 MiB upload still takes over 23 seconds; the test is neither skipped nor
+weakened. This is test-only: service source, deadlines and soyLI 0.8.1 archives are
+unchanged. Re-run the normal deployment command from the corrected checkout;
+already uploaded, verified 0.8.1 artifacts do not need rebuilding or re-uploading.
+
+Verification passed: typecheck and all 18 local Blossom service/process tests on
+Bun 1.3.11; all 21 Blossom service/process and uploader tests on the VPS's Bun 1.3.8.
+The remote checks used a disposable directory, loopback ports, temporary blob data
+and the deployment's pinned Go PATH. No candidate activation or CLI upload occurred.
