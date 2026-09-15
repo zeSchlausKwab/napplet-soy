@@ -452,6 +452,22 @@ export class IndexWorker {
   async run(signal: AbortSignal) {
     const stop = new AbortController();
     signal = AbortSignal.any([signal, stop.signal]);
+    // Readiness is worker liveness, not completion of a potentially slow remote
+    // catch-up. Keep catalog health/errors separate and never invent a fresh scan.
+    const heartbeat = () =>
+      this.store.setState('worker', {
+        checkedAt: Date.now(),
+        release: this.config.release,
+      });
+    if (!signal.aborted) heartbeat();
+    const timer = setInterval(() => {
+      if (!signal.aborted) heartbeat();
+    }, 10000);
+    const clearHeartbeat = () => {
+      clearInterval(timer);
+      this.store.setState('worker', null);
+    };
+    signal.addEventListener('abort', clearHeartbeat, { once: true });
     const relays = new PublicationRelays(signal);
     const discovery = this.discoveryLoop(signal);
     try {
@@ -477,6 +493,8 @@ export class IndexWorker {
       }
     } finally {
       stop.abort();
+      clearHeartbeat();
+      signal.removeEventListener('abort', clearHeartbeat);
       relays.close();
       await discovery;
     }

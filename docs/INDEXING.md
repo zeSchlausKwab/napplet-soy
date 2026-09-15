@@ -47,3 +47,13 @@ bun run soyli status --project ./my-creation --network local --refresh
 `bun run check` covers replacement ordering, invalid winners, deletion/expiry, corrupted blobs, retries, process ownership, paging failures and receipt verification. `bun run test:index` builds the website and runs isolated native Khatru and Blossom services, the independent worker process, production SSR and Chromium sandbox playback. It also checks snapshot availability while the worker is stopped and recovery after restart.
 
 Authenticated creator handles/named-route claims are next. Existing example aliases follow their Nostr identities, but new publications currently get portable `/n/<naddr>` and `/r/<snapshot-id>` routes. Public installer distribution, creator-authored media descriptors, source/remix UX, broad client interoperability checks, and larger-scale reconciliation remain separate work.
+
+
+### Worker readiness
+
+Deployment readiness uses a separate release-tagged worker heartbeat, refreshed
+every 10 seconds and rejected after 30 seconds. It is cleared when the worker
+stops. A completed relay scan is not required for the process to become ready;
+slow external catch-up must not cause an otherwise healthy deployment to roll back.
+Catalog scan timestamps and relay errors remain in the separate `health` record
+and are not replaced by the heartbeat.
