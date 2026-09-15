@@ -1,5 +1,6 @@
 import { blocked } from '../../packages/moderation/src/policy';
 import { BlobStore, type StoreLimits } from './store';
+import { UPLOAD_TIMEOUTS } from '../../packages/blossom/src/transfer';
 import {
   authorize,
   blossomOrigin,
@@ -19,6 +20,7 @@ export type BlossomConfig = {
   instance: string;
   build: string;
   limits?: Partial<StoreLimits>;
+  uploadTimeouts?: Partial<typeof UPLOAD_TIMEOUTS>;
 };
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -71,7 +73,10 @@ export async function createBlossom(config: BlossomConfig) {
   for (const value of Object.values(limits))
     if (!Number.isSafeInteger(value) || value <= 0)
       throw new Error('Blossom limits must be positive integers');
-  const store = await BlobStore.open(config.directory, origin, limits);
+  const uploadTimeouts = { ...UPLOAD_TIMEOUTS, ...config.uploadTimeouts };
+  for (const ms of Object.values(uploadTimeouts))
+    if (!Number.isSafeInteger(ms) || ms <= 0) throw new Error('Invalid upload timeout');
+  const store = await BlobStore.open(config.directory, origin, limits, uploadTimeouts);
   let uploads = 0;
   let shuttingDown = false;
   // Bound signed write admission before signature verification. This service-wide
@@ -210,7 +215,8 @@ export async function createBlossom(config: BlossomConfig) {
       // Enforce the declared limit before opening a file and the actual limit on
       // every streamed chunk in BlobStore; never buffer an entire request body.
       maxRequestBodySize: Number.MAX_SAFE_INTEGER,
-      idleTimeout: 30,
+      // Let the application return its explicit 30-second idle error before Bun closes the socket.
+      idleTimeout: 60,
       async fetch(request) {
         let response: Response;
         try {

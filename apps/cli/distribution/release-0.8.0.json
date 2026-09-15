@@ -14,7 +14,7 @@
   "command": "soyli",
   "compatibilityCommand": "napplet-space",
   "sourceCommit": "bb125680bf13d87a697587fd7f35a5f290e3093c",
-  "status": "prepared",
+  "status": "published",
   "verifiedAt": "2026-09-15",
   "verification": [
     "234 repository tests, typecheck and production web build",
@@ -33,7 +33,7 @@
     "linux-arm64",
     "linux-x64"
   ],
-  "deployment": "not deployed",
+  "deployment": "operator deployment observed",
   "artifacts": {
     "darwin-arm64": {
       "filename": "soyli-darwin-arm64.tar.gz",
@@ -55,5 +55,10 @@
       "bytes": 42246183,
       "sha256": "98717ac5798596115a50d65fb79804c3cbba166376ea54fd069d4fc385d1e25e"
     }
-  }
+  },
+  "websiteRelease": "20260915113546965-84858",
+  "deploymentVerification": [
+    "2026-09-15: public installer selects 0.8.0; all four public checksum files match this prepared release record",
+    "2026-09-15: public health reports release 20260915113546965-84858; no VPS inspection or production playback check performed in this observation"
+  ]
 }

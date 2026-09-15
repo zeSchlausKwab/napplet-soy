@@ -1,4 +1,5 @@
 import type { EventTemplate } from 'nostr-tools';
+import { CLIENT_TIMEOUTS, transferDeadline, type TransferDeadline } from './transfer';
 import { sha256, verifiedEvent, type SignedEvent } from '../../protocol/src';
 import {
   blossomOrigin,
@@ -46,68 +47,124 @@ export async function uploadBlob(input: {
   signer: BlossomSigner;
   local?: boolean;
   signal?: AbortSignal;
+  timeouts?: Partial<typeof CLIENT_TIMEOUTS>;
 }) {
   const origin = blossomOrigin(input.origin, input.local);
   if (input.bytes.byteLength > MAX_BLOB_BYTES) throw new Error('Blob exceeds upload limit');
   const hash = await sha256(input.bytes);
   const authorization = await blossomAuthorization(input.signer, 'upload', origin, hash);
-  const signal = AbortSignal.any([
-    AbortSignal.timeout(30000),
-    ...(input.signal ? [input.signal] : []),
-  ]);
-  const response = await fetch(`${origin}/upload`, {
-    method: 'PUT',
-    redirect: 'error',
-    signal,
-    headers: { Authorization: authorization, 'Content-Type': input.type, 'X-SHA-256': hash },
-    body: input.bytes as Uint8Array<ArrayBuffer>,
+  const timeouts = { ...CLIENT_TIMEOUTS, ...input.timeouts };
+  const upload = transferDeadline({
+    totalMs: timeouts.uploadMs,
+    signal: input.signal,
+    label: 'Blossom upload',
   });
-  if (![200, 201].includes(response.status))
-    throw new Error(
-      `Blossom upload refused (${response.status}): ${response.headers.get('x-reason') ?? 'See server response'}`,
+  let response: Response | undefined;
+  let result: BlobDescriptor;
+  try {
+    response = await upload.wait(
+      fetch(`${origin}/upload`, {
+        method: 'PUT',
+        redirect: 'error',
+        signal: upload.signal,
+        headers: { Authorization: authorization, 'Content-Type': input.type, 'X-SHA-256': hash },
+        body: input.bytes as Uint8Array<ArrayBuffer>,
+      }),
     );
-  if (Number(response.headers.get('content-length')) > 4096)
-    throw new Error('Blossom descriptor exceeds limit');
-  // Descriptor bodies are untrusted too; do not follow a URL returned by a server.
-  const text = await readBounded(response, 4096);
-  const result = JSON.parse(new TextDecoder().decode(text)) as BlobDescriptor;
-  const url = new URL(result.url);
-  if (
-    result.sha256 !== hash ||
-    result.size !== input.bytes.byteLength ||
-    typeof result.type !== 'string' ||
-    !Number.isSafeInteger(result.uploaded) ||
-    result.uploaded < 0 ||
-    url.username ||
-    url.password ||
-    (url.protocol !== 'https:' &&
-      !(
-        input.local &&
-        url.protocol === 'http:' &&
-        ['127.0.0.1', '[::1]'].includes(url.hostname)
-      )) ||
-    url.search ||
-    url.hash ||
-    !new RegExp(`^/${hash}\\.[a-z0-9]+$`).test(url.pathname)
-  )
-    throw new Error('Blossom returned an inconsistent descriptor');
-  const downloaded = await fetch(`${origin}/${hash}`, { redirect: 'error', signal });
-  if (
-    !downloaded.ok ||
-    (await sha256(await readBounded(downloaded, input.bytes.byteLength))) !== hash
-  )
+    if (![200, 201].includes(response.status))
+      throw new Error(
+        `Blossom upload refused (${response.status}): ${response.headers.get('x-reason') ?? 'See server response'}`,
+      );
+    if (Number(response.headers.get('content-length')) > 4096)
+      throw new Error('Blossom descriptor exceeds limit');
+    // Once upload headers arrive, the small descriptor gets its own bounded read.
+    const descriptor = transferDeadline({
+      totalMs: timeouts.idleMs,
+      signal: upload.signal,
+      label: 'Blossom upload response',
+    });
+    try {
+      const text = await readBounded(response, 4096, descriptor);
+      result = JSON.parse(new TextDecoder().decode(text)) as BlobDescriptor;
+    } finally {
+      descriptor.close();
+    }
+    const url = new URL(result.url);
+    if (
+      result.sha256 !== hash ||
+      result.size !== input.bytes.byteLength ||
+      typeof result.type !== 'string' ||
+      !Number.isSafeInteger(result.uploaded) ||
+      result.uploaded < 0 ||
+      url.username ||
+      url.password ||
+      (url.protocol !== 'https:' &&
+        !(
+          input.local &&
+          url.protocol === 'http:' &&
+          ['127.0.0.1', '[::1]'].includes(url.hostname)
+        )) ||
+      url.search ||
+      url.hash ||
+      !new RegExp(`^/${hash}\\.[a-z0-9]+$`).test(url.pathname)
+    )
+      throw new Error('Blossom returned an inconsistent descriptor');
+  } catch (error) {
+    if (upload.signal.aborted) throw upload.signal.reason;
+    throw error;
+  } finally {
+    upload.close();
+    await response?.body?.cancel().catch(() => {});
+  }
+  // Upload and independent verification do not spend the same timeout budget.
+  if (!(await verifyBlob(origin, hash, input.bytes.byteLength, input.signal, timeouts)))
     throw new Error('Uploaded blob could not be independently hash-verified');
   return { descriptor: result, created: response.status === 201 };
 }
-export async function readBounded(response: Response, limit: number) {
+
+/** Used after upload and when resuming an already uploaded publication. */
+export async function verifyBlob(
+  origin: string,
+  hash: string,
+  length: number,
+  signal?: AbortSignal,
+  timeouts: Partial<Pick<typeof CLIENT_TIMEOUTS, 'verificationMs' | 'idleMs'>> = {},
+) {
+  const policy = { ...CLIENT_TIMEOUTS, ...timeouts };
+  const deadline = transferDeadline({
+    totalMs: policy.verificationMs,
+    idleMs: policy.idleMs,
+    signal,
+    label: 'Blossom verification download',
+  });
+  let response: Response | undefined;
+  try {
+    response = await deadline.wait(
+      fetch(`${origin}/${hash}`, { redirect: 'error', signal: deadline.signal }),
+    );
+    if (!response.ok || Number(response.headers.get('content-length')) > length) return false;
+    const bytes = await readBounded(response, length, deadline);
+    return bytes.length === length && (await sha256(bytes)) === hash;
+  } catch (error) {
+    if (deadline.signal.aborted) throw deadline.signal.reason;
+    throw error;
+  } finally {
+    deadline.close();
+    await response?.body?.cancel().catch(() => {});
+  }
+}
+
+export async function readBounded(response: Response, limit: number, deadline?: TransferDeadline) {
   if (!response.body) return new Uint8Array();
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
   try {
     while (true) {
-      const part = await reader.read();
+      const part = await (deadline ? deadline.wait(reader.read()) : reader.read());
+      deadline?.signal.throwIfAborted();
       if (part.done) break;
+      if (part.value.byteLength) deadline?.progress();
       size += part.value.byteLength;
       if (size > limit) throw new Error('Response exceeds byte limit');
       chunks.push(part.value);

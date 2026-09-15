@@ -1,5 +1,4 @@
-import { blossomAuthorization, readBounded } from '../../blossom/src/client';
-import { sha256 } from '../../protocol/src';
+import { blossomAuthorization, readBounded, verifyBlob } from '../../blossom/src/client';
 import type { CreatorSigner } from '../../identity/src/signer';
 
 export async function ownedBlobs(
@@ -34,16 +33,7 @@ export async function verifiedBlob(
   signal?: AbortSignal,
 ) {
   try {
-    const response = await fetch(`${origin}/${hash}`, {
-      redirect: 'error',
-      signal: AbortSignal.any([AbortSignal.timeout(15000), ...(signal ? [signal] : [])]),
-    });
-    if (!response.ok) {
-      await response.body?.cancel();
-      return false;
-    }
-    const bytes = await readBounded(response, length);
-    return bytes.length === length && (await sha256(bytes)) === hash;
+    return await verifyBlob(origin, hash, length, signal);
   } catch {
     return false;
   }

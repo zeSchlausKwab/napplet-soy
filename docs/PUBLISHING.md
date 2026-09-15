@@ -88,6 +88,14 @@ not an independently reproducible-build attestation. Both tar and HTML are uploa
 
 Repeating the same release rechecks storage/relay evidence, repairs missing blobs/events and retries unavailable mirrors without creating another snapshot or source commit. `unchanged` means the release identity and bytes were reused, even if missing remote data needed repair. A change in source, title, topics or required domains creates a new release; identical HTML alone does not make metadata changes a no-op.
 
+With the prepared soyLI 0.8.1 upload fix, slower transfers can continue while data
+arrives. Upload and independent verification have separate time budgets; see
+[Blossom timeout policy](BLOSSOM.md#upload-timeout-correction--prepared-for-soyli-081).
+After upgrading and deploying the server fix, retry an interrupted frozen publication
+with `soyli publish --resume` from the existing project. Preserve its `.napplet-space`
+journal and identity. Completed blobs are reverified and reused; a partially uploaded
+blob is resent in full with the same frozen bytes/hash.
+
 Checks before and after remote stages reject unknown competing current or source events. Timestamps increase monotonically with a bounded clock-skew check. A Git lease protects the branch update. Nostr relays do not provide a distributed compare-and-swap transaction: a concurrent event can still arrive between checks. The CLI detects an observed conflict and stops instead of claiming it can roll back already-public events. There is no automatic destructive conflict override.
 
 Source state retains at most 128 release refs in this initial adapter. Reaching that limit stops without deleting refs; a scalable retention policy is future work. Optional mirrors may be offline while primary publication succeeds. Stored receipts are observations, not promises of permanent hosting. Back up the journal and creator recovery material separately.

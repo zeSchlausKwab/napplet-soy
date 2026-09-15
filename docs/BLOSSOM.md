@@ -30,10 +30,34 @@ Current per-service defaults:
 
 - 50 MiB per blob, 2 GiB total committed bytes, 10,000 distinct blobs.
 - 256 MiB and 1,000 claims per uploader; 100,000 total claims. Shared bytes count toward each owner's allowance.
-- Four concurrent streamed uploads, a 20-second body deadline, and 600 signed upload/list/delete admission attempts per minute across the service.
+- Four concurrent streamed uploads, a 30-second inactivity timeout and a five-minute overall body deadline, and 600 signed upload/list/delete admission attempts per minute across the service.
 - One PM2 process, 512 MiB memory restart threshold and 15-second shutdown allowance.
 
 These are bounded initial operator policies, not sybil-resistant moderation. Temp-file space is additional to the committed-byte quota. Limits are defined in the server configuration; deployment currently uses these defaults. Back up the complete data directory with the service stopped or a coordinated filesystem snapshot, including SQLite WAL state. Copying only the main SQLite file while live is insufficient. There is no automatic retention, migration/rollback of data schemas, replication or production backup scheduler yet.
+
+### Upload timeout correction — prepared for soyLI 0.8.1
+
+The previous server cancelled the body after 20 seconds even while bytes were
+arriving. A paced 11 MiB local upload reproduced HTTP 408 under that policy and
+now completes with its SHA-256 verified. The new inactivity timer resets only when
+nonempty body bytes arrive; a five-minute ceiling still bounds continuous trickles.
+Idle/overall failures return 408 with a specific reason and remove temporary files
+and release the upload slot. Bun's socket idle timeout is 60 seconds so the
+application can return its own 30-second timeout response first.
+
+The shared CLI uploader now gives PUT and its descriptor up to six minutes overall,
+with a separate 30-second descriptor read after response headers. Verification gets
+its own five-minute budget and a 30-second inactivity timer; receiving nonempty bytes
+resets only the inactivity timer. Resume checks use the same verification policy,
+replacing their former 15-second download limit. Cancellation closes the current
+transfer. Existing signatures, byte limits, exact hash checks, redirect refusal and
+publication retry identities are preserved. An interrupted individual blob restarts
+from the beginning; this change does not introduce a chunk-upload protocol.
+
+Timeout constants live in `packages/blossom/src/transfer.ts`; the service factory and
+shared client accept programmatic overrides for testing. They are not new environment
+variables or CLI flags. This correction is implemented and verified locally; the
+operator must deploy the service and upload/install soyLI 0.8.1 to activate both sides.
 
 ## Local use and VPS wiring
 

@@ -2,6 +2,7 @@ import { Database } from 'bun:sqlite';
 import { mkdir, readdir, open, rename, unlink, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { transferDeadline, UPLOAD_TIMEOUTS } from '../../packages/blossom/src/transfer';
 import {
   BlossomError,
   HASH,
@@ -26,6 +27,7 @@ export class BlobStore {
     readonly directory: string,
     readonly origin: string,
     readonly limits: StoreLimits,
+    private readonly uploadTimeouts: typeof UPLOAD_TIMEOUTS,
   ) {
     // A separate SQLite transaction holds an OS-managed process lock for this data
     // directory. Crash recovery needs no PID-file deletion or stale-lock guesswork.
@@ -47,9 +49,14 @@ export class BlobStore {
       throw error;
     }
   }
-  static async open(directory: string, origin: string, limits: StoreLimits) {
+  static async open(
+    directory: string,
+    origin: string,
+    limits: StoreLimits,
+    uploadTimeouts = UPLOAD_TIMEOUTS,
+  ) {
     await mkdir(directory, { recursive: true, mode: 0o700 });
-    const store = new BlobStore(directory, origin, limits);
+    const store = new BlobStore(directory, origin, limits, uploadTimeouts);
     try {
       await mkdir(join(directory, 'blobs'), { recursive: true, mode: 0o700 });
       await mkdir(join(directory, 'incoming'), { recursive: true, mode: 0o700 });
@@ -132,30 +139,28 @@ export class BlobStore {
     const hash = createHash('sha256');
     let received = 0;
     const reader = request.body?.getReader();
-    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(20000)]);
-    let abort!: () => void;
-    const aborted = new Promise<never>((_, reject) => {
-      abort = () => {
-        reject(new BlossomError(408, 'Upload timed out or was cancelled'));
-        void reader?.cancel().catch(() => {});
-      };
-      if (signal.aborted) abort();
-      else signal.addEventListener('abort', abort, { once: true });
+    const deadline = transferDeadline({
+      ...this.uploadTimeouts,
+      signal: request.signal,
+      label: 'Upload',
     });
-    // Rejection may happen during a disk write; retain a handler until the next race.
-    void aborted.catch(() => {});
+    const abort = () => {
+      void reader?.cancel().catch(() => {});
+    };
+    deadline.signal.addEventListener('abort', abort, { once: true });
     try {
       if (reader)
         while (true) {
-          const part = await Promise.race([reader.read(), aborted]);
+          const part = await deadline.wait(reader.read());
           if (part.done) break;
+          if (part.value.byteLength) deadline.progress();
           received += part.value.byteLength;
           if (received > size || received > this.limits.maxBlob)
             throw new BlossomError(413, 'Upload exceeds declared size');
           hash.update(part.value);
           await handle.writeFile(part.value);
         }
-      if (signal.aborted) throw new BlossomError(408, 'Upload cancelled');
+      deadline.signal.throwIfAborted();
       if (received !== size) throw new BlossomError(400, 'Upload length mismatch');
       if (hash.digest('hex') !== expected) throw new BlossomError(409, 'Upload hash mismatch');
       await handle.sync();
@@ -187,8 +192,18 @@ export class BlobStore {
         }
         return { descriptor: this.descriptor(row), created: !previous };
       });
+    } catch (error) {
+      if (deadline.signal.aborted)
+        throw new BlossomError(
+          408,
+          deadline.signal.reason instanceof Error
+            ? deadline.signal.reason.message
+            : 'Upload cancelled',
+        );
+      throw error;
     } finally {
-      signal.removeEventListener('abort', abort);
+      deadline.signal.removeEventListener('abort', abort);
+      deadline.close();
       await reader?.cancel().catch(() => {});
       reader?.releaseLock();
       await handle.close();
