@@ -70,6 +70,19 @@ test('relay endpoint checks HTTPS origin, admission, shape and destination befor
   expect(failed.status).toBe(200);
   expect(await failed.text()).toContain('CLOSED');
   expect(opens).toBe(1);
+  const local = createPlaybackRelayResponder(
+    async () => ({ localRelays: ['ws://127.0.0.1:4000'] }),
+    () => origin,
+    async () => {
+      opens++;
+      throw new Error();
+    },
+  );
+  const admitted = await local(request({ ...query, relay: 'ws://127.0.0.1:4000' }));
+  expect(admitted.status).toBe(200);
+  await admitted.text();
+  expect((await local(request({ ...query, relay: 'ws://127.0.0.1:4001' }))).status).toBe(403);
+  expect(opens).toBe(2);
 });
 
 test('shared HTTP host reads the hinted station, verifies events, streams beyond EOSE, and cancels without publishing', async () => {

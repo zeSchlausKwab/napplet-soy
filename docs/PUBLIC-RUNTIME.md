@@ -177,7 +177,9 @@ caps incoming wire bytes at 8 MiB and is destroyed on cancellation or deadline.
 
 Local preview additionally permits only literal-loopback WS URLs explicitly listed
 in the project's `relays`; this exception is never granted by a website manifest.
-The iframe retains `connect-src 'none'`. Private/LAN relays, arbitrary HTTP proxying,
+The platform dev script also sets `SPACE_RUNTIME_LOCAL_RELAYS` to its managed
+literal-loopback relay; production leaves this separate operator setting empty.
+Discovery data and napplet manifests cannot set it. The iframe retains `connect-src 'none'`. Private/LAN relays, arbitrary HTTP proxying,
 redirects to other destinations and publishing remain unavailable.
 
 Reads retain signature/filter verification and deduplication. Invalid explicit

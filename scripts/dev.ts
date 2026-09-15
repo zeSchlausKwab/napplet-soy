@@ -68,6 +68,7 @@ const env = {
   SPACE_INDEX_DIR: resolve(local, 'services/index'),
   SPACE_COMMUNITY_DIR: resolve(local, 'services/community'),
   SPACE_INDEX_RELAYS: localRelayUrl,
+  SPACE_RUNTIME_LOCAL_RELAYS: localRelayUrl,
   SPACE_INDEX_LOCAL_BLOSSOM: localBlossomOrigin,
 };
 async function prepare() {
