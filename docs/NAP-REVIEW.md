@@ -137,3 +137,13 @@ target verifies; incomplete ancestry remains a gap. Public key profiles and ance
 work without Space aliases or profile metadata. Host kind-0 editing adds no napplet
 signing permission and does not implement new identity-domain operations.
 See [profile limits](PROFILES.md) and [genealogy](REMIXING.md#genealogy-on-napplet-pages).
+
+## Preview media update — 2026-09-15
+
+Reviewed NIP-92/94 and the NIP-5A `app` association at
+`a2494f4f81d46684e5814a9bf35e2b1df978f955`. Optional video attachments live in the
+linked software descriptor's content and `imeta` tags. The NIP-5D pin, executable
+format and NAP operations remain unchanged. This is a generic NIP-92 application,
+not an assertion of a dedicated cross-client trailer contract. Every publisher uses
+the same adapter; missing video cannot change playback eligibility. See
+[preview delivery and local evidence](PREVIEWS.md#short-video-previews--soyli-070).

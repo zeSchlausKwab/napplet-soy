@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { eventSchema, verifiedEvent, type SignedEvent } from './index';
 
-export const PREVIEW_PROFILE = 'app-descriptors-1';
+export const PREVIEW_PROFILE = 'app-descriptors-2';
 export const MAX_PREVIEW_BYTES = 5 * 1024 * 1024;
 export const MAX_CACHED_PREVIEW_BYTES = 4 * 1024 * 1024;
 export type AppReference = { kind: number; pubkey: string; identifier: string; relay?: string };

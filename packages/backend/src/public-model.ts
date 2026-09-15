@@ -1,3 +1,4 @@
+import { cachedVideoSchema } from '../../protocol/src/preview-video';
 import { z } from 'zod';
 import { nip19 } from 'nostr-tools';
 import { eventSchema, encodeAddress } from '../../protocol/src';
@@ -34,6 +35,7 @@ export const publicNappletSchema = z.object({
   relays: z.array(z.string().max(256)).max(8).default([]),
   sourceUrl: z.string().max(4096).nullable(),
   availability: z.enum(['ready', 'host-required', 'unavailable']),
+  video: cachedVideoSchema.nullable().catch(null).default(null),
   preview: cachedPreviewSchema.nullable().catch(null).default(null),
 });
 export type PublicNapplet = z.infer<typeof publicNappletSchema>;
@@ -79,6 +81,7 @@ export async function publicNapplet(
     sourceUrl,
     availability: missingDomains(release.domains).length ? 'host-required' : 'unavailable',
     preview: null,
+    video: null,
   };
 }
 export const publicPoster = (entry: PublicNapplet) =>

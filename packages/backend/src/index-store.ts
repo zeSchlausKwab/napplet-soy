@@ -1,3 +1,4 @@
+import { validatedVideo } from '../../protocol/src/preview-video';
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -84,10 +85,10 @@ export class IndexStore {
   }
   references() {
     return this.db
-      .query<{ hash: string | null; preview: string | null }, []>(
+      .query<{ hash: string | null; preview: string | null; video: string | null }, []>(
         `SELECT
       json_extract(projection, '$.artifactHash') AS hash,
-      json_extract(projection, '$.preview.hash') AS preview FROM records`,
+      json_extract(projection, '$.preview.hash') AS preview, json_extract(projection, '$.video.hash') AS video FROM records`,
       )
       .all();
   }
@@ -188,6 +189,7 @@ export async function indexedProjection(row: IndexRow, relays: string[]) {
     const saved = row.projection ? (JSON.parse(row.projection) as PublicNapplet) : null;
     if (saved?.revisionId === entry.revisionId && saved.artifactHash === entry.artifactHash) {
       entry.bytes = saved.bytes;
+      entry.video = validatedVideo(entry.manifest, saved.video);
       entry.preview = validatedPreview(entry.manifest, saved.preview);
       entry.availability = missingDomains(entry.domains).length
         ? 'host-required'

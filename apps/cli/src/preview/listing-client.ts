@@ -7,6 +7,11 @@ export function setupListing(signal: AbortSignal) {
   const listing = document.querySelector<HTMLButtonElement>('#view-listing')!;
   const stage = document.querySelector<HTMLElement>('#stage')!;
   const capture = document.querySelector<HTMLButtonElement>('#capture')!;
+  const recording = document.querySelector<HTMLFieldSetElement>('#recording-controls')!;
+  const record = document.querySelector<HTMLButtonElement>('#record-video')!;
+  const startInput = document.querySelector<HTMLInputElement>('#record-start')!;
+  const durationInput = document.querySelector<HTMLInputElement>('#record-duration')!;
+  let actions: ListingPreview['recording']['actions'] = [];
   const status = document.querySelector<HTMLElement>('#listing-status')!;
   let shown = '',
     running = false;
@@ -18,6 +23,10 @@ export function setupListing(signal: AbortSignal) {
   };
   function render(data: ListingPreview) {
     capture.hidden = !data.captureAvailable;
+    recording.hidden = !data.recordingAvailable;
+    startInput.value = String(data.recording.startMs / 1000);
+    durationInput.value = String(data.recording.durationMs / 1000);
+    actions = data.recording.actions;
     const card = element('article', '', 'listing-card');
     if (data.image) {
       const img = element('img');
@@ -26,8 +35,22 @@ export function setupListing(signal: AbortSignal) {
       img.onerror = () => {
         status.textContent = 'The selected image could not be decoded. Capture a new screenshot.';
       };
-      card.append(img);
+      card.append(element('p', 'Static cover', 'preview-media-label'), img);
     } else card.append(element('div', 'Your screenshot goes here', 'listing-placeholder'));
+    if (data.video) {
+      const clip = element('video');
+      clip.src = data.video.url;
+      clip.controls = true;
+      clip.muted = true;
+      clip.playsInline = true;
+      clip.preload = 'metadata';
+      if (data.image) clip.poster = data.image.url;
+      clip.setAttribute('aria-label', `Preview clip for ${data.title}`);
+      clip.onerror = () => {
+        status.textContent = 'The clip could not be played. Record a new WebM.';
+      };
+      card.append(element('p', 'Preview clip', 'preview-media-label'), clip);
+    }
     const caption = element('div', '', 'listing-caption');
     caption.append(
       element('p', data.topics.map((t) => `#${t}`).join(' · ') || 'No tags yet', 'muted'),
@@ -73,6 +96,12 @@ export function setupListing(signal: AbortSignal) {
         data.image
           ? `${data.image.file} · ${data.image.width} × ${data.image.height}`
           : 'Automatic capture on publish',
+      ],
+      [
+        'Preview clip',
+        data.video
+          ? `${data.video.file} · ${(data.video.durationMs / 1000).toFixed(1)} seconds · ${(data.video.bytes / 1024).toFixed(0)} KB${data.video.stale ? ' · older build' : ''}`
+          : 'Optional; record one above',
       ],
       ['Network', data.network],
       ['Listing relay', data.targets.relay],
@@ -133,6 +162,7 @@ export function setupListing(signal: AbortSignal) {
     }
   }
   const select = (value: boolean) => {
+    if (!value) panel.querySelectorAll('video').forEach((v) => v.pause());
     panel.hidden = !value;
     stage.hidden = value;
     play.setAttribute('aria-pressed', String(!value));
@@ -142,6 +172,7 @@ export function setupListing(signal: AbortSignal) {
   play.onclick = () => select(false);
   listing.onclick = () => select(true);
   capture.onclick = async () => {
+    record.disabled = true;
     capture.disabled = true;
     running = true;
     status.textContent = 'Capturing the built app… Chromium is downloaded on first use if needed.';
@@ -155,10 +186,51 @@ export function setupListing(signal: AbortSignal) {
       status.textContent = error instanceof Error ? error.message : 'Capture failed.';
     } finally {
       capture.disabled = false;
+      record.disabled = false;
       running = false;
       void refresh();
     }
   };
+  record.onclick = async () => {
+    if (!startInput.reportValidity() || !durationInput.reportValidity()) return;
+    recording.disabled = true;
+    capture.disabled = true;
+    running = true;
+    record.textContent = 'Recording…';
+    status.textContent =
+      'Recording a fresh run of the built app. Timed clicks and keys can be set in preview.recording.actions in napplet.json.';
+    try {
+      const response = await fetch('/listing/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startMs: Number(startInput.value) * 1000,
+          durationMs: Number(durationInput.value) * 1000,
+          actions,
+        }),
+        signal,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? 'Recording failed.');
+      status.textContent = 'Clip saved and selected. Play it below to review before publishing.';
+      shown = '';
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : 'Recording failed.';
+    } finally {
+      recording.disabled = false;
+      capture.disabled = false;
+      running = false;
+      record.textContent = 'Record clip';
+      void refresh();
+    }
+  };
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.hidden) panel.querySelectorAll('video').forEach((v) => v.pause());
+    },
+    { signal },
+  );
   const timer = setInterval(() => void refresh(), 1500);
   signal.addEventListener('abort', () => clearInterval(timer), { once: true });
 }

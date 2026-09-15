@@ -93,7 +93,9 @@ function Create() {
             <h2>Play it. Pass it around.</h2>
             <p>
               In the dev preview, switch to Listing to inspect the screenshot, title, description,
-              tags and upload destinations. Capture a screenshot there before sharing.
+              tags and upload destinations. Capture a screenshot there before sharing. You can also
+              use Record clip, or <code>soyli record</code>, to add a short silent video and review
+              it alongside the cover.
             </p>
             <p>
               Build your latest changes, then run <code>soyli publish</code> to check your creation,

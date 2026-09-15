@@ -1,4 +1,4 @@
-import { projectConfiguration, screenshotProject } from './project-config';
+import { projectConfiguration, screenshotProject, recordProject } from './project-config';
 import { parseArgs } from 'node:util';
 import { join } from 'node:path';
 import { nip19 } from 'nostr-tools';
@@ -28,6 +28,7 @@ Usage:
   bun run soyli run <package-script> [arguments...]
   bun run soyli exec <project-tool> [arguments...]
   bun run soyli config [init] [--project <folder>]
+  bun run soyli record [preview.webm] [--project <folder>]
   bun run soyli screenshot [preview.png] [--project <folder>]
   bun run soyli skills update [--project <folder>]
   bun run soyli account create|show|list|check|backup
@@ -205,6 +206,7 @@ try {
         'skills',
         'config',
         'screenshot',
+        'record',
       ].includes(command)) ||
     ((values.port || values['no-open']) && command !== 'dev')
   )
@@ -357,7 +359,7 @@ try {
               .join('\n'),
       );
     }
-  } else if (command === 'config' || command === 'screenshot') {
+  } else if (command === 'config' || command === 'screenshot' || command === 'record') {
     if (
       argument ||
       extra.length ||
@@ -369,12 +371,14 @@ try {
     )
       throw new AccountError(
         'USAGE',
-        'Use config [init] or screenshot [preview.png], optionally with --project.',
+        'Use config [init] or screenshot [preview.png] or record [preview.webm], optionally with --project.',
       );
     const result =
       command === 'config'
         ? await projectConfiguration(values.project ?? process.cwd(), network, action === 'init')
-        : await screenshotProject(values.project ?? process.cwd(), network, action);
+        : command === 'record'
+          ? await recordProject(values.project ?? process.cwd(), network, action)
+          : await screenshotProject(values.project ?? process.cwd(), network, action);
     console.log(JSON.stringify(result, null, json ? undefined : 2));
   } else if (command === 'publish' || command === 'status') {
     if (

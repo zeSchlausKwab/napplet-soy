@@ -1,3 +1,4 @@
+import { PreviewCover } from './preview-cover';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, Play, Info } from 'lucide-react';
 import { TopicTags } from './topic-tags';
@@ -70,38 +71,44 @@ export function NappletCard({
       {playing && external ? (
         <Player napplet={napplet} autoPlay compact onStop={onStop} />
       ) : (
-        <Link
-          {...link}
-          className="card-preview"
-          aria-label={`${playable ? 'Play' : 'View'} ${napplet.title}`}
-          onClick={(event) => {
-            if (
-              onPlay &&
-              playable &&
-              external &&
-              !event.metaKey &&
-              !event.ctrlKey &&
-              !event.shiftKey &&
-              !event.altKey
-            ) {
-              event.preventDefault();
-              onPlay();
-            }
-          }}
+        <PreviewCover
+          video={external ? napplet.video : null}
+          revision={external ? napplet.revisionId : napplet.snapshotId}
+          title={napplet.title}
         >
-          <img
-            className={external && !napplet.preview ? 'generated-poster' : undefined}
-            src={external ? publicPoster(napplet) : `/posters/${napplet.slug}.svg`}
-            referrerPolicy="no-referrer"
-            alt=""
-            width="720"
-            height="450"
-            loading={index < 3 ? 'eager' : 'lazy'}
-          />
-          <span className="play-indicator">
-            {playable ? <Play size={18} fill="currentColor" /> : <Info size={20} />}
-          </span>
-        </Link>
+          <Link
+            {...link}
+            className="card-preview"
+            aria-label={`${playable ? 'Play' : 'View'} ${napplet.title}`}
+            onClick={(event) => {
+              if (
+                onPlay &&
+                playable &&
+                external &&
+                !event.metaKey &&
+                !event.ctrlKey &&
+                !event.shiftKey &&
+                !event.altKey
+              ) {
+                event.preventDefault();
+                onPlay();
+              }
+            }}
+          >
+            <img
+              className={external && !napplet.preview ? 'generated-poster' : undefined}
+              src={external ? publicPoster(napplet) : `/posters/${napplet.slug}.svg`}
+              referrerPolicy="no-referrer"
+              alt=""
+              width="720"
+              height="450"
+              loading={index < 3 ? 'eager' : 'lazy'}
+            />
+            <span className="play-indicator">
+              {playable ? <Play size={18} fill="currentColor" /> : <Info size={20} />}
+            </span>
+          </Link>
+        </PreviewCover>
       )}
       <div className="card-heading">
         <Link {...link}>{napplet.title}</Link>

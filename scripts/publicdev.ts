@@ -1,3 +1,4 @@
+import { indexPreviewVideos, prunePreviewVideos } from '../packages/backend/src/preview-videos';
 import { mkdir, rename } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
@@ -122,10 +123,16 @@ export async function refreshPublicCatalog(
           relays,
           signal,
         );
-        await indexPreviewImages(directory, entries, metadata, signal, {
-          download: options.previewDownload,
-          previous: sameRelays ? previous!.entries : [],
-        });
+        await Promise.all([
+          indexPreviewImages(directory, entries, metadata, signal, {
+            download: options.previewDownload,
+            previous: sameRelays ? previous!.entries : [],
+          }),
+          indexPreviewVideos(directory, entries, metadata, signal, {
+            download: options.previewDownload,
+            previous: sameRelays ? previous!.entries : [],
+          }),
+        ]);
       } catch {
         /* Missing preview metadata must not roll back a fresh playable catalog. */
       }
@@ -175,6 +182,10 @@ export async function refreshPublicCatalog(
     const temporary = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`;
     await Bun.write(temporary, JSON.stringify(cache, null, 2) + '\n');
     await rename(temporary, path);
+    await prunePreviewVideos(directory, [
+      ...entries,
+      ...(sameRelays ? previous!.entries : []),
+    ]).catch(() => {});
     await prunePreviewImages(directory, [
       ...entries,
       ...(sameRelays ? previous!.entries : []),

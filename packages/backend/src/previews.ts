@@ -1,10 +1,11 @@
+import { cachedVideoBytes, videoBytesResponse } from './preview-videos';
 import { blocked, manifestBlocked } from '../../moderation/src/policy';
 import type { CachedPreview } from '../../protocol/src/preview';
 import { readPublicCatalog, publicDirectory } from './public-catalog';
 import { cachedPreviewBytes } from './preview-images';
 import { indexedRevision, indexStore } from './indexed-catalog';
 
-function allowedPreview(preview: CachedPreview) {
+function allowedPreview(preview: Pick<CachedPreview, 'descriptor' | 'url' | 'hash'>) {
   const sourceHash = /(?:sha256:|\/)([a-f0-9]{64})(?:[.?#/]|$)/.exec(preview.url)?.[1];
   return (
     !manifestBlocked(preview.descriptor) &&
@@ -46,4 +47,29 @@ export async function previewResponse(id: string, request: Request) {
     return new Response(null, { status: 304, headers: rest });
   }
   return new Response(request.method === 'HEAD' ? null : new Uint8Array(bytes), { headers });
+}
+
+export async function previewVideoResponse(id: string, request: Request) {
+  if (!/^[a-f0-9]{64}$/.test(id)) return new Response(null, { status: 404 });
+  const indexed = await indexedRevision(id),
+    store = indexStore();
+  let bytes: Uint8Array | null = null;
+  if (indexed?.video && store && allowedPreview(indexed.video))
+    bytes = await cachedVideoBytes(store.directory, indexed.video);
+  if (!bytes) {
+    const directory = publicDirectory();
+    const entry = directory
+      ? (await readPublicCatalog())?.entries.find((e) => e.revisionId === id)
+      : null;
+    if (
+      directory &&
+      entry?.video &&
+      !manifestBlocked(entry.manifest) &&
+      allowedPreview(entry.video)
+    )
+      bytes = await cachedVideoBytes(directory, entry.video);
+  }
+  return bytes
+    ? videoBytesResponse(bytes, request)
+    : new Response(null, { status: 404, headers: { 'Cache-Control': 'no-store' } });
 }

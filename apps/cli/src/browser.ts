@@ -29,24 +29,32 @@ export async function browserEngine(): Promise<Playwright> {
     pathToFileURL(join(playwrightDirectory(), 'index.mjs')).href
   )) as Playwright);
 }
-export async function browserInstalled() {
+export async function browserInstalled(video = false) {
   await browserEngine();
   // The pinned Playwright registry knows each platform's headless-shell path.
   const require = createRequire(pathToFileURL(join(playwrightDirectory(), 'index.js')));
   const registry = require('./lib/coreBundle.js').registry.registry;
-  const executable = registry.findExecutable('chromium-headless-shell')?.executablePath();
-  return (
-    !!executable &&
-    (await access(executable).then(
-      () => true,
-      () => false,
-    ))
+  const executables = ['chromium-headless-shell', ...(video ? ['ffmpeg'] : [])].map((name) =>
+    registry.findExecutable(name)?.executablePath(),
   );
+  return (
+    await Promise.all(
+      executables.map((executable) =>
+        executable
+          ? access(executable).then(
+              () => true,
+              () => false,
+            )
+          : false,
+      ),
+    )
+  ).every(Boolean);
 }
 export async function installBrowser(
   progress = (message: string) => process.stderr.write(message + '\n'),
+  video = false,
 ) {
-  if (await browserInstalled()) return;
+  if (await browserInstalled(video)) return;
   const cwd = browserCache();
   await mkdir(cwd, { recursive: true, mode: 0o700 });
   progress('Downloading the pinned Chromium check browser. It is cached for future publications.');
@@ -93,7 +101,7 @@ export async function installBrowser(
   process.once('SIGTERM', stop);
   try {
     const [code] = await Promise.all([child.exited, drain(child.stdout), drain(child.stderr)]);
-    if (code !== 0 || !(await browserInstalled())) throw new Error();
+    if (code !== 0 || !(await browserInstalled(video))) throw new Error();
   } catch {
     throw new AccountError(
       'BROWSER_INSTALL',

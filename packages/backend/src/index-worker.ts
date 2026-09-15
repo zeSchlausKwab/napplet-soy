@@ -1,3 +1,4 @@
+import { indexPreviewVideos } from './preview-videos';
 import { manifestBlocked } from '../../moderation/src/policy';
 import { Database } from 'bun:sqlite';
 import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
@@ -313,9 +314,13 @@ export class IndexWorker {
           this.config.relays,
           previewSignal,
         );
-        await indexPreviewImages(this.config.directory, entries, metadata, previewSignal, {
-          previous,
-        });
+        await Promise.all([
+          indexPreviewImages(this.config.directory, entries, metadata, previewSignal, { previous }),
+          indexPreviewVideos(this.config.directory, entries, metadata, previewSignal, {
+            previous,
+            localOrigin: this.config.localBlossom,
+          }),
+        ]);
       } catch {
         /* Keep existing validated previews when discovery is offline. */
       }
@@ -324,14 +329,14 @@ export class IndexWorker {
         if (current) this.store.project(row.id, entry, current.retry_at, now + 900000);
       }
     }
-    const previewHashes = new Set(this.store.references().map((r) => r.preview));
+    const previewHashes = new Set(this.store.references().flatMap((r) => [r.preview, r.video]));
     let previewBytes = 0;
     const previewsDirectory = join(this.config.directory, 'previews');
     for (const file of await readdir(previewsDirectory).catch(() => [] as string[])) {
-      if (!/^[a-f0-9]{64}\.png$/.test(file)) continue;
+      if (!/^[a-f0-9]{64}\.(png|webm)$/.test(file)) continue;
       const path = join(previewsDirectory, file),
         size = (await stat(path)).size;
-      if (!previewHashes.has(file.slice(0, -4)) || previewBytes + size > 256 * 1024 ** 2)
+      if (!previewHashes.has(file.slice(0, 64)) || previewBytes + size > 256 * 1024 ** 2)
         await rm(path);
       else previewBytes += size;
     }

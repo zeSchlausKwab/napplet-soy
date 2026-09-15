@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { startPreviewServer } from '../../apps/cli/src/preview/server';
 import { previewAssets } from '../../apps/cli/src/preview/assets';
-import { screenshotProject } from '../../apps/cli/src/project-config';
+import { screenshotProject, recordProject } from '../../apps/cli/src/project-config';
 
 test('local listing shows live metadata and destinations, captures app pixels, and protects local files', async () => {
   const root = await mkdtemp(join(tmpdir(), 'napplet-listing-'));
@@ -35,6 +35,7 @@ test('local listing shows live metadata and destinations, captures app pixels, a
     let captures = 0;
     server = startPreviewServer(pathToFileURL(root + '/'), 0, false, await previewAssets(), {
       network: 'local',
+      record: (settings) => recordProject(root, 'local', 'clip.webm', settings),
       capture: () => {
         captures++;
         return screenshotProject(root, 'local');
@@ -73,6 +74,20 @@ test('local listing shows live metadata and destinations, captures app pixels, a
     );
     expect(captures).toBe(1);
     expect((await Bun.file(join(root, 'napplet.json')).json()).preview.image).toBe('preview.png');
+    await page.getByRole('spinbutton', { name: 'Length' }).fill('2');
+    await page.getByRole('button', { name: 'Record clip', exact: true }).click();
+    await page
+      .getByText('Clip saved and selected. Play it below to review before publishing.')
+      .waitFor({ timeout: 30000 });
+    await page.waitForFunction(
+      () => (document.querySelector('.listing-card video') as HTMLVideoElement)?.videoWidth === 960,
+    );
+    expect((await Bun.file(join(root, 'napplet.json')).json()).preview.video.file).toBe(
+      'clip.webm',
+    );
+    expect((await fetch(`${origin}/listing/record`, { method: 'POST', body: '{}' })).status).toBe(
+      403,
+    );
     const saved = await Bun.file(join(root, 'napplet.json')).json();
     await Bun.write(
       join(root, 'napplet.json'),

@@ -1,4 +1,8 @@
 import {
+  inspectPreviewVideo,
+  MAX_VIDEO_BYTES,
+} from '../../../../packages/protocol/src/preview-video';
+import {
   projectSchema,
   projectIdentity,
   projectTopics,
@@ -40,8 +44,20 @@ export async function listingImage(root: string) {
   };
 }
 
+export async function listingVideo(root: string) {
+  const config = await projectAt(root);
+  if (!config.preview?.video) throw new Error('No preview clip selected.');
+  const bytes = await regularFile(root, config.preview.video.file, MAX_VIDEO_BYTES);
+  return { bytes, ...inspectPreviewVideo(bytes), hash: await sha256(bytes) };
+}
+
 /** Only public project settings and the explicitly selected image are exposed. */
-export async function listingPreview(root: string, network: Network, captureAvailable: boolean) {
+export async function listingPreview(
+  root: string,
+  network: Network,
+  captureAvailable: boolean,
+  recordingAvailable = false,
+) {
   const project = await projectAt(root);
   const targets = resolveTargets(project, network);
   const warnings: string[] = [];
@@ -89,6 +105,35 @@ export async function listingPreview(root: string, network: Network, captureAvai
     warnings.push(
       'No screenshot selected yet. Capture one to review it; publishing otherwise captures one automatically.',
     );
+  let video: {
+    url: string;
+    width: number;
+    height: number;
+    durationMs: number;
+    bytes: number;
+    file: string;
+    stale: boolean;
+  } | null = null;
+  if (project.preview?.video) {
+    try {
+      const selected = await listingVideo(root);
+      video = {
+        url: `/listing/preview.webm?v=${selected.hash}`,
+        width: selected.width,
+        height: selected.height,
+        durationMs: selected.durationMs,
+        bytes: selected.bytes.length,
+        file: project.preview.video.file,
+        stale: artifact?.hash !== project.preview.video.artifactHash,
+      };
+      if (video.stale)
+        warnings.push(
+          'The clip belongs to an older build. Record again or remove preview.video before publishing.',
+        );
+    } catch {
+      warnings.push('The selected preview video is unavailable or invalid. Record a new clip.');
+    }
+  }
   if (!project.description.trim())
     warnings.push('Add a description so visitors know what to expect.');
   if (!project.topics.length) warnings.push('Add topics so visitors can find your napplet by tag.');
@@ -116,6 +161,9 @@ export async function listingPreview(root: string, network: Network, captureAvai
     runtime: { requires, relays: project.relays, servers: project.servers, configuration },
     artifact,
     image,
+    video,
+    recording: project.preview?.recording ?? { startMs: 0, durationMs: 6000, actions: [] },
+    recordingAvailable,
     warnings,
     captureAvailable,
     page: naddr ? `${targets.site}/n/${naddr}` : null,

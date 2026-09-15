@@ -243,7 +243,7 @@ for a representative state. Configuration and image changes refresh in Listing.
 
 Missing metadata or a build appears as a draft warning. The listing preview complements
 `soyli check`; it does not assert that the artifact passed all publication checks.
-Only public configuration and the selected, bounded project PNG are served by loopback.
+Only public configuration and selected, bounded preview media are served by loopback.
 Capturing requires an explicit same-origin action.
 
 Existing projects get this view by updating the CLI and restarting `soyli dev`.
@@ -277,3 +277,15 @@ prompt. Pairing defaults to our relay and supports a separate `--signer-relay`
 override; publishing targets in `napplet.json` are unchanged. Both flows store the
 approved client credential in the OS vault. See [identity](IDENTITY.md) for timeout,
 cancellation, permissions, recovery and the memory-only website sign-in choices.
+
+## Preview clips (soyLI 0.7.0)
+
+`soyli record [preview.webm]` records and selects a short silent clip from the current
+build. The local **Listing** view offers **Record clip**, start-delay and duration
+controls, and playback beside the cover image. Existing files are preserved.
+Edit `preview.recording.actions` for a timed click/key recipe; see the
+[capture example and limits](PREVIEWS.md#short-video-previews--soyli-070).
+A later build invalidates the selected clip for publishing until you record again
+or remove `preview.video`. The static screenshot remains available for ordinary
+clients and OG. Run `soyli skills update` to bring this guidance into an existing
+project without replacing upstream skills or re-scaffolding.

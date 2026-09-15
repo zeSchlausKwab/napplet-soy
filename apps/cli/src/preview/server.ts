@@ -1,3 +1,5 @@
+import { recordingSchema, type Recording } from '../../../../packages/publish/src/config';
+import { videoBytesResponse } from '../../../../packages/backend/src/preview-videos';
 import { z } from 'zod';
 import { createResourceResponder } from '../../../../packages/backend/src/resource-response';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../../../packages/protocol/src/artifact';
@@ -6,7 +8,7 @@ import type { PreviewAssets } from './assets';
 import { builtRequirements } from '../../../../packages/publish/src/artifact';
 import { regularFile } from '../../../../packages/publish/src/project';
 import { fileURLToPath } from 'node:url';
-import { listingPreview, listingImage } from './listing';
+import { listingPreview, listingImage, listingVideo } from './listing';
 import type { Network } from '../../../../packages/identity/src/signer';
 
 const relayUrl = z
@@ -41,7 +43,11 @@ export function startPreviewServer(
   port = Number(process.env.PORT ?? 4173),
   announce = true,
   assets?: PreviewAssets,
-  listing: { network: Network; capture?: () => Promise<unknown> } = { network: 'public' },
+  listing: {
+    network: Network;
+    capture?: () => Promise<unknown>;
+    record?: (settings: Recording) => Promise<unknown>;
+  } = { network: 'public' },
 ) {
   let capturing = false;
   async function revision() {
@@ -87,17 +93,30 @@ export function startPreviewServer(
       try {
         if (url.pathname === '/api/resources' && request.method === 'POST')
           return await resourceResponse(request);
-        if (url.pathname === '/listing/capture' && request.method === 'POST') {
+        if (
+          ['/listing/capture', '/listing/record'].includes(url.pathname) &&
+          request.method === 'POST'
+        ) {
           // Only an explicit action in this host can write a selected screenshot.
           if (request.headers.get('Origin') !== url.origin)
             return new Response('Forbidden', { status: 403, headers: noStore });
-          if (!listing.capture)
+          const record = url.pathname === '/listing/record';
+          if (record ? !listing.record : !listing.capture)
             return new Response('Capture unavailable', { status: 404, headers: noStore });
           if (capturing)
             return new Response('Capture already running', { status: 409, headers: noStore });
           capturing = true;
           try {
-            return Response.json(await listing.capture(), { headers: noStore });
+            if (record) {
+              if (Number(request.headers.get('Content-Length') ?? 0) > 8192)
+                throw new Error('Recording recipe too large.');
+              const body = await request.text();
+              if (body.length > 8192) throw new Error('Recording recipe too large.');
+              return Response.json(await listing.record!(recordingSchema.parse(JSON.parse(body))), {
+                headers: noStore,
+              });
+            }
+            return Response.json(await listing.capture!(), { headers: noStore });
           } finally {
             capturing = false;
           }
@@ -106,9 +125,16 @@ export function startPreviewServer(
           return new Response('Method not allowed', { status: 405, headers: noStore });
         if (url.pathname === '/listing')
           return Response.json(
-            await listingPreview(fileURLToPath(root), listing.network, !!listing.capture),
+            await listingPreview(
+              fileURLToPath(root),
+              listing.network,
+              !!listing.capture,
+              !!listing.record,
+            ),
             { headers: noStore },
           );
+        if (url.pathname === '/listing/preview.webm')
+          return videoBytesResponse((await listingVideo(fileURLToPath(root))).bytes, request);
         if (url.pathname === '/listing/preview.png')
           return new Response((await listingImage(fileURLToPath(root))).bytes, {
             headers: {

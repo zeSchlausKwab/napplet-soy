@@ -96,3 +96,100 @@ Generated poster covers now fit fully inside the player at desktop and phone
 sizes; actual screenshots retain their existing cover treatment. Regression tests
 cover exact capture pixels, custom-image validation, resumed uploads/signatures,
 legacy release upgrades, real local service readback, and browser cover fitting.
+
+## Short video previews — soyLI 0.7.0
+
+Implemented locally; CLI distribution and website deployment are separate steps.
+Run `soyli record` after building, or use **Listing → Record clip** in `soyli dev`.
+Recording uses Playwright 1.63.0's [screencast API](https://playwright.dev/docs/api/class-screencast)
+in the same opaque sandbox as screenshots, with no creator credentials. Its cached
+Chromium/FFmpeg tooling is installed automatically; no system FFmpeg or Bun install
+is needed by a packaged CLI user. It records a fresh run of the built artifact,
+not the in-progress session in the creator's visible browser.
+
+The capture viewport is 960 × 600, with a selectable 2–8 second interval, a 0–10
+second start delay after normal startup, and optional timed clicks/key presses.
+The encoder can append a brief final still frame. The creator reviews the WebM
+beside the static cover, title and other posting fields; recording does not publish.
+A simple 2-second button scene measured 22,521 bytes and 2.56 seconds on macOS/Chromium.
+This is a fixture measurement, not a size promise for complex scenes.
+
+```json
+{
+  "preview": {
+    "delayMs": 1500,
+    "recording": {
+      "startMs": 500,
+      "durationMs": 6000,
+      "actions": [
+        { "type": "click", "atMs": 200, "x": 480, "y": 300 },
+        { "type": "keyDown", "atMs": 1000, "key": "ArrowRight" },
+        { "type": "keyUp", "atMs": 2200, "key": "ArrowRight" }
+      ]
+    }
+  }
+}
+```
+
+Actions are bounded data, never a project script: at most 32, timed within the
+recording interval. Keys are arrows, Space, Enter, lowercase letters or digits.
+Coordinates refer to the recording viewport. Use the start/duration controls to
+select the captured interval; there is no separate editing timeline or audio track.
+`soyli record preview-2.webm` preserves an existing clip and selects the new file.
+The saved `preview.video` contains `file` and `artifactHash`. Publishing rejects an
+older-build selection; record again or remove `preview.video` for a static-only
+release. The clip is included in source/remixes and frozen in the release journal.
+Resuming preserves its bytes, destinations and signatures.
+
+### Signed association and interoperability
+
+The manifest still links the exact per-release kind-32267 app descriptor with the
+existing `app` tag. Its normal `image` tag remains the PNG. Video uses
+[NIP-92](https://github.com/nostr-protocol/nips/blob/a2494f4f81d46684e5814a9bf35e2b1df978f955/92.md):
+the descriptor content includes the Blossom video URL and an `imeta` tag associates
+`url`, `m video/webm`, `x`, `size`, `dim`, `alt` and `thumb` from
+[NIP-94](https://github.com/nostr-protocol/nips/blob/a2494f4f81d46684e5814a9bf35e2b1df978f955/94.md).
+This applies NIP-92's generic attachment convention to the linked app descriptor;
+it does not claim a Zapstore-specific trailer standard or a new NIP-5D field.
+Unsupported clients can ignore it and retain the same executable and screenshot.
+No video URL is added to the playable `path` entries or used to override identity.
+
+Discovery verifies the manifest → descriptor → exact URL/digest binding. The URL
+must appear in descriptor content, and ambiguous duplicate metadata is rejected.
+The same adapter applies to every publisher. The newest signed descriptor is chosen
+before interpreting attachments, so removing a clip cannot resurrect an older one.
+Independent clients have not yet been tested for rendering this attachment.
+
+### Delivery and playback limits
+
+The initial profile accepts one silent VP8 WebM track, up to 12 seconds, 1200 × 750,
+5 MiB and 600 frames. MP4, VP9, audio tracks, laced blocks, encrypted tracks,
+attachments and chapters are outside this initial profile. Capture/publish decodes
+an actual frame in Chromium. Server admission follows the [WebM container structure](https://www.webmproject.org/docs/container/) and checks bounded EBML structure, track
+metadata, timestamps and VP8 keyframe dimensions; it is not a full codec decoder.
+A corrupt or unsupported clip falls back to the static cover in the browser.
+
+Remote URLs use the existing public-HTTPS/DNS/redirect policy. If an operator sets
+`SPACE_INDEX_LOCAL_BLOSSOM`, video lookup first checks that exact numeric-loopback
+CAS at the signed hash, supporting local publications and avoiding a public download
+for already-hosted clips. Events cannot choose another local origin, path or query;
+a public URL is used as fallback when the configured cache misses. Signed SHA-256 is
+required for this optional video profile, and every downloaded byte is verified.
+Video indexing allows two concurrent jobs and reserves at most 20 MiB per refresh,
+with a 5-second per-download timeout under the existing metadata deadline. The
+persistent index keeps image/video cache data within its shared 256 MiB cap;
+public-dev keeps current/previous refresh clips. Cache version is now
+`app-descriptors-2`. Serving rechecks metadata, hash and container properties;
+`/api/preview-videos/<manifest-id>` supports GET/HEAD and single byte ranges, with
+moderation checks, `nosniff` and no request-time remote fetch.
+
+Gallery clips have no `src` until mouse hover or an explicit **Preview clip** click.
+Only one clip plays at a time, silently; leaving the card, scrolling it out of view,
+hiding the tab or unmounting releases its media source. Reduced-motion and
+Save-Data visitors get the static cover until explicitly requesting a clip.
+Viewer preview playback never creates a napplet iframe. The Play button still
+starts the ordinary verified napplet. OG continues to use a static PNG.
+
+Local evidence: real recording and stale-build check; signed publication interrupted
+and resumed with identical clip bytes/events; metadata/cache/range rejection tests;
+Chromium listing review, gallery lifecycle/reduced-motion, and static OG checks.

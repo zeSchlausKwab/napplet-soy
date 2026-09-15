@@ -39,6 +39,39 @@ export const targetsSchema = z
   })
   .strict();
 export type Targets = z.infer<typeof targetsSchema>;
+export const recordingSchema = z
+  .object({
+    durationMs: z.number().int().min(2000).max(8000).default(6000),
+    startMs: z.number().int().min(0).max(10000).default(0),
+    actions: z
+      .array(
+        z.discriminatedUnion('type', [
+          z
+            .object({
+              type: z.literal('click'),
+              atMs: z.number().int().min(0).max(7999),
+              x: z.number().min(0).max(959),
+              y: z.number().min(0).max(599),
+            })
+            .strict(),
+          z
+            .object({
+              type: z.enum(['keyDown', 'keyUp']),
+              atMs: z.number().int().min(0).max(7999),
+              key: z.string().regex(/^(Arrow(Up|Down|Left|Right)|Space|Enter|[a-z0-9])$/),
+            })
+            .strict(),
+        ]),
+      )
+      .max(32)
+      .default([]),
+  })
+  .strict()
+  .refine(
+    (value) => value.actions.every((action) => action.atMs < value.durationMs),
+    'Actions must occur within the clip.',
+  );
+export type Recording = z.infer<typeof recordingSchema>;
 export const projectSchema = z
   .object({
     schema: z.literal('space-local-project/v1'),
@@ -61,6 +94,14 @@ export const projectSchema = z
     preview: z
       .object({
         image: z.string().min(1).max(200).optional(),
+        video: z
+          .object({
+            file: z.string().min(1).max(200),
+            artifactHash: z.string().regex(/^[a-f0-9]{64}$/),
+          })
+          .strict()
+          .optional(),
+        recording: recordingSchema.optional(),
         delayMs: z.number().int().min(250).max(10000).optional(),
       })
       .strict()

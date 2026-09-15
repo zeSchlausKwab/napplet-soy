@@ -124,6 +124,7 @@ export async function inspectProject(
       ...(project.publish?.files ?? defaults),
       ...(built ? [project.entry] : []),
       ...(project.preview?.image ? [project.preview.image] : []),
+      ...(project.preview?.video ? [project.preview.video.file] : []),
     ]),
   ].sort();
   if (selected.length > 128)
@@ -159,7 +160,9 @@ export async function inspectProject(
       if (
         (error as NodeJS.ErrnoException).code === 'ENOENT' &&
         !project.publish?.files &&
-        !['index.html', 'LICENSE', project.preview?.image].includes(path)
+        !['index.html', 'LICENSE', project.preview?.image, project.preview?.video?.file].includes(
+          path,
+        )
       )
         continue;
       throw error;

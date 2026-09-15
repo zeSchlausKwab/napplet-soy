@@ -2796,3 +2796,44 @@ a.nostr-creator:hover .creator-name {
 .cli-downloads a { text-decoration: underline; text-underline-offset: 3px; }
 .cli-downloads a:last-child { color: #61785b; font-size: 11px; }
 @media (max-width: 500px) { .cli-downloads { grid-template-columns: 1fr; } }
+
+.card-cover {
+  position: relative;
+}
+.card-preview-clip {
+  position: absolute;
+  inset: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  object-fit: contain;
+  border-radius: 8px;
+  background: #20231d;
+  pointer-events: none;
+  opacity: 0;
+}
+.card-preview-clip.is-active {
+  opacity: 1;
+}
+.card-cover .play-indicator {
+  z-index: 2;
+}
+.clip-toggle {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #fff8;
+  border-radius: 6px;
+  background: #fffdf1ed;
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.clip-toggle:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}

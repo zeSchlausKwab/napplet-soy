@@ -135,6 +135,17 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
       await card.getByRole('button', { name: /^Comment on .*sign in required/ }).isDisabled(),
     ).toBe(true);
     expect(await page.locator('iframe').count()).toBe(0);
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    const details = await card
+      .getByRole('link', { name: fixture.title, exact: true })
+      .getAttribute('href');
+    await card.getByRole('button', { name: `Share ${fixture.title}`, exact: true }).click();
+    await page.getByRole('button', { name: 'Copy player link', exact: true }).click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      `${origin}${details}/play`,
+    );
+    await page.keyboard.press('Escape');
+
     await page.getByRole('heading', { name: 'Most liked', exact: true }).waitFor();
     await page.getByRole('heading', { name: 'Most zapped', exact: true }).waitFor();
     await page.getByRole('heading', { name: 'Most commented', exact: true }).waitFor();

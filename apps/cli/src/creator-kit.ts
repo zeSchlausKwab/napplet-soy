@@ -26,7 +26,7 @@ this note maps its local tooling commands to the installed napplet soyLI.
 - soyli dev watches the Vite build inside the napplet.soy sandbox.
   Use its URL for preview. The upstream pnpm dev URL serves source without a host.
   Switch from Play to Listing to inspect the title, description, tags, creator,
-  screenshot, license and publishing destinations. Use Capture screenshot after
+  screenshot, optional video clip, license and publishing destinations. Use Capture screenshot after
   the final build; inspect the saved image in Listing before publishing. Captures
   select a new PNG in napplet.json and preserve previous images.
   The Settings button opens the same live configuration form as the website.
@@ -39,6 +39,14 @@ this note maps its local tooling commands to the installed napplet soyLI.
   Inspect the image: it should show a representative app state, not a blank canvas
   or loading screen. Use screenshot preview-2.png for another capture, or supply
   your own PNG with preview.image. Capture after the final build.
+- soyli record saves preview.webm and selects it with the current artifact hash.
+  Listing also offers Record clip with start-delay and length controls. It records
+  a fresh run, not the interactive session currently on screen. Play and inspect
+  it in Listing; keep the static PNG as well. Existing clips are never overwritten.
+  For an interaction recipe set preview.recording.actions: timed click (x/y in a
+  960 × 600 viewport), keyDown or keyUp with atMs relative to recording start.
+  preview.recording.durationMs is 2000–8000; startMs is 0–10000 after normal startup.
+  A changed build needs a fresh clip, or remove preview.video to publish only a PNG.
 - soyli publish --dry-run inspects source and destinations;
   soyli publish publishes the existing build. Build after editing and
   before publishing. Publication and checks never execute project scripts.
@@ -54,7 +62,7 @@ the project. Read it before publishing and tell the creator the effective target
 
 New projects expose publish.networks.public and publish.networks.local explicitly:
 relay is the primary manifest/descriptor relay, blossom receives the HTML, source
-archive and preview image, grasp is the NIP-34 Git service, and site displays the
+archive, preview image and selected WebM, grasp is the NIP-34 Git service, and site displays the
 result. The defaults use wss://relay.napplet.soy, https://blossom.napplet.soy,
 https://git.napplet.soy and https://napplet.soy. Edit those fields to choose services.
 CLI --relay/--blossom/--grasp/--site overrides apply only to that publication.
@@ -76,6 +84,11 @@ imageless releases; an inspected screenshot is still the preferred finishing ste
 For an interactive scene needing a start click, take a representative PNG during
 manual/browser testing and select it with preview.image. Only PNG up to 5 MiB and
 4096 × 4096 is currently accepted. Remove preview.image to resume automatic capture.
+Optional clips use silent VP8 WebM up to 5 MiB, 1200 × 750 and 12 seconds.
+soyli record produces 960 × 600 video; the recorder may add a brief final frame.
+Publishing freezes its bytes and NIP-92 imeta on the linked app descriptor, retaining
+ordinary PNG metadata for clients that do not display video. Never fabricate a clip
+or change preview.video.artifactHash to bypass the stale-build check.
 The local preview setting is authoring configuration, not a new Nostr manifest tag.
 
 Readable routes are a one-time website claim, not an automatic publish step.

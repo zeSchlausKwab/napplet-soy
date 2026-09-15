@@ -9,7 +9,7 @@ import { startPreviewServer } from './preview/server';
 import { gitAvailable } from './prerequisites';
 import { version } from './distribution';
 import { watchProject } from './toolchain';
-import { screenshotProject } from './project-config';
+import { screenshotProject, recordProject } from './project-config';
 
 export async function preview(
   directory: string,
@@ -27,6 +27,13 @@ export async function preview(
   try {
     server = startPreviewServer(pathToFileURL(root + '/'), port, false, await previewAssets(), {
       network,
+      record: (settings) =>
+        recordProject(
+          root,
+          network,
+          `preview-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.webm`,
+          settings,
+        ),
       capture: () =>
         screenshotProject(
           root,

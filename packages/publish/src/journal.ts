@@ -1,3 +1,4 @@
+import { videoInfoSchema, MAX_VIDEO_BYTES } from '../../protocol/src/preview-video';
 import { Database } from 'bun:sqlite';
 import { constants } from 'node:fs';
 import { chmod, lstat, mkdir, open, rename, rm } from 'node:fs/promises';
@@ -81,9 +82,13 @@ export const jobSchema = z
       })
       .strict()
       .optional(),
+    video: videoInfoSchema
+      .extend({ hash, bytes: z.number().int().positive().max(MAX_VIDEO_BYTES) })
+      .optional(),
     receipts: z
       .object({
         preview: z.boolean().optional(),
+        video: z.boolean().optional(),
         descriptor: z.boolean().optional(),
         source: z.boolean(),
         artifact: z.boolean(),
@@ -115,7 +120,8 @@ export const jobSchema = z
   .refine(
     (job) =>
       job.status !== 'announced_pending_index' ||
-      (!!job.source &&
+      ((!job.video || (!!job.preview && job.receipts.video === true)) &&
+        !!job.source &&
         !!job.current &&
         !!job.snapshot &&
         (!job.preview ||

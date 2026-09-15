@@ -1,4 +1,4 @@
-import { rename, rm, writeFile } from 'node:fs/promises';
+import { rename, rm, writeFile, lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { realpath as realDirectory } from 'node:fs/promises';
 import {
@@ -6,9 +6,12 @@ import {
   projectSchema,
   resolveTargets,
   type Project,
+  recordingSchema,
+  type Recording,
 } from '../../../packages/publish/src/config';
 import { inspectProject, regularFile } from '../../../packages/publish/src/project';
 import type { Network } from '../../../packages/identity/src/signer';
+import { inspectPreviewVideo } from '../../../packages/protocol/src/preview-video';
 import { checkPublication } from './publish-check';
 
 async function readProject(directory: string) {
@@ -59,9 +62,12 @@ export async function projectConfiguration(
     network,
     targets,
     runtime: { relays: project.relays, servers: project.servers },
-    preview: project.preview?.image
-      ? { image: project.preview.image }
-      : { capture: 'automatic', delayMs: project.preview?.delayMs ?? 1500 },
+    preview: {
+      ...(project.preview?.image ? { image: project.preview.image } : { capture: 'automatic' }),
+      delayMs: project.preview?.delayMs ?? 1500,
+      video: project.preview?.video ?? null,
+      recording: project.preview?.recording ?? { startMs: 0, durationMs: 6000, actions: [] },
+    },
   };
 }
 
@@ -107,5 +113,63 @@ export async function screenshotProject(directory: string, network: Network, nam
     artifactHash: plan.artifactHash,
     bytes: checked.preview.length,
     selected: 'preview.image in napplet.json',
+  };
+}
+
+/** A fresh bounded recording of the exact build, with optional timed keyboard/click actions. */
+export async function recordProject(
+  directory: string,
+  network: Network,
+  name = 'preview.webm',
+  settings?: Recording,
+) {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,120}\.webm$/.test(name))
+    throw new PublishError('PREVIEW_PATH', 'Choose a WebM filename in the project root.');
+  const { root, bytes, project } = await readProject(directory);
+  if (await lstat(join(root, name)).catch(() => null))
+    throw new PublishError(
+      'PREVIEW_EXISTS',
+      'This clip already exists. Use record preview-2.webm to preserve it.',
+    );
+  const { plan, contents, fingerprint } = await inspectProject(
+    root,
+    network,
+    project.creator?.pubkey ?? '0'.repeat(64),
+  );
+  const recording = recordingSchema.parse(settings ?? project.preview?.recording ?? {});
+  const checked = await checkPublication(contents, false, recording);
+  if (!checked.video) throw new PublishError('PREVIEW_VIDEO', 'No clip was recorded.');
+  if ((await inspectProject(root, network, plan.pubkey)).fingerprint !== fingerprint)
+    throw new PublishError(
+      'PROJECT_CHANGED',
+      'Source changed during recording. Build and record again.',
+    );
+  const path = join(root, name);
+  try {
+    await writeFile(path, checked.video, { flag: 'wx' });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST')
+      throw new PublishError(
+        'PREVIEW_EXISTS',
+        'This clip already exists. Use record preview-2.webm to preserve it.',
+      );
+    throw error;
+  }
+  try {
+    project.preview = {
+      ...project.preview,
+      video: { file: name, artifactHash: plan.artifactHash },
+      recording,
+    };
+    await saveProject(root, bytes, project);
+  } catch (error) {
+    await rm(path, { force: true });
+    throw error;
+  }
+  return {
+    video: path,
+    bytes: checked.video.length,
+    ...inspectPreviewVideo(checked.video),
+    selected: 'preview.video in napplet.json',
   };
 }

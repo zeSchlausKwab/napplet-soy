@@ -61,6 +61,19 @@ enabled(
       ).code,
     ).toBe(0);
     const project = join(root, 'creation');
+    const selected = await Bun.file(join(project, 'napplet.json')).json();
+    selected.preview = { delayMs: 250, recording: { durationMs: 2000, startMs: 0, actions: [] } };
+    await writeFile(join(project, 'napplet.json'), JSON.stringify(selected));
+    const recording = await run([binary, 'record', '--json'], project);
+    expect(recording.code).toBe(0);
+    expect(JSON.parse(recording.stdout)).toMatchObject({
+      width: 960,
+      height: 600,
+      selected: 'preview.video in napplet.json',
+    });
+    expect((await Bun.file(join(project, 'napplet.json')).json()).preview.video.file).toBe(
+      'preview.webm',
+    );
     await writeFile(join(root, '.env'), `SPACE_ACCOUNT_HOME=${project}\n`);
     expect(
       (await run([binary, 'account', 'show', '--json'], root, { SPACE_ACCOUNT_HOME: undefined }))
@@ -75,7 +88,9 @@ enabled(
     );
     const broken = await run([binary, 'check', '--json'], project);
     expect(broken.code).toBe(1);
-    expect(broken.stdout).toContain('BROWSER_CHECK');
+    expect(broken.stdout).toContain('PREVIEW_VIDEO_STALE');
+    await writeFile(join(project, 'napplet.json'), JSON.stringify(selected)); // Remove the clip to exercise the separate sandbox check.
+    expect((await run([binary, 'check', '--json'], project)).stdout).toContain('BROWSER_CHECK');
   },
   90000,
 );

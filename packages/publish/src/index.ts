@@ -1,3 +1,4 @@
+import { inspectPreviewVideo, MAX_VIDEO_BYTES } from '../../protocol/src/preview-video';
 import { join } from 'node:path';
 import { realpath, rm } from 'node:fs/promises';
 import { Accounts } from '../../identity/src/accounts';
@@ -54,7 +55,7 @@ export type PublishOptions = {
   accounts?: Pick<Accounts, 'current' | 'signer'>;
   check: (
     contents: Map<string, Uint8Array>,
-  ) => Promise<{ profile: string; browser: string; preview?: Uint8Array }>;
+  ) => Promise<{ profile: string; browser: string; preview?: Uint8Array; video?: Uint8Array }>;
   requirePreview?: boolean;
   signal?: AbortSignal;
   onAuth?: (url: string) => Promise<void>;
@@ -94,6 +95,9 @@ function result(job: PublishJob, unchanged = false) {
           url: `${job.plan.targets.blossom}/${job.preview.hash}`,
           descriptorId: job.preview.descriptor?.id ?? null,
         }
+      : null,
+    video: job.video
+      ? { ...job.video, url: `${job.plan.targets.blossom}/${job.video.hash}` }
       : null,
     mirrors: job.mirrors,
     receipts: job.receipts,
@@ -159,7 +163,30 @@ async function verifyFrozen(journal: Journal, job: PublishJob) {
       'FROZEN_PREVIEW_CHANGED',
       'The saved preview is damaged. Restore its journal backup before resuming.',
     );
-  return { ...inspected, archive, preview };
+  const video = job.video
+    ? await regularFile(directory, 'preview.webm', MAX_VIDEO_BYTES)
+    : undefined;
+  if (
+    job.video &&
+    (!video || video.length !== job.video.bytes || (await sha256(video)) !== job.video.hash)
+  )
+    throw new PublishError(
+      'FROZEN_PREVIEW_CHANGED',
+      'The saved preview video is damaged. Restore its journal backup before resuming.',
+    );
+  if (video && job.video) {
+    const info = inspectPreviewVideo(video);
+    if (
+      info.width !== job.video.width ||
+      info.height !== job.video.height ||
+      info.durationMs !== job.video.durationMs
+    )
+      throw new PublishError(
+        'FROZEN_PREVIEW_CHANGED',
+        'The saved video metadata differs from its frozen bytes. Restore its journal backup.',
+      );
+  }
+  return { ...inspected, archive, preview, video };
 }
 export async function publishProject(options: PublishOptions) {
   const accounts = options.accounts ?? new Accounts(options.network);
@@ -290,7 +317,13 @@ export async function publishProject(options: PublishOptions) {
                 'The last publication is ahead of this clock. Correct the clock before publishing.',
               );
             progress('sandbox');
-            const { preview, ...check } = await options.check(inspected.contents);
+            const { preview, video, ...check } = await options.check(inspected.contents);
+            const videoInfo = video ? inspectPreviewVideo(video) : null;
+            if (video && !preview)
+              throw new PublishError(
+                'PREVIEW_REQUIRED',
+                'Video previews also need a static screenshot.',
+              );
             if (options.requirePreview && !preview)
               throw new PublishError(
                 'PREVIEW_REQUIRED',
@@ -335,6 +368,11 @@ export async function publishProject(options: PublishOptions) {
               await rm(path, { force: true }); // Only an unactivated preparation can reach this branch.
               await durableFile(path, preview);
             }
+            if (video) {
+              const path = join(journal.directory(id), 'preview.webm');
+              await rm(path, { force: true });
+              await durableFile(path, video);
+            }
             const releaseRefs = {
               ...previous?.releaseRefs,
               [`refs/tags/release-${id.slice(0, 16)}`]: frozen.commit,
@@ -359,11 +397,15 @@ export async function publishProject(options: PublishOptions) {
               ...(preview
                 ? { preview: { hash: await sha256(preview), bytes: preview.length } }
                 : {}),
+              ...(video && videoInfo
+                ? { video: { hash: await sha256(video), bytes: video.length, ...videoInfo } }
+                : {}),
               releaseRefs,
               status: 'prepared',
               mirrors: {},
               receipts: {
                 ...(preview ? { preview: false, descriptor: false } : {}),
+                ...(video ? { video: false } : {}),
                 source: false,
                 artifact: false,
                 archive: false,
@@ -512,11 +554,27 @@ export async function publishProject(options: PublishOptions) {
             {
               kind: 32267,
               created_at: job.createdAt,
-              content: job.plan.description,
+              content:
+                job.plan.description +
+                (job.video ? `\n\n${job.plan.targets.blossom}/${job.video.hash}` : ''),
               tags: [
                 ['d', `${job.plan.identifier}-${job.id.slice(0, 16)}`],
                 ['name', job.plan.title],
                 ['image', `${job.plan.targets.blossom}/${job.preview.hash}`],
+                ...(job.video
+                  ? [
+                      [
+                        'imeta',
+                        `url ${job.plan.targets.blossom}/${job.video.hash}`,
+                        'm video/webm',
+                        `x ${job.video.hash}`,
+                        `size ${job.video.bytes}`,
+                        `dim ${job.video.width}x${job.video.height}`,
+                        `alt ${job.plan.title} preview`,
+                        `thumb ${job.plan.targets.blossom}/${job.preview.hash}`,
+                      ],
+                    ]
+                  : []),
                 ['license', job.plan.license],
                 ['repository', job.source.announcement.tags.find((tag) => tag[0] === 'clone')![1]],
                 [
@@ -592,6 +650,9 @@ export async function publishProject(options: PublishOptions) {
         for (const [kind, bytes, hash, type] of [
           ['artifact', executableBytes(frozen.contents), job.plan.artifactHash, 'text/html'],
           ['archive', frozen.archive, job.archiveHash, 'application/x-tar'],
+          ...(job.video && frozen.video
+            ? [['video', frozen.video, job.video.hash, 'video/webm'] as const]
+            : []),
           ...(job.preview && frozen.preview
             ? [['preview', frozen.preview, job.preview.hash, 'image/png'] as const]
             : []),

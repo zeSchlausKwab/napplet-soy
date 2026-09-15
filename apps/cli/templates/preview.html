@@ -108,6 +108,21 @@
       letter-spacing: -1px;
       margin: 0;
     }
+    #recording-controls input {
+      box-sizing: border-box;
+      border: 1px solid #292d2333;
+      border-radius: 5px;
+      background: transparent;
+      color: inherit;
+      padding: 6px;
+      font: inherit;
+    }
+    .preview-media-label {
+      margin: 0;
+      padding: 8px 14px;
+      font-size: 12px;
+      color: #777f71;
+    }
     #listing-status {
       color: #397c65;
       min-height: 20px;
@@ -122,6 +137,7 @@
       border-radius: 12px;
       overflow: hidden;
     }
+    .listing-card video,
     .listing-card img,
     .listing-placeholder {
       display: block;
@@ -219,6 +235,40 @@
       <h2>Your next little release.</h2>
       <button id="capture" hidden>Capture screenshot</button>
     </div>
+    <fieldset
+      id="recording-controls"
+      hidden
+      style="border: 0; padding: 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap"
+    >
+      <legend>Preview clip · silent WebM</legend>
+      <label
+        >Start after
+        <input
+          id="record-start"
+          type="number"
+          min="0"
+          max="10"
+          step="0.5"
+          value="0"
+          style="width: 65px"
+        />
+        seconds</label
+      >
+      <label
+        >Length
+        <input
+          id="record-duration"
+          type="number"
+          min="2"
+          max="8"
+          step="1"
+          value="6"
+          style="width: 65px"
+        />
+        seconds</label
+      >
+      <button id="record-video">Record clip</button>
+    </fieldset>
     <p id="listing-status" role="status">
       Local draft · changes to napplet.json appear here automatically.
     </p>

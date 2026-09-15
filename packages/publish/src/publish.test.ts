@@ -1,3 +1,4 @@
+import { descriptorVideos } from '../../protocol/src/preview-video';
 import { expect, test } from 'bun:test';
 import { mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -175,6 +176,72 @@ test('preview upload and linked descriptor survive interruption with identical s
     expect(resumed.snapshot).toEqual(interrupted.snapshot);
     expect(resumed.status).toBe('announced_pending_index');
     await Bun.write(join(f.journal.directory(resumed.id), 'preview.png'), 'tampered');
+    const before = f.writes.length;
+    await expect(publishProject({ ...f.options, resume: true })).rejects.toMatchObject({
+      code: 'FROZEN_PREVIEW_CHANGED',
+    });
+    expect(f.writes.length).toBe(before);
+  } finally {
+    await f.close();
+  }
+});
+
+test('video upload resumes with the exact bytes, signed NIP-92 attachment and static cover', async () => {
+  const f = await fixture();
+  try {
+    const video = await Bun.file(
+      new URL('../../../tests/fixtures/preview.webm', import.meta.url),
+    ).bytes();
+    f.options.requirePreview = true;
+    f.options.check = async () => ({
+      profile: 'test',
+      browser: 'test',
+      preview: previewPng,
+      video,
+    });
+    f.deps.checkpoint = async (job) => {
+      if (job.receipts.descriptor) throw new Error('Crash after descriptor acknowledgement');
+    };
+    await expect(publishProject(f.options)).rejects.toMatchObject({ code: 'PUBLISH_FAILED' });
+    const interrupted = await f.load();
+    expect(interrupted.receipts).toMatchObject({
+      preview: true,
+      video: true,
+      descriptor: true,
+      snapshot: false,
+    });
+    expect(f.blobs.get(interrupted.preview!.hash)).toEqual(previewPng);
+    expect(f.blobs.get(interrupted.video!.hash)).toEqual(video);
+    expect(descriptorVideos(interrupted.preview!.descriptor!)).toEqual([
+      {
+        url: `${interrupted.plan.targets.blossom}/${interrupted.video!.hash}`,
+        hash: interrupted.video!.hash,
+      },
+    ]);
+    const ref = appReferences(interrupted.current!)[0];
+    expect(ref.kind).toBe(32267);
+    expect(ref.relay).toBe(interrupted.plan.targets.relay);
+    expect(ref.pubkey).toBe(f.creator.pubkey);
+    expect(descriptorImages(interrupted.preview!.descriptor!)).toEqual([
+      `${interrupted.plan.targets.blossom}/${await sha256(previewPng)}`,
+    ]);
+    delete f.deps.checkpoint;
+    f.options.check = async () => {
+      throw new Error('Resume must never recapture');
+    };
+    await publishProject({ ...f.options, resume: true });
+    const resumed = await f.load();
+    expect(resumed.preview).toEqual(interrupted.preview);
+    expect(resumed.video).toEqual(interrupted.video);
+    expect(resumed.current).toEqual(interrupted.current);
+    expect(resumed.snapshot).toEqual(interrupted.snapshot);
+    expect(resumed.status).toBe('announced_pending_index');
+    await f.journal.save({ ...resumed, video: { ...resumed.video!, width: 959 } });
+    await expect(publishProject({ ...f.options, resume: true })).rejects.toMatchObject({
+      code: 'FROZEN_PREVIEW_CHANGED',
+    });
+    await f.journal.save(resumed);
+    await Bun.write(join(f.journal.directory(resumed.id), 'preview.webm'), 'tampered');
     const before = f.writes.length;
     await expect(publishProject({ ...f.options, resume: true })).rejects.toMatchObject({
       code: 'FROZEN_PREVIEW_CHANGED',

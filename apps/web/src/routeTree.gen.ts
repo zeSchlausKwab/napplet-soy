@@ -37,6 +37,7 @@ import { Route as RSnapshotRouteImport } from './routes/r.$snapshot'
 import { Route as CreatorSlugPlayRouteImport } from './routes/$creator.$slug.play'
 import { Route as ApiArtifactsHashRouteImport } from './routes/api.artifacts.$hash'
 import { Route as ApiOgIdRouteImport } from './routes/api.og.$id'
+import { Route as ApiPreviewVideosIdRouteImport } from './routes/api.preview-videos.$id'
 import { Route as ApiPreviewsIdRouteImport } from './routes/api.previews.$id'
 import { Route as NNaddrPlayRouteImport } from './routes/n.$naddr.play'
 import { Route as RSnapshotPlayRouteImport } from './routes/r.$snapshot.play'
@@ -183,6 +184,11 @@ const ApiOgIdRoute = ApiOgIdRouteImport.update({
   path: '/api/og/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPreviewVideosIdRoute = ApiPreviewVideosIdRouteImport.update({
+  id: '/api/preview-videos/$id',
+  path: '/api/preview-videos/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPreviewsIdRoute = ApiPreviewsIdRouteImport.update({
   id: '/api/previews/$id',
   path: '/api/previews/$id',
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
   '/api/og/$id': typeof ApiOgIdRoute
+  '/api/preview-videos/$id': typeof ApiPreviewVideosIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/n/$naddr/play': typeof NNaddrPlayRoute
   '/r/$snapshot/play': typeof RSnapshotPlayRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
   '/api/og/$id': typeof ApiOgIdRoute
+  '/api/preview-videos/$id': typeof ApiPreviewVideosIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/n/$naddr/play': typeof NNaddrPlayRoute
   '/r/$snapshot/play': typeof RSnapshotPlayRoute
@@ -309,6 +317,7 @@ export interface FileRoutesById {
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
   '/api/og/$id': typeof ApiOgIdRoute
+  '/api/preview-videos/$id': typeof ApiPreviewVideosIdRoute
   '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/n/$naddr/play': typeof NNaddrPlayRoute
   '/r/$snapshot/play': typeof RSnapshotPlayRoute
@@ -346,6 +355,7 @@ export interface FileRouteTypes {
     | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
     | '/api/og/$id'
+    | '/api/preview-videos/$id'
     | '/api/previews/$id'
     | '/n/$naddr/play'
     | '/r/$snapshot/play'
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
     | '/api/og/$id'
+    | '/api/preview-videos/$id'
     | '/api/previews/$id'
     | '/n/$naddr/play'
     | '/r/$snapshot/play'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
     | '/api/og/$id'
+    | '/api/preview-videos/$id'
     | '/api/previews/$id'
     | '/n/$naddr/play'
     | '/r/$snapshot/play'
@@ -450,6 +462,7 @@ export interface RootRouteChildren {
   RSnapshotRoute: typeof RSnapshotRouteWithChildren
   ApiArtifactsHashRoute: typeof ApiArtifactsHashRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
+  ApiPreviewVideosIdRoute: typeof ApiPreviewVideosIdRoute
   ApiPreviewsIdRoute: typeof ApiPreviewsIdRoute
 }
 
@@ -651,6 +664,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOgIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/preview-videos/$id': {
+      id: '/api/preview-videos/$id'
+      path: '/api/preview-videos/$id'
+      fullPath: '/api/preview-videos/$id'
+      preLoaderRoute: typeof ApiPreviewVideosIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/previews/$id': {
       id: '/api/previews/$id'
       path: '/api/previews/$id'
@@ -774,6 +794,7 @@ const rootRouteChildren: RootRouteChildren = {
   RSnapshotRoute: RSnapshotRouteWithChildren,
   ApiArtifactsHashRoute: ApiArtifactsHashRoute,
   ApiOgIdRoute: ApiOgIdRoute,
+  ApiPreviewVideosIdRoute: ApiPreviewVideosIdRoute,
   ApiPreviewsIdRoute: ApiPreviewsIdRoute,
 }
 export const routeTree = rootRouteImport

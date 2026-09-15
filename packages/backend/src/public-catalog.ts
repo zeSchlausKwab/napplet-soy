@@ -1,3 +1,4 @@
+import { validatedVideo } from '../../protocol/src/preview-video';
 import { blocked, manifestBlocked } from '../../moderation/src/policy';
 import { resolve } from 'node:path';
 import {
@@ -38,6 +39,7 @@ async function readUnmoderatedCatalog() {
         return {
           ...derived,
           bytes: entry.bytes,
+          video: validatedVideo(derived.manifest, entry.video),
           preview: validatedPreview(derived.manifest, entry.preview),
           availability: missingDomains(derived.domains).length
             ? ('host-required' as const)
