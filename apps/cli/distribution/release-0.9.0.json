@@ -52,8 +52,24 @@
     "All four archives built with pinned Bun 1.3.11 and checksummed; only darwin-arm64 executed for this release",
     "Existing source transport suite covers verified hash fallback, direct relay filtering, cancellation and shared audio host behavior"
   ],
-  "deployment": "pending",
+  "deployment": "active",
   "publicationVerification": [
-    "All four immutable archives uploaded in 67 verified chunks and SHA-256 checked on the VPS; prior versions preserved"
+    "All four immutable archives uploaded in 67 verified chunks and SHA-256 checked on the VPS; prior versions preserved",
+    "All four public archive sizes and checksum files match the release record",
+    "Public HTTPS installer creates an isolated soyli 0.9.0 installation and a new project whose sandbox check passes, with no Bun/Node on execution PATH; existing installation and identity untouched"
+  ],
+  "websiteRelease": "20260915191931258-56634",
+  "websiteSourceCommit": "9e17ae308badde5305da223c066286c5d74c9b03",
+  "deploymentVerifiedAt": "2026-09-15T19:44:18.545706+00:00",
+  "deploymentVerification": [
+    "256 repository tests and typecheck, Go race tests, 4 relay, 18 Blossom and 8 GRASP service tests pass locally and on the legacy Bun 1.3.8 VPS",
+    "Candidate confirms removed media/resource/relay-read endpoints return 404 and unauthenticated administration returns 401 before activation",
+    "Published Drone Zone station resolves directly from relay.wavefunc.live; native MP3 decodes and the napplet pauses it on desktop and touch/mobile with standard Chrome profiles",
+    "Original Blossom video decodes in its native tab; original image/source URLs, responsive assets, SSR/OG and public relay defaults verified; no protocol proxy requests observed",
+    "All five PM2 services online with zero restarts; fresh completed index scan has no relay errors; both shared Caddy configuration hashes unchanged; second website HTTPS 200"
+  ],
+  "verificationNotes": [
+    "The stream provider returns HTTP 403 for HeadlessChrome user-agents. An isolated native Audio comparison returns HTTP 200 and decoded audio with a normal Chrome user-agent. Live audio checks use standard desktop/Android profiles without overriding event data, media bytes, or application behavior.",
+    "The current published napplet starts audio after resolving the station. The smoke test waits for this start before using its Pause control; an extra early Play command races its startup."
   ]
 }

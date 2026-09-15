@@ -3,10 +3,10 @@
 Deployment is operator-run. Routine changes are verified and committed locally;
 do not deploy or upload releases unless the user explicitly requests deployment.
 
-Updated 2026-09-14. **[napplet.soy](https://napplet.soy) is live**, using the temporary legacy CPU profile on the existing Namecheap VPS. Caddy issued valid Let's Encrypt certificates for the website, www, Blossom and Git; the other site remains available. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. See the deployment record below for verification and the compatibility workaround.
+Updated 2026-09-15. **[napplet.soy](https://napplet.soy) is live**, using the temporary legacy CPU profile on the existing Namecheap VPS. Caddy issued valid Let's Encrypt certificates for the website, www, Blossom and Git; the other site remains available. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. See the deployment record below for verification and the compatibility workaround.
 
-Latest verified release: **`20260914192251320-98168`**; see the
-[onboarding, About and key recovery record](#onboarding-about-and-key-recovery-release--2026-09-14).
+Latest verified release: **`20260915191931258-56634`**, with soyLI **0.9.0**; see the
+[direct protocol deployment record](#direct-protocol-access-and-soyli-090--2026-09-15).
 
 ## One command
 
@@ -497,7 +497,6 @@ sensitive destination was not explicitly authorized. No off-VPS copy or automati
 offsite replication was performed. See [recovery](RECOVERY.md) for operator copy and
 restore instructions.
 
-
 ## Identity, configuration and social release — 2026-09-14
 
 Release: `20260914142718446-76864`, source through `dd75e01` (superseded by the source-browser release below).
@@ -548,7 +547,6 @@ unchanged:
 `schlaustronics.com` continues to return HTTPS 200. The deployment retained the
 shared-Caddy, web-port 3040 and legacy CPU profile; no DNS changes or reboot were
 needed. Local verification records are under `.local/identity-check/`.
-
 
 ## Source-browser release — 2026-09-14
 
@@ -601,7 +599,6 @@ match the pre-deploy values:
 The other site, `schlaustronics.com`, returns HTTPS 200. No DNS or proxy changes or
 reboot were needed. Local deployment logs, service results, browser results and
 source screenshots are retained in `.local/source-deploy/`.
-
 
 ## Immersive player and social controls release — 2026-09-14
 
@@ -868,7 +865,6 @@ Bun 1.3.11; all 21 Blossom service/process and uploader tests on the VPS's Bun 1
 The remote checks used a disposable directory, loopback ports, temporary blob data
 and the deployment's pinned Go PATH. No candidate activation or CLI upload occurred.
 
-
 ## Blossom timeout rollout and HTTPS host verification — 2026-09-15
 
 Release `20260915142033151-25517` activated source `27d7ba5`, including the upload
@@ -915,7 +911,6 @@ processes online with zero restarts, Caddy active and service startup enabled. B
 SHA-256 values. `schlaustronics.com` still returns HTTPS 200. CLI 0.8.1 archives remain
 unchanged; the follow-up corrects website origin configuration only.
 
-
 ## Runtime relay-read correction — 2026-09-15
 
 Release `20260915153437840-89080` is active from website source `9116077`.
@@ -935,9 +930,7 @@ Deployment checks passed locally and on VPS Bun 1.3.8: typecheck, 244 repository
 Go race checks, 4 relay, 18 Blossom and 8 GRASP tests. Candidate probes verified HTTPS
 Origin handling for media, resources and relay-read before activation. All five PM2
 services are online with zero restarts; the catalog and public service checks pass.
-Both Caddy configuration hashes are unchanged, and schlaustronics.com returns HTTPS
-200. The existing 50 MiB Blossom limit and prior upload-timeout correction are retained.
-
+Both Caddy configuration hashes are unchanged, and schlaustronics.com returns HTTPS 200. The existing 50 MiB Blossom limit and prior upload-timeout correction are retained.
 
 ## Linked asset list — 2026-09-15
 
@@ -965,3 +958,59 @@ values, and schlaustronics.com still returns HTTPS 200.
 The public installer remains on soyLI 0.8.3. Existing archive sizes/checksums were
 verified and no CLI artifacts were replaced. The prior runtime deadline and
 indexer-readiness corrections remain included in this release.
+
+## Direct protocol access and soyLI 0.9.0 — 2026-09-15
+
+Active release: **`20260915191931258-56634`**, website source **`9e17ae3`**.
+Rollback release: `20260915171125013-66174`. The standard shared-Caddy deployment
+ran with web port 3040 and the existing legacy CPU profile. No provider CPU changes
+or VPS reboot were needed. All five PM2 processes are online with zero restarts.
+
+This release removes the sixteen protocol REST proxy routes and generated protocol
+RPC counterparts. SSR remains server-only; browser data, media and playback use
+Nostr and original Blossom URLs. Public `SPACE_INDEX_HINTS` are forwarded to the
+browser instead of the indexer's loopback URLs, and the configured public Blossom
+origin is retained. Candidate probes now verify removed proxies return 404 and
+unauthenticated administration returns 401. [Transport inventory](PROTOCOL-ACCESS.md).
+
+soyLI **0.9.0** includes the shared direct preview and remix transports. All four
+immutable archives were uploaded in verified chunks before installer activation.
+Their hashes and execution coverage are in
+[the release record](../apps/cli/distribution/release-0.9.0.json). Apple Silicon ran
+seven packaged CLI/terminal/preview checks with 77 assertions. The other three
+platforms have build/archive verification for this release, not new execution tests.
+
+Validation and live verification:
+
+- Typecheck and **256 repository tests** (1676 assertions) pass locally and on the
+  Bun 1.3.8 VPS, followed by Go race tests and **4 relay, 18 Blossom and 8 GRASP tests**.
+  Candidate and final native/web builds passed before activation.
+- Original image, clip and source links resolve to `blossom.napplet.soy`. The clip
+  advances in a native video tab; responsive asset layout and no-JavaScript SSR/OG
+  remain available. The browser observes direct relay WebSockets and no removed
+  protocol proxy requests.
+- The unchanged published Drone Zone resolves its station directly from Wavefunc's
+  relay, decodes the native MP3 stream and pauses through its own controls on
+  desktop and touch/mobile Chrome profiles.
+- The public installer downloads and verifies a fresh **soyli 0.9.0** into isolated
+  directories, creates a project and passes its sandbox check without Bun/Node on
+  PATH. Existing local installations, accounts and creator projects are untouched.
+  All four public download sizes/checksums match the release record.
+- Relay/GRASP NIP-11, Blossom health, administration rejection and removed endpoint
+  checks pass. The active index reports a fresh completed scan without relay errors.
+  `schlaustronics.com` returns HTTPS 200.
+
+The first audio automation probe received HTTP 403 from the stream provider for
+its `HeadlessChrome` user-agent. A plain native Audio comparison reproduced that
+response outside the napplet; changing only to a standard Chrome user-agent returned
+HTTP 200 and decoded audio. Live checks use standard desktop/Android profiles, with
+no stream proxy or response substitution. The current napplet starts automatically
+after station resolution, so the check waits for that start before using Pause;
+an extra Play command during startup races the napplet's own state.
+
+Both shared Caddy hashes are unchanged:
+
+- `/etc/caddy/Caddyfile`: `be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f`
+- `/etc/napplet-space/Caddyfile`: `ef99cf551dca7c36d7ab82b6075c36bd537034f19e402d63648784b9d65e3c5e`
+
+No test events, payments or creator assets were published during live verification.

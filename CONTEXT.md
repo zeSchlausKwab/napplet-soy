@@ -37,5 +37,6 @@ fallback storage choices. Server APIs remain only for site policy/admin, readabl
 name claims, health, generated OG and optional publication-index confirmation.
 SSR loaders keep server implementations; browser navigation/refresh uses direct
 protocol implementations. Shared soyLI preview/remix source follows the same model.
-See docs/PROTOCOL-ACCESS.md for the inventory and bounds. This update has not been
-deployed or bundled into a new CLI release; installed binaries remain 0.8.3.
+See docs/PROTOCOL-ACCESS.md for the inventory and bounds. This update is deployed in website release
+`20260915191931258-56634` (source `9e17ae3`), with soyLI 0.9.0.
+Existing local CLI installations need the installer rerun to receive the update.

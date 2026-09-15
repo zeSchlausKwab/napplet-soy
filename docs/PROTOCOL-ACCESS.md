@@ -92,11 +92,13 @@ independent relay and actual Blossom service while refusing removed protocol API
 paths; it checks comments, profiles, playback, README/source browsing, original
 asset links, advancing native video playback, mobile layout and SSR.
 
-At this source checkpoint, type checking, 254 repository tests, the production
+At this source checkpoint, type checking, 256 repository tests, the production
 build, five direct-asset/browser tests and eight production-server integration
 flows pass. Separate shared-preview media/deadline and compiled-remix checks also
 pass. Fixtures publish only to isolated local relays; no test payments are sent.
-This source change has not been deployed or released as a new soyLI binary.
+Deployed as website release `20260915191931258-56634` with soyLI 0.9.0.
+See [deployment verification](DEPLOYMENT.md#direct-protocol-access-and-soyli-090--2026-09-15)
+for live checks and the radio provider's headless-user-agent restriction.
 
 Browser relay connections are shared between concurrent reads and publishing,
 reused briefly, and closed after ten seconds idle (at most 24 destinations).
