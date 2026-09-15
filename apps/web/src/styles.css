@@ -2837,3 +2837,36 @@ a.nostr-creator:hover .creator-name {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
 }
+
+/* Administration: one workbench per entity, with explicit actions. */
+.admin-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.admin-toolbar p { margin: 0; font-size: 14px; }
+.admin-nav { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 28px 0 16px; font-size: 14px; }
+.admin-nav a { text-underline-offset: 5px; text-decoration: underline; text-decoration-color: var(--border); }
+.admin-nav a:hover { text-decoration-color: currentColor; }
+.admin-search-note { font-size: 13px; line-height: 1.6; }
+.admin-section-title { display: flex; align-items: center; gap: 12px; color: var(--primary); }
+.admin-section-title h2 { margin: 0; color: var(--foreground); }
+.admin-entity, #admin-featured, .admin-history { scroll-margin-top: 32px; }
+.admin-entity > .muted { margin-top: 14px; }
+.admin-entity label > span { display: flex; gap: 8px; align-items: center; }
+.admin-matches { list-style: none; margin: -8px 0 20px; padding: 4px; border: 1px solid var(--border); border-radius: 8px; max-height: 280px; overflow-y: auto; }
+.admin-matches button { display: block; text-align: left; width: 100%; padding: 10px 12px; border-radius: 4px; }
+.admin-matches button:hover, .admin-matches button:focus-visible { background: var(--secondary); }
+.admin-matches strong { font-size: 14px; }
+.admin-matches code { margin-bottom: 0; }
+.admin-selection { background: var(--secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+.admin-selection > .muted { font-size: 13px; }
+.admin-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.admin-actions button, .admin-retry { white-space: normal; height: auto; min-height: 36px; text-align: left; }
+.admin-action-result { display: inline-flex; align-items: center; gap: 6px; color: var(--primary); font-size: 14px; }
+.admin-retry { margin-top: 12px; max-width: 100%; }
+.admin-saved { margin-top: 24px; }
+.admin-saved summary { cursor: pointer; font-size: 14px; color: var(--muted-foreground); }
+.admin-rules .muted { margin: 8px 0 0; }
+.admin-history { margin-top: 40px; }
+@media (max-width: 600px) {
+  .admin-page { padding: 0 16px; margin-top: 32px; }
+  .admin-form { padding: 18px 14px; }
+  .admin-form input { min-width: 0; }
+}

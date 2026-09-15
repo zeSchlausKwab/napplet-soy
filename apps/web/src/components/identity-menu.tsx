@@ -1,3 +1,4 @@
+import type { AdminAccess } from '../lib/admin-client';
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { nip19 } from 'nostr-tools';
@@ -24,11 +25,15 @@ export function IdentityMenu({
   setOpen,
   identity,
   children,
+  adminAccess,
+  refreshAdminAccess,
 }: {
   open: boolean;
   setOpen: (open: boolean) => void;
   identity: IdentityState;
   children: ReactNode;
+  adminAccess: AdminAccess;
+  refreshAdminAccess: () => Promise<void>;
 }) {
   const titleId = useId(),
     descriptionId = useId();
@@ -136,6 +141,23 @@ export function IdentityMenu({
                 View & edit your profile
               </Link>
             </Button>
+            {adminAccess === 'authorized' && (
+              <Button variant="outline" asChild>
+                <Link to="/admin" onClick={() => changeOpen(false)}>
+                  <ShieldCheck size={16} /> Administration
+                </Link>
+              </Button>
+            )}
+            {adminAccess === 'checking' && (
+              <span className="muted" role="status">
+                Checking admin access…
+              </span>
+            )}
+            {adminAccess === 'error' && (
+              <Button variant="ghost" onClick={() => void refreshAdminAccess()}>
+                Retry admin access check
+              </Button>
+            )}
             {identity.method === 'key' && !identity.reconnect && (
               <>
                 <Button variant="outline" onClick={() => setShowBackup(!showBackup)}>

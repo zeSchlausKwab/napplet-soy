@@ -33,6 +33,46 @@ The hero takes the first twelve ready, unblocked, resolvable entries; an empty
 policy grants no automatic fixture privilege. See [hero behavior](COMMUNITY.md#gallery-and-featured).
 These changes are implemented locally; production remains on the recorded prior release.
 
+## Administration workspace (local revision, 2026-09-15)
+
+The identity menu offers **Administration** when the selected public key is currently
+an administrator. Access is checked after sign-in or account changes, when the menu
+opens, and on window focus. `/admin` loads its signed policy request automatically;
+an unavailable signer can be reconnected or retried without a page reload. Declining
+a signature retains the account and any entered target/reason.
+
+`GET /api/admin-access?pubkey=<hex>` supplies a no-store navigation hint containing
+only `authorized: true|false`. It does not enumerate administrators, expose policy
+or grant permissions. Missing or corrupt policy fails closed. The signed `/api/admin`
+endpoint remains the authority for every policy read and mutation. Switching or
+signing out clears the workspace immediately and discards late responses. A refreshed
+navigation hint hides revoked access; a request rejected with 403 clears its policy.
+
+Napplets, Creators, Revisions, Assets and Administrators each have a search field,
+explicit action buttons and a required change reason. Paste an npub/hex key, naddr,
+note/nevent/event ID or SHA-256 according to the section. Standard `/n/<naddr>` and
+`/r/<id>` links (including `/play`), profile links and hash-based Blossom URLs are
+accepted without fetching those URLs. Named aliases should be resolved to their
+napplet's naddr first. The selected canonical identifier is shown before a change.
+
+Search is local to the authorized response: up to 2,000 recent indexed manifests,
+publicdev cache entries, cached creator names and saved policy targets. It includes
+blocked entries, loads no executable/media and never queries a remote service while
+typing. Exact identifiers work even outside this search window. Search results are
+limited to eight at a time; saved lists show up to twenty matching entries. An unavailable
+index or profile cache does not prevent management by identifier.
+
+Each entity offers Block/Unblock; Napplets and Revisions additionally offer
+Feature/Remove from Featured; Administrators offer Add/Remove. Recovery keys remain
+protected. The Featured order section shows titles and exact targets with up/down
+and remove buttons, sharing a required ordering reason. Button feedback carries
+pending/success/error/retry states. A stale revision refreshes the policy while
+retaining the draft for an explicit retry; failed requests never auto-apply changes.
+
+These changes are local and awaiting deployment. Browser verification covers immediate
+sign-in access, declined signatures and retries, identifier/title search, protected
+keys, live grants/revocation, late responses after sign-out and narrow layouts.
+
 ## Rule scope
 
 | Target | Effect |

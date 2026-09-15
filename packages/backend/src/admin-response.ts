@@ -10,9 +10,24 @@ import {
   updatePolicy,
 } from '../../moderation/src/policy';
 import { siteOrigin } from './site-origin';
+import { adminCatalog } from './admin-catalog';
 
 export const adminKeys = effectiveAdmins;
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
+/** Navigation hint only. It grants no access and never returns policy or membership lists. */
+export function adminAccessResponse(request: Request) {
+  const pubkey = new URL(request.url).searchParams.get('pubkey') ?? '';
+  if (!/^[a-f0-9]{64}$/.test(pubkey))
+    return Response.json({ error: 'A hex public key is required.' }, { status: 400, headers });
+  try {
+    return Response.json(
+      { authorized: !!policyPath() && adminKeys().includes(pubkey) },
+      { headers },
+    );
+  } catch {
+    return Response.json({ error: 'Administration is unavailable.' }, { status: 503, headers });
+  }
+}
 async function bodyText(request: Request) {
   if (!request.body) throw new PolicyError('A JSON request body is required.', 400);
   const reader = request.body.getReader();
@@ -105,6 +120,14 @@ export async function adminResponse(request: Request) {
         audit: policy.audit,
         admins: effectiveAdmins(policy),
         recoveryAdmins: configuredAdmins(),
+        ...(request.method === 'GET'
+          ? {
+              catalog: await adminCatalog([
+                ...effectiveAdmins(policy),
+                ...policy.rules.filter((r) => r.type === 'pubkey').map((r) => r.target),
+              ]),
+            }
+          : {}),
       },
       { headers },
     );

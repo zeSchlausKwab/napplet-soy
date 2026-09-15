@@ -17,6 +17,7 @@ import { Route as CliRouteImport } from './routes/cli'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
 import { Route as ApiAdminRouteImport } from './routes/api.admin'
+import { Route as ApiAdminAccessRouteImport } from './routes/api.admin-access'
 import { Route as ApiGallerySocialRouteImport } from './routes/api.gallery-social'
 import { Route as ApiGenealogyRouteImport } from './routes/api.genealogy'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
@@ -82,6 +83,11 @@ const CreatorSlugRoute = CreatorSlugRouteImport.update({
 const ApiAdminRoute = ApiAdminRouteImport.update({
   id: '/api/admin',
   path: '/api/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAccessRoute = ApiAdminAccessRouteImport.update({
+  id: '/api/admin-access',
+  path: '/api/admin-access',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGallerySocialRoute = ApiGallerySocialRouteImport.update({
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
+  '/api/admin-access': typeof ApiAdminAccessRoute
   '/api/gallery-social': typeof ApiGallerySocialRoute
   '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
+  '/api/admin-access': typeof ApiAdminAccessRoute
   '/api/gallery-social': typeof ApiGallerySocialRoute
   '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
+  '/api/admin-access': typeof ApiAdminAccessRoute
   '/api/gallery-social': typeof ApiGallerySocialRoute
   '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
@@ -335,6 +344,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/$creator/$slug'
     | '/api/admin'
+    | '/api/admin-access'
     | '/api/gallery-social'
     | '/api/genealogy'
     | '/api/health'
@@ -371,6 +381,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/$creator/$slug'
     | '/api/admin'
+    | '/api/admin-access'
     | '/api/gallery-social'
     | '/api/genealogy'
     | '/api/health'
@@ -407,6 +418,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/$creator/$slug'
     | '/api/admin'
+    | '/api/admin-access'
     | '/api/gallery-social'
     | '/api/genealogy'
     | '/api/health'
@@ -443,6 +455,7 @@ export interface RootRouteChildren {
   CliRoute: typeof CliRouteWithChildren
   CreateRoute: typeof CreateRoute
   ApiAdminRoute: typeof ApiAdminRoute
+  ApiAdminAccessRoute: typeof ApiAdminAccessRoute
   ApiGallerySocialRoute: typeof ApiGallerySocialRoute
   ApiGenealogyRoute: typeof ApiGenealogyRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin'
       fullPath: '/api/admin'
       preLoaderRoute: typeof ApiAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin-access': {
+      id: '/api/admin-access'
+      path: '/api/admin-access'
+      fullPath: '/api/admin-access'
+      preLoaderRoute: typeof ApiAdminAccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/gallery-social': {
@@ -775,6 +795,7 @@ const rootRouteChildren: RootRouteChildren = {
   CliRoute: CliRouteWithChildren,
   CreateRoute: CreateRoute,
   ApiAdminRoute: ApiAdminRoute,
+  ApiAdminAccessRoute: ApiAdminAccessRoute,
   ApiGallerySocialRoute: ApiGallerySocialRoute,
   ApiGenealogyRoute: ApiGenealogyRoute,
   ApiHealthRoute: ApiHealthRoute,

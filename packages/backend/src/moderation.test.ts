@@ -339,3 +339,71 @@ test('featured order resolves current addresses and pinned releases, skipping bl
   change('unfeature', 2);
   expect(await featuredGallery(entries)).toEqual([]);
 });
+
+test('admin navigation hints reveal only current access, fail closed, and never authorize policy reads', async () => {
+  const { adminAccessResponse } = await import('./admin-response');
+  const hint = (key: string) =>
+    adminAccessResponse(new Request(`https://napplet.example/api/admin-access?pubkey=${key}`));
+  expect(await hint(actor).json()).toEqual({ authorized: true });
+  expect(hint(actor).headers.get('cache-control')).toBe('no-store');
+  const outsiderKey = await outsider.getPublicKey();
+  expect(await hint(outsiderKey).json()).toEqual({ authorized: false });
+  expect(hint('invalid').status).toBe(400);
+  expect(
+    (
+      await adminResponse(
+        request(undefined, undefined, `https://napplet.example/api/admin?pubkey=${actor}`),
+      )
+    ).status,
+  ).toBe(401);
+  updatePolicy(
+    {
+      action: 'admin-add',
+      type: 'pubkey',
+      target: outsiderKey,
+      reason: 'Navigation test',
+      revision: 0,
+    },
+    actor,
+    '9'.repeat(64),
+  );
+  expect(await hint(outsiderKey).json()).toEqual({ authorized: true });
+  updatePolicy(
+    {
+      action: 'admin-remove',
+      type: 'pubkey',
+      target: outsiderKey,
+      reason: 'Navigation revoked',
+      revision: 1,
+    },
+    actor,
+    '8'.repeat(64),
+  );
+  expect(await hint(outsiderKey).json()).toEqual({ authorized: false });
+  await writeFile(process.env.SPACE_MODERATION_FILE!, 'corrupt');
+  expect(hint(actor).status).toBe(503);
+  expect(await hint(actor).json()).not.toHaveProperty('authorized', true);
+});
+
+test('authorized administration searches known blocked entries without exposing their catalog anonymously', async () => {
+  const { IndexStore } = await import('./index-store');
+  process.env.SPACE_INDEX_DIR = join(directory, 'index');
+  const index = new IndexStore(process.env.SPACE_INDEX_DIR, true);
+  index.admit(fixture.current);
+  index.close();
+  updatePolicy(action(), actor, '7'.repeat(64));
+  const denied = await adminResponse(request());
+  expect(denied.status).toBe(401);
+  expect(await denied.json()).not.toHaveProperty('catalog');
+  const data = await (await adminResponse(request(await signed()))).json();
+  expect(data.catalog.entries).toHaveLength(1);
+  expect(data.catalog.entries[0]).toMatchObject({
+    title: fixture.title,
+    id: fixture.current.id,
+    address: `35129:${fixture.pubkey}:${fixture.identifier}`,
+  });
+  expect(
+    data.catalog.entries[0].hashes.some((f: { hash: string }) => f.hash === fixture.artifactHash),
+  ).toBe(true);
+  expect(data.rules[0].target).toBe(data.catalog.entries[0].address);
+});

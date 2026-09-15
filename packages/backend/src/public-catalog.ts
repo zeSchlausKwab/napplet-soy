@@ -21,7 +21,7 @@ export function publicDirectory() {
     : null;
 }
 let memo: { directory: string; modified: number; size: number; cache: PublicCache } | undefined;
-async function readUnmoderatedCatalog() {
+export async function readUnmoderatedCatalog() {
   const directory = publicDirectory();
   if (!directory) return null;
   try {

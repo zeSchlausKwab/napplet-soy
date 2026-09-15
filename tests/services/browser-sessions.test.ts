@@ -93,8 +93,7 @@ test('browser keys persist only by consent in encrypted IndexedDB, switch, sign,
     expect(requests.join('\n')).not.toContain(key);
     await page.reload();
     await page.getByRole('button', { name: label, exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Load admin policy' }).click();
-    await page.getByText('0 active blocks', { exact: true }).waitFor(); // Restored key signs NIP-98.
+    await page.getByRole('region', { name: 'Napplets', exact: true }).waitFor(); // Restored key automatically signs NIP-98.
     await page.getByRole('button', { name: label, exact: true }).click();
     await importKey(other);
     await page.getByRole('button', { name: otherLabel, exact: true }).click();

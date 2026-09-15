@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { EventStoreProvider } from 'applesauce-react/providers';
 import { createNostrClient } from '../../../../packages/nostr/src/client';
 import { browserIdentity, type IdentityState } from '../lib/browser-identity';
+import { useAdminAccess, type AdminAccess } from '../lib/admin-client';
 import { IdentityMenu } from './identity-menu';
 
 const Context = createContext<{
@@ -11,6 +12,8 @@ const Context = createContext<{
   connect: () => Promise<void>;
   disconnect: () => void;
   relayConfigured: boolean;
+  adminAccess: AdminAccess;
+  refreshAdminAccess: () => Promise<void>;
 } | null>(null);
 const relayUrls = (import.meta.env.VITE_NOSTR_RELAYS ?? '')
   .split(',')
@@ -24,6 +27,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     reconnect: false,
   });
   const [open, setOpen] = useState(false);
+  const admin = useAdminAccess(identity.pubkey, open);
   const [ready, setReady] = useState(false);
   const connect = async () => {
     document
@@ -54,6 +58,8 @@ export function NostrProvider({ children }: { children: ReactNode }) {
     <Context.Provider
       value={{
         pubkey: identity.pubkey,
+        adminAccess: admin.access,
+        refreshAdminAccess: admin.refresh,
         ready,
         needsReconnect: identity.reconnect || !!identity.restoring,
         connect,
@@ -62,7 +68,13 @@ export function NostrProvider({ children }: { children: ReactNode }) {
       }}
     >
       <EventStoreProvider eventStore={client.store}>
-        <IdentityMenu open={open} setOpen={setOpen} identity={identity}>
+        <IdentityMenu
+          adminAccess={admin.access}
+          refreshAdminAccess={admin.refresh}
+          open={open}
+          setOpen={setOpen}
+          identity={identity}
+        >
           {children}
         </IdentityMenu>
       </EventStoreProvider>

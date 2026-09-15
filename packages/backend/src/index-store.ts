@@ -59,6 +59,14 @@ export class IndexStore {
   rows() {
     return this.db.query<IndexRow, []>('SELECT * FROM records').all();
   }
+  administrationRows() {
+    return this.db
+      .query<IndexRow, []>(
+        `SELECT * FROM records
+      ORDER BY json_extract(event, '$.created_at') DESC, id ASC LIMIT 2000`,
+      )
+      .all();
+  }
   recent() {
     return this.db
       .query<IndexRow, []>(
