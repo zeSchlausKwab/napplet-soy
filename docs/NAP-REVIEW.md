@@ -178,3 +178,13 @@ reads with public destination checks, bounded filters/streams, TLS and cancellat
 Publishing remains disabled in playback. This fixes the discovery/runtime allowlist
 conflation; it does not claim full outbox intelligence or publishing conformance.
 See [implemented routing policy](PUBLIC-RUNTIME.md#runtime-relay-routing--soyli-082).
+
+
+## Read deadline correction — 2026-09-15
+
+The pinned outbox shim starts its `timeoutMs` timer before posting to the host.
+The host previously used the same duration for discovery and collection, allowing
+a stalled fallback to race the shim's timeout even with verified results in hand.
+soyLI 0.8.3 and the shared web host reserve reply-delivery time inside that budget
+and preserve partial-result/error semantics. No protocol fields, permissions,
+SDK versions or proposal pins change. See PUBLIC-RUNTIME.md for timing limits.

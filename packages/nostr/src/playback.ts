@@ -235,7 +235,13 @@ export class PlaybackNostr {
         limit: z.number().int().min(1).max(200).optional(),
       })
       .parse(message.options ?? {});
-    const deadline = Date.now() + (options.timeoutMs ?? 5000);
+    // The SDK starts its timer before posting to the host. Its timeout covers
+    // discovery, reads AND delivery of our result, not just network activity.
+    // Keep a response margin so a slow relay cannot discard already verified
+    // events by making our reply race the SDK's rejection.
+    const requestTimeout = options.timeoutMs ?? 5000;
+    const readBudget = requestTimeout - Math.min(1000, Math.max(25, Math.ceil(requestTimeout / 5)));
+    const deadline = Date.now() + readBudget;
     const hints = (options.relays ?? []).map((r) => readRelayUrl(r, this.relays));
     const explicit = message.relay
       ? readRelayUrl(z.string().parse(message.relay), this.relays)
@@ -250,11 +256,7 @@ export class PlaybackNostr {
           ...filters.flatMap((f) => f.authors ?? []),
         ]),
       ].slice(0, 16);
-      const plan = await this.plan(
-        authors,
-        'read',
-        Math.min(2000, Math.floor((options.timeoutMs ?? 5000) / 3)),
-      );
+      const plan = await this.plan(authors, 'read', Math.min(2000, Math.floor(readBudget / 3)));
       relays = plan.relays;
       incomplete = plan.missingAuthors.length > 0;
     }

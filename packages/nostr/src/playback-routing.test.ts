@@ -45,3 +45,56 @@ test('an explicit station relay hint is read even when discovery relays do not h
     host.close();
   }
 });
+
+test('a stalled discovery and fallback still deliver all collected events before the caller times out', async () => {
+  const events = ['first', 'second'].map((content) =>
+    finalizeEvent(
+      { kind: 1, tags: [], content, created_at: Math.floor(Date.now() / 1000) },
+      new Uint8Array(32).fill(3),
+    ),
+  );
+  let active = 0;
+  const host = new PlaybackNostr(
+    ['wss://fallback.example/'],
+    () => {},
+    () => null,
+    {
+      close() {},
+      req: (_relays, filters) =>
+        new Observable((output) => {
+          active++;
+          const timers = filters[0].kinds?.includes(1)
+            ? events.map((event, i) =>
+                setTimeout(
+                  () => output.next({ type: 'EVENT', from: 'wss://station.example/', event }),
+                  20 + i * 150,
+                ),
+              )
+            : [];
+          // No EOSE: the deadline must return the verified partial collection.
+          return () => {
+            active--;
+            timers.forEach(clearTimeout);
+          };
+        }),
+    },
+  );
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      host.handle({
+        type: 'outbox.query',
+        filters: { kinds: [1], authors: [events[0].pubkey] },
+        options: { relays: ['wss://station.example/'], timeoutMs: 800 },
+      }),
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error('caller timed out')), 800);
+      }),
+    ]);
+    expect(result).toMatchObject({ events: events.map((event) => ({ event })), incomplete: true });
+    expect(active).toBe(0);
+  } finally {
+    clearTimeout(timeout);
+    host.close();
+  }
+});

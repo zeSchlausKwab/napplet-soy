@@ -3,7 +3,7 @@ set -eu
 
 # napplet soyLI creator CLI. Inspect this script before running it if you prefer.
 # Downloads are immutable by version; the archive is verified before extraction.
-version=0.8.2
+version=0.8.3
 base=${NAPPLET_DOWNLOAD_BASE:-https://napplet.soy/cli/download}
 install_root=${NAPPLET_INSTALL_DIR:-"$HOME/.local/share/napplet-space"}
 bin_dir=${NAPPLET_BIN_DIR:-"$HOME/.local/bin"}

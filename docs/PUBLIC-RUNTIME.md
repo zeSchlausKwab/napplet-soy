@@ -195,3 +195,20 @@ Regression coverage includes a hinted station absent from discovery relays throu
 the real shared HTTP adapter, forged events, NIP-65 routing, blocked URLs/origins,
 current-revision admission, live EOSE, cancellation and quota recovery. External
 relay availability remains outside the host's control.
+
+
+### Read deadlines — soyLI 0.8.3
+
+The caller's `timeoutMs` includes discovery, network reads and reply delivery. The
+shared web/preview host reserves 20% of that budget for delivery (minimum 25 ms,
+maximum 1 second). Discovery uses at most one third of the remaining budget, capped
+at 2 seconds. At the read deadline the host cancels outstanding requests and returns
+all verified events collected so far with `incomplete: true`; if none arrived, the
+result also carries a retryable read error. It does not stop on the first event.
+This prevents a stalled fallback from making the SDK discard an already retrieved
+station. External relay availability and a suspended browser remain outside this
+bounded request guarantee. No upstream bindings or napplet changes are required.
+
+`bun test tests/services/relay-deadline.test.ts` exercises the actual pinned SDK and
+shared preview through HTTP: normal reads, stalled fallback/discovery, empty reads
+and `getEvent`. The repository suite also checks later-arriving events and cleanup.
