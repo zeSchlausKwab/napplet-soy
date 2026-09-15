@@ -99,6 +99,8 @@ advanced time and paused. Bun native fetch and Node fallback transports both del
 successive MP3 chunks without waiting for EOF and cancelled successfully. The built
 website also streamed the real MP3 through its media route, retained controls in
 fullscreen, paused and released the session on player teardown.
+The final compiled soyLI 0.8.0 played an unchanged copy of the Drone Zone build beyond
+five seconds and paused with Bun/Node absent from PATH; the original project was untouched.
 
 See `packages/runtime/src/media.test.ts`, `packages/backend/src/audio.test.ts` and
 `tests/services/media.test.ts`. Existing runtime browser tests continue to cover

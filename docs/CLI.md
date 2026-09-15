@@ -12,6 +12,11 @@ All four archives were verified and uploaded before the installer was activated 
 website release `20260915084016730-23084`. The website remains napplet.soy; this is
 only a CLI rename, with no change to Nostr manifests or infrastructure.
 
+**0.8.0 is prepared locally, not yet published.** It adds shared-host audio playback
+and updated checkpoint/resume guidance. Its [release record](../apps/cli/distribution/release-0.8.0.json)
+lists verified archive hashes and platform coverage. Upload the CLI archives before
+deploying the matching website installer; see [deployment preparation](DEPLOYMENT.md#shared-audio-and-soyli-080-preparation--2026-09-15).
+
 Rerun the installer without arguments to upgrade in place:
 
 ```sh

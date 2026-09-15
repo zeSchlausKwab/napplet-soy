@@ -783,3 +783,36 @@ schlaustronics.com returned HTTPS 200 during builds and after activation. The re
 archive includes the WebM test fixture and excludes private planning, credentials,
 Git metadata and local artifacts. Logs and inspected screenshots remain under
 `.local/rich-comments/` and `.local/rich-comments-*.log`.
+
+## Shared audio and soyLI 0.8.0 preparation — 2026-09-15
+
+Source commits `32ee2c0` and `bb12568` add the [NAP-MEDIA audio subset](MEDIA.md)
+to the shared website/creator-preview host, including live HTTPS MP3 streams.
+The runtime profile is now `space-playback-2`, causing discovery to reconsider
+napplets previously excluded for missing media support. The iframe sandbox and
+existing resource-download bounds remain unchanged.
+
+All four soyLI **0.8.0** archives are prepared locally. Their source commit, hashes
+and verification coverage are recorded in
+[release-0.8.0.json](../apps/cli/distribution/release-0.8.0.json). Native execution is
+verified on macOS arm64; the other targets have build-only evidence. The final native
+CLI plays the unchanged Drone Zone build's live stream without Bun/Node on PATH.
+The production web build also streams the real MP3, including fullscreen controls
+and teardown. Verification passed: 234 repository tests/typecheck, production build,
+three media/publication service tests, five runtime browser regressions and seven
+native CLI distribution/terminal/preview tests. The real Node fallback transport
+delivered successive stream chunks and cancelled on this development machine;
+the VPS still needs deployment and a post-deploy playback check.
+
+**No archives were uploaded and no VPS deployment was performed for this change.**
+The operator owns deployment. Upload the archives before activating the 0.8.0
+installer with the website:
+
+```sh
+bun run cli:release --host <ssh-target> && bun run deploy --host <ssh-target> --domain napplet.soy --shared-caddy --web-port 3040 --legacy-cpu --admin-pubkey <admin-pubkey>
+```
+
+Installed creators must separately rerun the installer without new/remix arguments,
+verify `soyli --version` reports 0.8.0, stop the old dev server, run `soyli skills update`
+and restart `soyli dev` in their existing project. No identity, dependency or source
+migration is required. Review managed-file conflicts without overwriting local edits.
