@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import records from '../../packages/backend/data/catalog.json';
 import { sha256 } from '../../packages/protocol/src';
 import { refreshPublicCatalog } from '../../scripts/publicdev';
+import { freezeSource } from '../../packages/publish/src/project';
 
 const directory = process.argv[2];
 if (!directory) throw new Error('Expected a test directory');
@@ -17,15 +18,38 @@ const image = (
   )
 ).asPng();
 const hash = await sha256(image);
+const withAssets = process.argv[3] === 'assets';
+const clip = await Bun.file('tests/fixtures/preview.webm').bytes();
+const clipHash = await sha256(clip);
+const clipUrl = `https://images.example/${clipHash}.webm`;
+let sourceUrl: string | undefined;
+if (withAssets) {
+  await freezeSource(
+    join(directory, 'source'),
+    new Map([
+      ['README.md', new TextEncoder().encode('# Linked assets fixture\nA public test project.\n')],
+      ['index.html', new TextEncoder().encode('<!doctype html><title>Fixture</title>')],
+    ]),
+    base.created_at,
+  );
+  const sourceHash = await sha256(await Bun.file(join(directory, 'source/source.tar')).bytes());
+  sourceUrl = `${process.env.FIXTURE_ASSET_ORIGIN}/${sourceHash}.tar`;
+}
 const descriptor = finalizeEvent(
   {
     kind: 32267,
     created_at: base.created_at,
-    content: 'Offline preview test',
+    content: withAssets ? `Offline preview test ${clipUrl}` : 'Offline preview test',
     tags: [
       ['d', 'preview-test'],
       ['name', 'Linked preview test'],
       ['image', `https://images.example/${hash}`],
+      ...(withAssets
+        ? [
+            ['image', 'https://images.example/another-screenshot.png'],
+            ['imeta', `url ${clipUrl}`, 'm video/webm', `x ${clipHash}`],
+          ]
+        : []),
     ],
   },
   key,
@@ -39,6 +63,7 @@ const manifest = finalizeEvent(
         ['d', 'preview-test'],
         ['title', 'Linked preview test'],
         ['app', `32267:${descriptor.pubkey}:preview-test`, 'wss://relay.example'],
+        ...(sourceUrl ? [['source-archive', sourceUrl]] : []),
       ]),
   },
   key,
@@ -53,6 +78,6 @@ const result = await refreshPublicCatalog(directory, {
         `packages/backend/data/artifacts/${records[0].artifactHash}.html`,
       ).arrayBuffer(),
     ),
-  previewDownload: async () => image,
+  previewDownload: async (url) => (url.href === clipUrl ? clip : image),
 });
 await Bun.write(join(directory, 'fixture.json'), JSON.stringify(result.cache!.entries[0]));

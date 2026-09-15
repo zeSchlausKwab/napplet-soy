@@ -1,4 +1,5 @@
 import { SourceSection } from './source-section';
+import { LinkedAssets } from './linked-assets';
 import { CreatorLink } from './creator-link';
 import { Genealogy } from './genealogy';
 import { Link } from '@tanstack/react-router';
@@ -65,6 +66,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
             onEnter={play.enter}
             onExit={play.exit}
           />
+          <LinkedAssets manifest={pinned ? napplet.snapshot : napplet.current} />
           <div className="detail-info">
             <div>
               <h2>A little about this one</h2>

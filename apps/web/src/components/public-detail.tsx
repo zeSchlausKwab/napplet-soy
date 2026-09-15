@@ -1,4 +1,5 @@
 import { SourceSection } from './source-section';
+import { LinkedAssets } from './linked-assets';
 import { CreatorLink } from './creator-link';
 import { Genealogy } from './genealogy';
 import { Link } from '@tanstack/react-router';
@@ -93,6 +94,11 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
               </div>
             </div>
           )}
+          <LinkedAssets
+            manifest={napplet.manifest}
+            preview={napplet.preview}
+            video={napplet.video}
+          />
           <div className="detail-info">
             <div>
               <h2>A little about this one</h2>

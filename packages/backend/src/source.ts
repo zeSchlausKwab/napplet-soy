@@ -4,7 +4,7 @@ import { validateManifest } from '../../protocol/src/manifest';
 import { sourceArchive } from '../../remix/src/archive';
 import { blocked, manifestBlocked } from '../../moderation/src/policy';
 import { artifact, resolveNapplet } from './catalog';
-import { resolvePublicNapplet } from './public-catalog';
+import { readPublicCatalog, resolvePublicNapplet } from './public-catalog';
 import { indexedRevision, indexStore } from './indexed-catalog';
 import { fetchPublicBytes } from './blossom';
 
@@ -300,6 +300,7 @@ export const sourceBrowser = createSourceBrowser({
     if (local) return local.snapshot;
     const entry =
       (await resolvePublicNapplet({ type: 'snapshot', id: revision })) ??
+      (await readPublicCatalog())?.entries.find((entry) => entry.revisionId === revision) ??
       (await indexedRevision(revision));
     return entry && !indexStore()?.removed(entry.manifest) ? entry.manifest : null;
   },

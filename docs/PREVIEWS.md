@@ -197,3 +197,27 @@ starts the ordinary verified napplet. OG continues to use a static PNG.
 Local evidence: real recording and stale-build check; signed publication interrupted
 and resumed with identical clip bytes/events; metadata/cache/range rejection tests;
 Chromium listing review, gallery lifecycle/reduced-motion, and static OG checks.
+
+
+## Linked assets on detail pages
+
+The single napplet page lists available linked assets immediately below the player:
+its cached preview image, cached WebM clip, additional image/icon or WebM links in
+the selected supported app descriptors, and its pinned source archive. The same
+presentation applies to every publisher and hides when there are no attachments
+or while the player is immersive.
+
+Images and clips open in a new tab through the existing verified cache endpoints.
+The image is the normalized PNG used by this client; dimensions and byte size are
+shown. Clips show their format, duration and size. Additional declared files are
+labelled as originals on their publisher's host and open only on request: they are
+not fetched or embedded by the list. They carry a verified signed URL association,
+not a claim that this client has checked their bytes. Duplicate URLs and unsafe URL
+schemes/credentials are omitted. Source archives download through the existing
+hash-checked, moderated source endpoint, including current listings in public-dev.
+
+Generated OG fallback artwork is not presented as an author-supplied attachment.
+This view does not enumerate files inside executable packages, invent preview
+metadata, or expand the supported video profile. It renders in SSR, fits phone
+widths, and needs no website login. The focused browser fixture verifies actual
+image/clip responses and source-archive bytes without publishing any events.

@@ -771,6 +771,98 @@ pre:focus-visible {
   color: #222;
   background: #fff6e7;
 }
+.linked-assets {
+  margin-top: 24px;
+}
+.linked-assets h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.linked-assets h2 > span {
+  color: #7b7e6e;
+  font:
+    11px "DM Mono",
+    monospace;
+}
+.linked-assets ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 275px), 1fr));
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.linked-assets li {
+  min-width: 0;
+}
+.linked-assets a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  min-height: 78px;
+  padding: 12px;
+  border: 1px solid #deded2;
+  border-radius: 9px;
+  background: #f3f2e9;
+  transition:
+    border-color 150ms,
+    background 150ms;
+}
+.linked-assets a:hover {
+  border-color: #9ea58d;
+  background: #ecefe2;
+}
+.linked-assets a:focus-visible {
+  outline: 2px solid #526e4a;
+  outline-offset: 3px;
+}
+.linked-assets a > svg {
+  flex: 0 0 auto;
+  color: #66735b;
+}
+.linked-asset-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 48px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 5px;
+  color: #66735b;
+  background: #e6e8db;
+}
+.linked-asset-icon img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.linked-asset-icon img[hidden] {
+  display: none;
+}
+.linked-asset-label {
+  flex: 1;
+  min-width: 0;
+}
+.linked-asset-label strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+.linked-asset-label small {
+  display: block;
+  margin-top: 4px;
+  color: #737569;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
 .detail-info {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
