@@ -90,6 +90,13 @@ remains a follow-up.
 This checkpoint passed all 181 repository tests, three service/browser integrations
 and 12 existing app/runtime browser tests, alongside typecheck and the production build.
 
+The gallery and detail-page share icon opens an anchored choice of **Detail link**
+and **Player link**. Both work while signed out. Player links append `/play` to the
+same address or pinned revision; they do not create another identity. Copy failures
+show a selectable URL in the popup. The immersive player retains its own **Copy play
+link** control. A fresh link fills the page, but native browser fullscreen still
+requires the visitor's Play/fullscreen gesture.
+
 ## Verification
 
 Unit/integration coverage also covers unknown-message silence, successful public-key snapshots at quota, verified NIP-65 preferences independent of relay policy, and late-result suppression across account changes. Standalone CLI browser checks cover the same shim/services, local relay reads, resource mediation, save prompts/downloads, account changes, reloads, capability gating and tampered bytes. Unit/integration coverage exercises storage isolation and quotas, virtual file chunking/revisions/traversal/cancellation, resource scheme/IP/MIME checks, request origin binding, queued cancellation, and actual Applesauce WebSocket queries with forged/duplicate/nonmatching events. Browser tests exercise the published shim, handshake, persistent saves, denied publishing, forged host messages, file downloads and player cleanup.

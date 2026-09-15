@@ -136,6 +136,36 @@ test('immersive routes preserve the verified frame and host session across nativ
       expect(canonical).not.toEndWith('/play');
     }
 
+    // Sharing offers both destinations without requiring an account or starting the app.
+    await page.goto(`${origin}/r/${pinned.id}`);
+    await page.locator('.card-share').click();
+    await page.getByRole('button', { name: 'Copy player link', exact: true }).click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      `${origin}/r/${pinned.id}/play`,
+    );
+    await page.getByRole('button', { name: 'Copy detail link', exact: true }).click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      `${origin}/r/${pinned.id}`,
+    );
+    await page.keyboard.press('Escape');
+    expect(await page.locator('.card-share').evaluate((el) => el === document.activeElement)).toBe(
+      true,
+    );
+    expect(await page.locator('iframe').count()).toBe(0);
+    await page.evaluate(() =>
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: () => Promise.reject(new Error('Denied')) },
+      }),
+    );
+    await page.locator('.card-share').click();
+    await page.getByRole('button', { name: 'Copy player link', exact: true }).click();
+    expect(await page.getByRole('textbox', { name: 'Share link' }).inputValue()).toBe(
+      `${origin}/r/${pinned.id}/play`,
+    );
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => delete (navigator as any).clipboard);
+
     // A fresh pinned link offers a real, immediate fullscreen gesture.
     await page.goto(`${origin}/r/${pinned.id}/play`);
     await page.locator('.player-cover').click();
