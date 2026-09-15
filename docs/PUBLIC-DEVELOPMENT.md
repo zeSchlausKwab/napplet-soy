@@ -42,9 +42,8 @@ Named, naddr, and snapshot pages emit title, description, canonical URL, complet
 
 `SPACE_SITE_ORIGIN` supplies trusted absolute URLs. Dev derives it from its port, dev:prod from its Caddy address, and the VPS deploy script sets it to `https://<domain>`. Host and forwarded headers cannot rewrite share URLs. A local preview becomes fetchable by external social platforms only once the site has a publicly reachable origin.
 
-
 ## Linked preview metadata
 
-Catalog refresh resolves optional `app` references to NIP-89 application pictures or Zapstore screenshots/icons. Verified images are normalized and served from `/api/previews/<manifest-id>` for gallery/player covers and embedded in the OG card. Missing metadata or failed images keep the generated poster and do not affect playback. Browsing does not query external image hosts or run napplet code for thumbnails.
+Catalog refresh resolves optional `app` references to NIP-89 application pictures or Zapstore screenshots/icons. The browser uses the signed original image URLs; optional server-normalized images support OG rendering. Missing metadata or failed images keep the generated poster and do not affect playback. Browsing contacts the chosen media providers directly and never executes napplet code for thumbnails. See [direct protocol access](PROTOCOL-ACCESS.md).
 
 Refresh older caches with `bun run dev publicdev --refresh` (or `bun run dev:prod publicdev --refresh`). The preview profile also invalidates older caches once automatically. Descriptor lookup requires Node, already used for PM2, and uses a short-lived bounded worker only when supported app links exist. Read [PREVIEWS.md](PREVIEWS.md) for the supported schemas, limits, and verification evidence.

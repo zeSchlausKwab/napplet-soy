@@ -9,7 +9,11 @@ import { PlayerChrome } from './player-chrome';
 import { loadArtifact, PLAYER_SANDBOX } from '../../../../packages/runtime/src';
 import { preparePlayback } from '../../../../packages/runtime/src/playback';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
-import { publicPoster, type PublicNapplet } from '../../../../packages/backend/src/public-model';
+import {
+  hasPublicPreview,
+  publicPoster,
+  type PublicNapplet,
+} from '../../../../packages/backend/src/public-model';
 import shim from '@napplet/shim/prelude.global?raw';
 import { nappletPrelude } from '../../../../packages/runtime/src/prelude';
 import { attachNappletHost, type HostPrompt } from '../../../../packages/runtime/src/host';
@@ -225,7 +229,7 @@ export function Player({
               aria-label={`Start ${napplet.title}`}
             >
               <img
-                className={external && !napplet.preview ? 'generated-poster' : undefined}
+                className={external && !hasPublicPreview(napplet) ? 'generated-poster' : undefined}
                 src={external ? publicPoster(napplet) : `/posters/${napplet.slug}.svg`}
                 alt=""
                 referrerPolicy="no-referrer"

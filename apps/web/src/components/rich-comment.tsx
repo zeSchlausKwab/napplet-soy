@@ -42,10 +42,8 @@ function useVisible() {
 }
 
 function MediaAttachment({ media, src }: { media: CommentMedia; src: string }) {
-  const { ref, visible, visit } = useVisible();
-  const [attempt, setAttempt] = useState(0);
-  // Browsers may reuse decoded images even with no-store. A new visit/retry must
-  // reach the endpoint so current deletion and moderation policy are checked.
+  const { ref, visible } = useVisible();
+  // Native media retains the published URL; membership and moderation belong to the comment.
   const mediaSrc = src;
   const [loaded, setLoaded] = useState(false),
     [failed, setFailed] = useState(false);
@@ -101,10 +99,9 @@ function MediaAttachment({ media, src }: { media: CommentMedia; src: string }) {
           <ActionButton
             variant="outline"
             icon={<Film size={16} />}
-            error={failed ? 'Media unavailable or too large for this client.' : undefined}
+            error={failed ? 'Media unavailable or unsupported by this browser.' : undefined}
             retryLabel="Retry media"
             onClick={() => {
-              setAttempt((value) => value + 1);
               setFailed(false);
               setLoaded(true);
             }}
@@ -150,7 +147,7 @@ function NappletAttachment({ target }: { target: CommentNappletTarget }) {
     }
     if (attempted.current) return;
     attempted.current = true;
-    // Warm previews use the local catalog only. Relay discovery requires an explicit click.
+    // Visible references resolve their signed metadata; execution still requires an explicit click.
     const version = generation.current;
     void getNapplet({ data: target })
       .then((value) => {

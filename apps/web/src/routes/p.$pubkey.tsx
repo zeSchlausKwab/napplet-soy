@@ -1,3 +1,6 @@
+import { nativeMediaUrl } from '../../../../packages/client/src/bytes';
+import { useProtocolRefresh } from '@/lib/use-protocol-refresh';
+import { readProfile, queryCatalog, seedCatalog } from '@/lib/protocol-catalog';
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Copy, Eye, Zap } from 'lucide-react';
@@ -61,6 +64,11 @@ function CreatorProfile() {
     cache = useProfiles(),
     search = Route.useSearch();
   const p = data.profile;
+  if (typeof window !== 'undefined') seedCatalog(data.entries);
+  const refresh = useProtocolRefresh(p.pubkey, () =>
+    Promise.all([readProfile(p.pubkey), queryCatalog(p.pubkey)]),
+  );
+  const banner = nativeMediaUrl(p.banner);
   const [active, setActive] = useState<string | null>(null),
     [copied, setCopied] = useState('');
   useEffect(() => {
@@ -73,11 +81,11 @@ function CreatorProfile() {
         <ArrowLeft size={14} />
         Back to the playground
       </Link>
-      <header className={`profile-header${p.banner ? ' has-banner' : ''}`}>
-        {p.banner && (
+      <header className={`profile-header${banner ? ' has-banner' : ''}`}>
+        {banner && (
           <img
             className="profile-banner"
-            src={p.banner!}
+            src={banner}
             alt=""
             referrerPolicy="no-referrer"
             onError={(e) => {
@@ -155,6 +163,7 @@ function CreatorProfile() {
           </p>
         )}
       </header>
+      {refresh}
       <ProfileEditor key={p.pubkey} pubkey={p.pubkey} exists={!!p.eventId} />
       <section className="profile-creations" aria-label="Creator’s napplets">
         <div className="explore-top">

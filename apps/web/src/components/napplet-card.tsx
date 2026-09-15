@@ -10,6 +10,7 @@ import { CreatorLink } from './creator-link';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { NappletCard as Card } from '../../../../packages/backend/src/catalog';
 import {
+  hasPublicPreview,
   publicPoster,
   publicLink,
   type PublicNapplet,
@@ -101,7 +102,7 @@ export function NappletCard({
             }}
           >
             <img
-              className={external && !napplet.preview ? 'generated-poster' : undefined}
+              className={external && !hasPublicPreview(napplet) ? 'generated-poster' : undefined}
               src={external ? publicPoster(napplet) : `/posters/${napplet.slug}.svg`}
               referrerPolicy="no-referrer"
               alt=""

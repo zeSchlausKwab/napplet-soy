@@ -3,7 +3,7 @@ import { chromium, expect as browserExpect, type Page } from '@playwright/test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { finalizeEvent } from 'nostr-tools';
+import { finalizeEvent, matchFilters, type Event } from 'nostr-tools';
 import { aggregateHash, encodeAddress, sha256 } from '../../packages/protocol/src';
 import { IndexStore } from '../../packages/backend/src/index-store';
 import { publicNapplet } from '../../packages/backend/src/public-model';
@@ -18,8 +18,36 @@ test('immersive routes preserve the verified frame and host session across nativ
     '<!doctype html><title>Little orbit</title><button onclick="this.textContent=Number(this.textContent)+1">0</button>',
   );
   const hash = await sha256(html);
+  let relayDelay = 0;
+  const wireEvents: Event[] = fixtures.flatMap((n) => [n.current, n.snapshot]);
+  const storage = Bun.serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    async fetch(request, server) {
+      if (server.upgrade(request)) return;
+      const requested = new URL(request.url).pathname.slice(1);
+      if (!/^[a-f0-9]{64}$/.test(requested)) return new Response('', { status: 404 });
+      const file = Bun.file(resolve('packages/backend/data/artifacts', `${requested}.html`));
+      return new Response(requested === hash ? html : (await file.exists()) ? file : null, {
+        headers: { 'access-control-allow-origin': '*' },
+        status: requested === hash || (await file.exists()) ? 200 : 404,
+      });
+    },
+    websocket: {
+      async message(socket, raw) {
+        const m = JSON.parse(String(raw));
+        if (m[0] === 'REQ') {
+          if (relayDelay) await Bun.sleep(relayDelay);
+          for (const e of wireEvents)
+            if (matchFilters(m.slice(2), e)) socket.send(JSON.stringify(['EVENT', m[1], e]));
+          socket.send(JSON.stringify(['EOSE', m[1]]));
+        }
+      },
+    },
+  });
   const tags = [
     ['d', 'little-orbit'],
+    ['server', String(storage.url).replace(/\/$/, '')],
     ['title', 'Little orbit'],
     [
       'description',
@@ -49,6 +77,7 @@ test('immersive routes preserve the verified frame and host session across nativ
     { ...current, tags: [...tags.filter((t) => t[0] !== 'd'), ['d', 'unavailable']] },
     key,
   );
+  wireEvents.push(current, pinned, unsupported, unavailable);
   const index = new IndexStore(join(directory, 'index'), true);
   for (const event of [current, pinned, unsupported, unavailable]) {
     index.admit(event);
@@ -81,6 +110,8 @@ test('immersive routes preserve the verified frame and host session across nativ
       PORT: String(port),
       SPACE_SITE_ORIGIN: origin,
       SPACE_INDEX_DIR: join(directory, 'index'),
+      SPACE_INDEX_RELAYS: `ws://127.0.0.1:${storage.port}`,
+      SPACE_INDEX_LOCAL_BLOSSOM: String(storage.url),
       SPACE_PUBLICDEV: '0',
       SPACE_MODERATION_FILE: policy,
     },
@@ -108,6 +139,7 @@ test('immersive routes preserve the verified frame and host session across nativ
       permissions: ['clipboard-read', 'clipboard-write'],
     });
     const page = await context.newPage();
+    page.setDefaultTimeout(8000);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     const address = encodeAddress({
@@ -261,15 +293,12 @@ test('immersive routes preserve the verified frame and host session across nativ
     expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
     expect(await page.locator('[inert]').count()).toBe(0);
 
-    // Slow parent revalidation must not replace the playing route with a pending UI.
-    await page.route('**/_serverFn/**', async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      await route.continue();
-    });
+    // Slow relay revalidation must preserve the already running frame.
+    relayDelay = 500;
     await page.getByRole('link', { name: 'Open player', exact: true }).click();
     await browserExpect(page).toHaveURL(origin + detail + '/play');
     await continuity();
-    await page.unroute('**/_serverFn/**');
+    relayDelay = 0;
     await page.goBack();
     await browserExpect(page).toHaveURL(origin + detail);
     await continuity();
@@ -373,8 +402,12 @@ test('immersive routes preserve the verified frame and host session across nativ
       await browserExpect(page).toHaveURL(`${origin}/r/${event.id}`);
     }
     // A play URL never bypasses content-address verification, even for an admitted row.
-    await page.route('**/api/artifacts/*', (route) =>
-      route.fulfill({ body: '<script>parent.hacked=true</script>', contentType: 'text/html' }),
+    await page.route(`${storage.url}${hash}`, (route) =>
+      route.fulfill({
+        body: '<script>parent.hacked=true</script>',
+        contentType: 'text/html',
+        headers: { 'access-control-allow-origin': '*' },
+      }),
     );
     await page.goto(origin + detail + '/play');
     await browserExpect(page.getByRole('alert')).toBeVisible();
@@ -388,6 +421,7 @@ test('immersive routes preserve the verified frame and host session across nativ
     const stderr = await logs;
     await stdout;
     if (stderr) console.error(stderr.slice(-3000));
+    storage.stop(true);
     await rm(directory, { recursive: true, force: true });
   }
 }, 90000);

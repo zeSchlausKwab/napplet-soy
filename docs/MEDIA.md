@@ -18,8 +18,8 @@ iframe sandbox or creator SDK change is needed.
 
 The host advertises `media` and accepts **shell-owned audio** sessions. Use
 `media.createSession({ owner: 'shell', source: { url }, metadata, live, autoplay })`;
-`source.url` must be public HTTPS. MP3, WAV and Ogg are identified from stream bytes.
-Actual codec support is determined by the browser. Subscribe to state and capability
+`source.url` must be public HTTPS. The native audio element loads that original
+URL directly; actual MIME/codec support is determined by the browser. Subscribe to state and capability
 updates using the returned canonical session ID, then send play/pause/stop/volume
 commands. IDs are isolated to the originating iframe/account, and client-suggested
 IDs are replaced. Unknown sessions and unsupported commands are ignored.
@@ -53,49 +53,24 @@ uses Chromium touch emulation; physical iOS/Safari acceptance remains outstandin
 Device/browser audio policies can still limit volume or playback.
 
 Destroy, iframe teardown, identity change and preview reload release audio, pending
-requests and proxy tickets. Existing web visibility/offscreen rules still stop the
+requests and native media sources. Existing web visibility/offscreen rules still stop the
 player; this is not a background radio service. Viewport expansion preserves the
 same iframe and audio session. A release/profile change causes discovery to retry
 previously unsupported media creations (`space-playback-2`).
 
-## Streaming boundary
+## Direct streaming boundary
 
-`POST /api/media` accepts only the first-party host, checks the current playable
-manifest (or current local preview revision), validates the source and issues an
-opaque, two-hour ticket. The host audio element reads `GET /api/media?token=…`;
-browser-controlled same-origin fetch metadata is required. `DELETE` cancels streams
-and releases the ticket. The opaque frame receives neither a ticket nor source bytes.
-Admission/moderation is checked again when a stream starts.
+The current source uses the original HTTPS URL in a host-owned audio element.
+The media ticket API and server audio proxy are removed. There are no application
+server stream quotas, byte sniffing workers or ticket expirations on this path.
+Browser media loading handles buffering, codecs, redirects and connection lifetime.
+URLs reject credentials and obvious private-network addresses. Controls, user
+activation, session limits and account teardown remain in the shared host.
 
-On the website, audio creation/deletion and resource requests compare the browser's
-Origin with the configured `SPACE_SITE_ORIGIN`. Caddy terminates HTTPS before its
-internal HTTP connection to Bun; that internal URL must not define the public
-origin. Client-supplied forwarded headers do not grant access. Local soyLI preview
-continues to use its own loopback origin. This correction was found during the
-0.8.1 deployment verification; the CLI's local behavior and distribution are unchanged.
-
-The proxy validates public DNS addresses and pins the actual HTTPS connection,
-including each of at most three redirects. It rejects private/special IPs, HTTP, credentials,
-nonstandard ports and encoded responses; no cookies/authorization headers are
-forwarded. The byte prefix is sniffed before delivery, rejecting HTML and playlists.
-The rest is streamed with backpressure; live streams need not finish downloading.
-Audio is neither executed nor fully buffered/cached on the server.
-
-Limits: 128 MiB or two hours per connection, 15-second connection and 30-second idle
-timeouts; 16 active upstream streams globally, four per manifest, 24 ticket creations
-and 24 stream starts per minute per manifest, eight retained tickets per manifest,
-256 globally. Tickets are removed on host cleanup or expiration. Stream GETs do not
-support ranges. Stop/retry starts a fresh stream; expiry/limits can require a new
-media session. The resource-bytes API retains its existing smaller limits.
-
-The compiled CLI uses Bun's native fetch against a validated IP, preserving the
-original Host header, TLS server name and explicit certificate hostname verification.
-This avoids a sustained-stream stall observed in Bun's Node-compatible HTTPS adapter.
-See [Bun's TLS request options](https://bun.com/reference/globals/BunFetchRequestInitTLS).
-The VPS's Bun 1.3.8 TLS/DNS defect is handled with a streamed real Node worker using
-the same policy, bounds and cancellation. The standalone CLI needs no separate Node
-installation for audio. Web and preview server idle timeouts are 60 seconds, above
-the transport's connection and idle deadlines.
+This transport migration is implemented locally on 2026-09-15 and awaits deployment
+and a new soyLI binary release. The older release evidence below describes the
+previous transport. Installed 0.8.3 binaries keep that bundled implementation until
+upgraded; see [direct protocol access](PROTOCOL-ACCESS.md).
 
 ## Station lookup correction — soyLI 0.8.2
 
@@ -119,7 +94,7 @@ fallback, resolved the real station via its explicit hint and played/paused the
 256 kbps MP3 through its own controls. This verifies station lookup and media
 playback together; the earlier controlled media-only tests did not.
 
-## Verification
+## Earlier release verification
 
 Unit tests cover URL/byte policy, admission, quotas, streaming before EOF, cancellation,
 session ownership/IDs, commands, gesture retries, cross-session focus and teardown.

@@ -104,13 +104,7 @@ export class NappletMedia {
       if (input.owner !== 'shell') throw new Error('unsupported owner mode');
       if (!input.source) throw new Error('missing source');
       const url = resourceUrl(input.source.url);
-      if (
-        url.protocol !== 'https:' ||
-        url.username ||
-        url.password ||
-        url.hash ||
-        (url.port && url.port !== '443')
-      )
+      if (url.protocol !== 'https:' || url.username || url.password || url.hash)
         throw new Error('source blocked');
       if (
         input.metadata?.mediaType === 'video' ||

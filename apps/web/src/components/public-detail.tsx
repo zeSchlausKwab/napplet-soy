@@ -1,4 +1,5 @@
-import { seedCatalog } from '@/lib/protocol-catalog';
+import { useProtocolRefresh } from '@/lib/use-protocol-refresh';
+import { seedCatalog, findManifest } from '@/lib/protocol-catalog';
 import { SourceSection } from './source-section';
 import { LinkedAssets } from './linked-assets';
 import { CreatorLink } from './creator-link';
@@ -19,6 +20,9 @@ import { usePlayRoute } from '@/lib/use-play-route';
 
 export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
   const play = usePlayRoute();
+  const refresh = useProtocolRefresh(napplet.naddr ?? napplet.revisionId, () =>
+    findManifest(napplet.naddr ?? napplet.revisionId),
+  );
   if (typeof window !== 'undefined') seedCatalog([napplet]);
   const store = useEventStore();
   const artifactUrl = (() => {
@@ -48,6 +52,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
             <ArrowLeft size={14} />
             Back to the playground
           </Link>
+          {refresh}
           <div className="detail-heading">
             <div>
               <span className="eyebrow">

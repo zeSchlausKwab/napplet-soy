@@ -1,6 +1,6 @@
 import type { SignedEvent } from '../../../../packages/protocol/src';
 import { ProtocolClient } from '../../../../packages/client/src/nostr';
-import { relayUrl } from '../../../../packages/nostr/src/relay-policy';
+import { readRelayUrl } from '../../../../packages/nostr/src/relay-policy';
 import { resourceUrl } from '../../../../packages/client/src/bytes';
 import defaults from '../../../../packages/nostr/discovery-relays.json';
 export type ClientPolicy = {
@@ -35,7 +35,7 @@ export function validateNetwork(value: { relays: string[]; blossom: string[] }) 
   )
     throw new Error('Choose 1–8 relays and up to 8 Blossom servers.');
   return {
-    relays: [...new Set(value.relays.map((r) => relayUrl(r).href))],
+    relays: [...new Set(value.relays.map((r) => readRelayUrl(r, value.relays, true)))],
     blossom: [
       ...new Set(value.blossom.map((b) => resourceUrl(b, value.blossom).href.replace(/\/$/, ''))),
     ],

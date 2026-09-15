@@ -80,7 +80,7 @@ prove playback. See [the audio contract](MEDIA.md) for exact operations and limi
 Do not substitute direct remote `<audio src>` URLs or loosen the sandbox CSP.
 `resource.bytes` downloads a bounded complete resource; its 10 MiB/20-second limits
 make it unsuitable for an indefinite live radio stream. The new media host instead
-streams through a separate bounded HTTPS proxy, with source policy, user activation,
+streams directly from its original HTTPS URL in the trusted host, with source policy, user activation,
 supported actions, state/errors and lifecycle cleanup shared by CLI and web.
 Refreshing skills or reinstalling the same old CLI does not update runtime support.
 

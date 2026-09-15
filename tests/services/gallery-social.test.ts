@@ -9,6 +9,7 @@ import { IndexStore } from '../../packages/backend/src/index-store';
 import { publicNapplet } from '../../packages/backend/src/public-model';
 import { socialScope, likeTemplate, commentTemplate } from '../../packages/protocol/src/social';
 import { CommunityStore } from '../../packages/community/src/store';
+import { directWallet } from '../fixtures/direct-wallet';
 import fixtures from '../../packages/backend/data/catalog.json';
 
 test('gallery social locks, counts, ranking rails, focused comments and anonymous QR invoices', async () => {
@@ -51,6 +52,7 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
   store.close();
   index.close();
   let rejected = 0;
+  let onPublish: ((event: SignedEvent) => boolean) | undefined;
   const relay = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -69,6 +71,10 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
         } else if (message[0] === 'EVENT') {
           try {
             const e = verifiedEvent(message[1]);
+            if (onPublish && !onPublish(e)) {
+              socket.send(JSON.stringify(['OK', e.id, false, 'Test delivery unavailable']));
+              return;
+            }
             events.set(e.id, e);
             socket.send(JSON.stringify(['OK', e.id, true, '']));
           } catch {
@@ -121,6 +127,16 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
         signEvent: (event: unknown) => (window as any).testSign(event),
       };
     }, getPublicKey(key));
+    const wallet = await directWallet(page, events, key, relayUrl);
+    await page.route('http://localhost:19348/*', async (route) => {
+      const hash = new URL(route.request().url()).pathname.slice(1);
+      const file = Bun.file(join(root, 'packages/backend/data/artifacts', `${hash}.html`));
+      await route.fulfill({
+        contentType: 'text/html',
+        body: Buffer.from(await file.arrayBuffer()),
+        headers: { 'access-control-allow-origin': '*' },
+      });
+    });
     await page.goto(origin);
     const card = page
       .locator('.napplet-grid > .napplet-card')
@@ -150,46 +166,8 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
     await page.getByRole('heading', { name: 'Most zapped', exact: true }).waitFor();
     await page.getByRole('heading', { name: 'Most commented', exact: true }).waitFor();
     expect(await page.locator('.social-rail-liked .napplet-card').count()).toBe(6);
-    const state = await (await fetch(`${origin}/api/gallery-social`)).json();
-    expect(state.counts[fixture.current.id].likeCount).toBe(1);
-    expect(state.counts[fixture.current.id].commentCount).toBe(1);
-    expect(state.rankings.liked).toHaveLength(6);
-    const filter = await (
-      await fetch(`${origin}/api/gallery-social?q=${encodeURIComponent(fixture.title)}`)
-    ).json();
-    expect(filter.rankings.liked.map((n: any) => n.title)).toEqual([fixture.title]);
-    const featured = await (await fetch(`${origin}/api/gallery-social?sort=featured`)).json();
-    expect(featured.rankings.liked).toEqual([]);
-    let invoiceRequests: SignedEvent[] = [];
-    await page.route('**/api/zaps?*', async (route) => {
-      if (route.request().method() === 'POST') {
-        const request = verifiedEvent(route.request().postDataJSON());
-        expect(request.kind).toBe(9734);
-        expect(request.tags).toContainEqual(['e', fixture.current.id]);
-        expect(request.tags).toContainEqual(['p', fixture.pubkey]);
-        expect(request.tags).toContainEqual(['amount', '21000']);
-        invoiceRequests.push(request);
-        return route.fulfill({
-          json: { invoice: 'lnbc1test-only-never-pay', msats: 21000, expiresAt: now + 3600 },
-        });
-      }
-      return route.fulfill({
-        json: {
-          endpoint: {
-            pubkey: fixture.pubkey,
-            lnurl: 'lnurl1fixture',
-            callback: 'https://wallet.example/callback',
-            nostrPubkey: fixture.pubkey,
-            minSendable: 1000,
-            maxSendable: 1000000,
-            commentAllowed: 100,
-          },
-          relays: ['wss://relay.example'],
-          receipts: [],
-          msats: 0,
-        },
-      });
-    });
+    expect(await card.getByRole('button', { name: /^Like .*1 likes/ }).count()).toBe(1);
+    expect(await card.getByRole('button', { name: /^Comment on .*1 comments/ }).count()).toBe(1);
     // Anonymous visitors can create an invoice without touching the installed signer.
     for (let i = 0; i < 2; i++) {
       await card.getByRole('button', { name: /^Zap / }).click();
@@ -201,28 +179,22 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
       );
       expect(
         await page.getByRole('link', { name: 'Open Lightning wallet' }).getAttribute('href'),
-      ).toBe('lightning:lnbc1test-only-never-pay');
+      ).toBe(`lightning:${wallet.invoices[i]}`);
       await page.getByRole('button', { name: 'Close', exact: true }).click();
       await page.getByRole('dialog').waitFor({ state: 'hidden' });
     }
     expect(accountSignatures).toBe(0);
-    expect(invoiceRequests[0].pubkey).not.toBe(fixture.pubkey);
-    expect(invoiceRequests[0].pubkey).not.toBe(invoiceRequests[1].pubkey);
+    expect(wallet.requests[0].pubkey).not.toBe(fixture.pubkey);
+    expect(wallet.requests[0].pubkey).not.toBe(wallet.requests[1].pubkey);
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
     await page.getByRole('button', { name: 'Connect browser extension', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     const attempts: string[] = [];
-    await page.route('**/api/social?*', async (route) => {
-      if (route.request().method() !== 'POST') return route.continue();
-      attempts.push(route.request().postData()!);
-      if (attempts.length === 1)
-        return route.fulfill({
-          status: 502,
-          json: { error: 'Relay acknowledgement unavailable.' },
-        });
-      return route.continue();
-    });
+    onPublish = (event) => {
+      attempts.push(JSON.stringify(event));
+      return attempts.length !== 1;
+    };
     await card.getByRole('button', { name: /^Like / }).click();
     await card.getByRole('button', { name: 'Retry like', exact: true }).waitFor();
     expect(await page.locator('.gallery-pending, .card-social-feedback').count()).toBe(0);
@@ -261,7 +233,7 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
     await page.getByRole('button', { name: 'Create anonymous zap invoice' }).click();
     await page.getByLabel('Lightning invoice', { exact: true }).waitFor();
     expect(accountSignatures).toBe(signedBefore);
-    expect(invoiceRequests[2].pubkey).not.toBe(fixture.pubkey);
+    expect(wallet.requests[2].pubkey).not.toBe(fixture.pubkey);
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     await mkdir(join(root, '.local/gallery-social-check'), { recursive: true });

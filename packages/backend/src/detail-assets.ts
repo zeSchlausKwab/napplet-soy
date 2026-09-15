@@ -98,12 +98,20 @@ export function detailAssets(
       const url = linkedUrl(href);
       if (!url || seen.has(href)) continue;
       seen.add(href);
+      const primary = !assets.some((asset) => asset.kind === kind);
       assets.push({
         kind,
-        title: kind === 'image' ? 'Preview image' : 'Preview clip',
+        title:
+          kind === 'image'
+            ? primary
+              ? 'Preview image'
+              : `Additional image ${++images}`
+            : primary
+              ? 'Preview clip'
+              : `Additional clip ${++videos}`,
         href,
         detail: url.host,
-        ...(kind === 'image' ? { thumbnail: href } : {}),
+        ...(kind === 'image' && primary ? { thumbnail: href } : {}),
       });
     }
   const archives = manifest.tags.filter((tag) => tag[0] === 'source-archive');

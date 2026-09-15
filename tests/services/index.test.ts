@@ -150,7 +150,7 @@ test('native relay → independent index worker → production SSR → sandbox p
       expect(html).toContain('Relay arrival');
       expect(html).toContain('og:image');
     }
-    expect(await (await fetch(`${site}/api/artifacts/${hash}`)).bytes()).toEqual(bytes);
+    expect(await (await fetch(`${origin}/${hash}`)).bytes()).toEqual(bytes);
     const og = await fetch(`${site}/api/og/${current.id}`);
     expect(og.headers.get('content-type')).toBe('image/png');
     expect(og.status).toBe(200);

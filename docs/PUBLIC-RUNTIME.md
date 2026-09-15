@@ -20,14 +20,14 @@ References: [NAP registry and web projection](https://github.com/napplet/naps), 
 | ---------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `shell`    | Handshake and synchronous capability discovery                                                   | One session per frame; no named services                                                                                                                            |
 | `storage`  | String get/set/remove/keys, shared and instance scopes                                           | Shared data persists in this browser per author/address/build/account; instance data lasts for one play session; 256 keys / approximately 1 Mi characters per scope |
-| `identity` | Connected key, user NIP-65 relay preferences, profile, follows, public mute list                      | Guest key is the empty string; extra list projections return explicit errors; no private lists or signer access                                                     |
+| `identity` | Connected key, user NIP-65 relay preferences, profile, follows, public mute list                 | Guest key is the empty string; extra list projections return explicit errors; no private lists or signer access                                                     |
 | `theme`    | Space's current light theme                                                                      | Fixed theme; no user theme settings yet                                                                                                                             |
-| `relay`    | Filtered query and live subscribe/close                                                          | Guarded public WSS reads; signatures checked, duplicates removed, filters reapplied; publishing/encryption denied                                                       |
-| `outbox`   | Query, getEvent, subscriptions, close, resolveRelays                                             | NIP-65 selection and public relay hints under the shared read policy, fallback when needed, partial results marked; publishing denied                                                     |
+| `relay`    | Filtered query and live subscribe/close                                                          | Guarded public WSS reads; signatures checked, duplicates removed, filters reapplied; publishing/encryption denied                                                   |
+| `outbox`   | Query, getEvent, subscriptions, close, resolveRelays                                             | NIP-65 selection and public relay hints under the shared read policy, fallback when needed, partial results marked; publishing denied                               |
 | `common`   | Public NIP-19 encoding/decoding and profile/follows reads                                        | Secret identifiers, nrelay encoding, follow/unfollow/react/report writes denied                                                                                     |
 | `resource` | HTTPS and hash-verified Blossom bytes, ordered bulk responses, cancellation, scheme discovery    | `data:` handled locally by upstream shim; no htree/nostr resolver; raw SVG/HTML/XML denied                                                                          |
 | `link`     | HTTPS links presented in a host-owned confirmation                                               | User clicks to open; no automatic navigation                                                                                                                        |
-| `config`   | Static/runtime schemas, validated settings UI, snapshots/subscriptions, focused settings opening | Browser-local values scoped to author/address/build/account; session-only secrets; see [configuration limits](CONFIGURATION.md). Deployed 2026-09-14 |
+| `config`   | Static/runtime schemas, validated settings UI, snapshots/subscriptions, focused settings opening | Browser-local values scoped to author/address/build/account; session-only secrets; see [configuration limits](CONFIGURATION.md). Deployed 2026-09-14                |
 | `fs`       | Session virtual files: metadata/list/read/write/mkdir/remove/move/watch, save destination picker | 10 MiB aggregate, 256 KiB chunks, 128 entries, 16 watches; device file/directory pickers unsupported                                                                |
 
 `fs.pickSaveFile()` opens a host prompt. After writes complete, files appear below the player with download links. This does not write into the user's filesystem without a download action. Download session files before stopping the player. Virtual paths are restricted to `/files`; they never map to server or device paths.
@@ -43,9 +43,19 @@ Required unsupported domains still gate launch: for example `inc`, `intent`, `ke
 
 The iframe remains `sandbox="allow-scripts"`, with no same-origin grant or raw network access. Inline JavaScript and WebAssembly execute within that boundary. Resources are returned as Blobs, not embedded remote URLs. No resource or napplet code executes on the server.
 
-`POST /api/resources` accepts requests from the first-party host, for a known playable manifest from either catalog source. It rejects opaque/cross-origin callers, credentials, non-HTTPS network URLs, alternate ports and redirects. DNS destinations are checked in the actual connection lookup; private/special IPv4/IPv6 destinations are refused. The endpoint forwards no cookies or authorization headers. MIME is classified from bytes. Unknown binary bytes are permitted only for a verified Blossom digest; active document formats are refused even there.
+The trusted browser host fetches resource bytes directly from the declared URL or
+Blossom server, verifies content-addressed hashes, classifies MIME from bytes, and
+returns Blobs to the opaque iframe. There is no resource HTTP proxy. Requests omit
+cookies/authorization, reject redirects and obvious private-network destinations.
+Only explicitly configured loopback storage is permitted for local development.
+Browser CORS and private-network policies apply; a provider without compatible
+CORS fails visibly rather than triggering a proxy fallback.
 
-Each resource is capped at 10 MiB. The host queues bursts with four simultaneous fetches, at most 16 outstanding envelopes, 60 resource operations/minute and 128 MiB delivered per play session. The larger session budget accommodates the public packaged-loader fixture's ten assets (78 MiB total). The server separately caps eight concurrent fetches globally and four per manifest, with 20-second overall fetch deadlines. Queued cancellation starts no request. There is no persistent server resource cache; upstream shim cache/Blobs belong to the frame and disappear when it is destroyed.
+Each resource is capped at 10 MiB. The host queues bursts with four simultaneous
+fetches, at most 16 outstanding envelopes, 60 operations/minute and 128 MiB per play
+session. Executable HTML is downloaded from Blossom and verified before launch.
+Queued cancellation starts no request. There is no server resource cache on this
+path; shim Blobs belong to the frame and disappear on teardown.
 
 Relay access is through a frame-owned Applesauce pool. Filters, event counts, request concurrency, relay selection and subscription lifetime are bounded. Live subscriptions close after five minutes or 500 accepted events; the napplet receives a closure notification. Stopping/restarting or navigating away destroys the frame session, closes subscriptions and sockets, aborts resources and pending prompts, and revokes download URLs. Account changes preserve the iframe and its single SHELL handshake: old requests are cancelled, subscriptions close, resources abort, prompts/exports clear, and account-scoped storage/files are replaced before `identity.changed` is sent. Late results are suppressed. Shared saves remain available when returning to the same account; instance storage and virtual files start fresh. Napplets must listen to `identity.onChanged` to refresh their own in-memory account state.
 
@@ -140,7 +150,6 @@ TEST_ORIGIN=http://localhost:8080 TEST_PUBLICDEV=1 TEST_LARGE_PUBLIC=1 \
   bunx playwright test tests/browser/public.spec.ts tests/browser/runtime.spec.ts
 ```
 
-
 ## Standalone creator preview
 
 New CLI projects include the same prelude builder, host and resource responder as the website. The browser hash-checks local bytes before injecting `srcdoc`; the opaque iframe has the same CSP and capability set. The host page permits the inline code/WebAssembly required by inherited `srcdoc` policy, while the frame's stricter CSP removes all network access. Save/link confirmations and downloads are host-owned, and browser-extension connection exercises the same identity lifecycle.
@@ -165,37 +174,19 @@ be read through the shared host. Explicit hints take precedence within the eight
 fanout cap; NIP-65 discovery uses at most one third of the query deadline (up to two
 seconds). Discovery and the final query share the caller's total time budget.
 
-The website and soyLI use the same same-origin `/api/relay-read` service. It admits
-a verified playable manifest (or the current compatible local preview revision),
-accepts only bounded Nostr filters, and uses Applesauce without AUTH, signing or
-publication. Public reads require WSS on port 443, no URL credentials/fragments,
-and public IPs checked at DNS resolution. A temporary authenticated loopback CONNECT
-tunnel pins the resolved TCP peer while Bun's native WebSocket validates TLS for the
-original hostname. This avoids Bun's Node HTTPS-upgrade defect without changing TLS
-verification. Each tunnel accepts one destination/connection, disables compression,
-caps incoming wire bytes at 8 MiB and is destroyed on cancellation or deadline.
+The current shared host reads relays directly with Applesauce WebSockets. It checks
+signatures, filters, hints, quotas and deadlines in the trusted browser, without
+AUTH, signing or publication grants to the napplet. No `/api/relay-read` request,
+HTTP streaming bridge or CONNECT tunnel is involved. Operator/project settings
+may explicitly permit literal-loopback WS relays; manifest hints cannot grant
+private-network access. The iframe retains `connect-src 'none'`.
 
-Local preview additionally permits only literal-loopback WS URLs explicitly listed
-in the project's `relays`; this exception is never granted by a website manifest.
-The platform dev script also sets `SPACE_RUNTIME_LOCAL_RELAYS` to its managed
-literal-loopback relay; production leaves this separate operator setting empty.
-Discovery data and napplet manifests cannot set it. The iframe retains `connect-src 'none'`. Private/LAN relays, arbitrary HTTP proxying,
-redirects to other destinations and publishing remain unavailable.
-
-Reads retain signature/filter verification and deduplication. Invalid explicit
-relay URLs produce a policy error; failed or timed-out queries return incomplete
-results, with an error when no events arrived. An empty completed read stays distinct
-from a failed lookup. Live streams survive EOSE and close with the player/account.
-The service allows 64 concurrent relay reads overall, 32 per manifest and 240 starts
-per manifest per minute; each stream is bounded to 8 MiB/2,000 messages and five
-minutes for live subscriptions. The existing host caps still apply. A quiet live
-subscription sends transport heartbeats to avoid idle HTTP timeouts.
-
-Regression coverage includes a hinted station absent from discovery relays through
-the real shared HTTP adapter, forged events, NIP-65 routing, blocked URLs/origins,
-current-revision admission, live EOSE, cancellation and quota recovery. External
-relay availability remains outside the host's control.
-
+Failed or timed-out queries return incomplete results, with an error if no events
+arrived. An empty completed read remains distinct from a failed lookup. Live reads
+survive EOSE and close with the player/account; their existing host event, lifetime
+and concurrency bounds remain. The shared shim regression tests exercise direct
+WebSocket traffic, hinted station lookup, stalled fallback/discovery, cancellation,
+forged events and NIP-65 routing. See [direct protocol access](PROTOCOL-ACCESS.md).
 
 ### Read deadlines — soyLI 0.8.3
 

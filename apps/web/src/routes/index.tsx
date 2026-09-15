@@ -1,4 +1,5 @@
-import { seedCatalog } from '@/lib/protocol-catalog';
+import { useProtocolRefresh } from '@/lib/use-protocol-refresh';
+import { seedCatalog, queryCatalog } from '@/lib/protocol-catalog';
 import {
   createFileRoute,
   Link,
@@ -31,6 +32,7 @@ export const Route = createFileRoute('/')({
 });
 function Gallery() {
   const { ready } = useNostr();
+  const refresh = useProtocolRefresh('gallery', () => queryCatalog());
   const { napplets, topics, total, unavailableCount, status, page, pages, matches, featured } =
     Route.useLoaderData();
   if (typeof window !== 'undefined') seedCatalog(napplets);
@@ -130,6 +132,7 @@ function Gallery() {
         />
       </section>
       <section id="explore" className="explore-section" aria-label="Explore napplets">
+        {refresh}
         <div className="explore-top">
           <div>
             <h2>

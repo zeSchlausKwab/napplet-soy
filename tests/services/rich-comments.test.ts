@@ -39,7 +39,10 @@ test('rich comments use opt-in sandboxed napplets, lazy media, one player and de
     port: 0,
     fetch(req, server) {
       if (server.upgrade(req)) return;
-      return new Response();
+      const hash = new URL(req.url).pathname.slice(1);
+      return new Response(Bun.file(join(root, 'packages/backend/data/artifacts', `${hash}.html`)), {
+        headers: { 'access-control-allow-origin': '*' },
+      });
     },
     websocket: {
       message(socket, raw) {
@@ -65,6 +68,7 @@ test('rich comments use opt-in sandboxed napplets, lazy media, one player and de
       SPACE_SITE_ORIGIN: origin,
       SPACE_COMMUNITY_DIR: join(directory, 'community'),
       SPACE_INDEX_RELAYS: `ws://127.0.0.1:${relay.port}/`,
+      SPACE_INDEX_LOCAL_BLOSSOM: `http://127.0.0.1:${relay.port}`,
       SPACE_PUBLICDEV: '0',
     },
     stdout: 'ignore',
@@ -95,10 +99,10 @@ test('rich comments use opt-in sandboxed napplets, lazy media, one player and de
       .toBuffer();
     const video = await Bun.file(join(root, 'tests/fixtures/preview.webm')).bytes();
     let failImage = false;
-    await page.route('**/api/comment-media/**', (route) => {
+    await page.route('https://media.example/**', (route) => {
       const url = route.request().url();
       mediaRequests.push(url);
-      const image = new URL(url).searchParams.get('part') === '3';
+      const image = new URL(url).pathname.endsWith('.png');
       if (image && failImage)
         return route.fulfill({
           status: 404,
@@ -152,7 +156,7 @@ test('rich comments use opt-in sandboxed napplets, lazy media, one player and de
     await browserExpect
       .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
       .toBe(true);
-    expect(mediaRequests.every((u) => new URL(u).searchParams.get('part') === '3')).toBe(true);
+    expect(mediaRequests.every((u) => new URL(u).pathname.endsWith('.png'))).toBe(true);
     await media.nth(1).getByRole('button', { name: 'Load video', exact: true }).click();
     const clip = media.nth(1).locator('video');
     await browserExpect
@@ -168,6 +172,9 @@ test('rich comments use opt-in sandboxed napplets, lazy media, one player and de
     await browserExpect(page.locator('iframe')).toHaveCount(0);
     await browserExpect(image).toHaveCount(0);
     failImage = true;
+    // Native decoded-image caches may reuse an earlier successful URL. Start a new document
+    // to exercise a fresh failed original URL without adding private cache-busting parameters.
+    await page.reload();
     await media.first().scrollIntoViewIfNeeded();
     await media.first().getByRole('button', { name: 'Retry media', exact: true }).waitFor();
     failImage = false;
@@ -188,11 +195,12 @@ test('rich comments use opt-in sandboxed napplets, lazy media, one player and de
     );
     await page.setViewportSize({ width: 1365, height: 1000 });
     await page.screenshot({ path: '.local/rich-comments/desktop.png' });
-    store.put(scope.key, [finalizeEvent(deletionTemplate([comment]), key)]);
+    events.push(finalizeEvent(deletionTemplate([comment]), key));
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
     await body.getByText('Comment deleted by its author.', { exact: true }).waitFor();
     expect(await body.locator('.comment-attachment').count()).toBe(0);
-    expect(remoteRequests).toEqual([]);
+    expect(remoteRequests).toEqual(mediaRequests);
+    expect(remoteRequests.some((url) => url.endsWith('.webm'))).toBe(true);
     expect(errors).toEqual([]);
   } finally {
     await browser?.close();

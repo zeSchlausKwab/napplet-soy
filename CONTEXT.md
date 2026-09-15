@@ -28,3 +28,14 @@ A set of appearance choices, such as colors and fonts, that a flavor or napplet 
 
 **Host**:
 The trusted environment that loads napplets and mediates their granted capabilities. The host retains authority when the user selects another flavor.
+
+## Direct protocol access — source update, 2026-09-15
+
+The interactive client resolves Nostr data directly through Applesauce and loads
+original media/Blossom URLs. Network settings persist browser-owned relay and
+fallback storage choices. Server APIs remain only for site policy/admin, readable
+name claims, health, generated OG and optional publication-index confirmation.
+SSR loaders keep server implementations; browser navigation/refresh uses direct
+protocol implementations. Shared soyLI preview/remix source follows the same model.
+See docs/PROTOCOL-ACCESS.md for the inventory and bounds. This update has not been
+deployed or bundled into a new CLI release; installed binaries remain 0.8.3.

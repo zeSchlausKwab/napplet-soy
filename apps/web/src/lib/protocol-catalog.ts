@@ -1,4 +1,4 @@
-import { nip19, type Filter } from 'nostr-tools';
+import type { Filter } from 'nostr-tools';
 import {
   decodeAddress,
   encodeAddress,
@@ -7,12 +7,7 @@ import {
 } from '../../../../packages/protocol/src';
 import { validateManifest } from '../../../../packages/protocol/src/manifest';
 import { discoveryTarget } from '../../../../packages/protocol/src/discovery';
-import {
-  appReferences,
-  latestMetadata,
-  descriptorImages,
-} from '../../../../packages/protocol/src/preview';
-import { descriptorVideos } from '../../../../packages/protocol/src/preview-video';
+import { appReferences, latestMetadata } from '../../../../packages/protocol/src/preview';
 import { publicNapplet, type PublicNapplet } from '../../../../packages/backend/src/public-model';
 import { matchesGallery, topicFacets } from '../../../../packages/protocol/src/topics';
 import {
@@ -62,10 +57,6 @@ export async function findManifest(reference: string, hints: string[] = []) {
       identifier: address[3],
     });
   const target = discoveryTarget(reference);
-  if (target.type === 'snapshot') {
-    const cached = manifestCache.get(target.id);
-    if (cached && manifestAllowed(cached)) return cached;
-  }
   const identity = target.type === 'address' ? decodeAddress(target.naddr) : null;
   const filter: Filter = identity
     ? {
@@ -82,14 +73,18 @@ export async function findManifest(reference: string, hints: string[] = []) {
   await validateManifest(result);
   if (!manifestAllowed(result)) return null;
   // NIP-09 deletion requests are authored by the event owner; a later valid release survives.
+  const ownerAddress =
+    result.kind === 5129
+      ? result.tags.find((t) => t[0] === 'a' && t[1]?.split(':')[1] === result.pubkey)?.[1]
+      : `${result.kind}:${result.pubkey}:${result.kind === 15129 ? '' : (result.tags.find((t) => t[0] === 'd')?.[1] ?? '')}`;
   const deletes = await protocolClient().query(
     [
       { kinds: [5], authors: [result.pubkey], '#e': [result.id], limit: 20 },
-      ...(identity
-        ? [{ kinds: [5], authors: [result.pubkey], '#a': [target.key], limit: 20 }]
+      ...(ownerAddress
+        ? [{ kinds: [5], authors: [result.pubkey], '#a': [ownerAddress], limit: 20 }]
         : []),
     ],
-    hints,
+    [...hints, ...target.hints],
   );
   if (
     deletes.some(
@@ -98,7 +93,7 @@ export async function findManifest(reference: string, hints: string[] = []) {
         d.tags.some(
           (t) =>
             (t[0] === 'e' && t[1] === result.id) ||
-            (identity && t[0] === 'a' && t[1] === target.key),
+            (ownerAddress && t[0] === 'a' && t[1] === ownerAddress),
         ),
     )
   )
@@ -117,6 +112,7 @@ export async function hydrateNapplet(event: SignedEvent, hints: string[] = []) {
     n.video = previous.video;
   }
   const metadata: SignedEvent[] = [];
+  let metadataResolved = false;
   await Promise.all(
     appReferences(event).map(async (ref) => {
       try {
@@ -130,6 +126,7 @@ export async function hydrateNapplet(event: SignedEvent, hints: string[] = []) {
                 ref.relay ? [ref.relay] : hints,
               );
         metadataCache.set(key, { at: Date.now(), events: candidates });
+        metadataResolved = true;
         const descriptor = latestMetadata(ref, candidates);
         if (descriptor && manifestAllowed(descriptor)) {
           metadata.push(descriptor);
@@ -147,7 +144,7 @@ export async function hydrateNapplet(event: SignedEvent, hints: string[] = []) {
       }
     }),
   );
-  if (metadata.length) {
+  if (metadataResolved) {
     n.preview = null;
     n.video = null;
   }
@@ -279,14 +276,15 @@ export async function queryCatalog(author?: string) {
   for (const [id, entry] of entries) {
     const e = entry.manifest,
       key = `${e.kind}:${e.pubkey}:${e.kind === 15129 ? '' : e.tags.find((t) => t[0] === 'd')?.[1]}`;
-    if (winners.has(key) && winners.get(key)!.id !== id) entries.delete(id);
+    if (e.kind !== 5129 && (!author || e.pubkey === author) && winners.get(key)?.id !== id)
+      entries.delete(id);
   }
   if (!author) catalogFresh = Date.now();
   return [...entries.values()].filter((n) => manifestEntry(n) && (!author || n.pubkey === author));
 }
 export const availableCatalog = () => [...entries.values()].filter(manifestEntry);
 const manifestEntry = (n: PublicNapplet) => n.manifest.kind !== 5129 && manifestAllowed(n.manifest);
-function featured(n: PublicNapplet) {
+export function featured(n: PublicNapplet) {
   const e = n.manifest,
     address = `${e.kind}:${e.pubkey}:${e.kind === 15129 ? '' : e.tags.find((t) => t[0] === 'd')?.[1]}`;
   return featuredRules().some((r) =>

@@ -79,39 +79,37 @@ their existing signature, permission and receipt rules.
 HTTPS PNG/JPEG/GIF/WebP URLs render as lazy images; WebM/MP4 URLs offer **Load video**
 followed by native playback controls, without autoplay. Optional NIP-92 `imeta`
 can identify extensionless media, alt text and SHA-256, but must match the exact URL
-in the signed content. Images are normalized to static PNG (including the first
-GIF frame), at most 1200×750 and 5 MiB input. Videos have a 20 MiB input limit;
-container signatures are checked and the browser decides codec support. The stricter
+in the signed content. Native browser decoding determines supported image/video formats. There is no
+application-server normalization or media byte limit on this direct display path. The stricter
 silent, short-WebM publication-preview profile is a separate feature.
 
-Media goes through `/api/comment-media/<comment-id>?reference=<root>&part=<index>`;
-it does not expose an arbitrary URL proxy. The server verifies membership, signature,
-author deletion and moderation before fetching and again before returning bytes,
-including on cache hits. Declared digests and content-addressed URL hashes must match.
-The downloader allows public HTTPS only, checks DNS at connection time, refuses
-redirects/private networks and enforces an eight-second deadline. Responses are
-`no-store`, `nosniff` and sandboxed. Videos support bounded ranges and HEAD.
-Per-process limits: four concurrent fetches, 60 attempts/100 MiB reserved per minute,
-128 cache entries/64 MiB, ten-minute success and 30-second failure caching. Images
-and clips release their DOM/decoder resources when offscreen or hidden. Unavailable
-media offers retry and an explicit original link; unsupported formats remain links.
+Media uses the original HTTPS URLs in verified visible comments. Native images
+load lazily; video waits for explicit intent. Membership, signature, deletion and
+site moderation are checked in the browser before rendering the comment. Removing
+or hiding a comment tears down its embeds; there is no comment-media HTTP proxy.
 
 Verification: parser/cache/thread/moderation tests plus
 `bun test tests/services/rich-comments.test.ts`. Browser coverage includes no eager
-execution or foreign media requests, fullscreen session preservation, main-player
+execution or eager media requests, fullscreen session preservation, main-player
 handoff, lazy images, manual video, cleanup, errors, deletion and mobile width.
 
 Likes use [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md) kind 7, with `e`, `p`, `k` and `a` references. Only known verified target manifests contribute, and one actor counts once per creation. Unlike and comment deletion use kind 5, applied only to matching events from the same author. Deleting an older like cannot delete a later like. Deleted comments retain a placeholder for replies.
 
-The server reads and publishes through Applesauce to configured index/discovery relays. Signed events are retained in a bounded SQLite cache: 2,000 rows per thread and 50,000 overall. Finite relay queries retrieve recent comments, reactions, referenced manifests, profiles and deletion markers. Refreshes share a 30-second cache; the UI refresh button retrieves the current view. This is a recent conversation view, not exhaustive historical pagination or a global count. Operator moderation is rechecked on reads and writes, with request-size, timestamp, per-author and global budgets. Production configuration should use the managed relay first.
+The browser reads and publishes through Applesauce to its configured relays. Finite
+queries retrieve comments, reactions, referenced releases, profiles and deletion
+markers. Signed events are verified before reduction and retained in bounded
+browser memory. Site moderation still controls this client's presentation; the
+relays independently enforce publication policy. The UI refresh reads the
+protocol again. This is a recent conversation view, not exhaustive history or a
+global count. Operator defaults put the managed relay first.
 
 Publication needs a positive relay acknowledgement. If an acknowledgement is lost, Retry sends the same signed event ID; it does not sign another comment. Counts change after acknowledgement. Signer cancellation leaves the draft intact. A successful publication is distinct from a later refresh failure. Names and events survive web process restarts when their configured state directory is preserved.
 
 ## Zaps
 
-[NIP-57](https://github.com/nostr-protocol/nips/blob/master/57.md) zaps use the author's latest verified kind-0 `lud16` or `lud06` profile. LNURL endpoints and callbacks are fetched through the existing bounded HTTPS downloader with DNS checks at connection time, private-network rejection and no redirects. Profiles and payment endpoint metadata remain separate from aliases.
+[NIP-57](https://github.com/nostr-protocol/nips/blob/master/57.md) zaps use the author's latest verified kind-0 `lud16` or `lud06` profile. LNURL endpoints and callbacks are fetched directly in the browser with bounded responses, public URL validation and no redirects. Providers must support browser CORS. Profiles and payment endpoint metadata remain separate from aliases.
 
-The creator's Lightning service must advertise `allowsNostr`, a receipt-signing pubkey and valid amount limits. The user chooses sats and signs kind 9734 with their connected account, or with a fresh browser-memory key for an anonymous zap. Anonymous mode is automatic while signed out and optional while signed in; it never invokes the profile signer or persists the temporary key. Only the signed request is sent to the server. This hides the Nostr profile association, not network/payment metadata from the wallet service. That request goes to the LNURL callback, not to a Nostr relay. Before showing the invoice, the server checks its BOLT-11 checksum and signature, exact millisatoshi amount, expiry, and description hash against the serialized signed request sent to the callback. The wallet remains responsible for Lightning feature negotiation, route selection and fees.
+The creator's Lightning service must advertise `allowsNostr`, a receipt-signing pubkey and valid amount limits. The user chooses sats and signs kind 9734 with their connected account, or with a fresh browser-memory key for an anonymous zap. Anonymous mode is automatic while signed out and optional while signed in; it never invokes the profile signer or persists the temporary key. Only the signed request is sent to the Lightning provider. This hides the Nostr profile association, not network/payment metadata from the wallet service. That request goes to the LNURL callback, not to a Nostr relay. Before showing the invoice, the browser checks its BOLT-11 checksum and signature, exact millisatoshi amount, expiry, and description hash against the serialized signed request sent to the callback. The wallet remains responsible for Lightning feature negotiation, route selection and fees.
 
 The invoice offers a locally generated QR code, `lightning:` wallet link and copy control. QR encoding loads lazily in the browser, without a third-party image endpoint. When WebLN is available, **Pay with browser wallet** explicitly enables the wallet and requests payment; invoice creation never pays automatically. Wallet success is labelled as the wallet's report. The total uses kind-9735 receipts verified against the advertised provider, signed request, recipient, target, invoice amount and description; an optional preimage must match the payment hash. Event IDs and payment hashes are deduplicated. A receipt remains the Lightning provider's assertion. Changing providers may make older receipts unverifiable from the current profile.
 
@@ -188,29 +186,23 @@ use the same control. Local browser checks cover these paths and mobile card/rai
 
 Most liked, Most zapped and Most commented are scroll-snap carousels with manual arrows,
 keyboard/touch scrolling and reduced-motion handling. They rank the full matching
-indexed collection, independently of the grid's current page, and obey the same
+relay-discovered collection, independently of the grid's current page, and obey the same
 search/tag, availability, Featured and moderation filters. Zero/unknown entries are
 excluded; ties use newest manifest then event ID. Most zapped ranks by total millisats,
 not number of invoices or receipt events. All card copies coordinate one active player.
 
-`GET /api/gallery-social` serves counts and up to 12 entries per ranking. A single
-rotating web-process job refreshes at most 24 threads per 30-second window with at most
-three concurrent thread refreshes; requests share the existing social-service cache.
-The rotation includes older pages and unavailable entries, keeping future filter
-changes covered. Counts accumulate from the persistent bounded history; cold caches
-fill progressively during visits. The browser polls one endpoint every 30 seconds
-(5 seconds during an active sweep), suspending requests while hidden. An action
-acknowledgement refreshes the counts. There is no per-card browser relay subscription
-and no relay wait in the page's SSR loader.
+The browser queries counts directly over Nostr, processing up to 12 threads per
+sweep with three concurrent readers. It refreshes every thirty seconds (five while
+filling the cache), pauses while hidden and refreshes after acknowledged actions.
+The local cache is bounded and counts are tied to the selected identity. No gallery
+or social REST endpoint participates. Rankings describe the discovered matching
+collection, capped by bounded relay queries; they are not global exhaustive totals.
 
-These are recent, locally observed counts, not exhaustive global totals or a fixed
-calendar-period leaderboard. Zap aggregation reuses the detail receipt validator and
-deduplicates payment hashes. LNURL endpoint lookups are only needed when receipts
-exist, cached for 60 seconds by verified profile revision, and capped in memory;
-failed verification leaves zap totals unknown while likes/comments stay usable.
-Moderation is applied again at read time. Anonymous receipts are verified and counted
-exactly like named receipts. Neither creating an invoice nor a WebLN success message
-increments a total.
+Zap receipts use the same validator as details, including provider signatures,
+invoice description/amount and payment-hash deduplication. LNURL JSON and invoices
+come directly from the author's provider, which must allow browser CORS. Anonymous
+receipts follow the same checks. Invoice creation and WebLN success never increment
+a verified total. See [direct protocol access](PROTOCOL-ACCESS.md).
 
 Gallery signing verifies the selected identity and payload, keeps a failed signed
 like for an exact-event retry, and gates retry on the matching account. Counts and

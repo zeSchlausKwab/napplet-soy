@@ -78,23 +78,29 @@ test.each([
       server = startPreviewServer(pathToFileURL(root + '/'), 0, false, assets);
       const page = await browser.newPage();
       let delivered = false;
-      await page.route('**/api/relay-read', async (route) => {
-        const input = route.request().postDataJSON();
-        if (input.filters[0].kinds?.includes(10002) && !stallPlanning)
-          return route.fulfill({ contentType: 'application/x-ndjson', body: '{"type":"EOSE"}\n' });
-        if (input.relay === 'wss://station.example/' && !empty) {
-          await new Promise((resolve) => setTimeout(resolve, 50));
-          delivered = true;
-          return route.fulfill({
-            contentType: 'application/x-ndjson',
-            body: JSON.stringify({ type: 'EVENT', event: station }) + '\n{"type":"EOSE"}\n',
-          });
-        }
-        // The host must settle and abort this read before the SDK gives up.
-        if (stallFallback) await new Promise((resolve) => setTimeout(resolve, 1200));
-        await route
-          .fulfill({ contentType: 'application/x-ndjson', body: '{"type":"EOSE"}\n' })
-          .catch(() => {});
+      await page.routeWebSocket('wss://**', (socket) => {
+        socket.onMessage(async (raw) => {
+          const message = JSON.parse(String(raw));
+          if (message[0] !== 'REQ') return;
+          const id = message[1],
+            filters = message.slice(2);
+          if (filters[0].kinds?.includes(10002) && !stallPlanning) {
+            socket.send(JSON.stringify(['EOSE', id]));
+            return;
+          }
+          if (socket.url() === 'wss://station.example/' && !empty) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            delivered = true;
+            socket.send(JSON.stringify(['EVENT', id, station]));
+            socket.send(JSON.stringify(['EOSE', id]));
+            return;
+          }
+          // The browser host must settle and unsubscribe before the SDK deadline.
+          if (stallFallback) await new Promise((resolve) => setTimeout(resolve, 1200));
+          try {
+            socket.send(JSON.stringify(['EOSE', id]));
+          } catch {}
+        });
       });
       await page.goto(String(server.url));
       await page.frameLocator('iframe').getByText('Relay deadline fixture').waitFor();

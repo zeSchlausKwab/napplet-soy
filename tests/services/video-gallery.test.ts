@@ -121,8 +121,11 @@ test('gallery clips load on intent, stop offscreen, honor reduced motion and lea
     page.on('pageerror', (e) => errors.push(e.message));
     let videoRequests = 0;
     page.on('request', (req) => {
-      if (req.url().includes('/api/preview-videos/')) videoRequests++;
+      if (req.url() === url) videoRequests++;
     });
+    await page.route(url, (route) =>
+      route.fulfill({ contentType: 'video/webm', body: Buffer.from(bytes) }),
+    );
     await page.goto(origin);
     const cover = page.locator('.napplet-grid .card-cover'),
       video = cover.locator('video');
@@ -149,11 +152,6 @@ test('gallery clips load on intent, stop offscreen, honor reduced motion and lea
       .toBe(true);
     await page.evaluate(() => window.scrollTo(0, 0));
     await browserExpect(video).not.toHaveAttribute('src');
-    const previewResponse = await fetch(`${origin}/api/preview-videos/${current.id}`, {
-      headers: { Range: 'bytes=0-19' },
-    });
-    expect(previewResponse.status).toBe(206);
-    expect(await previewResponse.bytes()).toEqual(bytes.slice(0, 20));
     expect((await fetch(`${origin}/api/og/${current.id}`)).headers.get('content-type')).toContain(
       'image/png',
     );

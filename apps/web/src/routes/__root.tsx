@@ -50,6 +50,9 @@ export const Route = createRootRoute({
   ),
 });
 function Root() {
+  const { clientPolicy } = Route.useRouteContext();
+  // Hydration reuses SSR context without rerunning beforeLoad. Configure before any child reads.
+  if (typeof window !== 'undefined') configureClient(clientPolicy);
   return (
     <html lang="en">
       <head>

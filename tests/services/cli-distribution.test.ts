@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import release from '../../apps/cli/distribution/version.json';
 import { cliDownload } from '../../packages/backend/src/cli-download';
-import { finalizeEvent, generateSecretKey } from 'nostr-tools';
+import { finalizeEvent, generateSecretKey, matchFilters, nip19 } from 'nostr-tools';
 import { sha256 } from '../../packages/protocol/src';
 
 const enabled = process.env.SPACE_TEST_CLI === undefined ? test.skip : test;
@@ -101,7 +101,31 @@ enabled(
     let corrupt = false;
     const html = '<!doctype html><p>Exact remix starting point</p>';
     const hash = await sha256(html);
-    const manifest = finalizeEvent(
+    let manifest: ReturnType<typeof finalizeEvent>;
+    const server = Bun.serve({
+      hostname: '127.0.0.1',
+      port: 0,
+      fetch(request, server) {
+        if (server.upgrade(request)) return;
+        const path = new URL(request.url).pathname;
+        if (path === `/${hash}`) return new Response(html);
+        const [version, name] = new URL(request.url).pathname.split('/').slice(-2);
+        return corrupt && name?.endsWith('.tar.gz')
+          ? new Response('corrupted')
+          : cliDownload(request, version, name);
+      },
+      websocket: {
+        message(socket, raw) {
+          const m = JSON.parse(String(raw));
+          if (m[0] === 'REQ') {
+            if (matchFilters(m.slice(2), manifest))
+              socket.send(JSON.stringify(['EVENT', m[1], manifest]));
+            socket.send(JSON.stringify(['EOSE', m[1]]));
+          }
+        },
+      },
+    });
+    manifest = finalizeEvent(
       {
         kind: 35129,
         created_at: 1,
@@ -110,23 +134,11 @@ enabled(
           ['d', 'original'],
           ['path', '/index.html', hash],
           ['title', 'Original'],
+          ['server', String(server.url).replace(/\/$/, '')],
         ],
       },
       generateSecretKey(),
     );
-    const server = Bun.serve({
-      hostname: '127.0.0.1',
-      port: 0,
-      fetch(request) {
-        const path = new URL(request.url).pathname;
-        if (path === '/api/manifest') return Response.json({ manifest });
-        if (path === `/api/artifacts/${hash}`) return new Response(html);
-        const [version, name] = new URL(request.url).pathname.split('/').slice(-2);
-        return corrupt && name?.endsWith('.tar.gz')
-          ? new Response('corrupted')
-          : cliDownload(request, version, name);
-      },
-    });
     const local = { NAPPLET_DOWNLOAD_BASE: server.url.href.replace(/\/$/, '') };
     try {
       // Simulate an existing managed installation. Upgrading must keep state in place.
@@ -195,7 +207,7 @@ enabled(
           '/bin/sh',
           source,
           'remix',
-          `${server.url}r/${manifest.id}`,
+          nip19.neventEncode({ id: manifest.id, relays: [`ws://127.0.0.1:${server.port}`] }),
           'installed-remix',
           '--network',
           'local',

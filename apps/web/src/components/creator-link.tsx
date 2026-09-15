@@ -1,3 +1,4 @@
+import { nativeMediaUrl } from '../../../../packages/client/src/bytes';
 import { Link } from '@tanstack/react-router';
 import { nip19 } from 'nostr-tools';
 import { useState } from 'react';
@@ -14,7 +15,7 @@ export function ProfileAvatar({
   large?: boolean;
 }) {
   const [failed, setFailed] = useState('');
-  const src = profile?.picture ?? '';
+  const src = nativeMediaUrl(profile?.picture) ?? '';
   return (
     <span className={`profile-avatar${large ? ' profile-avatar-large' : ''}`} aria-hidden="true">
       {src && failed !== src ? (

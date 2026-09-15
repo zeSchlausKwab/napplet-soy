@@ -181,7 +181,7 @@ export class PlaybackNostr {
         )
         .map((t) => {
           try {
-            return readRelayUrl(t[1], this.relays);
+            return readRelayUrl(t[1], this.relays, true);
           } catch {
             return '';
           }
@@ -242,9 +242,9 @@ export class PlaybackNostr {
     const requestTimeout = options.timeoutMs ?? 5000;
     const readBudget = requestTimeout - Math.min(1000, Math.max(25, Math.ceil(requestTimeout / 5)));
     const deadline = Date.now() + readBudget;
-    const hints = (options.relays ?? []).map((r) => readRelayUrl(r, this.relays));
+    const hints = (options.relays ?? []).map((r) => readRelayUrl(r, this.relays, true));
     const explicit = message.relay
-      ? readRelayUrl(z.string().parse(message.relay), this.relays)
+      ? readRelayUrl(z.string().parse(message.relay), this.relays, true)
       : undefined;
     let relays = this.relays;
     let incomplete = false;

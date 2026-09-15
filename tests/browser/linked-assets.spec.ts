@@ -37,6 +37,7 @@ test.beforeAll(async () => {
       SPACE_SITE_ORIGIN: 'http://localhost',
       SPACE_MODERATION_FILE: join(directory, 'policy.json'),
       SPACE_INDEX_DIR: '',
+      SPACE_INDEX_RELAYS: JSON.parse(await readFile(join(directory, 'relay.json'), 'utf8')).url,
       SPACE_INDEX_LOCAL_BLOSSOM: storageOrigin,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -201,6 +202,7 @@ test('independent Nostr and Blossom supply playback, comments, profile and sourc
   const relay = JSON.parse(await readFile(join(directory, 'relay.json'), 'utf8'));
   await context.addInitScript(
     ({ relay, blossom }) => {
+      if (window !== window.top) return;
       localStorage.setItem(
         'napplet:network',
         JSON.stringify({ relays: [relay], blossom: [blossom] }),
@@ -240,4 +242,84 @@ test('independent Nostr and Blossom supply playback, comments, profile and sourc
   expect(wire.some((frame) => frame.includes('"REQ"') && frame.includes('1111'))).toBe(true);
   expect(wire.some((frame) => frame.includes('"EVENT"') || frame.includes('"AUTH"'))).toBe(false);
   expect(forbidden).toEqual([]);
+});
+
+test('an unindexed release loads from chosen infrastructure and an author deletion invalidates cached source', async ({
+  page,
+  context,
+  request,
+}) => {
+  await storageMapping(context);
+  const { finalizeEvent, nip19 } = await import('nostr-tools');
+  const { default: WebSocket } = await import('ws');
+  const relay = JSON.parse(await readFile(join(directory, 'relay.json'), 'utf8'));
+  const original = JSON.parse(await readFile(join(directory, 'fixture.json'), 'utf8'));
+  const key = new Uint8Array(32).fill(8); // Offline fixture identity only.
+  const manifest = finalizeEvent(
+    {
+      kind: 35129,
+      created_at: Math.floor(Date.now() / 1000),
+      content: '',
+      tags: original.manifest.tags
+        .filter((t: string[]) => !['d', 'title'].includes(t[0]))
+        .concat([
+          ['d', 'outside-the-index'],
+          ['title', 'Off-index creation'],
+        ]),
+    },
+    key,
+  );
+  const publish = (event: typeof manifest) =>
+    new Promise<void>((done, fail) => {
+      const socket = new WebSocket(relay.url),
+        timer = setTimeout(() => {
+          socket.close();
+          fail(new Error('Fixture relay timeout'));
+        }, 3000);
+      socket.on('open', () => socket.send(JSON.stringify(['EVENT', event])));
+      socket.on('message', (raw) => {
+        const m = JSON.parse(String(raw));
+        if (m[0] !== 'OK') return;
+        clearTimeout(timer);
+        socket.close();
+        m[2] ? done() : fail(new Error(m[3]));
+      });
+      socket.on('error', fail);
+    });
+  await publish(manifest);
+  await context.addInitScript(
+    ({ relay, blossom }) => {
+      if (window !== window.top) return;
+      localStorage.setItem(
+        'napplet:network',
+        JSON.stringify({ relays: [relay], blossom: [blossom] }),
+      );
+    },
+    { relay: relay.url, blossom: storageOrigin },
+  );
+  const path = `/r/${manifest.id}`;
+  const ssr = await request.get(origin + path);
+  expect(await ssr.text()).not.toContain('Off-index creation');
+  await page.goto(origin + path);
+  await expect(page.getByRole('heading', { name: 'Off-index creation.' })).toBeVisible({
+    timeout: 15000,
+  });
+  await page.locator('.player-cover').click();
+  await expect(page.locator('iframe')).toBeVisible();
+  await page.getByRole('link', { name: 'Browse source' }).click();
+  await expect(page.getByText('# Linked assets fixture', { exact: false }).last()).toBeVisible();
+  await publish(
+    finalizeEvent(
+      {
+        kind: 5,
+        created_at: manifest.created_at + 1,
+        content: '',
+        tags: [['a', `35129:${manifest.pubkey}:outside-the-index`]],
+      },
+      key,
+    ),
+  );
+  // Cached bytes cannot override the new author deletion on the next source lookup.
+  await page.getByRole('link', { name: 'Built HTML', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Nothing orbiting here.' })).toBeVisible();
 });

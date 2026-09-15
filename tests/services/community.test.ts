@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { finalizeEvent, matchFilters, getPublicKey } from 'nostr-tools';
 import { verifiedEvent, type SignedEvent } from '../../packages/protocol/src';
+import { directWallet } from '../fixtures/direct-wallet';
+import { socialScope, socialView } from '../../packages/protocol/src/social';
 import fixtures from '../../packages/backend/data/catalog.json';
 
 test('production SSR, signed named routes and social actions work through a real local WebSocket relay', async () => {
@@ -17,7 +19,9 @@ test('production SSR, signed named routes and social actions work through a real
       [fixture.current.id, fixture.current],
       [fixture.snapshot.id, fixture.snapshot],
     ]);
-  let rejected = 0;
+  let rejected = 0,
+    failRefresh = false;
+  let onPublish: ((event: SignedEvent) => Promise<boolean> | boolean) | undefined;
   const relay = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -26,9 +30,17 @@ test('production SSR, signed named routes and social actions work through a real
       return new Response('relay');
     },
     websocket: {
-      message(socket, raw) {
+      async message(socket, raw) {
         const message = JSON.parse(String(raw));
         if (message[0] === 'REQ') {
+          if (
+            failRefresh &&
+            message.slice(2).some((f: any) => f.kinds?.includes(1111) && f['#A'])
+          ) {
+            failRefresh = false;
+            socket.send(JSON.stringify(['CLOSED', message[1], 'Read unavailable']));
+            return;
+          }
           for (const e of events.values())
             if (matchFilters(message.slice(2), e))
               socket.send(JSON.stringify(['EVENT', message[1], e]));
@@ -36,6 +48,10 @@ test('production SSR, signed named routes and social actions work through a real
         } else if (message[0] === 'EVENT') {
           try {
             const e = verifiedEvent(message[1]);
+            if (onPublish && !(await onPublish(e))) {
+              socket.send(JSON.stringify(['OK', e.id, false, 'Test delivery unavailable']));
+              return;
+            }
             events.set(e.id, e);
             socket.send(JSON.stringify(['OK', e.id, true, '']));
           } catch {
@@ -83,6 +99,7 @@ test('production SSR, signed named routes and social actions work through a real
         signEvent: (event: unknown) => (window as any).testSign(event),
       };
     }, getPublicKey(key));
+    const wallet = await directWallet(page, events, key, relayUrl);
     await page.goto(`${origin}/n/${fixture.naddr}`);
     const headerActions = page.locator('.napplet-social-actions');
     await headerActions.getByRole('button', { name: /^Like / }).waitFor();
@@ -108,23 +125,15 @@ test('production SSR, signed named routes and social actions work through a real
       releasePost = resolve;
     });
     const commentAttempts: string[] = [];
-    let failRefresh = true;
-    await page.route('**/api/social?*', async (route) => {
-      if (route.request().method() === 'POST') {
-        commentAttempts.push(route.request().postData()!);
-        if (commentAttempts.length === 1) {
-          await postGate;
-          return route.fulfill({
-            status: 503,
-            json: { error: 'Relay did not acknowledge the comment.' },
-          });
-        }
-      } else if (commentAttempts.length === 2 && failRefresh) {
-        failRefresh = false;
-        return route.fulfill({ status: 503, json: { error: 'Conversation read failed.' } });
+    onPublish = async (event) => {
+      commentAttempts.push(JSON.stringify(event));
+      if (commentAttempts.length === 1) {
+        await postGate;
+        return false;
       }
-      await route.continue();
-    });
+      failRefresh = true;
+      return true;
+    };
     await page.getByLabel('Leave a little note').fill('Hello from an independent signed event.');
     await page.getByRole('button', { name: 'Post comment', exact: true }).click();
     const publishing = page
@@ -137,7 +146,7 @@ test('production SSR, signed named routes and social actions work through a real
     releasePost();
     const retryComment = page.getByRole('button', { name: 'Retry comment', exact: true });
     await retryComment.waitFor();
-    expect(await retryComment.getAttribute('title')).toContain('Relay did not acknowledge');
+    expect(await retryComment.getAttribute('title')).toContain('No relay acknowledged');
     expect(await page.getByLabel('Leave a little note').inputValue()).toBe(
       'Hello from an independent signed event.',
     );
@@ -147,7 +156,7 @@ test('production SSR, signed named routes and social actions work through a real
     expect(commentAttempts).toHaveLength(2);
     expect(commentAttempts[0]).toBe(commentAttempts[1]);
     expect(await retryComment.count()).toBe(0);
-    await page.unroute('**/api/social?*');
+    onPublish = undefined;
     await page.getByText('Hello from an independent signed event.', { exact: true }).waitFor();
     await headerActions.getByRole('button', { name: /^Like / }).click();
     await page.getByRole('button', { name: '1 like', exact: true }).waitFor();
@@ -161,14 +170,10 @@ test('production SSR, signed named routes and social actions work through a real
     ).toBe('false');
     // Toolbar and discussion share a pending event: retry signs nothing new.
     const attempts: string[] = [];
-    await page.route('**/api/social?*', async (route) => {
-      if (route.request().method() === 'POST') {
-        attempts.push(route.request().postDataJSON().id);
-        if (attempts.length === 1)
-          return route.fulfill({ status: 503, json: { error: 'Test delivery unavailable' } });
-      }
-      await route.continue();
-    });
+    onPublish = (event) => {
+      attempts.push(event.id);
+      return attempts.length !== 1;
+    };
     await headerActions.getByRole('button', { name: /^Like / }).click();
     await page
       .locator('.napplet-social-actions')
@@ -188,7 +193,7 @@ test('production SSR, signed named routes and social actions work through a real
     await page.getByRole('button', { name: '1 like', exact: true }).waitFor();
     expect(attempts).toHaveLength(2);
     expect(attempts[0]).toBe(attempts[1]);
-    await page.unroute('**/api/social?*');
+    onPublish = undefined;
     const commentLike = page.getByRole('button', { name: /^Like comment by/ }).first();
     await commentLike.click();
     await page.waitForFunction(
@@ -217,7 +222,11 @@ test('production SSR, signed named routes and social actions work through a real
       `/r/${fixture.snapshot.id}`,
     );
     await page.keyboard.press('Escape');
-    const state = await (await fetch(`${origin}/api/social?reference=${fixture.naddr}`)).json();
+    const state = socialView(
+      socialScope(fixture.current),
+      [...events.values()],
+      new Map([[fixture.current.id, fixture.current]]),
+    );
     expect(state.likeCount).toBe(1);
     expect(state.comments).toHaveLength(2);
     expect(state.comments[0].deleted).toBe(true);
@@ -225,45 +234,6 @@ test('production SSR, signed named routes and social actions work through a real
     expect([...events.values()].filter((e) => e.kind === 7)).toHaveLength(3);
     expect(rejected).toBe(0);
     // Wallet UI is simulated; no invoice provider or wallet receives a real request.
-    let invoiceRequests = 0;
-    const fakeEndpoint = {
-      pubkey: fixture.pubkey,
-      lnurl: 'lnurl1fixture',
-      callback: 'https://wallet.example/callback',
-      nostrPubkey: fixture.pubkey,
-      minSendable: 1000,
-      maxSendable: 1000000,
-      commentAllowed: 100,
-    };
-    await page.route('**/api/social?*', async (route) => {
-      if (route.request().method() !== 'GET') return route.continue();
-      const response = await route.fetch();
-      const value = await response.json();
-      await route.fulfill({ response, json: { ...value, relays: ['wss://relay.example'] } });
-    });
-    await page.route('**/api/zaps?*', async (route) => {
-      if (route.request().method() === 'POST') {
-        const event = verifiedEvent(route.request().postDataJSON());
-        expect(event.kind).toBe(9734);
-        expect(event.pubkey).toBe(fixture.pubkey);
-        expect(event.tags).toContainEqual(['amount', '21000']);
-        const commentId = new URL(route.request().url()).searchParams.get('comment');
-        if (commentId) {
-          expect(event.tags).toContainEqual(['e', commentId]);
-          expect(event.tags).toContainEqual(['k', '1111']);
-          expect(event.tags.some((t) => t[0] === 'a')).toBe(false);
-        }
-        invoiceRequests++;
-        return route.fulfill({
-          json: {
-            invoice: 'lnbc1test-only-never-pay',
-            msats: 21000,
-            expiresAt: Math.floor(Date.now() / 1000) + 3600,
-          },
-        });
-      }
-      await route.fulfill({ json: { endpoint: fakeEndpoint, receipts: [], msats: 0 } });
-    });
     await page.evaluate(() => {
       (window as any).testPayments = [];
       (window as any).webln = {
@@ -278,23 +248,24 @@ test('production SSR, signed named routes and social actions work through a real
     await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
     await headerActions.getByRole('button', { name: `Zap ${fixture.title}`, exact: true }).click();
     await page.getByLabel('Satoshis', { exact: true }).waitFor();
-    expect(invoiceRequests).toBe(0);
+    expect(wallet.requests.length).toBe(0);
     await page.getByRole('button', { name: 'Create zap invoice', exact: true }).click();
     await page.getByRole('button', { name: 'Pay with browser wallet', exact: true }).waitFor();
-    expect(invoiceRequests).toBe(1);
+    expect(wallet.requests.length).toBe(1);
     expect(await page.evaluate(() => (window as any).testPayments.length)).toBe(0);
     await page.getByRole('button', { name: 'Pay with browser wallet', exact: true }).click();
     await page.getByText(/Your wallet reports payment sent/).waitFor();
-    expect(await page.evaluate(() => (window as any).testPayments)).toEqual([
-      'lnbc1test-only-never-pay',
-    ]);
+    expect(await page.evaluate(() => (window as any).testPayments)).toEqual([wallet.invoices[0]]);
     expect([...events.values()].some((e) => e.kind === 9734)).toBe(false);
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Zap comment', exact: true }).click();
     await page.getByLabel('Satoshis', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Create zap invoice', exact: true }).click();
     await page.getByRole('button', { name: 'Pay with browser wallet', exact: true }).waitFor();
-    expect(invoiceRequests).toBe(2);
+    expect(wallet.requests.length).toBe(2);
+    expect(wallet.requests[0].pubkey).toBe(fixture.pubkey);
+    expect(wallet.requests[1].tags).toContainEqual(['k', '1111']);
+    expect(wallet.requests[1].tags.some((t) => t[0] === 'a')).toBe(false);
     expect(await page.evaluate(() => (window as any).testPayments.length)).toBe(1);
     await page.keyboard.press('Escape');
     await mkdir(join(root, '.local/community-check'), { recursive: true });

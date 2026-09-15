@@ -86,6 +86,8 @@ export async function publicNapplet(
     video: null,
   };
 }
+export const hasPublicPreview = (entry: PublicNapplet) =>
+  !!entry.preview || linkedMedia(entry.manifest, entry.metadata ?? []).images.length > 0;
 export const publicPoster = (entry: PublicNapplet) =>
   entry.preview
     ? entry.preview.url

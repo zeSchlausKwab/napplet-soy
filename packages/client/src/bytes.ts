@@ -89,3 +89,12 @@ export async function blossomBytes(
     'No configured Blossom server returned the verified file. Check its URL and CORS support.',
   );
 }
+
+/** Native media may fail independently; never turn an unsafe URL into a proxy request. */
+export function nativeMediaUrl(value?: string | null) {
+  try {
+    return value ? resourceUrl(value).href : undefined;
+  } catch {
+    return undefined;
+  }
+}

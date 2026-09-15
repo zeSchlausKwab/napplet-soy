@@ -12,12 +12,12 @@ export function relayUrl(value: string) {
     throw new Error('Invalid relay URL');
   return url;
 }
-export function publicRelayUrl(value: string) {
+export function publicRelayUrl(value: string, browser = false) {
   const url = relayUrl(value);
   const host = url.hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '');
   if (
     url.protocol !== 'wss:' ||
-    (url.port && url.port !== '443') ||
+    (!browser && url.port && url.port !== '443') ||
     (ipaddr.isValid(host)
       ? ipaddr.process(host).range() !== 'unicast'
       : !host.includes('.') || /\.(localhost|local|internal|home|test|invalid)$/.test(host))
@@ -32,9 +32,9 @@ export function loopbackRelayUrl(value: string) {
     throw new Error('Relay is not allowed by host policy');
   return url.href;
 }
-export function readRelayUrl(value: string, configured: string[] = []) {
+export function readRelayUrl(value: string, configured: string[] = [], browser = false) {
   try {
-    return publicRelayUrl(value);
+    return publicRelayUrl(value, browser);
   } catch {
     const local = loopbackRelayUrl(value);
     if (

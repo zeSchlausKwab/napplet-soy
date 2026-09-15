@@ -4,7 +4,7 @@ Release `20260915084016730-23084` (2026-09-15) includes the short-video presenta
 and serves soyLI 0.7.0 with recording support. All four CLI downloads were uploaded
 before installer activation. See the [release evidence](DEPLOYMENT.md#rich-comments-and-soyli-070-release--2026-09-15).
 
-Implemented 2026-09-12. Catalog refresh follows standard manifest `app` references through Applesauce, verifies the linked signed metadata, and caches a normalized image. The gallery and player use that image; the existing 1200 × 630 OG card incorporates it. The catalog never executes downloaded napplets to generate previews, and page/image requests perform no remote metadata or image fetches.
+The browser follows standard manifest `app` references through Applesauce and displays the published image/video URLs. Server indexing may also cache a normalized image for SSR/OG generation; that cache is optional for browser presentation. No catalog executes downloaded napplets to generate previews. See [direct protocol access](PROTOCOL-ACCESS.md) for the current transport, implemented locally on 2026-09-15 and awaiting deployment.
 
 ## Supported metadata
 
@@ -21,7 +21,7 @@ Across linked descriptors, screenshots take priority over application pictures, 
 
 Preview metadata cannot override the manifest's title, identity, paths, artifact hash, or required capabilities. Missing or unusable previews leave the same napplet in the catalog with the generated poster. A descriptor is addressable, so even a pinned playable snapshot can receive updated presentation metadata on a later refresh; its executable bytes remain pinned.
 
-## Fetching and caching
+## Optional server indexing and OG cache
 
 Descriptor queries use the configured discovery relays plus valid public WSS relay hints, capped at twelve destinations. Queries are exact author/kind/identifier filters, with a separate profile lookup only for the NIP-89 fallback. There is no publication, signing, AUTH response, or recursive descriptor traversal.
 
@@ -43,7 +43,7 @@ PORT=3020 bun run dev:prod publicdev --refresh
 
 The latest public relay refresh found 93 manifests and no `app` references, so those entries still display generated cards. This does not establish that every public napplet lacks metadata. There are no invented previews or synthetic events inserted into the normal public catalog.
 
-Signed offline fixtures verify descriptor selection, profile fallback, corrupt metadata and images, wrong hashes, unsafe URLs, image limits, cache reuse, generated fallback, and unchanged playback. An isolated browser-test catalog demonstrates the image in the gallery, player, and SSR OG metadata, verifies actual playback, and checks that the browser requests no third-party images. The metadata transport was also checked against a live NIP-89 descriptor on `relay.primal.net`; that descriptor is not added to the gallery.
+Signed offline fixtures verify descriptor selection, profile fallback, corrupt metadata and images, wrong hashes, unsafe URLs, image limits, cache reuse, generated fallback, and unchanged playback. An isolated browser-test catalog demonstrates the image in the gallery, player, and SSR OG metadata, verifies actual playback, and checks that the browser requests the original image URL. The metadata transport was also checked against a live NIP-89 descriptor on `relay.primal.net`; that descriptor is not added to the gallery.
 
 ```sh
 bun run check
@@ -54,7 +54,6 @@ bunx playwright test tests/browser/previews.spec.ts
 Validation: 57 unit/integration tests, type checking, production build/startup, and five Chromium preview/public/runtime checks passed. The optional 78 MiB packaged-loader test was not repeated in this pass. No VPS deployment was performed.
 
 The browser fixture is local test data with a public test key. It must never be published. The creator publisher now emits these same `app` conventions.
-
 
 ## Creator capture and publication (2026-09-14)
 
@@ -183,9 +182,11 @@ Video indexing allows two concurrent jobs and reserves at most 20 MiB per refres
 with a 5-second per-download timeout under the existing metadata deadline. The
 persistent index keeps image/video cache data within its shared 256 MiB cap;
 public-dev keeps current/previous refresh clips. Cache version is now
-`app-descriptors-2`. Serving rechecks metadata, hash and container properties;
-`/api/preview-videos/<manifest-id>` supports GET/HEAD and single byte ranges, with
-moderation checks, `nosniff` and no request-time remote fetch.
+`app-descriptors-2`. These limits describe publishing and the optional server cache.
+The browser reads the signed clip URL directly; native codec/range support comes
+from the browser and storage provider. The former preview-video API is removed.
+Blossom serves native audio/video documents with `media-src 'self'` while retaining
+its sandbox, so opening an original media link can actually play it.
 
 Gallery clips have no `src` until mouse hover or an explicit **Preview clip** click.
 Only one clip plays at a time, silently; leaving the card, scrolling it out of view,
@@ -198,12 +199,11 @@ Local evidence: real recording and stale-build check; signed publication interru
 and resumed with identical clip bytes/events; metadata/cache/range rejection tests;
 Chromium listing review, gallery lifecycle/reduced-motion, and static OG checks.
 
-
 ## Linked assets on detail pages
 
 Deployed in website release `20260915171125013-66174` (2026-09-15), with soyLI 0.8.3 unchanged.
 The single napplet page lists available linked assets immediately below the player:
-its cached preview image, cached WebM clip, additional image/icon or WebM links in
+its published preview image, WebM clip, additional image/icon or WebM links in
 the selected supported app descriptors, and its pinned source archive. The same
 presentation applies to every publisher and hides when there are no attachments
 or while the player is immersive.

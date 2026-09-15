@@ -1,7 +1,7 @@
 import { browseProtocol, lookupProtocol, directSource, featuredProtocol } from './protocol-catalog';
 import { sourceBrowser } from '../../../../packages/backend/src/source';
 import { sourceInput } from '../../../../packages/client/src/source';
-import { createServerFn, createIsomorphicFn } from '@tanstack/react-start';
+import { createServerFn, createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { gallerySearchSchema } from '../../../../packages/protocol/src';
 import { gallery, resolveNapplet } from '../../../../packages/backend/src/catalog';
@@ -24,12 +24,14 @@ const lookupSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('address'), naddr: z.string().max(4096) }),
   z.object({ type: z.literal('snapshot'), id: z.string().regex(/^[a-f0-9]{64}$/) }),
 ]);
-export const getGallery = createServerFn({ method: 'GET' })
-  .validator(gallerySearchSchema)
-  .handler(({ data }) => gallery(data));
-const getBrowseGallerySSR = createServerFn({ method: 'GET' })
-  .validator(gallerySearchSchema)
-  .handler(({ data }) => browseGallery(data));
+type Options<T> = { data: T };
+const getGallerySSR = createServerOnlyFn(({ data }: Options<z.input<typeof gallerySearchSchema>>) =>
+  gallery(gallerySearchSchema.parse(data)),
+);
+const getBrowseGallerySSR = createServerOnlyFn(
+  ({ data }: Options<z.input<typeof gallerySearchSchema>>) =>
+    browseGallery(gallerySearchSchema.parse(data)),
+);
 async function lookupNapplet(data: z.infer<typeof lookupSchema>) {
   if (data.type === 'named' && data.creator !== '@space-lab') {
     if (!process.env.SPACE_COMMUNITY_DIR) return null;
@@ -64,12 +66,12 @@ async function lookupNapplet(data: z.infer<typeof lookupSchema>) {
       }
     : null;
 }
-const getNappletSSR = createServerFn({ method: 'GET' })
-  .validator(lookupSchema)
-  .handler(({ data }) => lookupNapplet(data));
-const getDiscoveredNappletSSR = createServerFn({ method: 'GET' })
-  .validator(lookupSchema)
-  .handler(async ({ data }) => {
+const getNappletSSR = createServerOnlyFn(({ data }: Options<z.input<typeof lookupSchema>>) =>
+  lookupNapplet(lookupSchema.parse(data)),
+);
+const getDiscoveredNappletSSR = createServerOnlyFn(
+  async (options: Options<z.input<typeof lookupSchema>>) => {
+    const data = lookupSchema.parse(options.data);
     let napplet = await lookupNapplet(data);
     const result = (state: string | null, message?: string) => ({
       napplet,
@@ -126,23 +128,36 @@ const getDiscoveredNappletSSR = createServerFn({ method: 'GET' })
     } finally {
       queue.close();
     }
-  });
-const getSourceSSR = createServerFn({ method: 'GET' })
-  .validator(sourceInput)
-  .handler(({ data }) => sourceBrowser.view(data));
-const getReadmeSSR = createServerFn({ method: 'GET' })
-  .validator(z.string().regex(/^[a-f0-9]{64}$/))
-  .handler(({ data }) => sourceBrowser.readme(data));
+  },
+);
+const getSourceSSR = createServerOnlyFn(({ data }: Options<z.input<typeof sourceInput>>) =>
+  sourceBrowser.view(sourceInput.parse(data)),
+);
+const getReadmeSSR = createServerOnlyFn(({ data }: Options<string>) =>
+  sourceBrowser.readme(
+    z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(data),
+  ),
+);
 
 export const getCreatorNames = createServerFn({ method: 'GET' })
   .validator(z.string().regex(/^@[a-z0-9-]{1,32}$/))
-  .handler(({ data }) =>
-    process.env.SPACE_COMMUNITY_DIR
+  .handler(async ({ data }) => {
+    if (data === '@space-lab')
+      return (await gallery({ q: '', tag: '', sort: 'new' })).map((n) => ({
+        handle: 'space-lab',
+        slug: n.slug,
+        pubkey: n.pubkey,
+        naddr: n.naddr,
+      }));
+    return process.env.SPACE_COMMUNITY_DIR
       ? communityStore().creator(data.slice(1)).filter(visibleAlias)
-      : [],
-  );
+      : [];
+  });
 
-const getFeaturedGallerySSR = createServerFn({ method: 'GET' }).handler(async () => {
+const getFeaturedGallerySSR = createServerOnlyFn(async () => {
   const { featuredGallery } = await import('../../../../packages/backend/src/featured');
   return featuredGallery();
 });
@@ -158,7 +173,6 @@ export const getNapplet = createIsomorphicFn()
     const data = lookupSchema.parse(options.data);
     // Readable names belong to this site. Resolve only that mapping on the server.
     if (data.type === 'named') {
-      if (data.creator === '@space-lab') return getNappletSSR(options);
       const aliases = await getCreatorNames({ data: data.creator });
       const alias = aliases.find((a) => a.slug === data.slug);
       return alias ? lookupProtocol({ type: 'address', naddr: alias.naddr }) : null;
@@ -187,3 +201,13 @@ export const getReadme = createIsomorphicFn()
 export const getFeaturedGallery = createIsomorphicFn()
   .server(getFeaturedGallerySSR)
   .client(featuredProtocol);
+
+export const getGallery = createIsomorphicFn()
+  .server(getGallerySSR)
+  .client(async () => {
+    const aliases = await getCreatorNames({ data: '@space-lab' });
+    const values = await Promise.all(
+      aliases.map((a) => lookupProtocol({ type: 'address', naddr: a.naddr })),
+    );
+    return values.filter((n): n is NonNullable<typeof n> => !!n);
+  });

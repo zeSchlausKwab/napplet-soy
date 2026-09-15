@@ -1,9 +1,9 @@
 import { test, expect } from 'bun:test';
 import { chromium } from '@playwright/test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { finalizeEvent, getPublicKey } from 'nostr-tools';
+import { finalizeEvent, getPublicKey, matchFilters } from 'nostr-tools';
 import { aggregateHash, sha256 } from '../../packages/protocol/src';
 import { DiscoveryQueue } from '../../packages/backend/src/discovery-queue';
 import { IndexStore } from '../../packages/backend/src/index-store';
@@ -42,11 +42,24 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
   const blossom = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch(request) {
+    fetch(request, server) {
+      if (server.upgrade(request)) return;
+      if (new URL(request.url).pathname === `/${artifactHash}`)
+        return new Response(html, { headers: { 'access-control-allow-origin': '*' } });
       if (new URL(request.url).pathname !== `/${archiveHash}`)
         return new Response('missing', { status: 404 });
       reads++;
-      return new Response(tar);
+      return new Response(tar, { headers: { 'access-control-allow-origin': '*' } });
+    },
+    websocket: {
+      message(socket, raw) {
+        const m = JSON.parse(String(raw));
+        if (m[0] === 'REQ') {
+          for (const e of [event, noArchive])
+            if (matchFilters(m.slice(2), e)) socket.send(JSON.stringify(['EVENT', m[1], e]));
+          socket.send(JSON.stringify(['EOSE', m[1]]));
+        }
+      },
     },
   });
   const key = new Uint8Array(32);
@@ -54,6 +67,7 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
   const tags = [
     ['d', 'source-browser'],
     ['title', 'Little source world'],
+    ['server', String(blossom.url).replace(/\/$/, '')],
     ['path', '/index.html', artifactHash],
     ['x', await aggregateHash([{ path: '/index.html', hash: artifactHash }]), 'aggregate'],
   ];
@@ -98,6 +112,7 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
       HOST: '127.0.0.1',
       PORT: String(port),
       SPACE_SITE_ORIGIN: origin,
+      SPACE_INDEX_RELAYS: `ws://127.0.0.1:${blossom.port}/`,
       SPACE_INDEX_DIR: join(directory, 'index'),
       SPACE_INDEX_LOCAL_BLOSSOM: String(blossom.url),
       SPACE_PUBLICDEV: '0',
@@ -171,16 +186,13 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
     await page.reload();
     await page.getByLabel('Source code for src/main.ts').waitFor();
     expect(permalink).toContain(event.id);
-    const download = await fetch(
-      origin +
-        (await page.getByRole('link', { name: 'Download src/main.ts' }).getAttribute('href')),
-    );
-    expect(download.headers.get('content-disposition')).toContain('attachment');
-    expect(download.headers.get('content-type')).toBe('application/octet-stream');
-    expect(download.headers.get('x-content-type-options')).toBe('nosniff');
-    expect(await download.text()).toBe(code);
+    const downloaded = page.waitForEvent('download');
+    await page.getByRole('link', { name: 'Download src/main.ts' }).click();
+    const download = await downloaded;
+    expect(download.suggestedFilename()).toBe('main.ts');
+    expect(await readFile((await download.path())!, 'utf8')).toBe(code);
     const archive = await fetch(
-      origin + (await page.getByRole('link', { name: 'Download archive' }).getAttribute('href')),
+      (await page.getByRole('link', { name: 'Download archive' }).getAttribute('href'))!,
     );
     expect(await sha256(new Uint8Array(await archive.arrayBuffer()))).toBe(archiveHash);
     await page.screenshot({ path: '/tmp/napplet-source-desktop.png', fullPage: true });
@@ -204,9 +216,9 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
     await page.getByRole('heading', { name: 'A little too big for this view.' }).waitFor();
     await page.goto(origin + path + '?file=does-not-exist');
     await page.getByRole('heading', { name: 'File not found.' }).waitFor();
-    expect((await fetch(`${origin}/api/source?revision=${event.id}&file=../secret`)).status).toBe(
-      404,
-    );
+    await page.goto(`${origin}${path}?file=../secret`);
+    await page.getByRole('heading', { name: 'File not found.' }).waitFor();
+    expect(await page.locator('.source-reader pre').count()).toBe(0);
     await page.goto(`${origin}/r/${noArchive.id}/source`);
     await page
       .getByText('The author has not attached a pinned source archive to this release.', {
@@ -235,7 +247,8 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
     await page.goto(origin + path);
     await page.getByLabel('Source code for README.md').waitFor();
     expect(await page.locator('iframe').count()).toBe(0);
-    expect(reads).toBe(1);
+    expect(reads).toBeGreaterThanOrEqual(2); // SSR and browser verify their own bytes.
+    expect(reads).toBeLessThanOrEqual(5); // File navigation reuses the verified browser archive.
     const blockedPolicy = await Bun.file(policy).json();
     blockedPolicy.revision++;
     blockedPolicy.rules.push({
@@ -246,7 +259,6 @@ test('source browser: pinned tree, safe highlighting, downloads, fallbacks, mode
       at: 1,
     });
     await Bun.write(policy, JSON.stringify(blockedPolicy));
-    expect((await fetch(`${origin}/api/source?revision=${event.id}&archive=1`)).status).toBe(404);
     expect((await fetch(origin + path)).status).toBe(404);
     expect(errors).toEqual([]);
   } finally {

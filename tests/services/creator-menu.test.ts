@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCommand } from '../../apps/web/src/lib/creator-commands';
 import fixtures from '../../packages/backend/data/catalog.json';
-import { socialScope } from '../../packages/protocol/src/social';
+import { matchFilters } from 'nostr-tools';
 
 test('one creator guide retains CLI information and identity opens at its header trigger', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'soy-creator-menu-'));
@@ -15,6 +15,7 @@ test('one creator guide retains CLI information and identity opens at its header
       HOST: '127.0.0.1',
       PORT: '0',
       SPACE_PUBLICDEV: '0',
+      SPACE_INDEX_RELAYS: 'wss://relay.example',
       SPACE_COMMUNITY_DIR: join(directory, 'community'),
     },
     stdout: 'pipe',
@@ -128,18 +129,14 @@ test('one creator guide retains CLI information and identity opens at its header
       await page.screenshot({ path: `.local/creator-menu/menu-${width}.png` });
       await page.keyboard.press('Escape');
     }
-    await page.route('**/api/social?*', (route) =>
-      route.fulfill({
-        json: {
-          scope: socialScope(fixtures[0].current),
-          manifest: fixtures[0].current,
-          relays: [],
-          comments: [],
-          likes: [],
-          likeCount: 0,
-          profiles: {},
-          lastActions: {},
-        },
+    await page.routeWebSocket('wss://**', (socket) =>
+      socket.onMessage((raw) => {
+        const m = JSON.parse(String(raw));
+        if (m[0] === 'REQ') {
+          for (const e of [fixtures[0].current, fixtures[0].snapshot])
+            if (matchFilters(m.slice(2), e)) socket.send(JSON.stringify(['EVENT', m[1], e]));
+          socket.send(JSON.stringify(['EOSE', m[1]]));
+        }
       }),
     );
     await page.goto(`${origin}/n/${fixtures[0].naddr}`);

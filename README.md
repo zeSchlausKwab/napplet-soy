@@ -184,3 +184,8 @@ pending deployment: [Nostr profiles](docs/PROFILES.md) and
 [genealogy](docs/REMIXING.md#genealogy-on-napplet-pages). Creator labels open portable
 `/p/<npub>` pages; connected authors can edit their optional kind-0 profile.
 The deployed website includes a [pinned original-source browser](docs/REMIXING.md#browsing-a-releases-original-files); its release status is recorded in [deployment history](docs/DEPLOYMENT.md).
+
+Browser relay and fallback Blossom defaults can be overridden under **Network settings**
+in the footer. Interactive protocol data and files go directly to those providers;
+SSR and OG rendering retain their server cache. See [direct protocol access and the
+remaining site APIs](docs/PROTOCOL-ACCESS.md).

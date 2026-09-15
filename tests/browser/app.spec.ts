@@ -96,12 +96,18 @@ test('plays only on request; opaque sandbox blocks host access and network', asy
 });
 
 test('tampered artifact is never executed', async ({ page }) => {
-  await page.route('**/api/artifacts/*', (route) =>
-    route.fulfill({ body: '<script>parent.hacked=true</script>', contentType: 'text/plain' }),
+  await page.route(
+    (url) => /\/[a-f0-9]{64}$/.test(url.pathname),
+    (route) =>
+      route.fulfill({
+        body: '<script>parent.hacked=true</script>',
+        contentType: 'text/plain',
+        headers: { 'access-control-allow-origin': '*' },
+      }),
   );
   await page.goto('/@space-lab/blob-friend');
   await page.getByRole('button', { name: 'Start Blob friend' }).click();
-  await expect(page.getByRole('alert')).toContainText('does not match its expected hash');
+  await expect(page.getByRole('alert')).toContainText('verified file');
   await expect(page.locator('iframe')).toHaveCount(0);
 });
 
@@ -120,8 +126,10 @@ test('portable and pinned source routes resolve; unknown addresses return 404', 
   await page.getByRole('link', { name: 'Built HTML', exact: true }).click();
   await expect(page.locator('pre')).toContainText('<canvas');
   await expect(page.locator('iframe')).toHaveCount(0);
-  const artifact = await request.get(`/api/artifacts/${n.artifactHash}`);
-  expect(artifact.headers()['content-type']).toContain('text/plain');
+  const artifact = await request.get(
+    `${n.current.tags.find((t) => t[0] === 'server')![1]}/${n.artifactHash}`,
+  );
+  expect(await artifact.text()).toContain('<canvas');
   expect((await request.get('/n/not-a-real-address')).status()).toBe(404);
   expect((await request.get('/@nobody/missing')).status()).toBe(404);
 });

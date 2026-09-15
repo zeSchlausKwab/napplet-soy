@@ -8,12 +8,57 @@ import { readRelayUrl } from '../../nostr/src/relay-policy';
 /** A browser-owned, signer-free store; all wire events are verified before ingestion. */
 export class ProtocolClient {
   readonly store = new EventStore();
-  private retained = new Set<string>();
+  private retained = new Map<string, number>();
+  private retainedBytes = 0;
+  private connections = new Map<
+    string,
+    { pool: RelayPool; users: number; timer?: ReturnType<typeof setTimeout> }
+  >();
+  private connection(url: string) {
+    let entry = this.connections.get(url);
+    if (!entry) {
+      if (this.connections.size >= 24) {
+        const idle = [...this.connections].find(([, e]) => !e.users);
+        if (!idle) throw new Error('Relay connections are busy. Retry shortly.');
+        clearTimeout(idle[1].timer);
+        idle[1].pool.close();
+        this.connections.delete(idle[0]);
+      }
+      entry = { pool: new RelayPool(), users: 0 };
+      this.connections.set(url, entry);
+    }
+    clearTimeout(entry.timer);
+    entry.users++;
+    const current = entry;
+    return {
+      pool: current.pool,
+      release: () => {
+        if (--current.users || this.connections.get(url) !== current) return;
+        current.timer = setTimeout(() => {
+          current.pool.close();
+          this.connections.delete(url);
+        }, 10000);
+        (current.timer as any).unref?.();
+      },
+    };
+  }
+  close() {
+    for (const entry of this.connections.values()) {
+      clearTimeout(entry.timer);
+      entry.pool.close();
+    }
+    this.connections.clear();
+  }
   private remember(event: SignedEvent) {
     this.store.add(event);
-    this.retained.add(event.id);
-    while (this.retained.size > 8000) {
-      const id = this.retained.values().next().value!;
+    if (!this.retained.has(event.id)) {
+      const bytes = JSON.stringify(event).length * 2;
+      this.retained.set(event.id, bytes);
+      this.retainedBytes += bytes;
+    }
+    while (this.retained.size > 8000 || this.retainedBytes > 16 * 1024 ** 2) {
+      const id = this.retained.keys().next().value!;
+      this.retainedBytes -= this.retained.get(id)!;
       this.store.remove(id);
       this.retained.delete(id);
     }
@@ -33,7 +78,7 @@ export class ProtocolClient {
     const relays = [...new Set([...hints, ...this.relays()])]
       .flatMap((value) => {
         try {
-          return [readRelayUrl(value, this.relays())];
+          return [readRelayUrl(value, this.relays(), true)];
         } catch {
           return [];
         }
@@ -43,8 +88,10 @@ export class ProtocolClient {
     let completed = 0;
     await Promise.all(
       relays.map(async (relay) => {
-        const pool = new RelayPool();
+        let connection: ReturnType<ProtocolClient['connection']> | undefined;
         try {
+          connection = this.connection(relay);
+          const pool = connection.pool;
           await new Promise<void>((resolve) => {
             if (signal.aborted) {
               resolve();
@@ -84,7 +131,7 @@ export class ProtocolClient {
             subscription.add(() => signal.removeEventListener('abort', abort));
           });
         } finally {
-          pool.close();
+          connection?.release();
         }
       }),
     );
@@ -99,21 +146,27 @@ export class ProtocolClient {
     const relays = [...new Set([...this.relays(), ...hints])]
       .flatMap((value) => {
         try {
-          return [readRelayUrl(value, this.relays())];
+          return [readRelayUrl(value, this.relays(), true)];
         } catch {
           return [];
         }
       })
       .slice(0, 8);
-    const pool = new RelayPool();
-    try {
-      const results = await pool.publish(relays, event, { timeout: 6000, retries: false });
-      if (!results.some((r) => r.ok))
-        throw new Error('No relay acknowledged the event. Retry sends the same signed event.');
-      this.seed([event]);
-      return results.filter((r) => r.ok).map((r) => r.from);
-    } finally {
-      pool.close();
-    }
+    const results = (
+      await Promise.all(
+        relays.map(async (relay) => {
+          const connection = this.connection(relay);
+          try {
+            return await connection.pool.publish([relay], event, { timeout: 6000, retries: false });
+          } finally {
+            connection.release();
+          }
+        }),
+      )
+    ).flat();
+    if (!results.some((r) => r.ok))
+      throw new Error('No relay acknowledged the event. Retry sends the same signed event.');
+    this.seed([event]);
+    return results.filter((r) => r.ok).map((r) => r.from);
   }
 }

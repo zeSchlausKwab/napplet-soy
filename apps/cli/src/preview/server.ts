@@ -82,7 +82,7 @@ export function startPreviewServer(
     port,
     async fetch(request) {
       const url = new URL(request.url);
-      // Loopback binding and Host/Origin checks also apply to the resource proxy.
+      // Restrict local build files and capture actions to this preview origin.
       if (
         !['127.0.0.1', 'localhost'].includes(url.hostname) ||
         (request.headers.has('Origin') && request.headers.get('Origin') !== url.origin)

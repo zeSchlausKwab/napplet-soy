@@ -5,7 +5,7 @@ import { socialScope, socialView, rootComment } from '../../../../packages/proto
 import { latestProfile, profileView } from '../../../../packages/protocol/src/profile';
 import { resolveZapEndpoint, zapTotals } from '../../../../packages/client/src/zaps';
 import { protocolClient, network, manifestAllowed } from './network';
-import { queryCatalog, availableCatalog } from './protocol-catalog';
+import { queryCatalog, availableCatalog, featured } from './protocol-catalog';
 import { matchesGallery } from '../../../../packages/protocol/src/topics';
 import type {
   GallerySocialData,
@@ -78,7 +78,12 @@ export async function readSocial(
     .sort((a, b) => b.created_at - a.created_at)
     .slice(0, 2000);
   history.set(scope.key, events);
-  while (history.size > 128) history.delete(history.keys().next().value!);
+  let bytes = [...history.values()].reduce((n, values) => n + JSON.stringify(values).length * 2, 0);
+  while (history.size > 1 && (history.size > 32 || bytes > 24 * 1024 ** 2)) {
+    const key = history.keys().next().value!;
+    bytes -= JSON.stringify(history.get(key)).length * 2;
+    history.delete(key);
+  }
   const profiles = Object.fromEntries(
     authors.map((key) => [key, profileView(key, latestProfile(events, key))]),
   );
@@ -100,11 +105,20 @@ export async function readSocial(
 export async function publishSocial(event: SignedEvent, relays: string[]) {
   const accepted = await protocolClient().publish(event, relays);
   // Acknowledged events survive relays' eventual read visibility.
-  for (const [key, events] of history)
-    history.set(key, [...events.filter((e) => e.id !== event.id), event].slice(-2000));
+  for (const [key, events] of history) {
+    const ids = new Set(events.map((e) => e.id));
+    if (
+      event.tags.some(
+        (t) =>
+          (['a', 'A'].includes(t[0]) && t[1] === key) ||
+          (['e', 'E'].includes(t[0]) && (t[1] === key || ids.has(t[1]))),
+      )
+    )
+      history.set(key, [...events.filter((e) => e.id !== event.id), event].slice(-2000));
+  }
   return accepted;
 }
-const counts = new Map<string, SocialCounts>();
+const counts = new Map<string, Omit<SocialCounts, 'liked'> & { likes: string[] }>();
 let cursor = 0;
 export async function gallerySocial(
   search: GallerySearch,
@@ -112,7 +126,10 @@ export async function gallerySocial(
   signal?: AbortSignal,
 ): Promise<GallerySocialData> {
   const entries = (availableCatalog().length ? availableCatalog() : await queryCatalog()).filter(
-    (n) => matchesGallery(n, search) && (search.unavailable || n.availability === 'ready'),
+    (n) =>
+      matchesGallery(n, search) &&
+      (search.sort !== 'featured' || featured(n)) &&
+      (search.unavailable || n.availability === 'ready'),
   );
   const batch = Array.from(
     { length: Math.min(12, entries.length) },
@@ -133,7 +150,7 @@ export async function gallerySocial(
           } catch {}
           counts.set(n.revisionId, {
             likeCount: data.likeCount,
-            liked: !!viewer && data.likes.some((e) => e.pubkey === viewer),
+            likes: data.likes.map((e) => e.pubkey),
             commentCount: data.comments.filter((e) => !e.deleted).length,
             zapCount: total?.zapCount ?? null,
             msats: total?.msats ?? null,
@@ -144,6 +161,7 @@ export async function gallerySocial(
       }
     }),
   );
+  while (counts.size > 1000) counts.delete(counts.keys().next().value!);
   const rank = (field: 'likeCount' | 'commentCount' | 'msats') =>
     entries
       .filter((n) => (counts.get(n.revisionId)?.[field] ?? 0) > 0)
@@ -155,7 +173,17 @@ export async function gallerySocial(
   return {
     counts: Object.fromEntries(
       entries.flatMap((n) =>
-        counts.has(n.revisionId) ? [[n.revisionId, counts.get(n.revisionId)!]] : [],
+        counts.has(n.revisionId)
+          ? [
+              [
+                n.revisionId,
+                {
+                  ...counts.get(n.revisionId)!,
+                  liked: !!viewer && counts.get(n.revisionId)!.likes.includes(viewer),
+                },
+              ],
+            ]
+          : [],
       ),
     ),
     rankings: { liked: rank('likeCount'), commented: rank('commentCount'), zapped: rank('msats') },

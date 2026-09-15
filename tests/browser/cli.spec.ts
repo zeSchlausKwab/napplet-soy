@@ -22,7 +22,16 @@ test.beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'space-cli-browser-'));
   execFileSync(
     'bun',
-    [fileURLToPath(new URL('../../apps/cli/src/index.ts', import.meta.url)), 'new', 'experiment', '--template', 'soft-orbit', '--identity', 'later', '--no-install'],
+    [
+      fileURLToPath(new URL('../../apps/cli/src/index.ts', import.meta.url)),
+      'new',
+      'experiment',
+      '--template',
+      'soft-orbit',
+      '--identity',
+      'later',
+      '--no-install',
+    ],
     { cwd: root },
   );
   project = join(root, 'experiment');
@@ -202,12 +211,12 @@ test('CLI reloads edited source, gates required capabilities and rejects tampere
   await writeFile(join(project, 'napplet.json'), JSON.stringify({ ...config, requires: ['cvm'] }));
   await expect(page.getByRole('status')).toContainText('Unsupported required capabilities: cvm');
   await expect(page.locator('iframe')).toHaveCount(0);
-  await page.route('**/api/artifacts/*', (route) =>
+  await page.route('**/artifacts/*', (route) =>
     route.fulfill({ body: '<script>parent.postMessage("unverified", "*")</script>' }),
   );
   await writeFile(join(project, 'napplet.json'), JSON.stringify(config));
   await expect(page.getByRole('status')).toContainText('hash');
   await expect(page.locator('iframe')).toHaveCount(0);
-  await page.unroute('**/api/artifacts/*');
+  await page.unroute('**/artifacts/*');
   await expect(page.frameLocator('iframe').locator('#check')).toHaveText('before:false after:true');
 });

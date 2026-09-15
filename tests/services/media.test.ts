@@ -63,13 +63,13 @@ test('the real shim plays audio in CLI preview, retries a denied gesture and cle
       };
       (window as any).nostr = { getPublicKey: async () => 'b'.repeat(64) };
     });
-    await page.route('**/api/media*', async (route) => {
-      const method = route.request().method();
-      if (method === 'POST')
-        return route.fulfill({ json: { url: `/api/media?token=${crypto.randomUUID()}` } });
-      if (method === 'DELETE') return route.fulfill({ status: 204 });
-      return route.fulfill({ contentType: 'audio/wav', body: wav() });
-    });
+    await page.route('https://audio.example/fixture.wav', (route) =>
+      route.fulfill({
+        contentType: 'audio/wav',
+        body: wav(),
+        headers: { 'access-control-allow-origin': '*' },
+      }),
+    );
     await page.goto(String(server.url));
     await page.frameLocator('iframe').getByText('Media fixture').waitFor();
     const frame = page.frames().find((f) => f.parentFrame())!;

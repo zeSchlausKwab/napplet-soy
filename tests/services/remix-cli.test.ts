@@ -2,7 +2,7 @@ import { test, expect } from 'bun:test';
 import { mkdtemp, mkdir, cp, rm, symlink, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { finalizeEvent, generateSecretKey } from 'nostr-tools';
+import { finalizeEvent, generateSecretKey, matchFilters, nip19 } from 'nostr-tools';
 import { sha256 } from '../../packages/protocol/src';
 test('compiled standalone CLI remixes a pinned manifest through its installed symlink without Bun or account setup', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'space-remix-binary-')),
@@ -12,14 +12,32 @@ test('compiled standalone CLI remixes a pinned manifest through its installed sy
     const bundle = join(directory, 'distribution'),
       binary = join(bundle, 'napplet-space');
     await mkdir(join(bundle, 'lib'), { recursive: true });
-    const build = await Bun.build({
-      entrypoints: [join(root, 'apps/cli/src/index.ts')],
-      target: 'bun',
-      minify: true,
-      define: { NAPPLET_STANDALONE: 'true', NAPPLET_CLI_VERSION: '"test"' },
-      compile: { outfile: binary, autoloadDotenv: false, autoloadBunfig: false },
-    });
-    expect(build.success).toBe(true);
+    // Compile in a fresh runtime, matching the release build isolation. Bun's in-process
+    // test bundler can reuse stale resolver state for JSON dependencies.
+    const build = Bun.spawn(
+      [
+        process.execPath,
+        'build',
+        join(root, 'apps/cli/src/index.ts'),
+        '--compile',
+        '--minify',
+        '--define',
+        'NAPPLET_STANDALONE=true',
+        '--define',
+        'NAPPLET_CLI_VERSION="test"',
+        '--no-compile-autoload-dotenv',
+        '--no-compile-autoload-bunfig',
+        '--outfile',
+        binary,
+      ],
+      { cwd: root, stdout: 'pipe', stderr: 'pipe' },
+    );
+    const [buildCode, buildOut, buildError] = await Promise.all([
+      build.exited,
+      new Response(build.stdout).text(),
+      new Response(build.stderr).text(),
+    ]);
+    expect(buildCode, buildOut + buildError).toBe(0);
     await cp(dirname(Bun.resolveSync('ws/package.json', root)), join(bundle, 'lib/ws'), {
       recursive: true,
       dereference: true,
@@ -30,7 +48,28 @@ test('compiled standalone CLI remixes a pinned manifest through its installed sy
         '<!doctype html><title>Original</title><p>Exact starting point.</p>',
       ),
       hash = await sha256(html);
-    const manifest = finalizeEvent(
+    let manifest: ReturnType<typeof finalizeEvent>;
+    server = Bun.serve({
+      hostname: '127.0.0.1',
+      port: 0,
+      fetch(request, server) {
+        if (server.upgrade(request, { data: undefined })) return;
+        return new URL(request.url).pathname === `/${hash}`
+          ? new Response(html)
+          : new Response('missing', { status: 404 });
+      },
+      websocket: {
+        message(socket, raw) {
+          const m = JSON.parse(String(raw));
+          if (m[0] === 'REQ') {
+            if (matchFilters(m.slice(2), manifest))
+              socket.send(JSON.stringify(['EVENT', m[1], manifest]));
+            socket.send(JSON.stringify(['EOSE', m[1]]));
+          }
+        },
+      },
+    });
+    manifest = finalizeEvent(
       {
         kind: 35129,
         created_at: 1,
@@ -39,23 +78,16 @@ test('compiled standalone CLI remixes a pinned manifest through its installed sy
           ['d', 'original'],
           ['path', '/index.html', hash],
           ['title', 'Original'],
+          ['server', String(server.url).replace(/\/$/, '')],
         ],
       },
       generateSecretKey(),
     );
-    server = Bun.serve({
-      hostname: '127.0.0.1',
-      port: 0,
-      fetch: (request) =>
-        new URL(request.url).pathname === '/api/manifest'
-          ? Response.json({ manifest })
-          : new Response(html),
-    });
     const child = Bun.spawn(
       [
         link,
         'remix',
-        `${server.url}r/${manifest.id}`,
+        nip19.neventEncode({ id: manifest.id, relays: [`ws://127.0.0.1:${server.port}`] }),
         'remixed',
         '--network',
         'local',

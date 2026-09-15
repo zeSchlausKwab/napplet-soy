@@ -87,7 +87,10 @@ test('portable profiles, SSR/OG, pagination, kind-0 editing, remembered names an
     port: 0,
     fetch(request, server) {
       if (server.upgrade(request)) return;
-      return new Response('relay');
+      return new Response(
+        Bun.file(join(root, 'packages/backend/data/artifacts', `${fixtures[0].artifactHash}.html`)),
+        { headers: { 'access-control-allow-origin': '*' } },
+      );
     },
     websocket: {
       message(socket, raw) {
@@ -126,6 +129,7 @@ test('portable profiles, SSR/OG, pagination, kind-0 editing, remembered names an
       SPACE_INDEX_DIR: join(directory, 'index'),
       SPACE_COMMUNITY_DIR: join(directory, 'community'),
       SPACE_INDEX_RELAYS: `ws://127.0.0.1:${relay.port}`,
+      SPACE_INDEX_LOCAL_BLOSSOM: `http://127.0.0.1:${relay.port}`,
       SPACE_PUBLICDEV: '0',
     },
     stdout: 'ignore',
@@ -219,7 +223,10 @@ test('portable profiles, SSR/OG, pagination, kind-0 editing, remembered names an
     const child = await publicNapplet(creations[2]);
     await page.goto(`${origin}/n/${child.naddr}`);
     await browserExpect(page.getByRole('heading', { name: 'The family tree' })).toBeVisible();
-    await browserExpect(page.locator('.genealogy-tree li')).toHaveCount(3);
+    await browserExpect(
+      page.locator('.genealogy-tree li'),
+      await page.locator('.genealogy-section').innerText(),
+    ).toHaveCount(3);
     expect(await page.locator('.genealogy-tree h3').allTextContents()).toEqual([
       'Soft orbit original',
       'Soft orbit remix',
@@ -231,19 +238,25 @@ test('portable profiles, SSR/OG, pagination, kind-0 editing, remembered names an
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.locator('.genealogy-section').scrollIntoViewIfNeeded();
     await page.screenshot({ path: join(root, '.local/genealogy-desktop.png') });
-    // A public kind-0 picture cannot turn our image proxy into a private-network fetcher.
+    // Direct profile images still reject private-network destinations.
     const unsafe = finalizeEvent(
       {
         kind: 0,
-        created_at: now + 2,
+        created_at: Math.floor(Date.now() / 1000) + 1,
         tags: [],
         content: JSON.stringify({ name: 'Unsafe picture', picture: 'https://127.0.0.1/private' }),
       },
       key,
     );
     events.set(unsafe.id, unsafe);
-    await fetch(`${origin}/api/profile?pubkey=${pubkey}&edit=1`);
-    expect((await fetch(`${origin}/api/profile-image?pubkey=${pubkey}`)).status).toBe(404);
+    const privateRequests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().startsWith('https://127.0.0.1')) privateRequests.push(request.url());
+    });
+    await page.goto(`${origin}/p/${pubkey}`);
+    await page.getByRole('heading', { name: 'Unsafe picture.' }).waitFor();
+    expect(await page.locator('.profile-avatar img').count()).toBe(0);
+    expect(privateRequests).toEqual([]);
     // A creator without a kind-0 profile can publish one without claiming a site handle.
     const newKey = new Uint8Array(32);
     newKey[31] = 2;

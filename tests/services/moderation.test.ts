@@ -4,7 +4,7 @@ import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PrivateKeySigner } from 'applesauce-signers/signers/private-key-signer';
-import { nip19, type EventTemplate } from 'nostr-tools';
+import { nip19, matchFilters, type EventTemplate } from 'nostr-tools';
 import { initializePolicy } from '../../packages/moderation/src/policy';
 import { IndexStore } from '../../packages/backend/src/index-store';
 import { publicNapplet } from '../../packages/backend/src/public-model';
@@ -37,6 +37,29 @@ test('featured hero, ordered admin curation, membership and remembered extension
   const probe = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: () => new Response() });
   const port = probe.port!;
   await probe.stop(true);
+  const storage = Bun.serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    fetch(request, server) {
+      if (server.upgrade(request)) return;
+      const hash = new URL(request.url).pathname.slice(1);
+      if (!/^[a-f0-9]{64}$/.test(hash)) return new Response('', { status: 404 });
+      return new Response(Bun.file(join(root, 'packages/backend/data/artifacts', `${hash}.html`)), {
+        headers: { 'access-control-allow-origin': '*' },
+      });
+    },
+    websocket: {
+      message(socket, raw) {
+        const m = JSON.parse(String(raw));
+        if (m[0] === 'REQ') {
+          for (const n of fixtures)
+            for (const e of [n.current, n.snapshot])
+              if (matchFilters(m.slice(2), e)) socket.send(JSON.stringify(['EVENT', m[1], e]));
+          socket.send(JSON.stringify(['EOSE', m[1]]));
+        }
+      },
+    },
+  });
   const origin = `http://127.0.0.1:${port}`;
   const server = Bun.spawn([process.execPath, 'apps/web/server.ts'], {
     cwd: root,
@@ -49,6 +72,8 @@ test('featured hero, ordered admin curation, membership and remembered extension
       SPACE_ADMIN_PUBKEYS: pubkey,
       SPACE_INDEX_DIR: join(directory, 'index'),
       SPACE_COMMUNITY_DIR: join(directory, 'community'),
+      SPACE_INDEX_RELAYS: `ws://127.0.0.1:${storage.port}`,
+      SPACE_INDEX_LOCAL_BLOSSOM: String(storage.url),
       SPACE_PUBLICDEV: '0',
     },
     stdout: 'ignore',
@@ -263,7 +288,7 @@ test('featured hero, ordered admin curation, membership and remembered extension
       .getByRole('link', { name: `Explore featured napplet: ${fixtures[0].title}` })
       .waitFor();
     expect(await hero.getByRole('button', { name: 'Next featured napplet' }).count()).toBe(0);
-    expect((await fetch(`${origin}/api/artifacts/${fixtures[1].artifactHash}`)).status).toBe(404);
+    expect((await fetch(`${origin}/n/${fixtures[1].naddr}`)).status).toBe(404);
     // Another administrator can grant/revoke membership while this page stays open.
     async function membership(action: 'admin-add' | 'admin-remove') {
       const { revision } = await Bun.file(policy).json();
@@ -379,6 +404,7 @@ test('featured hero, ordered admin curation, membership and remembered extension
     await browser?.close();
     server.kill();
     await server.exited;
+    storage.stop(true);
     await rm(directory, { recursive: true, force: true });
   }
 }, 90000);

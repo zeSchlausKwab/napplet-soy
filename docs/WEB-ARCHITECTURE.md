@@ -18,14 +18,14 @@ Bun serves as the package manager and intended JavaScript runtime; Vite supplies
 
 The creator template's Vite build is a separate decision: upstream napplet tooling already supplies a Vite plugin and single-file artifact workflow. Website framework changes do not require changing creator templates. Neither Bun nor Vite is required in the browser to play a published HTML artifact.
 
-| Surface | Initial request | After hydration |
-| --- | --- | --- |
-| Gallery, categories, creator pages | Render the first page of public metadata and posters on the server | Filter, paginate, restore scroll, update counts |
+| Surface                                | Initial request                                                                                                | After hydration                                                                      |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Gallery, categories, creator pages     | Render the first page of public metadata and posters on the server                                             | Filter, paginate, restore scroll, update counts                                      |
 | Named napplet and Nostr-address routes | Render title, description, creator, poster, source/remix links, initial public discussion, Open Graph metadata | Verify release/artifact, start the player on selection, enable signed social actions |
-| Pinned release | Render metadata for that exact snapshot | Execute only that snapshot's verified artifact |
-| Source and remix views | Render accessible source text/lineage summaries | Navigate files or load further results |
-| Settings and signer controls | Render a neutral page shell; authenticate any protected server reads | Connect browser signer and load private state |
-| About and creation instructions | Optional build-time prerendering | Minimal interaction |
+| Pinned release                         | Render metadata for that exact snapshot                                                                        | Execute only that snapshot's verified artifact                                       |
+| Source and remix views                 | Render accessible source text/lineage summaries                                                                | Navigate files or load further results                                               |
+| Settings and signer controls           | Render a neutral page shell; authenticate any protected server reads                                           | Connect browser signer and load private state                                        |
+| About and creation instructions        | Optional build-time prerendering                                                                               | Minimal interaction                                                                  |
 
 SSR renders the surrounding site. Napplet HTML is never imported, evaluated, or inserted as executable content into the server render. Its runtime is a browser-only module mounted after hydration and artifact verification. Credentials and browser APIs must not appear in server-render imports.
 
@@ -42,33 +42,33 @@ A06 and the About route are deployed in `20260914192251320-98168` on 2026-09-14.
 
 ## 2. Bun server and application boundaries
 
-One `apps/web` deployment handles SSR, route data, and `/api/v1/*` resource endpoints. This refines the original proposal's separate `apps/api`: start with one web service and a separately running worker. Put shared backend operations in `packages/backend` so workers and server handlers can call them without HTTP requests to our own web server.
+One `apps/web` deployment handles SSR and site-owned administration, aliases, health and share-image endpoints. Protocol entities load over Nostr and Blossom directly in the browser. Shared backend operations in `packages/backend` support SSR and workers without HTTP requests to our own server. The retained HTTP surfaces are listed in [PROTOCOL-ACCESS.md](PROTOCOL-ACCESS.md).
 
-Start documents Bun deployment with React 19 or newer, including a native Bun server alternative. The implementation uses Vite's emitted Fetch-style Start server entry behind `apps/web/server.ts`; it does not require Nitro. The production build, SSR, server-function navigation, artifacts, and route status codes have browser coverage. PM2 launches the Bun executable directly because its Bun interpreter wrapper uses `require()`, which cannot load this server's top-level await. Caddy owns TLS on the VPS. Broader streaming/cancellation and proxy behavior still need coverage. [Start hosting](https://tanstack.com/start/latest/docs/framework/react/guide/hosting).
+Start documents Bun deployment with React 19 or newer, including a native Bun server alternative. The implementation uses Vite's emitted Fetch-style Start server entry behind `apps/web/server.ts`; it does not require Nitro. The production build, SSR, direct protocol navigation, verified artifacts, and route status codes have browser coverage. PM2 launches the Bun executable directly because its Bun interpreter wrapper uses `require()`, which cannot load this server's top-level await. Caddy owns TLS on the VPS. Direct relay cancellation and native media playback have isolated regression coverage. [Start hosting](https://tanstack.com/start/latest/docs/framework/react/guide/hosting).
 
 Do not silently use Node in local development and Bun in production. If the chosen versions cannot support the integration reliably, record and review that constraint before selecting a consistent alternative runtime for both environments.
 
-Route loaders call a server function or API boundary that resolves identifiers and queries validated SQLite projections (see [INDEXING.md](INDEXING.md) for the single-VPS decision replacing the earlier Postgres proposal). TanStack route loaders can run in the browser as well as during SSR; never import database access or secrets into a universal loader. Server-side handlers and workers call shared backend operations directly. These reads do not open a fresh set of relay connections or download the executable on every request. Workers perform discovery and verification asynchronously. Unknown Nostr identifiers can enqueue bounded resolution work and return an explicit pending/unavailable state; they must not turn a page request into an unbounded remote lookup. A database/service outage is not a fabricated 404.
+Isomorphic route loaders resolve identifiers from validated SQLite projections during SSR and query Nostr directly in the browser. SSR implementations use server-only functions, so they do not expose a second set of protocol RPC endpoints. Database access and secrets stay in the server bundle. Workers perform discovery and verification asynchronously for the initial HTML and OG previews; an unknown portable identifier can also resolve directly in the browser without waiting for indexing. Readable alias mappings and site policy remain server functions because this website owns that state. A database/service outage is not a fabricated 404. See [INDEXING.md](INDEXING.md) for the server index's persistence model.
 
 ## 3. Route map
 
-| URL | Meaning |
-| --- | --- |
-| `/` | Gallery; filters in query parameters, e.g. `?sort=new&tag=game` |
-| `/create` | Combined creator/soyLI guide, templates, installation, skills and downloads |
-| `/cli` | Permanent redirect to `/create`; `/cli/download/…` continues serving releases |
-| `/@alice` | Creator's site profile |
-| `/@alice/plasma-pet` | Human-readable napplet page, following its current release |
-| `/@alice/plasma-pet/source` | Source for the selected current release |
-| `/@alice/plasma-pet/remixes` | Remix lineage and descendants |
-| `/n/<naddr>` | Portable identity route, following its current release |
-| `/n/<naddr>/source` | Equivalent source view without a site handle |
-| `/r/<snapshot-event-id>` | Exact immutable release |
-| `/r/<snapshot-event-id>/source` | Exact source revision of that release |
-| `/n/<naddr>/play`, `/r/<event-id>/play`, `/@alice/plasma-pet/play` | Immersive presentation of the same identity/release; deployed 2026-09-14 |
-| `/settings` | Creator/account preferences |
-| `/about` | Server-rendered guide, stack and resources; deployed 2026-09-14 |
-| `/api/v1/*` | CLI/public data/status and authenticated account endpoints |
+| URL                                                                | Meaning                                                                       |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `/`                                                                | Gallery; filters in query parameters, e.g. `?sort=new&tag=game`               |
+| `/create`                                                          | Combined creator/soyLI guide, templates, installation, skills and downloads   |
+| `/cli`                                                             | Permanent redirect to `/create`; `/cli/download/…` continues serving releases |
+| `/@alice`                                                          | Creator's site profile                                                        |
+| `/@alice/plasma-pet`                                               | Human-readable napplet page, following its current release                    |
+| `/@alice/plasma-pet/source`                                        | Source for the selected current release                                       |
+| `/@alice/plasma-pet/remixes`                                       | Remix lineage and descendants                                                 |
+| `/n/<naddr>`                                                       | Portable identity route, following its current release                        |
+| `/n/<naddr>/source`                                                | Equivalent source view without a site handle                                  |
+| `/r/<snapshot-event-id>`                                           | Exact immutable release                                                       |
+| `/r/<snapshot-event-id>/source`                                    | Exact source revision of that release                                         |
+| `/n/<naddr>/play`, `/r/<event-id>/play`, `/@alice/plasma-pet/play` | Immersive presentation of the same identity/release; deployed 2026-09-14      |
+| `/settings`                                                        | Creator/account preferences                                                   |
+| `/about`                                                           | Server-rendered guide, stack and resources; deployed 2026-09-14               |
+| `/api/v1/*`                                                        | CLI/public data/status and authenticated account endpoints                    |
 
 These are ordinary path routes, with no hash router. Direct requests and refreshes go through the same resolver and return proper HTTP status codes. TanStack Router handles subsequent navigation and route loading.
 
@@ -147,3 +147,11 @@ Apply these components to the gallery, player controls, dialogs, menus, creation
 - Hydration creates no duplicate player, subscriptions, or identity-dependent mismatch.
 - A malicious napplet cannot execute during SSR, metadata prefetch, or a feed render.
 - Fullscreen, source navigation, Back, and returning to the gallery preserve intended player/scroll behavior.
+
+## Direct protocol transport (2026-09-15 source update)
+
+TanStack server loaders provide initial HTML and crawler metadata. Browser loader
+implementations use Applesauce relay queries and original Blossom/provider URLs,
+including on first-load refresh. Site moderation, names, curation, health and OG
+generation remain server-owned. See [the route inventory and boundaries](PROTOCOL-ACCESS.md).
+This source update is not yet deployed and does not replace installed soyLI binaries.

@@ -7,7 +7,9 @@ profile updates are signed by the selected account and published directly to
 relays; retries retain the same signed event.
 
 **Network settings** in the footer opens `/network`. Relay and fallback Blossom
-URLs are saved in this browser. Operator defaults come from the server's relay
+URLs are saved in this browser. Public HTTPS/WSS infrastructure may use custom
+ports; plaintext access is limited to explicitly configured loopback development
+services. Operator defaults come from the server's relay
 configuration. Manifest `server` tags and valid runtime relay hints remain useful
 across clients; they do not require registration in Napplet's index.
 
@@ -59,9 +61,10 @@ preview image, preview video and zap routes are removed.
 
 TanStack loaders retain server implementations for HTML rendering and link-preview
 crawlers. Their browser implementations query protocols directly instead of
-calling the corresponding server functions. Site policy/defaults, readable alias
-mappings, About repository links and the historical local starter collection are
-site-owned loader exceptions. Featured records are resolved from the site's
+calling corresponding server functions. SSR-only protocol loaders are not exported
+as callable HTTP server functions. Site policy/defaults, readable alias
+mappings (including historical starter aliases) and About repository links are
+site-owned loader exceptions. Starter manifests also resolve over Nostr. Featured records are resolved from the site's
 selection over Nostr in the browser.
 
 SSR and generated OG images may use the server index and normalized image cache.
@@ -88,3 +91,15 @@ archive downloads, and audio lifetime/gesture behavior. Browser coverage uses an
 independent relay and actual Blossom service while refusing removed protocol API
 paths; it checks comments, profiles, playback, README/source browsing, original
 asset links, advancing native video playback, mobile layout and SSR.
+
+At this source checkpoint, type checking, 254 repository tests, the production
+build, five direct-asset/browser tests and eight production-server integration
+flows pass. Separate shared-preview media/deadline and compiled-remix checks also
+pass. Fixtures publish only to isolated local relays; no test payments are sent.
+This source change has not been deployed or released as a new soyLI binary.
+
+Browser relay connections are shared between concurrent reads and publishing,
+reused briefly, and closed after ten seconds idle (at most 24 destinations).
+The verified-event store retains at most 8,000 events/16 MiB; conversation and
+source caches are also bounded. First-load hydration initializes operator policy
+before any child query, then refreshes server-rendered data over the protocols.
