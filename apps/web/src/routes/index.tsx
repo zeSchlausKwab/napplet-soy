@@ -1,3 +1,4 @@
+import { seedCatalog } from '@/lib/protocol-catalog';
 import {
   createFileRoute,
   Link,
@@ -32,6 +33,7 @@ function Gallery() {
   const { ready } = useNostr();
   const { napplets, topics, total, unavailableCount, status, page, pages, matches, featured } =
     Route.useLoaderData();
+  if (typeof window !== 'undefined') seedCatalog(napplets);
   const [showAllTags, setShowAllTags] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState('');

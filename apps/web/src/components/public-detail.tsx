@@ -1,3 +1,4 @@
+import { seedCatalog } from '@/lib/protocol-catalog';
 import { SourceSection } from './source-section';
 import { LinkedAssets } from './linked-assets';
 import { CreatorLink } from './creator-link';
@@ -18,7 +19,18 @@ import { usePlayRoute } from '@/lib/use-play-route';
 
 export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
   const play = usePlayRoute();
+  if (typeof window !== 'undefined') seedCatalog([napplet]);
   const store = useEventStore();
+  const artifactUrl = (() => {
+    for (const server of napplet.manifest.tags.filter((t) => t[0] === 'server').map((t) => t[1])) {
+      try {
+        const url = new URL(`${server.replace(/\/$/, '')}/${napplet.artifactHash}`);
+        if (['https:', 'http:'].includes(url.protocol) && !url.username && !url.password)
+          return url.href;
+      } catch {}
+    }
+    return undefined;
+  })();
   useEffect(() => {
     store.add(napplet.manifest);
   }, [store, napplet.revisionId]);
@@ -95,6 +107,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
             </div>
           )}
           <LinkedAssets
+            metadata={napplet.metadata}
             manifest={napplet.manifest}
             preview={napplet.preview}
             video={napplet.video}
@@ -112,9 +125,9 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
                   Original source <span>↗</span>
                 </a>
               )}
-              {napplet.availability === 'ready' && (
-                <a href={`/api/artifacts/${napplet.artifactHash}`} download="index.html">
-                  Download verified HTML <span>↓</span>
+              {napplet.availability === 'ready' && artifactUrl && (
+                <a href={artifactUrl} target="_blank" rel="noopener noreferrer">
+                  Download HTML <span>↓</span>
                 </a>
               )}
               <div>

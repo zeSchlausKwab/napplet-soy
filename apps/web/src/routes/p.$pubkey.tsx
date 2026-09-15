@@ -77,7 +77,7 @@ function CreatorProfile() {
         {p.banner && (
           <img
             className="profile-banner"
-            src={`/api/profile-image?pubkey=${p.pubkey}&field=banner&v=${p.eventId}`}
+            src={p.banner!}
             alt=""
             referrerPolicy="no-referrer"
             onError={(e) => {

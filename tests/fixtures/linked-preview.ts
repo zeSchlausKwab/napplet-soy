@@ -59,18 +59,23 @@ const manifest = finalizeEvent(
   {
     ...base,
     tags: base.tags
-      .filter((t) => !['d', 'title'].includes(t[0]))
+      .filter((t) => !['d', 'title', ...(withAssets ? ['server'] : [])].includes(t[0]))
       .concat([
         ['d', 'preview-test'],
         ['title', 'Linked preview test'],
-        ['app', `32267:${descriptor.pubkey}:preview-test`, 'wss://relay.example'],
+        [
+          'app',
+          `32267:${descriptor.pubkey}:preview-test`,
+          process.env.FIXTURE_RELAY_ORIGIN ?? 'wss://relay.example',
+        ],
+        ...(withAssets ? [['server', process.env.FIXTURE_ASSET_ORIGIN!]] : []),
         ...(sourceUrl ? [['source-archive', sourceUrl]] : []),
       ]),
   },
   key,
 );
 const result = await refreshPublicCatalog(directory, {
-  relays: [],
+  relays: process.env.FIXTURE_RELAY_ORIGIN ? [process.env.FIXTURE_RELAY_ORIGIN] : [],
   discover: async () => [manifest],
   metadata: async () => (process.argv[3] === 'without-preview' ? [] : [descriptor]),
   download: async () =>

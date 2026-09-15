@@ -1,3 +1,4 @@
+import { readSocial, publishSocial } from '@/lib/protocol-social';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Heart, MessageCircle, Reply, Trash2, RefreshCw, Zap } from 'lucide-react';
 import { Button } from './ui/button';
@@ -69,18 +70,11 @@ export function NappletSocial({
   const [refreshing, setRefreshing] = useState(true);
   const [refreshError, setRefreshError] = useState('');
   const busyRef = useRef(false);
-  const endpoint = `/api/social?reference=${encodeURIComponent(reference)}`;
   const refresh = async (signal?: AbortSignal) => {
     setRefreshing(true);
     setRefreshError('');
     try {
-      const value = await jsonResponse(
-        await fetch(endpoint, {
-          signal: signal
-            ? AbortSignal.any([signal, AbortSignal.timeout(15000)])
-            : AbortSignal.timeout(15000),
-        }),
-      );
+      const value = await readSocial(manifest, relays, signal);
       if (!signal?.aborted) setData(value);
     } catch (error) {
       if (!signal?.aborted) setRefreshError((error as Error).message);
@@ -110,14 +104,7 @@ export function NappletSocial({
     if (currentKey.current !== event.pubkey)
       throw new Error('Connect the signing account again before sending.');
     setPhase('Publishing…');
-    await jsonResponse(
-      await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(event),
-        signal: AbortSignal.timeout(20000),
-      }),
-    );
+    await publishSocial(event, relays);
     setPending(null);
     if (event.kind === 1111) {
       setContent('');

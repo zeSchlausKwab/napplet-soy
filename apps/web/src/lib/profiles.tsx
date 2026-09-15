@@ -1,3 +1,5 @@
+import { protocolClient, manifestAllowed } from './network';
+import { profileView, latestProfile } from '../../../../packages/protocol/src/profile';
 import {
   createContext,
   useContext,
@@ -50,13 +52,12 @@ class ProfileCache {
     }
     this.schedule();
     try {
-      const response = await fetch(`/api/profiles?keys=${keys.join(',')}`, {
-        signal: AbortSignal.timeout(10000),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        for (const profile of data.profiles ?? [])
-          if (keys.includes(profile.pubkey)) this.seed(profile);
+      const events = await protocolClient().query([
+        { kinds: [0], authors: keys, limit: keys.length * 2 },
+      ]);
+      for (const key of keys) {
+        const event = latestProfile(events, key);
+        if (!event || manifestAllowed(event)) this.seed(profileView(key, event));
       }
     } catch {
     } finally {

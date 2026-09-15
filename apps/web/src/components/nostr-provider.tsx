@@ -1,3 +1,4 @@
+import { protocolClient, network } from '@/lib/network';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { EventStoreProvider } from 'applesauce-react/providers';
 import { createNostrClient } from '../../../../packages/nostr/src/client';
@@ -20,7 +21,9 @@ const relayUrls = (import.meta.env.VITE_NOSTR_RELAYS ?? '')
   .map((s: string) => s.trim())
   .filter(Boolean);
 export function NostrProvider({ children }: { children: ReactNode }) {
-  const [client] = useState(() => createNostrClient());
+  const [client] = useState(() =>
+    typeof window === 'undefined' ? createNostrClient() : protocolClient(),
+  );
   const [identity, setIdentity] = useState<IdentityState>({
     pubkey: null,
     method: null,
@@ -53,7 +56,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', sync);
     };
   }, []);
-  useEffect(() => client.connect(relayUrls), [client]);
+
   return (
     <Context.Provider
       value={{
@@ -64,7 +67,7 @@ export function NostrProvider({ children }: { children: ReactNode }) {
         needsReconnect: identity.reconnect || !!identity.restoring,
         connect,
         disconnect: () => browserIdentity().disconnect(),
-        relayConfigured: relayUrls.length > 0,
+        relayConfigured: true,
       }}
     >
       <EventStoreProvider eventStore={client.store}>

@@ -1,3 +1,6 @@
+import { readProfile } from '@/lib/protocol-catalog';
+import { protocolClient } from '@/lib/network';
+import { profileView } from '../../../../packages/protocol/src/profile';
 import { useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { Pencil, Save } from 'lucide-react';
@@ -43,11 +46,7 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
     setError('');
     setMessage('');
     try {
-      const response = await fetch(`/api/profile?pubkey=${pubkey}&edit=1`, {
-        signal: AbortSignal.timeout(15000),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? 'Could not load the profile.');
+      const result = await readProfile(pubkey);
       if (browserIdentity().state.pubkey !== pubkey)
         throw new Error('The selected account changed.');
       setBase(result);
@@ -86,17 +85,13 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
       if (browserIdentity().state.pubkey !== pubkey)
         throw new Error('The selected account changed. Reconnect the author to retry.');
       setPhase('Publishing…');
-      const response = await fetch(`/api/profile?pubkey=${pubkey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(update),
-        signal: AbortSignal.timeout(20000),
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        if (response.status === 409) setConflict(true);
-        throw new Error(result.error ?? 'No confirmation received. Retry sends the same event.');
+      const current = await readProfile(pubkey);
+      if (current.event?.id !== update.event.id && (current.event?.id ?? null) !== update.base) {
+        setConflict(true);
+        throw new Error('Your profile changed on another client. Reload it before saving.');
       }
+      await protocolClient().publish(update.event, base.relays);
+      const result = { profile: profileView(pubkey, update.event) };
       cache.seed(result.profile as ProfileView);
       setMessage('Profile published');
       setPending(null);

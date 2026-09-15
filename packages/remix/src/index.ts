@@ -1,3 +1,4 @@
+import { loopbackRelayUrl } from '../../nostr/src/relay-policy';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { nip19, matchFilters, type Filter } from 'nostr-tools';
@@ -88,24 +89,22 @@ export async function loadRemix(reference: string, network: Network, signal: Abo
       throw new Error('Use a napplet naddr, event identifier, or pinned link');
     filter = { ids: [ref], kinds: [35129, 15129, 5129], limit: 1 };
   }
-  const api = new URL('/api/manifest', site);
-  api.searchParams.set('reference', ref);
   let manifest: SignedEvent | undefined;
-  try {
-    const result = JSON.parse(
-      new TextDecoder().decode(await remixBytes(api, network === 'local', signal, 150000)),
-    );
-    const event = verifiedEvent(result.manifest);
-    if (!matchFilters([filter], event)) throw new Error('Wrong manifest');
-    await validateManifest(event);
-    manifest = event;
-  } catch {
-    /* An independent client can resolve the same Nostr identity directly. */
-  }
   if (!manifest) {
     const destinations =
       network === 'local'
-        ? ['ws://127.0.0.1:19347/relay']
+        ? [
+            ...new Set([
+              ...hints.flatMap((r) => {
+                try {
+                  return [loopbackRelayUrl(r)];
+                } catch {
+                  return [];
+                }
+              }),
+              'ws://127.0.0.1:19347/relay',
+            ]),
+          ]
         : [...new Set([...hints, 'wss://relay.napplet.soy', ...discoveryRelays])]
             .filter((r) => {
               try {
@@ -154,7 +153,6 @@ export async function loadRemix(reference: string, network: Network, signal: Abo
   const release = await validateManifest(manifest);
   let artifact: Uint8Array | undefined;
   for (const url of [
-    new URL(`/api/artifacts/${release.artifactHash}`, site).href,
     ...release.servers.map((s) => `${s.replace(/\/$/, '')}/${release.artifactHash}`),
   ]) {
     try {

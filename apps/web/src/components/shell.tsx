@@ -70,10 +70,10 @@ export function Shell({ children }: { children: ReactNode }) {
           <Asterisk size={16} /> Small creations. Wide-open possibilities.
         </span>
         <div>
-          <span className="network-label">
+          <Link to="/network" className="network-label">
             <Radio size={12} />
-            {relayConfigured ? 'Relay configured' : 'Built on Nostr'}
-          </span>
+            Network settings
+          </Link>
           <Link to="/admin">Administration</Link>
           <Link to="/about">About</Link>
           <a href="https://github.com/napplet/naps" target="_blank" rel="noreferrer">

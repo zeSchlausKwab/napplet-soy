@@ -15,6 +15,9 @@ export function DiscoveryState({
 }) {
   const router = useRouter();
   const play = usePlayRoute();
+  useEffect(() => {
+    if (poll) void router.invalidate();
+  }, []);
   const [attempt, setAttempt] = useState(0);
   const pending = ['queued', 'searching'].includes(state) && attempt < 12;
   useEffect(() => {

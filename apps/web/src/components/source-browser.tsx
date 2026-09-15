@@ -1,3 +1,4 @@
+import { directSource } from '@/lib/protocol-catalog';
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
@@ -125,8 +126,19 @@ function FileTree({ tree, source }: { tree: Tree; source: SourceView }) {
 function bytes(n: number) {
   return n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`;
 }
-function downloadLink(source: SourceView, archive = false) {
-  return `/api/source?${new URLSearchParams({ revision: source.revision, view: source.view, ...(archive ? { archive: '1' } : { file: source.selected?.path ?? '' }) })}`;
+async function downloadSource(source: SourceView) {
+  const file = await directSource.download({
+    revision: source.revision,
+    file: source.selected?.path,
+    view: source.view,
+  });
+  if (!file) throw new Error('Source file unavailable');
+  const url = URL.createObjectURL(new Blob([new Uint8Array(file.bytes)]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function SourceBrowser({ source }: { source: SourceView }) {
   const tree = useMemo(() => fileTree(source.files), [source.files]);
@@ -217,7 +229,12 @@ export function SourceBrowser({ source }: { source: SourceView }) {
           Built HTML
         </Link>
         {source.archiveHash && (
-          <a className="source-archive-link" href={downloadLink(source, true)} download>
+          <a
+            className="source-archive-link"
+            href={source.archiveUrl ?? undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Download size={14} />
             Download archive
           </a>
@@ -269,8 +286,13 @@ export function SourceBrowser({ source }: { source: SourceView }) {
                     {selected.size !== null && <span>{bytes(selected.size)}</span>}
                     {selected.state !== 'missing' && (
                       <a
-                        href={downloadLink(source)}
-                        download
+                        href={source.view === 'html' ? (source.artifactUrl ?? undefined) : '#'}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          void downloadSource(source).catch(() =>
+                            alert('Could not download this file. Please retry.'),
+                          );
+                        }}
                         aria-label={`Download ${selected.path}`}
                       >
                         <Download size={14} />

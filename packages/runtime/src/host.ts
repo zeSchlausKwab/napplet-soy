@@ -1,9 +1,10 @@
+import { blossomBytes, downloadBytes, readBytes } from '../../client/src/bytes';
+import { resourceMime } from '../../client/src/resource-mime';
 import { z } from 'zod';
 import { HOST_REQUESTS, RUNTIME_DOMAINS } from './capabilities';
 import { scopedStorage } from './storage';
 import { NappletFiles, type ExportFile } from './filesystem';
 import { PlaybackNostr } from '../../nostr/src/playback';
-import { hostReadPool } from './relay-reads';
 import { WorkQueue } from './work-queue';
 import { NappletConfig } from './config-session';
 import { NappletMedia } from './media-session';
@@ -18,6 +19,8 @@ export type HostOptions = {
   identity: string;
   manifestId: string;
   relays: string[];
+  servers?: string[];
+  localServers?: string[];
   pubkey: string | null;
   prompt: (prompt: HostPrompt | null) => void;
   files: (files: ExportFile[]) => void;
@@ -60,12 +63,7 @@ export function attachNappletHost(options: HostOptions) {
     let answer: ((accepted: boolean) => void) | undefined;
     const lifetime = new AbortController();
     const resources = new Map<string, AbortController>();
-    const nostr = new PlaybackNostr(
-      options.relays,
-      sendScoped,
-      () => pubkey,
-      hostReadPool(options.manifestId),
-    );
+    const nostr = new PlaybackNostr(options.relays, sendScoped, () => pubkey);
     const files = new NappletFiles(sendScoped, (value) => {
       if (active && alive) options.files(value);
     });
@@ -114,15 +112,14 @@ export function attachNappletHost(options: HostOptions) {
       if (++resourceCalls > 60 || resourceBytes >= 128 * 1024 * 1024)
         throw new Error('quota-exceeded');
       return resourceQueue.run(signal, async () => {
-        const response = await fetch('/api/resources', {
-          method: 'POST',
-          credentials: 'omit',
-          signal,
-          headers: { 'Content-Type': 'application/json', 'X-Space-Host': '1' },
-          body: JSON.stringify({ manifest: options.manifestId, ...request }),
-        });
-        if (!response.ok) throw new Error((await response.json()).error ?? 'network-error');
-        const blob = await response.blob();
+        const digest = /^blossom:sha256:([a-f0-9]{64})$/.exec(request.url)?.[1];
+        const servers = [...new Set([...(request.servers ?? []), ...(options.servers ?? [])])];
+        const bytes = digest
+          ? await blossomBytes(digest, servers, signal, undefined, options.localServers)
+          : request.url.startsWith('data:')
+            ? await readBytes(await fetch(request.url, { signal }))
+            : await downloadBytes(request.url, signal, undefined, options.localServers);
+        const blob = new Blob([new Uint8Array(bytes)], { type: resourceMime(bytes, !!digest) });
         resourceBytes += blob.size;
         if (blob.size > 10 * 1024 * 1024 || resourceBytes > 128 * 1024 * 1024)
           throw new Error('quota-exceeded');

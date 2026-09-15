@@ -1,3 +1,11 @@
+import { readSocial } from '@/lib/protocol-social';
+import { readProfile } from '@/lib/protocol-catalog';
+import {
+  resolveZapEndpoint,
+  requestZapInvoice,
+  zapTotals,
+} from '../../../../packages/client/src/zaps';
+import { commentScope } from '../../../../packages/protocol/src/social';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { Zap } from 'lucide-react';
 import { Button } from './ui/button';
@@ -45,7 +53,6 @@ export function ZapButton({
     [anonymous, setAnonymous] = useState(!pubkey);
   const asAnonymous = !pubkey || anonymous;
   const target = commentTarget ?? data.manifest;
-  const url = `/api/zaps?reference=${encodeURIComponent(reference)}${commentTarget ? `&comment=${commentTarget.id}` : ''}`;
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
@@ -54,8 +61,30 @@ export function ZapButton({
     setInvoice(null);
     setAnonymous(!pubkey);
     setWebln(!!(window as any).webln);
-    fetch(url, { signal: controller.signal })
-      .then(jsonResponse)
+    (async () => {
+      if (target.tags.some((t) => t[0] === 'zap'))
+        throw new Error(
+          'This creation requests split zaps. Use a client supporting its recipient split.',
+        );
+      const [{ event }, social] = await Promise.all([
+        readProfile(target.pubkey),
+        readSocial(data.manifest, data.relays, controller.signal),
+      ]);
+      const endpoint = await resolveZapEndpoint(target.pubkey, event ? [event] : []);
+      const context = {
+        ...data,
+        manifest: target,
+        scope: commentTarget ? commentScope(commentTarget) : data.scope,
+      };
+      const targets = commentTarget
+        ? new Map([[commentTarget.id, commentTarget]])
+        : social.manifests;
+      return {
+        endpoint,
+        relays: social.relays,
+        ...(await zapTotals(context, social, endpoint, targets)),
+      };
+    })()
       .then((value) => {
         if (controller.signal.aborted) return;
         setEndpoint(value.endpoint);
@@ -74,7 +103,7 @@ export function ZapButton({
         if (!controller.signal.aborted) setMessage(error.message);
       });
     return () => controller.abort();
-  }, [open, url]);
+  }, [open, reference, target.id]);
   return (
     <Dialog
       open={open}
@@ -145,14 +174,13 @@ export function ZapButton({
                   : await signForAccount(pubkey!, template);
                 if (!asAnonymous && keyRef.current !== pubkey)
                   throw new Error('Your account changed.');
+                const context = {
+                  ...data,
+                  manifest: target,
+                  scope: commentTarget ? commentScope(commentTarget) : data.scope,
+                };
                 setInvoice(
-                  await jsonResponse(
-                    await fetch(url, {
-                      method: 'POST',
-                      headers: { 'content-type': 'application/json' },
-                      body: JSON.stringify(event),
-                    }),
-                  ),
+                  await requestZapInvoice(context, new Map([[target.id, target]]), endpoint, event),
                 );
               } catch (error) {
                 setMessage((error as Error).message);

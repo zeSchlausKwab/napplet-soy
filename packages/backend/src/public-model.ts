@@ -1,3 +1,4 @@
+import { linkedMedia } from '../../protocol/src/linked-media';
 import { cachedVideoSchema } from '../../protocol/src/preview-video';
 import { z } from 'zod';
 import { nip19 } from 'nostr-tools';
@@ -35,6 +36,7 @@ export const publicNappletSchema = z.object({
   relays: z.array(z.string().max(256)).max(8).default([]),
   sourceUrl: z.string().max(4096).nullable(),
   availability: z.enum(['ready', 'host-required', 'unavailable']),
+  metadata: z.array(eventSchema).max(8).optional(),
   video: cachedVideoSchema.nullable().catch(null).default(null),
   preview: cachedPreviewSchema.nullable().catch(null).default(null),
 });
@@ -86,8 +88,9 @@ export async function publicNapplet(
 }
 export const publicPoster = (entry: PublicNapplet) =>
   entry.preview
-    ? `/api/previews/${entry.revisionId}?v=${entry.preview.hash}`
-    : `/api/og/${entry.revisionId}?v=${OG_VERSION}`;
+    ? entry.preview.url
+    : (linkedMedia(entry.manifest, entry.metadata ?? []).images[0] ??
+      `/api/og/${entry.revisionId}?v=${OG_VERSION}`);
 export const publicLink = (entry: PublicNapplet) =>
   entry.naddr
     ? { to: '/n/$naddr' as const, params: { naddr: entry.naddr } }

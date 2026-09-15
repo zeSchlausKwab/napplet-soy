@@ -1,3 +1,4 @@
+import { nip19 } from 'nostr-tools';
 import { test, expect } from 'bun:test';
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -38,11 +39,20 @@ test('remix downloads exact signed archive and makes a fresh project with source
   const server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
-    fetch: (request) => {
+    fetch: (request, server) => {
+      if (request.headers.get('upgrade') === 'websocket' && server.upgrade(request)) return;
       const path = new URL(request.url).pathname;
-      return path === '/api/manifest'
-        ? Response.json({ manifest })
-        : new Response(path.endsWith(frozen.archiveHash) ? archive : artifact);
+      if (path.startsWith('/api/')) throw new Error('Unexpected proprietary API request');
+      return new Response(path.endsWith(frozen.archiveHash) ? archive : artifact);
+    },
+    websocket: {
+      message(ws, raw) {
+        const m = JSON.parse(String(raw));
+        if (m[0] === 'REQ') {
+          ws.send(JSON.stringify(['EVENT', m[1], manifest]));
+          ws.send(JSON.stringify(['EOSE', m[1]]));
+        }
+      },
     },
   });
   try {
@@ -53,6 +63,7 @@ test('remix downloads exact signed archive and makes a fresh project with source
       content: '',
       tags: [
         ['d', 'original'],
+        ['server', server.url.origin],
         ['path', '/index.html', hash],
         ['x', await aggregateHash([{ path: '/index.html', hash }]), 'aggregate'],
         ['source-archive', `${server.url}${frozen.archiveHash}`],
@@ -60,7 +71,7 @@ test('remix downloads exact signed archive and makes a fresh project with source
       ],
     });
     const loaded = await loadRemix(
-      `${server.url}r/${manifest.id}`,
+      nip19.neventEncode({ id: manifest.id, relays: [server.url.origin.replace('http:', 'ws:')] }),
       'local',
       AbortSignal.timeout(5000),
     );

@@ -164,7 +164,7 @@ test('linked screenshots reach cached gallery/player covers and OG images, with 
     const entry = indexed.cache!.entries[0];
     expect(entry.availability).toBe('ready');
     expect(entry.preview?.descriptor.id).toBe(app.id);
-    expect(publicPoster(entry)).toStartWith('/api/previews/');
+    expect(publicPoster(entry)).toBe('https://images.example/cover.png');
     expect((await refreshPublicCatalog(directory, options)).source).toBe('cache');
     await refreshPublicCatalog(directory, { ...options, refresh: true });
     // Mutable HTTPS images are fetched again on refresh; the ordinary TTL cache does no work.

@@ -1,3 +1,4 @@
+import { blossomBytes, readBytes } from '../../client/src/bytes';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../protocol/src/artifact';
 
 export const PLAYER_SANDBOX = 'allow-scripts';
@@ -21,30 +22,13 @@ export async function verifiedDocument(
 export async function loadArtifact(
   hash: string,
   signal: AbortSignal,
-  prelude?: string | ((verifiedHtml: string) => string),
+  prelude: string | ((verifiedHtml: string) => string) | undefined,
+  source: string[] | { localUrl: string },
+  local: string[] = [],
 ) {
   if (!/^[a-f0-9]{64}$/.test(hash)) throw new Error('Invalid artifact hash');
-  const response = await fetch(`/api/artifacts/${hash}`, { signal, credentials: 'omit' });
-  if (!response.ok || !response.body) throw new Error('This creation is temporarily unavailable.');
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      length += value.byteLength;
-      if (length > MAX_ARTIFACT_BYTES) throw new Error('This napplet exceeds the 10 MiB limit.');
-      chunks.push(value);
-    }
-  } finally {
-    await reader.cancel().catch(() => {});
-  }
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
+  const bytes = Array.isArray(source)
+    ? await blossomBytes(hash, source, signal, undefined, local)
+    : await readBytes(await fetch(source.localUrl, { signal, credentials: 'omit' }));
   return verifiedDocument(bytes, hash, prelude);
 }

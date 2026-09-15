@@ -115,10 +115,15 @@ async function refresh() {
     const missing = missingDomains(info.requires);
     if (missing.length) throw new Error(`Unsupported required capabilities: ${missing.join(', ')}`);
     let declaration: ReturnType<typeof declaredConfig> = {};
-    const doc = await loadArtifact(info.artifactHash, lifetime.signal, (verifiedHtml) => {
-      declaration = declaredConfig(verifiedHtml);
-      return nappletPrelude(shim, declaration);
-    });
+    const doc = await loadArtifact(
+      info.artifactHash,
+      lifetime.signal,
+      (verifiedHtml) => {
+        declaration = declaredConfig(verifiedHtml);
+        return nappletPrelude(shim, declaration);
+      },
+      { localUrl: `/artifacts/${info.artifactHash}` },
+    );
     frame = document.createElement('iframe');
     frame.title = 'Your napplet';
     frame.sandbox.value = PLAYER_SANDBOX;
@@ -134,6 +139,8 @@ async function refresh() {
       identity: info.hostIdentity,
       manifestId: info.id,
       relays: info.relays,
+      servers: info.servers,
+      localServers: info.servers,
       pubkey,
       prompt: showPrompt,
       files: showFiles,

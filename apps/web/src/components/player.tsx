@@ -1,3 +1,4 @@
+import { network } from '@/lib/network';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Check, Copy, Expand, Minimize, LoaderCircle, Play, RotateCcw, Square } from 'lucide-react';
 import { playback } from '@/lib/playback-coordinator';
@@ -153,6 +154,8 @@ export function Player({
         frame: node,
         identity: release.hostIdentity,
         manifestId: release.manifest.id,
+        servers: [...release.servers, ...network().blossom],
+        localServers: network().blossom,
         relays: release.relays,
         pubkey: currentPubkey.current,
         prompt: setPrompt,
@@ -177,13 +180,22 @@ export function Player({
     void preparePlayback(manifest, napplet.artifactHash)
       .then(async (release) => {
         let config: ReturnType<typeof declaredConfig> = {};
-        const html = await loadArtifact(release.artifactHash, controller.signal, (verifiedHtml) => {
-          config = declaredConfig(verifiedHtml);
-          return nappletPrelude(shim, config);
-        });
+        const html = await loadArtifact(
+          release.artifactHash,
+          controller.signal,
+          (verifiedHtml) => {
+            config = declaredConfig(verifiedHtml);
+            return nappletPrelude(shim, config);
+          },
+          [...release.servers, ...network().blossom],
+          network().blossom,
+        );
         if (!controller.signal.aborted) {
           declaration.current = config;
-          setRelease({ ...release, relays: [...(napplet.relays ?? [])] });
+          setRelease({
+            ...release,
+            relays: [...new Set([...network().relays, ...(napplet.relays ?? [])])].slice(0, 8),
+          });
           setDoc(html);
         }
       })

@@ -15,34 +15,19 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CliRouteImport } from './routes/cli'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as NetworkRouteImport } from './routes/network'
 import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
 import { Route as ApiAdminRouteImport } from './routes/api.admin'
 import { Route as ApiAdminAccessRouteImport } from './routes/api.admin-access'
-import { Route as ApiGallerySocialRouteImport } from './routes/api.gallery-social'
-import { Route as ApiGenealogyRouteImport } from './routes/api.genealogy'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
-import { Route as ApiManifestRouteImport } from './routes/api.manifest'
-import { Route as ApiMediaRouteImport } from './routes/api.media'
 import { Route as ApiNamesRouteImport } from './routes/api.names'
-import { Route as ApiProfileRouteImport } from './routes/api.profile'
-import { Route as ApiProfileImageRouteImport } from './routes/api.profile-image'
 import { Route as ApiProfileOgRouteImport } from './routes/api.profile-og'
-import { Route as ApiProfilesRouteImport } from './routes/api.profiles'
 import { Route as ApiPublicationsRouteImport } from './routes/api.publications'
-import { Route as ApiRelayReadRouteImport } from './routes/api.relay-read'
-import { Route as ApiResourcesRouteImport } from './routes/api.resources'
-import { Route as ApiSocialRouteImport } from './routes/api.social'
-import { Route as ApiSourceRouteImport } from './routes/api.source'
-import { Route as ApiZapsRouteImport } from './routes/api.zaps'
 import { Route as NNaddrRouteImport } from './routes/n.$naddr'
 import { Route as PPubkeyRouteImport } from './routes/p.$pubkey'
 import { Route as RSnapshotRouteImport } from './routes/r.$snapshot'
 import { Route as CreatorSlugPlayRouteImport } from './routes/$creator.$slug.play'
-import { Route as ApiArtifactsHashRouteImport } from './routes/api.artifacts.$hash'
-import { Route as ApiCommentMediaIdRouteImport } from './routes/api.comment-media.$id'
 import { Route as ApiOgIdRouteImport } from './routes/api.og.$id'
-import { Route as ApiPreviewVideosIdRouteImport } from './routes/api.preview-videos.$id'
-import { Route as ApiPreviewsIdRouteImport } from './routes/api.previews.$id'
 import { Route as NNaddrPlayRouteImport } from './routes/n.$naddr.play'
 import { Route as RSnapshotPlayRouteImport } from './routes/r.$snapshot.play'
 import { Route as RSnapshotSourceRouteImport } from './routes/r.$snapshot.source'
@@ -78,6 +63,11 @@ const CreateRoute = CreateRouteImport.update({
   path: '/create',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NetworkRoute = NetworkRouteImport.update({
+  id: '/network',
+  path: '/network',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreatorSlugRoute = CreatorSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -93,29 +83,9 @@ const ApiAdminAccessRoute = ApiAdminAccessRouteImport.update({
   path: '/api/admin-access',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiGallerySocialRoute = ApiGallerySocialRouteImport.update({
-  id: '/api/gallery-social',
-  path: '/api/gallery-social',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiGenealogyRoute = ApiGenealogyRouteImport.update({
-  id: '/api/genealogy',
-  path: '/api/genealogy',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiManifestRoute = ApiManifestRouteImport.update({
-  id: '/api/manifest',
-  path: '/api/manifest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiMediaRoute = ApiMediaRouteImport.update({
-  id: '/api/media',
-  path: '/api/media',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiNamesRoute = ApiNamesRouteImport.update({
@@ -123,54 +93,14 @@ const ApiNamesRoute = ApiNamesRouteImport.update({
   path: '/api/names',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiProfileRoute = ApiProfileRouteImport.update({
-  id: '/api/profile',
-  path: '/api/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiProfileImageRoute = ApiProfileImageRouteImport.update({
-  id: '/api/profile-image',
-  path: '/api/profile-image',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiProfileOgRoute = ApiProfileOgRouteImport.update({
   id: '/api/profile-og',
   path: '/api/profile-og',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiProfilesRoute = ApiProfilesRouteImport.update({
-  id: '/api/profiles',
-  path: '/api/profiles',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicationsRoute = ApiPublicationsRouteImport.update({
   id: '/api/publications',
   path: '/api/publications',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiRelayReadRoute = ApiRelayReadRouteImport.update({
-  id: '/api/relay-read',
-  path: '/api/relay-read',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiResourcesRoute = ApiResourcesRouteImport.update({
-  id: '/api/resources',
-  path: '/api/resources',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSocialRoute = ApiSocialRouteImport.update({
-  id: '/api/social',
-  path: '/api/social',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSourceRoute = ApiSourceRouteImport.update({
-  id: '/api/source',
-  path: '/api/source',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiZapsRoute = ApiZapsRouteImport.update({
-  id: '/api/zaps',
-  path: '/api/zaps',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NNaddrRoute = NNaddrRouteImport.update({
@@ -193,29 +123,9 @@ const CreatorSlugPlayRoute = CreatorSlugPlayRouteImport.update({
   path: '/play',
   getParentRoute: () => CreatorSlugRoute,
 } as any)
-const ApiArtifactsHashRoute = ApiArtifactsHashRouteImport.update({
-  id: '/api/artifacts/$hash',
-  path: '/api/artifacts/$hash',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCommentMediaIdRoute = ApiCommentMediaIdRouteImport.update({
-  id: '/api/comment-media/$id',
-  path: '/api/comment-media/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiOgIdRoute = ApiOgIdRouteImport.update({
   id: '/api/og/$id',
   path: '/api/og/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPreviewVideosIdRoute = ApiPreviewVideosIdRouteImport.update({
-  id: '/api/preview-videos/$id',
-  path: '/api/preview-videos/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPreviewsIdRoute = ApiPreviewsIdRouteImport.update({
-  id: '/api/previews/$id',
-  path: '/api/previews/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NNaddrPlayRoute = NNaddrPlayRouteImport.update({
@@ -246,34 +156,19 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
+  '/network': typeof NetworkRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
   '/api/admin-access': typeof ApiAdminAccessRoute
-  '/api/gallery-social': typeof ApiGallerySocialRoute
-  '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/manifest': typeof ApiManifestRoute
-  '/api/media': typeof ApiMediaRoute
   '/api/names': typeof ApiNamesRoute
-  '/api/profile': typeof ApiProfileRoute
-  '/api/profile-image': typeof ApiProfileImageRoute
   '/api/profile-og': typeof ApiProfileOgRoute
-  '/api/profiles': typeof ApiProfilesRoute
   '/api/publications': typeof ApiPublicationsRoute
-  '/api/relay-read': typeof ApiRelayReadRoute
-  '/api/resources': typeof ApiResourcesRoute
-  '/api/social': typeof ApiSocialRoute
-  '/api/source': typeof ApiSourceRoute
-  '/api/zaps': typeof ApiZapsRoute
   '/n/$naddr': typeof NNaddrRouteWithChildren
   '/p/$pubkey': typeof PPubkeyRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
-  '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
-  '/api/comment-media/$id': typeof ApiCommentMediaIdRoute
   '/api/og/$id': typeof ApiOgIdRoute
-  '/api/preview-videos/$id': typeof ApiPreviewVideosIdRoute
-  '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/n/$naddr/play': typeof NNaddrPlayRoute
   '/r/$snapshot/play': typeof RSnapshotPlayRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
@@ -286,34 +181,19 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
+  '/network': typeof NetworkRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
   '/api/admin-access': typeof ApiAdminAccessRoute
-  '/api/gallery-social': typeof ApiGallerySocialRoute
-  '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/manifest': typeof ApiManifestRoute
-  '/api/media': typeof ApiMediaRoute
   '/api/names': typeof ApiNamesRoute
-  '/api/profile': typeof ApiProfileRoute
-  '/api/profile-image': typeof ApiProfileImageRoute
   '/api/profile-og': typeof ApiProfileOgRoute
-  '/api/profiles': typeof ApiProfilesRoute
   '/api/publications': typeof ApiPublicationsRoute
-  '/api/relay-read': typeof ApiRelayReadRoute
-  '/api/resources': typeof ApiResourcesRoute
-  '/api/social': typeof ApiSocialRoute
-  '/api/source': typeof ApiSourceRoute
-  '/api/zaps': typeof ApiZapsRoute
   '/n/$naddr': typeof NNaddrRouteWithChildren
   '/p/$pubkey': typeof PPubkeyRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
-  '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
-  '/api/comment-media/$id': typeof ApiCommentMediaIdRoute
   '/api/og/$id': typeof ApiOgIdRoute
-  '/api/preview-videos/$id': typeof ApiPreviewVideosIdRoute
-  '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/n/$naddr/play': typeof NNaddrPlayRoute
   '/r/$snapshot/play': typeof RSnapshotPlayRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
@@ -327,34 +207,19 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
+  '/network': typeof NetworkRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
   '/api/admin-access': typeof ApiAdminAccessRoute
-  '/api/gallery-social': typeof ApiGallerySocialRoute
-  '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/manifest': typeof ApiManifestRoute
-  '/api/media': typeof ApiMediaRoute
   '/api/names': typeof ApiNamesRoute
-  '/api/profile': typeof ApiProfileRoute
-  '/api/profile-image': typeof ApiProfileImageRoute
   '/api/profile-og': typeof ApiProfileOgRoute
-  '/api/profiles': typeof ApiProfilesRoute
   '/api/publications': typeof ApiPublicationsRoute
-  '/api/relay-read': typeof ApiRelayReadRoute
-  '/api/resources': typeof ApiResourcesRoute
-  '/api/social': typeof ApiSocialRoute
-  '/api/source': typeof ApiSourceRoute
-  '/api/zaps': typeof ApiZapsRoute
   '/n/$naddr': typeof NNaddrRouteWithChildren
   '/p/$pubkey': typeof PPubkeyRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
-  '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
-  '/api/comment-media/$id': typeof ApiCommentMediaIdRoute
   '/api/og/$id': typeof ApiOgIdRoute
-  '/api/preview-videos/$id': typeof ApiPreviewVideosIdRoute
-  '/api/previews/$id': typeof ApiPreviewsIdRoute
   '/n/$naddr/play': typeof NNaddrPlayRoute
   '/r/$snapshot/play': typeof RSnapshotPlayRoute
   '/r/$snapshot/source': typeof RSnapshotSourceRoute
@@ -369,34 +234,19 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cli'
     | '/create'
+    | '/network'
     | '/$creator/$slug'
     | '/api/admin'
     | '/api/admin-access'
-    | '/api/gallery-social'
-    | '/api/genealogy'
     | '/api/health'
-    | '/api/manifest'
-    | '/api/media'
     | '/api/names'
-    | '/api/profile'
-    | '/api/profile-image'
     | '/api/profile-og'
-    | '/api/profiles'
     | '/api/publications'
-    | '/api/relay-read'
-    | '/api/resources'
-    | '/api/social'
-    | '/api/source'
-    | '/api/zaps'
     | '/n/$naddr'
     | '/p/$pubkey'
     | '/r/$snapshot'
     | '/$creator/$slug/play'
-    | '/api/artifacts/$hash'
-    | '/api/comment-media/$id'
     | '/api/og/$id'
-    | '/api/preview-videos/$id'
-    | '/api/previews/$id'
     | '/n/$naddr/play'
     | '/r/$snapshot/play'
     | '/r/$snapshot/source'
@@ -409,34 +259,19 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cli'
     | '/create'
+    | '/network'
     | '/$creator/$slug'
     | '/api/admin'
     | '/api/admin-access'
-    | '/api/gallery-social'
-    | '/api/genealogy'
     | '/api/health'
-    | '/api/manifest'
-    | '/api/media'
     | '/api/names'
-    | '/api/profile'
-    | '/api/profile-image'
     | '/api/profile-og'
-    | '/api/profiles'
     | '/api/publications'
-    | '/api/relay-read'
-    | '/api/resources'
-    | '/api/social'
-    | '/api/source'
-    | '/api/zaps'
     | '/n/$naddr'
     | '/p/$pubkey'
     | '/r/$snapshot'
     | '/$creator/$slug/play'
-    | '/api/artifacts/$hash'
-    | '/api/comment-media/$id'
     | '/api/og/$id'
-    | '/api/preview-videos/$id'
-    | '/api/previews/$id'
     | '/n/$naddr/play'
     | '/r/$snapshot/play'
     | '/r/$snapshot/source'
@@ -449,34 +284,19 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cli'
     | '/create'
+    | '/network'
     | '/$creator/$slug'
     | '/api/admin'
     | '/api/admin-access'
-    | '/api/gallery-social'
-    | '/api/genealogy'
     | '/api/health'
-    | '/api/manifest'
-    | '/api/media'
     | '/api/names'
-    | '/api/profile'
-    | '/api/profile-image'
     | '/api/profile-og'
-    | '/api/profiles'
     | '/api/publications'
-    | '/api/relay-read'
-    | '/api/resources'
-    | '/api/social'
-    | '/api/source'
-    | '/api/zaps'
     | '/n/$naddr'
     | '/p/$pubkey'
     | '/r/$snapshot'
     | '/$creator/$slug/play'
-    | '/api/artifacts/$hash'
-    | '/api/comment-media/$id'
     | '/api/og/$id'
-    | '/api/preview-videos/$id'
-    | '/api/previews/$id'
     | '/n/$naddr/play'
     | '/r/$snapshot/play'
     | '/r/$snapshot/source'
@@ -490,32 +310,17 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CliRoute: typeof CliRouteWithChildren
   CreateRoute: typeof CreateRoute
+  NetworkRoute: typeof NetworkRoute
   ApiAdminRoute: typeof ApiAdminRoute
   ApiAdminAccessRoute: typeof ApiAdminAccessRoute
-  ApiGallerySocialRoute: typeof ApiGallerySocialRoute
-  ApiGenealogyRoute: typeof ApiGenealogyRoute
   ApiHealthRoute: typeof ApiHealthRoute
-  ApiManifestRoute: typeof ApiManifestRoute
-  ApiMediaRoute: typeof ApiMediaRoute
   ApiNamesRoute: typeof ApiNamesRoute
-  ApiProfileRoute: typeof ApiProfileRoute
-  ApiProfileImageRoute: typeof ApiProfileImageRoute
   ApiProfileOgRoute: typeof ApiProfileOgRoute
-  ApiProfilesRoute: typeof ApiProfilesRoute
   ApiPublicationsRoute: typeof ApiPublicationsRoute
-  ApiRelayReadRoute: typeof ApiRelayReadRoute
-  ApiResourcesRoute: typeof ApiResourcesRoute
-  ApiSocialRoute: typeof ApiSocialRoute
-  ApiSourceRoute: typeof ApiSourceRoute
-  ApiZapsRoute: typeof ApiZapsRoute
   NNaddrRoute: typeof NNaddrRouteWithChildren
   PPubkeyRoute: typeof PPubkeyRoute
   RSnapshotRoute: typeof RSnapshotRouteWithChildren
-  ApiArtifactsHashRoute: typeof ApiArtifactsHashRoute
-  ApiCommentMediaIdRoute: typeof ApiCommentMediaIdRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
-  ApiPreviewVideosIdRoute: typeof ApiPreviewVideosIdRoute
-  ApiPreviewsIdRoute: typeof ApiPreviewsIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -562,6 +367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/network': {
+      id: '/network'
+      path: '/network'
+      fullPath: '/network'
+      preLoaderRoute: typeof NetworkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$creator/$slug': {
       id: '/$creator/$slug'
       path: '/$slug'
@@ -583,39 +395,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAccessRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/gallery-social': {
-      id: '/api/gallery-social'
-      path: '/api/gallery-social'
-      fullPath: '/api/gallery-social'
-      preLoaderRoute: typeof ApiGallerySocialRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/genealogy': {
-      id: '/api/genealogy'
-      path: '/api/genealogy'
-      fullPath: '/api/genealogy'
-      preLoaderRoute: typeof ApiGenealogyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/manifest': {
-      id: '/api/manifest'
-      path: '/api/manifest'
-      fullPath: '/api/manifest'
-      preLoaderRoute: typeof ApiManifestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/media': {
-      id: '/api/media'
-      path: '/api/media'
-      fullPath: '/api/media'
-      preLoaderRoute: typeof ApiMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/names': {
@@ -625,20 +409,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiNamesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/profile': {
-      id: '/api/profile'
-      path: '/api/profile'
-      fullPath: '/api/profile'
-      preLoaderRoute: typeof ApiProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/profile-image': {
-      id: '/api/profile-image'
-      path: '/api/profile-image'
-      fullPath: '/api/profile-image'
-      preLoaderRoute: typeof ApiProfileImageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/profile-og': {
       id: '/api/profile-og'
       path: '/api/profile-og'
@@ -646,53 +416,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProfileOgRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/profiles': {
-      id: '/api/profiles'
-      path: '/api/profiles'
-      fullPath: '/api/profiles'
-      preLoaderRoute: typeof ApiProfilesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/publications': {
       id: '/api/publications'
       path: '/api/publications'
       fullPath: '/api/publications'
       preLoaderRoute: typeof ApiPublicationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/relay-read': {
-      id: '/api/relay-read'
-      path: '/api/relay-read'
-      fullPath: '/api/relay-read'
-      preLoaderRoute: typeof ApiRelayReadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/resources': {
-      id: '/api/resources'
-      path: '/api/resources'
-      fullPath: '/api/resources'
-      preLoaderRoute: typeof ApiResourcesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/social': {
-      id: '/api/social'
-      path: '/api/social'
-      fullPath: '/api/social'
-      preLoaderRoute: typeof ApiSocialRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/source': {
-      id: '/api/source'
-      path: '/api/source'
-      fullPath: '/api/source'
-      preLoaderRoute: typeof ApiSourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/zaps': {
-      id: '/api/zaps'
-      path: '/api/zaps'
-      fullPath: '/api/zaps'
-      preLoaderRoute: typeof ApiZapsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/n/$naddr': {
@@ -723,39 +451,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreatorSlugPlayRouteImport
       parentRoute: typeof CreatorSlugRoute
     }
-    '/api/artifacts/$hash': {
-      id: '/api/artifacts/$hash'
-      path: '/api/artifacts/$hash'
-      fullPath: '/api/artifacts/$hash'
-      preLoaderRoute: typeof ApiArtifactsHashRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/comment-media/$id': {
-      id: '/api/comment-media/$id'
-      path: '/api/comment-media/$id'
-      fullPath: '/api/comment-media/$id'
-      preLoaderRoute: typeof ApiCommentMediaIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/og/$id': {
       id: '/api/og/$id'
       path: '/api/og/$id'
       fullPath: '/api/og/$id'
       preLoaderRoute: typeof ApiOgIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/preview-videos/$id': {
-      id: '/api/preview-videos/$id'
-      path: '/api/preview-videos/$id'
-      fullPath: '/api/preview-videos/$id'
-      preLoaderRoute: typeof ApiPreviewVideosIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/previews/$id': {
-      id: '/api/previews/$id'
-      path: '/api/previews/$id'
-      fullPath: '/api/previews/$id'
-      preLoaderRoute: typeof ApiPreviewsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/n/$naddr/play': {
@@ -854,32 +554,17 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CliRoute: CliRouteWithChildren,
   CreateRoute: CreateRoute,
+  NetworkRoute: NetworkRoute,
   ApiAdminRoute: ApiAdminRoute,
   ApiAdminAccessRoute: ApiAdminAccessRoute,
-  ApiGallerySocialRoute: ApiGallerySocialRoute,
-  ApiGenealogyRoute: ApiGenealogyRoute,
   ApiHealthRoute: ApiHealthRoute,
-  ApiManifestRoute: ApiManifestRoute,
-  ApiMediaRoute: ApiMediaRoute,
   ApiNamesRoute: ApiNamesRoute,
-  ApiProfileRoute: ApiProfileRoute,
-  ApiProfileImageRoute: ApiProfileImageRoute,
   ApiProfileOgRoute: ApiProfileOgRoute,
-  ApiProfilesRoute: ApiProfilesRoute,
   ApiPublicationsRoute: ApiPublicationsRoute,
-  ApiRelayReadRoute: ApiRelayReadRoute,
-  ApiResourcesRoute: ApiResourcesRoute,
-  ApiSocialRoute: ApiSocialRoute,
-  ApiSourceRoute: ApiSourceRoute,
-  ApiZapsRoute: ApiZapsRoute,
   NNaddrRoute: NNaddrRouteWithChildren,
   PPubkeyRoute: PPubkeyRoute,
   RSnapshotRoute: RSnapshotRouteWithChildren,
-  ApiArtifactsHashRoute: ApiArtifactsHashRoute,
-  ApiCommentMediaIdRoute: ApiCommentMediaIdRoute,
   ApiOgIdRoute: ApiOgIdRoute,
-  ApiPreviewVideosIdRoute: ApiPreviewVideosIdRoute,
-  ApiPreviewsIdRoute: ApiPreviewsIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

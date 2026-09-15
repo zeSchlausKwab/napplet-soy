@@ -10,7 +10,7 @@ export function PreviewCover({
   title,
 }: {
   children: ReactNode;
-  video?: CachedVideo | null;
+  video?: Pick<CachedVideo, 'url' | 'hash'> | null;
   revision: string;
   title: string;
 }) {
@@ -70,7 +70,7 @@ export function PreviewCover({
     const node = player.current;
     if (!node || !video || !active) return;
     node.muted = true;
-    node.src = `/api/preview-videos/${revision}?v=${video.hash}`;
+    node.src = video.url;
     let alive = true;
     void node.play().catch(() => {
       if (alive) {

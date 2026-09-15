@@ -1,3 +1,4 @@
+import { gallerySocial, readSocial, publishSocial } from '@/lib/protocol-social';
 import {
   createContext,
   useCallback,
@@ -81,11 +82,7 @@ export function GallerySocialProvider({
       let delay = 30000;
       try {
         if (document.visibilityState === 'hidden') return;
-        const value = await jsonResponse(
-          await fetch(`/api/gallery-social?${query}`, {
-            signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
-          }),
-        );
+        const value = await gallerySocial(search, pubkey ?? undefined, controller.signal);
         if (controller.signal.aborted) return;
         setData(value);
         setError('');
@@ -106,17 +103,7 @@ export function GallerySocialProvider({
     if (key.current !== item.event.pubkey)
       throw new Error('Reconnect the signing account before retrying.');
     setPhase('Publishing…');
-    await jsonResponse(
-      await fetch(
-        `/api/social?reference=${encodeURIComponent(item.napplet.naddr ?? item.napplet.revisionId)}`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(item.event),
-          signal: AbortSignal.timeout(20000),
-        },
-      ),
-    );
+    await publishSocial(item.event, item.napplet.relays);
     setPending(null);
     setMessage(null);
     setRevision((v) => v + 1);
@@ -129,12 +116,7 @@ export function GallerySocialProvider({
     setBusy(true);
     setMessage(null);
     try {
-      const state = await jsonResponse(
-        await fetch(
-          `/api/social?reference=${encodeURIComponent(napplet.naddr ?? napplet.revisionId)}`,
-          { signal: AbortSignal.timeout(15000) },
-        ),
-      );
+      const state = await readSocial(napplet.manifest, napplet.relays);
       if (key.current !== pubkey) throw new Error('Your connected account changed.');
       const own = (state.likes as SignedEvent[]).filter((e) => e.pubkey === pubkey);
       const template = own.length

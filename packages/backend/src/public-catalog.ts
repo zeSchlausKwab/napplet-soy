@@ -38,6 +38,7 @@ export async function readUnmoderatedCatalog() {
           throw new Error('Corrupt public catalog');
         return {
           ...derived,
+          metadata: entry.metadata,
           bytes: entry.bytes,
           video: validatedVideo(derived.manifest, entry.video),
           preview: validatedPreview(derived.manifest, entry.preview),

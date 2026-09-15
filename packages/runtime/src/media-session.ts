@@ -1,3 +1,4 @@
+import { resourceUrl } from '../../client/src/bytes';
 import { z } from 'zod';
 
 const metadataSchema = z.object({
@@ -29,7 +30,7 @@ export type AudioView = {
 };
 type Session = AudioView & {
   audio: HTMLAudioElement;
-  ticket: string;
+  source: string;
   live: boolean;
   revision: number;
   cleanup: () => void;
@@ -87,14 +88,6 @@ export class NappletMedia {
     });
     this.changed();
   }
-  private releaseTicket(ticket: string) {
-    void (this.options.fetch ?? fetch)(ticket, {
-      method: 'DELETE',
-      credentials: 'omit',
-      keepalive: true,
-      headers: { 'X-Space-Host': '1' },
-    }).catch(() => {});
-  }
   private async create(message: Record<string, unknown>) {
     const id = message.id;
     if (typeof id !== 'string' || !id || id.length > 128 || this.pending.has(id)) return;
@@ -106,12 +99,11 @@ export class NappletMedia {
       return;
     }
     this.pending.add(id);
-    let ticket: string | undefined;
     try {
       const input = createSchema.parse(message);
       if (input.owner !== 'shell') throw new Error('unsupported owner mode');
       if (!input.source) throw new Error('missing source');
-      const url = new URL(input.source.url);
+      const url = resourceUrl(input.source.url);
       if (
         url.protocol !== 'https:' ||
         url.username ||
@@ -125,34 +117,14 @@ export class NappletMedia {
         (input.source.mimeType && !input.source.mimeType.startsWith('audio/'))
       )
         throw new Error('unsupported source');
-      const response = await (this.options.fetch ?? fetch)('/api/media', {
-        method: 'POST',
-        credentials: 'omit',
-        signal: this.lifetime.signal,
-        headers: { 'Content-Type': 'application/json', 'X-Space-Host': '1' },
-        body: JSON.stringify({ manifest: this.options.manifest, url: url.href }),
-      });
-      const prepared = await response.json();
-      if (!response.ok)
-        throw new Error(typeof prepared.error === 'string' ? prepared.error : 'source blocked');
-      if (
-        typeof prepared.url !== 'string' ||
-        !/^\/api\/media\?token=[a-f0-9-]{36}$/.test(prepared.url)
-      )
-        throw new Error('invalid media response');
-      ticket = prepared.url as string;
-      if (!this.alive) {
-        this.releaseTicket(ticket);
-        return;
-      }
       const audio = (this.options.audio ?? (() => new Audio()))();
       audio.preload = 'none';
-      audio.src = ticket;
+      audio.src = url.href;
       const session: Session = {
         id: crypto.randomUUID(),
         title: input.metadata?.title || 'Audio',
         audio,
-        ticket,
+        source: url.href,
         live: !!input.live,
         status: 'stopped',
         volume: audio.volume,
@@ -211,7 +183,6 @@ export class NappletMedia {
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
-        this.releaseTicket(session.ticket);
       };
       this.sessions.set(session.id, session);
       result({ sessionId: session.id, owner: 'shell' });
@@ -225,7 +196,6 @@ export class NappletMedia {
       }, 0);
       this.changed();
     } catch (error) {
-      if (ticket) this.releaseTicket(ticket);
       result({
         error:
           error instanceof z.ZodError
@@ -251,7 +221,7 @@ export class NappletMedia {
     session.error = undefined;
     session.status = 'buffering';
     if (!session.audio.getAttribute('src') || session.audio.error) {
-      session.audio.src = session.ticket;
+      session.audio.src = session.source;
       session.audio.load();
     }
     this.sendState(session);

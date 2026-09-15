@@ -1,3 +1,6 @@
+import { buildGenealogy } from '../../../../packages/client/src/genealogy';
+import { findManifest } from '@/lib/protocol-catalog';
+import { manifestAllowed, blocked } from '@/lib/network';
 import { useEffect, useState } from 'react';
 import { GitFork, ArrowUpRight } from 'lucide-react';
 import { Button } from './ui/button';
@@ -18,10 +21,8 @@ export function Genealogy({ manifest }: { manifest: SignedEvent }) {
     setLoading(true);
     setError('');
     setTree(null);
-    void fetch(`/api/genealogy?revision=${manifest.id}`, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error();
-        const value = await response.json();
+    void buildGenealogy(manifest, findManifest, { hidden: (e) => !manifestAllowed(e), blocked })
+      .then((value) => {
         if (!controller.signal.aborted) setTree(value);
       })
       .catch(() => {

@@ -1,3 +1,5 @@
+import { getClientPolicy } from '@/lib/client-policy.functions';
+import { configureClient } from '@/lib/network';
 import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 import { NostrProvider } from '@/components/nostr-provider';
 import { Shell } from '@/components/shell';
@@ -5,6 +7,11 @@ import styles from '@/styles.css?url';
 import { ProfilesProvider } from '@/lib/profiles';
 
 export const Route = createRootRoute({
+  beforeLoad: async () => {
+    const policy = await getClientPolicy();
+    if (typeof window !== 'undefined') configureClient(policy);
+    return { clientPolicy: policy };
+  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

@@ -1,8 +1,9 @@
-import { createServerFn } from '@tanstack/react-start';
+import { profileProtocol } from './protocol-catalog';
+import { createServerFn, createIsomorphicFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { profilePage } from '../../../../packages/backend/src/profiles';
 import { CommunityError } from '../../../../packages/community/src/store';
-export const getProfilePage = createServerFn({ method: 'GET' })
+const getProfilePageSSR = createServerFn({ method: 'GET' })
   .validator(
     z.object({
       pubkey: z.string().max(100),
@@ -18,3 +19,9 @@ export const getProfilePage = createServerFn({ method: 'GET' })
       throw e;
     }
   });
+
+export const getProfilePage = createIsomorphicFn()
+  .server(getProfilePageSSR)
+  .client(async (options: Parameters<typeof getProfilePageSSR>[0]) =>
+    profileProtocol(options.data),
+  );

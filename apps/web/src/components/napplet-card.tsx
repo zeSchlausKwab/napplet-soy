@@ -1,3 +1,4 @@
+import { linkedMedia } from '../../../../packages/protocol/src/linked-media';
 import { PreviewCover } from './preview-cover';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, Play, Info } from 'lucide-react';
@@ -72,7 +73,11 @@ export function NappletCard({
         <Player napplet={napplet} autoPlay compact onStop={onStop} />
       ) : (
         <PreviewCover
-          video={external ? napplet.video : null}
+          video={
+            external
+              ? (napplet.video ?? linkedMedia(napplet.manifest, napplet.metadata ?? []).videos[0])
+              : null
+          }
           revision={external ? napplet.revisionId : napplet.snapshotId}
           title={napplet.title}
         >

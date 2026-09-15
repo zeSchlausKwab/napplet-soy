@@ -161,13 +161,8 @@ test('linked assets open original storage URLs and play on desktop and mobile', 
   }
 });
 
-test('original Blossom video and the existing cached URL play in native media tabs', async ({
-  page,
-}) => {
-  for (const url of [
-    `${storageOrigin}/${entry.video.hash}`,
-    `${origin}/api/preview-videos/${entry.revisionId}`,
-  ]) {
+test('original Blossom video plays in a native media tab', async ({ page }) => {
+  for (const url of [`${storageOrigin}/${entry.video.hash}`]) {
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     const video = page.locator('video');
     await expect(video).toHaveCount(1);
@@ -197,3 +192,52 @@ async function storageMapping(context: BrowserContext) {
     await route.fulfill({ response });
   });
 }
+
+test('independent Nostr and Blossom supply playback, comments, profile and source without protocol APIs', async ({
+  page,
+  context,
+}) => {
+  await storageMapping(context);
+  const relay = JSON.parse(await readFile(join(directory, 'relay.json'), 'utf8'));
+  await context.addInitScript(
+    ({ relay, blossom }) => {
+      localStorage.setItem(
+        'napplet:network',
+        JSON.stringify({ relays: [relay], blossom: [blossom] }),
+      );
+    },
+    { relay: relay.url, blossom: storageOrigin },
+  );
+  const forbidden: string[] = [];
+  await context.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (/^\/api\/(og\/|profile-og|names|admin|health|publications)/.test(path))
+      return route.continue();
+    forbidden.push(path);
+    return route.abort();
+  });
+  const wire: string[] = [];
+  page.on('websocket', (socket) =>
+    socket.on('framesent', (frame) => wire.push(String(frame.payload))),
+  );
+  const downloads: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().startsWith(storageOrigin)) downloads.push(r.url());
+  });
+  await page.goto(`${origin}/n/${entry.naddr}`);
+  await expect(
+    page.getByText('A comment read directly from the relay.', { exact: true }),
+  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('link', { name: 'Independent creator' }).first()).toBeVisible();
+  await page.locator('.player-cover').click();
+  await expect(page.locator('iframe[title="Linked preview test"]')).toBeVisible();
+  await expect.poll(() => downloads.some((url) => /\/[a-f0-9]{64}$/.test(url))).toBe(true);
+  await page.getByRole('link', { name: 'Browse source' }).click();
+  await expect(page.getByText('# Linked assets fixture', { exact: false }).last()).toBeVisible({
+    timeout: 15000,
+  });
+  expect(downloads.some((url) => url.endsWith('.tar'))).toBe(true);
+  expect(wire.some((frame) => frame.includes('"REQ"') && frame.includes('1111'))).toBe(true);
+  expect(wire.some((frame) => frame.includes('"EVENT"') || frame.includes('"AUTH"'))).toBe(false);
+  expect(forbidden).toEqual([]);
+});

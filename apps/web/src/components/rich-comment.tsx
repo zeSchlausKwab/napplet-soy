@@ -46,7 +46,7 @@ function MediaAttachment({ media, src }: { media: CommentMedia; src: string }) {
   const [attempt, setAttempt] = useState(0);
   // Browsers may reuse decoded images even with no-store. A new visit/retry must
   // reach the endpoint so current deletion and moderation policy are checked.
-  const mediaSrc = `${src}&view=${visit}&retry=${attempt}`;
+  const mediaSrc = src;
   const [loaded, setLoaded] = useState(false),
     [failed, setFailed] = useState(false);
   const node = useRef<HTMLVideoElement>(null),
@@ -199,9 +199,7 @@ function NappletAttachment({ target }: { target: CommentNappletTarget }) {
         />
       ) : (
         <div className="comment-napplet-cover">
-          {model && (
-            <img src={poster} alt="" loading="lazy" referrerPolicy="no-referrer" />
-          )}
+          {model && <img src={poster} alt="" loading="lazy" referrerPolicy="no-referrer" />}
           <div className="comment-napplet-caption">
             <span className="eyebrow">Napplet</span>
             <a href={target.path}>{model?.title ?? 'Explore this napplet'}</a>
@@ -246,11 +244,7 @@ export function RichComment({ event, reference }: { event: SignedEvent; referenc
         part.type === 'napplet' ? (
           <NappletAttachment key={index} target={part.target} />
         ) : (
-          <MediaAttachment
-            key={index}
-            media={part}
-            src={`/api/comment-media/${event.id}?reference=${encodeURIComponent(reference)}&part=${index}`}
-          />
+          <MediaAttachment key={index} media={part} src={part.url} />
         ),
       );
     } else if (part.type === 'text') inline.push(part.text);

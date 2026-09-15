@@ -98,11 +98,11 @@ test('canonical media sessions play, pause, stop and clean up without trusting f
     f.host.command(id, 'stop');
     expect(f.players[0].src).toBe('');
     f.host.command(id, 'play');
-    expect(f.players[0].src).toContain('/api/media?token=');
+    expect(f.players[0].src).toBe('https://audio.example/live.mp3');
     f.host.handle({ type: 'media.session.destroy', sessionId: id });
     expect(f.host.getSnapshot()).toEqual([]);
     expect(f.players[0].src).toBe('');
-    expect(f.requests.at(-1)?.method).toBe('DELETE');
+    expect(f.requests).toHaveLength(0);
   } finally {
     f.host.close();
   }

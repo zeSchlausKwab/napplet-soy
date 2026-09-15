@@ -9,12 +9,17 @@ export function LinkedAssets({
   manifest,
   preview,
   video,
+  metadata = [],
 }: {
   manifest: SignedEvent;
   preview?: CachedPreview | null;
   video?: CachedVideo | null;
+  metadata?: SignedEvent[];
 }) {
-  const assets = useMemo(() => detailAssets(manifest, preview, video), [manifest, preview, video]);
+  const assets = useMemo(
+    () => detailAssets(manifest, preview, video, metadata),
+    [manifest, preview, video, metadata],
+  );
   if (!assets.length) return null;
   return (
     <section className="linked-assets" aria-label="Linked assets">

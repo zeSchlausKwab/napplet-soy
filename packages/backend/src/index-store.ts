@@ -197,6 +197,7 @@ export async function indexedProjection(row: IndexRow, relays: string[]) {
     const saved = row.projection ? (JSON.parse(row.projection) as PublicNapplet) : null;
     if (saved?.revisionId === entry.revisionId && saved.artifactHash === entry.artifactHash) {
       entry.bytes = saved.bytes;
+      entry.metadata = saved.metadata;
       entry.video = validatedVideo(entry.manifest, saved.video);
       entry.preview = validatedPreview(entry.manifest, saved.preview);
       entry.availability = missingDomains(entry.domains).length

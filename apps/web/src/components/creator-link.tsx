@@ -14,9 +14,7 @@ export function ProfileAvatar({
   large?: boolean;
 }) {
   const [failed, setFailed] = useState('');
-  const src = profile?.picture
-    ? `/api/profile-image?pubkey=${profile.pubkey}&v=${profile.eventId}`
-    : '';
+  const src = profile?.picture ?? '';
   return (
     <span className={`profile-avatar${large ? ' profile-avatar-large' : ''}`} aria-hidden="true">
       {src && failed !== src ? (

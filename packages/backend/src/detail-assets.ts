@@ -1,3 +1,4 @@
+import { linkedMedia } from '../../protocol/src/linked-media';
 import type { SignedEvent } from '../../protocol/src';
 import { descriptorImages, validatedPreview, type CachedPreview } from '../../protocol/src/preview';
 import {
@@ -33,6 +34,7 @@ export function detailAssets(
   manifest: SignedEvent,
   image?: CachedPreview | null,
   clip?: CachedVideo | null,
+  metadata: SignedEvent[] = [],
 ): DetailAsset[] {
   const preview = validatedPreview(manifest, image);
   const video = validatedVideo(manifest, clip);
@@ -87,6 +89,23 @@ export function detailAssets(
       });
     }
   }
+  const links = linkedMedia(manifest, metadata);
+  for (const [kind, urls] of [
+    ['image', links.images],
+    ['video', links.videos.map((v) => v.url)],
+  ] as const)
+    for (const href of urls) {
+      const url = linkedUrl(href);
+      if (!url || seen.has(href)) continue;
+      seen.add(href);
+      assets.push({
+        kind,
+        title: kind === 'image' ? 'Preview image' : 'Preview clip',
+        href,
+        detail: url.host,
+        ...(kind === 'image' ? { thumbnail: href } : {}),
+      });
+    }
   const archives = manifest.tags.filter((tag) => tag[0] === 'source-archive');
   if (archives.length === 1 && archives[0][1]?.length <= 4096) {
     try {

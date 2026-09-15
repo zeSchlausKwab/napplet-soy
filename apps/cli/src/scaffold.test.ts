@@ -121,7 +121,7 @@ test('generated preview runs independently and enforces the shared runtime polic
     expect(shell).toContain('src="/runtime.js"');
     expect(shell).not.toContain('src="/preview"');
     const info = await (await fetch(`http://127.0.0.1:${port}/revision`)).json();
-    const response = await fetch(`http://127.0.0.1:${port}/api/artifacts/${info.artifactHash}`);
+    const response = await fetch(`http://127.0.0.1:${port}/artifacts/${info.artifactHash}`);
     expect(response.headers.get('content-type')).toBe('application/octet-stream');
     expect(await response.text()).toContain('<canvas');
     const resources = (
@@ -134,12 +134,12 @@ test('generated preview runs independently and enforces the shared runtime polic
         headers: { Origin: origin, 'X-Space-Host': '1' },
         body: JSON.stringify({ manifest, url }),
       });
-    expect(await (await resources(info.id)).text()).toBe('hello');
-    expect((await resources('0'.repeat(64))).status).toBe(404);
+    expect((await resources(info.id)).status).toBe(405);
+    expect((await resources('0'.repeat(64))).status).toBe(405);
     expect((await resources(info.id, 'null')).status).toBe(403);
     expect(
       (await resources(info.id, `http://127.0.0.1:${port}`, 'https://127.0.0.1/private')).status,
-    ).toBe(422);
+    ).toBe(405);
     expect((await fetch(`http://127.0.0.1:${port}/napplet.json`)).status).toBe(404);
     expect(
       (await fetch(`http://127.0.0.1:${port}/revision`, { headers: { Host: 'attacker.example' } }))

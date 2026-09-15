@@ -1,9 +1,6 @@
 import { recordingSchema, type Recording } from '../../../../packages/publish/src/config';
 import { videoBytesResponse } from '../../../../packages/backend/src/preview-videos';
 import { z } from 'zod';
-import { createResourceResponder } from '../../../../packages/backend/src/resource-response';
-import { createAudioResponder } from '../../../../packages/backend/src/audio-response';
-import { createPlaybackRelayResponder } from '../../../../packages/backend/src/playback-relay-response';
 import { MAX_ARTIFACT_BYTES, sha256 } from '../../../../packages/protocol/src/artifact';
 import { missingDomains } from '../../../../packages/runtime/src/capabilities';
 import type { PreviewAssets } from './assets';
@@ -34,6 +31,7 @@ const configSchema = z.object({
 export type PreviewRevision = {
   id: string;
   artifactHash: string;
+  servers: string[];
   hostIdentity: string;
   requires: string[];
   relays: string[];
@@ -73,24 +71,11 @@ export function startPreviewServer(
         ]),
       ],
       relays: config.relays,
+      servers: config.servers,
     };
     return { info, bytes, servers: config.servers };
   }
-  const resourceResponse = createResourceResponder(async (id) => {
-    const current = await revision();
-    return current.info.id === id && !missingDomains(current.info.requires).length ? current : null;
-  });
   const noStore = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
-  const audioResponse = createAudioResponder(async (id) => {
-    const current = await revision();
-    return current.info.id === id && !missingDomains(current.info.requires).length;
-  });
-  const relayResponse = createPlaybackRelayResponder(async (id) => {
-    const current = await revision();
-    return current.info.id === id && !missingDomains(current.info.requires).length
-      ? { localRelays: current.info.relays }
-      : null;
-  });
   const server = Bun.serve({
     idleTimeout: 60,
     hostname: '127.0.0.1',
@@ -104,10 +89,6 @@ export function startPreviewServer(
       )
         return new Response('Forbidden', { status: 403, headers: noStore });
       try {
-        if (url.pathname === '/api/media') return await audioResponse(request);
-        if (url.pathname === '/api/relay-read') return await relayResponse(request);
-        if (url.pathname === '/api/resources' && request.method === 'POST')
-          return await resourceResponse(request);
         if (
           ['/listing/capture', '/listing/record'].includes(url.pathname) &&
           request.method === 'POST'
@@ -160,7 +141,7 @@ export function startPreviewServer(
           });
         if (url.pathname === '/revision')
           return Response.json((await revision()).info, { headers: noStore });
-        if (/^\/api\/artifacts\/[a-f0-9]{64}$/.test(url.pathname)) {
+        if (/^\/artifacts\/[a-f0-9]{64}$/.test(url.pathname)) {
           const current = await revision();
           if (url.pathname.endsWith('/' + current.info.artifactHash))
             return new Response(current.bytes, {

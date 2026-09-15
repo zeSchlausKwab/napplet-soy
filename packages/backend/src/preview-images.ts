@@ -65,7 +65,11 @@ export async function cachedPreviewBytes(directory: string, preview: CachedPrevi
 
 export async function indexPreviewImages(
   directory: string,
-  entries: Array<{ manifest: SignedEvent; preview?: CachedPreview | null }>,
+  entries: Array<{
+    manifest: SignedEvent;
+    preview?: CachedPreview | null;
+    metadata?: SignedEvent[];
+  }>,
   metadata: SignedEvent[],
   signal: AbortSignal,
   options: {
@@ -87,6 +91,15 @@ export async function indexPreviewImages(
     Array.from({ length: Math.min(3, queue.length) }, async () => {
       for (let entry = queue.shift(); entry && !signal.aborted; entry = queue.shift()) {
         entry.preview = null;
+        entry.metadata = appReferences(entry.manifest).flatMap((ref) => {
+          const descriptor = latestMetadata(ref, metadata);
+          if (!descriptor) return [];
+          const profile =
+            descriptor.kind === 31990 && descriptor.content === ''
+              ? latestMetadata({ kind: 0, pubkey: descriptor.pubkey, identifier: '' }, metadata)
+              : undefined;
+          return profile ? [descriptor, profile] : [descriptor];
+        });
         const candidates = appReferences(entry.manifest)
           .flatMap((ref) => {
             const descriptor = latestMetadata(ref, metadata);
