@@ -8,7 +8,6 @@ import { Button } from './ui/button';
 import {
   editableProfile,
   mergeProfile,
-  profileFields,
   type ProfileFields,
   type ProfileView,
 } from '../../../../packages/protocol/src/profile';
@@ -66,7 +65,7 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
     try {
       let update = pending;
       if (!update) {
-        const content = JSON.stringify(mergeProfile(base.event, profileFields.parse(values)));
+        const content = JSON.stringify(mergeProfile(base.event, values));
         const created_at = Math.max(
           Math.floor(Date.now() / 1000),
           (base.event?.created_at ?? 0) + 1,
@@ -114,6 +113,7 @@ export function ProfileEditor({ pubkey, exists }: { pubkey: string; exists: bool
         </Button>
       ) : (
         <form
+          noValidate
           className="profile-editor"
           onSubmit={(e) => {
             e.preventDefault();

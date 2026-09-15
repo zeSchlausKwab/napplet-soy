@@ -27,6 +27,7 @@ test('portable profiles, SSR/OG, pagination, kind-0 editing, remembered names an
         display_name: 'Ada Makes Worlds',
         about: 'A tiny world at a time.',
         website: 'https://example.com',
+        picture: 'legacy-avatar.jpg',
         lud16: 'ada@example.com',
         bot: false,
         lud06: 'LNURL1PRESERVE',
@@ -199,6 +200,7 @@ test('portable profiles, SSR/OG, pagination, kind-0 editing, remembered names an
       custom: { keep: true },
       lud06: 'LNURL1PRESERVE',
       bot: false,
+      picture: 'legacy-avatar.jpg',
     });
     expect(sent[0].tags).toEqual(profile.tags);
     await page.reload();

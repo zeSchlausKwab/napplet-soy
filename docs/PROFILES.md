@@ -34,8 +34,10 @@ Connect the creator’s identity, then use **View & edit your profile** in the a
 menu, or **Create/Edit your profile** on its page. A fresh relay read establishes
 the edit base. The form edits `name`, `display_name`, `about`, `website`, `picture`,
 `banner`, `lud16`, and `nip05`; unrelated fields (including `lud06`, nested extension
-values, bot/birthday information) and existing tags survive. Untouched non-string
-foreign values are preserved. A malformed latest JSON object must be repaired in
+values, bot/birthday information) and existing tags survive. Untouched legacy values
+also survive, including HTTP image URLs or names longer than our authoring limits;
+validation applies to changed fields. Non-string foreign values are preserved.
+A malformed latest JSON object must be repaired in
 another client before this editor can modify it.
 
 **Sign & publish profile** asks the selected Applesauce account to sign kind 0.

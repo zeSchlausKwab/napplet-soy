@@ -120,11 +120,15 @@ export function mergeProfile(event: SignedEvent | null, fields: ProfileFields) {
     throw new Error(
       'The current profile contains invalid JSON. Repair it in your other client before editing here.',
     );
-  const edited = profileFields.parse(fields);
   const result = { ...data };
-  for (const [key, value] of Object.entries(edited)) {
+  for (const [key, schema] of Object.entries(profileFields.shape)) {
+    const value = fields[key as keyof ProfileFields];
     // Preserve untouched fields, including non-string values written by other clients.
     if (value === (typeof data[key] === 'string' ? data[key] : '')) continue;
+    // Our authoring policy applies to edits, not to legacy metadata we are preserving.
+    const checked = schema.safeParse(value);
+    if (!checked.success)
+      throw new Error(`${key.replaceAll('_', ' ')}: ${checked.error.issues[0].message}`);
     if (value) result[key] = value;
     else delete result[key];
   }

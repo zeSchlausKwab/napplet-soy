@@ -185,6 +185,25 @@ test('untouched non-string foreign fields survive editing and malformed winners 
   });
   const t = await setup([old, event('[]', old.created_at + 1)]);
   await expect(t.service.editBase(pubkey, relays)).rejects.toThrow('invalid JSON');
+  const legacy = event({
+    name: 'A'.repeat(90),
+    picture: 'http://images.example/avatar.png',
+    lud16: 'legacy-value',
+  });
+  expect(
+    mergeProfile(legacy, { ...editableProfile(legacy), about: 'Only editing my bio' }),
+  ).toMatchObject({
+    name: 'A'.repeat(90),
+    picture: 'http://images.example/avatar.png',
+    lud16: 'legacy-value',
+    about: 'Only editing my bio',
+  });
+  expect(() =>
+    mergeProfile(legacy, {
+      ...editableProfile(legacy),
+      picture: 'http://another.example/avatar.png',
+    }),
+  ).toThrow('full HTTPS');
 });
 
 test('moderation hides the cached latest profile without resurrecting old metadata', async () => {
