@@ -18,7 +18,7 @@ bun run dev:down    # stop this checkout’s PM2 services while preserving state
 
 `dev` should converge an existing installation and be safe to rerun. It starts real GRASP, Blossom, social relay, Postgres, index worker, preview worker, web server, and reverse proxy. The web service serves both SSR and API endpoints. The dev overlay runs our editable services with watch/reload; implemented upstream services use pinned native builds. `dev:prod` uses the production Bun build and PM2 startup commands with local data and origins. Each invocation reports its origin, selected mode, and readiness.
 
-Ordinary napplet creators still use the lightweight `napplet-space dev` command; they do not need this platform stack. Platform contributors use the full stack to exercise publishing and discovery end to end.
+Ordinary napplet creators still use the lightweight `soyli dev` command; they do not need this platform stack. Platform contributors use the full stack to exercise publishing and discovery end to end.
 
 ## 2. Shared deployment definition
 
@@ -70,7 +70,7 @@ Development needs a narrowly scoped SSRF-policy exception for the configured loc
 
 ## 4. Isolation and fixtures
 
-Use a separate `local` CLI network/account profile, separate keys, and a separate publish journal namespace. `napplet-space publish --network local` resolves all service defaults from that profile. Freeze resolved targets into the publish job so a later profile change cannot redirect an in-flight release. Show local mode clearly in the browser and CLI.
+Use a separate `local` CLI network/account profile, separate keys, and a separate publish journal namespace. `soyli publish --network local` resolves all service defaults from that profile. Freeze resolved targets into the publish job so a later profile change cannot redirect an in-flight release. Show local mode clearly in the browser and CLI.
 
 The local runtime must not accidentally publish fixtures to public relays or use production signing/wallet credentials. Override ngit discovery/default relay sets and disable public peer synchronization in the local profile; enforce runtime egress restrictions after dependencies/images are downloaded. Explicitly list exceptions needed for any integration test. Never rely only on changing the primary relay URL.
 

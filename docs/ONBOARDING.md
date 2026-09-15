@@ -15,21 +15,31 @@ The accelerated sequence is illustrative, not a claim about installation time.
 | Time   | Scene                                                                       | What the viewer learns                                                             |
 | ------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | 0–6s   | Install: a terminal types the real one-liner; a project folder unfolds.     | Start without a website account. Follow the installer's PATH instruction if shown. |
-| 6–12s  | Vibe code: a symbolic editor, short agent prompt, live orbit preview.       | Open the folder in your own coding tool; run `napplet-space dev`.                  |
+| 6–12s  | Vibe code: a symbolic editor, short agent prompt, live orbit preview.       | Open the folder in your own coding tool; run `soyli dev`.                  |
 | 12–18s | Publish: build, posting preview, publish command and destination checklist. | Check title, description and screenshot; the CLI signs with your Nostr identity.   |
 | 18–24s | Play: the orbit fills a browser canvas, with a share action.                | Open the returned link and pass it around.                                         |
 | 24–30s | Remix: the preview branches into a second, coral-colored experiment.        | Use “Remix this” on any napplet; paste its install-and-remix command.              |
 
-Remotion renders static release assets offline. The website uses native video
-controls with `preload="none"`, a small poster, a caption track and a text transcript.
-No autoplay or loop, including under reduced motion. The hero links to the walkthrough
-on `/create` without JavaScript; with JavaScript it opens a dialog. Closing the dialog
-unmounts playback. The hero's right column remains available for A07's featured work.
+## Inline terminal revision — 2026-09-15
 
-Deployed and verified on 2026-09-14 in **`20260914192251320-98168`**. See the
-[release record](DEPLOYMENT.md#onboarding-about-and-key-recovery-release--2026-09-14).
-A07's featured rotation follows.
-The final 30-second MP4 is 2,711,233 bytes (2.59 MiB); the WebP poster is 22,336 bytes.
+The user replaced the original dialog and “Watch the flow” action with an inline
+expandable terminal. Its command and copy action remain visible. The native summary
+is keyboard accessible; opening it mounts the muted, inline, autoplay video directly
+under the command. Collapsing unmounts playback; reopening starts a fresh video.
+There is no loop or download before expansion. Reduced motion does not suppress
+explicitly requested playback; native controls allow pause. With JavaScript disabled,
+the same disclosure shows the video with manual native controls and the five steps.
+
+The walkthrough is now five short, visible steps below the video, without a second
+transcript disclosure. No website account is needed. The terminal identifies the
+CLI as **napplet soyLI**, command **`soyli`**. Commands in the film/captions and all
+creator guidance match the renamed executable. The hero's right column remains
+available for A07's featured work. Remotion still renders offline and is absent
+from the site's browser runtime.
+
+**This revision and CLI 0.6.0 are local; release/deployment is pending.** The original
+modal version was deployed on 2026-09-14 in `20260914192251320-98168`; the historical
+verification below describes that release. See [CLI upgrade compatibility](CLI.md#rename-and-upgrade--2026-09-15).
 
 ## Maintaining the guide
 
@@ -85,3 +95,23 @@ public HTTPS, including no video fetch until Play, captions, seeking through Cad
 no-JavaScript browsing, copy fallback and closing/focus behavior. All 13 public
 app/runtime/installer browser regressions also passed. Live evidence is under
 `.local/onboarding-deploy/`; CLI 0.5.0 and its four release archives are unchanged.
+
+## Revision verification — 2026-09-15
+
+The updated service test checks keyboard expansion, no-JavaScript disclosure,
+copy without expansion, muted autoplay, pause by collapsing, fresh playback on
+reopening, visible steps, desktop/mobile fit, captions and byte-range seeking.
+Native distribution tests cover managed legacy-command upgrades, unchanged public
+account state, foreign-command preservation, checksum failure, new/remix, frozen
+sandbox checks and terminal input. The film is rerendered with `soyli` captions.
+Evidence is recorded under `.local/soyli-*.log`, `.local/onboarding/` and
+`.local/walkthrough/`. Final pass counts are recorded in A06 after verification.
+
+Final verification: typecheck and production build passed, as did all 185 repository
+tests, seven native distribution/terminal/preview tests, the inline walkthrough
+service/browser test, and the creation/help/download-link browser test. The native
+0.6.0 default boilerplate completed account-free creation, build and browser check
+with `/usr/bin:/bin` on PATH and a fresh managed toolchain cache. All four platform
+archives are built; native execution was tested on darwin-arm64, not all four OS/CPU
+combinations. All five film scenes and desktop/mobile captures were inspected.
+No public release or deployment was performed.

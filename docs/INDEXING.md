@@ -39,7 +39,7 @@ A ready receipt requires a recent successful worker heartbeat, the exact current
 The result becomes `indexed` with `websiteReady: true` and `websiteCheckedAt`; otherwise publication remains `announced_pending_index`. Website downtime does not undo relay publication. `status` reports the last journaled check locally. `status --refresh` repeats only the read-only website check, without opening a signer or republishing. For example:
 
 ```sh
-bun run napplet status --project ./my-creation --network local --refresh
+bun run soyli status --project ./my-creation --network local --refresh
 ```
 
 ## Verification and remaining work

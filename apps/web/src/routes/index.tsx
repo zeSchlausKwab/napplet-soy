@@ -16,7 +16,6 @@ import { useNostr } from '@/components/nostr-provider';
 import { Button } from '@/components/ui/button';
 import { publicLink } from '../../../../packages/backend/src/public-model';
 import { StarterCommand } from '@/components/starter-command';
-import { WalkthroughDialog } from '@/components/creator-walkthrough';
 
 export const Route = createFileRoute('/')({
   validateSearch: (input: SearchSchemaInput & Partial<GallerySearch>) =>
@@ -91,7 +90,6 @@ function Gallery() {
             <Link to="/cli">Setup help ↗</Link>
           </p>
           <div className="hero-links">
-            <WalkthroughDialog />
             <a className="browse-link" href="#explore">
               Explore first <ArrowDown size={16} />
             </a>

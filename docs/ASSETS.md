@@ -59,9 +59,9 @@ normally fail the plugin's check for leftover output files. Dynamically construc
 paths may escape a build-time check and still fail inside the sandbox. Explicit
 imports/CSS URLs are the supported path. Avoid `?no-inline` and separate chunks.
 
-Run `napplet-space build`, then `napplet-space dev` and exercise every scene that
+Run `soyli build`, then `soyli dev` and exercise every scene that
 loads media. Use the listing preview to check name, description and cover, and run
-`napplet-space check` before publishing. The smoke check verifies startup, not every
+`soyli check` before publishing. The smoke check verifies startup, not every
 possible asset, interaction, scene or codec. A successful build alone is insufficient.
 
 ## Where the bytes go

@@ -2,7 +2,6 @@ import { createFileRoute, type SearchSchemaInput } from '@tanstack/react-router'
 import { z } from 'zod';
 import { WandSparkles, ArrowUpRight } from 'lucide-react';
 import { StarterCommand } from '@/components/starter-command';
-import { WalkthroughVideo } from '@/components/creator-walkthrough';
 export const Route = createFileRoute('/create')({
   validateSearch: (input: SearchSchemaInput & { template?: string }) =>
     z
@@ -60,7 +59,7 @@ function Create() {
           <span>02</span>
           <h2>Make it your kind of weird</h2>
           <p>
-            Run <code>napplet-space dev</code> in the new project. Make changes with the AI tool you
+            Run <code>soyli dev</code> in the new project. Make changes with the AI tool you
             already use and see them in the sandbox preview.
           </p>
         </article>
@@ -68,7 +67,7 @@ function Create() {
           <span>03</span>
           <h2>Play it. Pass it around.</h2>
           <p>
-            Build your latest changes, then run <code>napplet-space publish</code> to check your
+            Build your latest changes, then run <code>soyli publish</code> to check your
             creation, publish to Nostr, and get a link to share.
           </p>
         </article>
@@ -84,12 +83,6 @@ function Create() {
           Meet napplet <ArrowUpRight size={15} />
         </a>
       </div>
-      <section id="walkthrough" className="create-walkthrough" aria-labelledby="walkthrough-title">
-        <span className="eyebrow">AN IDEA HAS LEGS</span>
-        <h2 id="walkthrough-title">From “what if” to “your turn.”</h2>
-        <p>A 30-second tour. Your tools, your pace. No website sign-in.</p>
-        <WalkthroughVideo />
-      </section>
     </section>
   );
 }

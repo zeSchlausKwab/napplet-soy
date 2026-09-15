@@ -19,28 +19,30 @@ import { setupProject, buildProject, projectTool, installConformanceBrowser } fr
 import { installCreatorSkills } from './creator-kit';
 import { loadRemix, createRemix } from '../../../packages/remix/src';
 
-const help = `Usage:
-  bun run napplet new <folder> [--template boilerplate] [--identity create|connect|later] [--no-install]
-  bun run napplet remix <portable-link-or-nostr-id> <folder> [--identity create|connect|later]
-  bun run napplet setup|build [--project <folder>]
-  bun run napplet run <package-script> [arguments...]
-  bun run napplet exec <project-tool> [arguments...]
-  bun run napplet config [init] [--project <folder>]
-  bun run napplet screenshot [preview.png] [--project <folder>]
-  bun run napplet skills update [--project <folder>]
-  bun run napplet account create|show|list|check|backup
-  bun run napplet account connect [--stdin]
-  bun run napplet account pair [--signer-relay <url>] [--timeout <seconds>] [--open]
-  bun run napplet account import [--stdin]
-  bun run napplet account use <npub-or-account-id>
-  bun run napplet account export <new-recovery-file> [--passphrase-stdin]
-  bun run napplet publish [--project <folder>] [--dry-run | --resume]
-  bun run napplet status [--project <folder>] [--refresh]
-  bun run napplet dev [--project <folder>] [--port 4173] [--no-open]
-  bun run napplet check [--project <folder>]
-  bun run napplet browser install
-  bun run napplet doctor
-  bun run napplet --version
+const help = `napplet soyLI
+
+Usage:
+  bun run soyli new <folder> [--template boilerplate] [--identity create|connect|later] [--no-install]
+  bun run soyli remix <portable-link-or-nostr-id> <folder> [--identity create|connect|later]
+  bun run soyli setup|build [--project <folder>]
+  bun run soyli run <package-script> [arguments...]
+  bun run soyli exec <project-tool> [arguments...]
+  bun run soyli config [init] [--project <folder>]
+  bun run soyli screenshot [preview.png] [--project <folder>]
+  bun run soyli skills update [--project <folder>]
+  bun run soyli account create|show|list|check|backup
+  bun run soyli account connect [--stdin]
+  bun run soyli account pair [--signer-relay <url>] [--timeout <seconds>] [--open]
+  bun run soyli account import [--stdin]
+  bun run soyli account use <npub-or-account-id>
+  bun run soyli account export <new-recovery-file> [--passphrase-stdin]
+  bun run soyli publish [--project <folder>] [--dry-run | --resume]
+  bun run soyli status [--project <folder>] [--refresh]
+  bun run soyli dev [--project <folder>] [--port 4173] [--no-open]
+  bun run soyli check [--project <folder>]
+  bun run soyli browser install
+  bun run soyli doctor
+  bun run soyli --version
 
 All commands accept --network public|local and --json.
 Create reuses your selected account. Connect accepts a hidden bunker link.
@@ -55,7 +57,7 @@ Publish targets: --relay <url> --blossom <origin> --grasp <origin> --site <origi
 and optional repeated --mirror <url>. Local mode defaults to the dev services.
 Secrets never belong in command arguments. Check/publish download a cached Chromium
 browser when needed. Git and an unlocked OS credential store are needed to publish.`.replaceAll(
-  'bun run napplet',
+  'bun run soyli',
   commandName,
 );
 let json = process.argv.slice(2).includes('--json');
@@ -133,7 +135,7 @@ try {
   const { values, positionals } = parsed;
   json = !!values.json;
   if (values.version) {
-    console.log(json ? JSON.stringify({ version }) : `napplet-space ${version}`);
+    console.log(json ? JSON.stringify({ version }) : `soyli ${version}`);
     process.exit(0);
   }
   if (values.help || !positionals.length) {
@@ -283,7 +285,7 @@ try {
       );
     else
       console.log(
-        `\nYour napplet is ready at ${directory}\n\n  cd ${folder}\n${remix?.needsSetup ? '  napplet-space setup\n' : ''}  napplet-space dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nRun napplet-space publish to share it.`,
+        `\nYour napplet is ready at ${directory}\n\n  cd ${folder}\n${remix?.needsSetup ? '  soyli setup\n' : ''}  soyli dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nRun soyli publish to share it.`,
       );
   } else if (command === 'skills') {
     if (
@@ -504,6 +506,7 @@ try {
           (network === 'local' ? ['ws://127.0.0.1:19347'] : defaultSignerRelays);
         output(
           await accounts.pair(relays, {
+            name: 'napplet soyLI',
             signal: controller.signal,
             timeoutMs: timeout * 1000,
             onAuth,

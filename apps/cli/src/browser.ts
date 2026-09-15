@@ -97,7 +97,7 @@ export async function installBrowser(
   } catch {
     throw new AccountError(
       'BROWSER_INSTALL',
-      'Browser setup failed. Check your network and retry napplet-space browser install. Linux may also need system browser libraries; doctor explains the supported environment.',
+      'Browser setup failed. Check your network and retry soyli browser install. Linux may also need system browser libraries; doctor explains the supported environment.',
     );
   } finally {
     clearTimeout(timeout);

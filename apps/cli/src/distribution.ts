@@ -7,7 +7,7 @@ declare const NAPPLET_CLI_VERSION: string | undefined;
 export const standalone = typeof NAPPLET_STANDALONE !== 'undefined' && NAPPLET_STANDALONE;
 export const version =
   typeof NAPPLET_CLI_VERSION === 'undefined' ? `${release.version}-dev` : NAPPLET_CLI_VERSION;
-export const commandName = standalone ? 'napplet-space' : 'bun run napplet';
+export const commandName = standalone ? 'soyli' : 'bun run soyli';
 
 export function playwrightDirectory() {
   if (standalone) return join(dirname(realpathSync(process.execPath)), 'lib/playwright-core');

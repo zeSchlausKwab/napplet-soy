@@ -9,19 +9,19 @@ test('onboarding provides a runtime-free installer and real versioned downloads'
   await expect(page.locator('.terminal-box')).toContainText(
     'curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet --template tiny-tennis',
   );
-  await expect(page.locator('.creation-steps')).toContainText('napplet-space dev');
-  await expect(page.locator('.creation-steps')).toContainText('napplet-space publish');
+  await expect(page.locator('.creation-steps')).toContainText('soyli dev');
+  await expect(page.locator('.creation-steps')).toContainText('soyli publish');
   await page.getByRole('link', { name: /Installation help/ }).click();
   await expect(page.getByRole('heading', { name: 'No runtime setup' })).toBeVisible();
   expect((await request.get('/install.sh')).status()).toBe(200);
   for (const platform of ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64']) {
-    const path = `/cli/download/${release.version}/napplet-space-${platform}.tar.gz`;
+    const path = `/cli/download/${release.version}/soyli-${platform}.tar.gz`;
     const head = await request.head(path);
     expect(head.status()).toBe(200);
     expect(Number(head.headers()['content-length'])).toBeGreaterThan(20_000_000);
     const checksum = await request.get(path + '.sha256');
     expect(checksum.status()).toBe(200);
-    expect(await checksum.text()).toMatch(/^[a-f0-9]{64}  napplet-space-/);
+    expect(await checksum.text()).toMatch(/^[a-f0-9]{64}  soyli-/);
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/create?template=plasma-garden');

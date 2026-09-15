@@ -19,7 +19,7 @@ test('remix commands keep source URLs literal and local mode limited to loopback
   const installed = remixCommand(source, false);
   const result = Bun.spawn(['/bin/sh', '-c', `set -- ${installed}; printf '%s\n' "$@"`]);
   expect(await new Response(result.stdout).text()).toBe(
-    `napplet-space\nremix\n${source}\nmy-remix\n`,
+    `soyli\nremix\n${source}\nmy-remix\n`,
   );
   expect(await result.exited).toBe(0);
   for (const host of ['localhost', '127.0.0.1', '[::1]'])

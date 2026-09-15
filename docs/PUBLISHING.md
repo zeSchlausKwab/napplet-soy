@@ -5,10 +5,10 @@ The CLI connects creator accounts, Git/GRASP, Blossom and NIP-5D publication, wi
 ## Commands available from this checkout
 
 ```sh
-bun run napplet publish --project /path/to/my-experiment --network local --dry-run
-bun run napplet publish --project /path/to/my-experiment --network local
-bun run napplet status --project /path/to/my-experiment --network local
-bun run napplet publish --project /path/to/my-experiment --network local --resume
+bun run soyli publish --project /path/to/my-experiment --network local --dry-run
+bun run soyli publish --project /path/to/my-experiment --network local
+bun run soyli status --project /path/to/my-experiment --network local
+bun run soyli publish --project /path/to/my-experiment --network local --resume
 ```
 
 Start the platform services with `bun run dev` or `bun run dev:prod`. Set up/select an account in the matching network profile. Install the sandbox-check browser once with `bunx playwright install chromium` in this checkout. The CLI still runs from the platform checkout; there is no public installer or globally installed binary yet.
@@ -90,8 +90,8 @@ Persistent website ingestion, confirmed playable links, authenticated names, the
 
 ## Visible project destinations and previews
 
-Run `napplet-space config` to inspect effective destinations without an account,
-build, or network request. `napplet-space config init` materializes the current
+Run `soyli config` to inspect effective destinations without an account,
+build, or network request. `soyli config init` materializes the current
 network's targets in an older project's `napplet.json`. New projects and remixes
 include explicit public and local profiles:
 
@@ -139,6 +139,6 @@ the CLI refuses to overwrite competing state. Pending releases always resume wit
 their original destinations. Keep earlier stores available for existing snapshots.
 
 See [preview capture and metadata](PREVIEWS.md#creator-capture-and-publication-2026-09-14)
-for automatic screenshots and choosing an inspected image. `napplet-space skills
+for automatic screenshots and choosing an inspected image. `soyli skills
 update` refreshes the bundled integration note in an existing project while
 preserving creator edits and upstream skill bodies.

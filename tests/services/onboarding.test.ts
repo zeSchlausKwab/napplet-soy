@@ -52,14 +52,17 @@ test('hero onboarding works without sign-in, fits the initial viewport and loads
       expect(
         await staticPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
       ).toBe(true);
+      const copy = await staticPage
+        .getByRole('button', { name: 'Copy starter command' })
+        .boundingBox();
+      const chevron = await staticPage.locator('.terminal-chevron').boundingBox();
+      expect(copy!.x).toBeGreaterThan(chevron!.x + chevron!.width);
       await staticPage.screenshot({ path: `.local/onboarding/hero-${width}.png` });
     }
-    await staticPage.getByRole('link', { name: 'Watch the flow 30 sec' }).click();
-    await browserExpect(staticPage.locator('#walkthrough video')).toBeVisible();
-    await staticPage.getByText('Read the walkthrough', { exact: true }).press('Enter');
-    await browserExpect(staticPage.locator('.walkthrough-transcript')).toContainText(
-      'Nostr signing identity',
-    );
+    await staticPage.locator('summary').filter({ hasText: 'napplet soyLI' }).press('Enter');
+    await browserExpect(staticPage.locator('.hero video')).toBeVisible();
+    await browserExpect(staticPage.locator('.walkthrough-steps')).toContainText('Nostr identity');
+    await browserExpect(staticPage.locator('.walkthrough-steps li')).toHaveCount(5);
     await nojs.close();
 
     const context = await browser.newContext({
@@ -88,17 +91,18 @@ test('hero onboarding works without sign-in, fits the initial viewport and loads
     await browserExpect(page.getByRole('status').filter({ hasText: 'Copied.' })).toBeVisible();
     expect(await page.evaluate(() => (window as any).copiedCommand)).toBe(createCommand());
     expect(media).toHaveLength(0);
-    await page.getByRole('link', { name: 'Watch the flow 30 sec' }).click();
+    await browserExpect(page.locator('.hero details')).not.toHaveAttribute('open');
+    await page.locator('.hero summary').press('Enter');
     const video = page.locator('video');
     await browserExpect(video).toBeVisible();
-    expect(media).toHaveLength(0);
+    await browserExpect(page.locator('.terminal-box noscript')).toHaveCount(0);
+    await browserExpect(page.locator('.terminal-box')).not.toContainText('<div class=');
     expect(
       await video.evaluate(
         (element: HTMLVideoElement) =>
-          element.paused && !element.autoplay && !element.loop && element.preload === 'none',
+          element.autoplay && element.muted && element.playsInline && !element.loop,
       ),
     ).toBe(true);
-    await video.evaluate((element: HTMLVideoElement) => element.play());
     await browserExpect
       .poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime))
       .toBeGreaterThan(0);
@@ -115,9 +119,20 @@ test('hero onboarding works without sign-in, fits the initial viewport and loads
     await browserExpect
       .poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime))
       .toBeGreaterThanOrEqual(25);
-    await page.keyboard.press('Escape');
+    await page.locator('.hero summary').press('Enter');
     await browserExpect(page.locator('video')).toHaveCount(0);
-    await browserExpect(page.getByRole('link', { name: 'Watch the flow 30 sec' })).toBeFocused();
+    await browserExpect(page.locator('.hero summary')).toBeFocused();
+    await page.locator('.hero summary').press('Enter');
+    await browserExpect
+      .poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime))
+      .toBeGreaterThan(0);
+    expect(await video.evaluate((element: HTMLVideoElement) => element.currentTime)).toBeLessThan(
+      10,
+    );
+    await browserExpect(page.locator('.walkthrough-steps li')).toHaveCount(5);
+    await browserExpect(page.getByRole('dialog')).toHaveCount(0);
+    await page.screenshot({ path: '.local/onboarding/video-desktop.png', fullPage: true });
+    await page.locator('.hero summary').press('Enter');
 
     await page.evaluate(() => {
       Object.defineProperty(navigator, 'clipboard', {
@@ -139,8 +154,8 @@ test('hero onboarding works without sign-in, fits the initial viewport and loads
     );
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(origin);
-    await page.getByRole('link', { name: 'Watch the flow 30 sec' }).click();
-    await browserExpect(page.getByRole('dialog')).toBeVisible();
+    await page.locator('.hero summary').press('Enter');
+    await browserExpect(video).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );

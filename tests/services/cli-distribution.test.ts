@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from 'bun:test';
-import { mkdtemp, readlink, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import release from '../../apps/cli/distribution/version.json';
@@ -114,6 +114,27 @@ enabled(
     });
     const local = { NAPPLET_DOWNLOAD_BASE: server.url.href.replace(/\/$/, '') };
     try {
+      // Simulate an existing managed installation. Upgrading must keep state in place.
+      const legacy = join(env.NAPPLET_BIN_DIR, 'napplet-space');
+      const oldRelease = join(env.NAPPLET_INSTALL_DIR, 'releases/0.5.0-test');
+      await mkdir(oldRelease, { recursive: true });
+      await mkdir(env.NAPPLET_BIN_DIR, { recursive: true });
+      await writeFile(join(oldRelease, 'napplet-space'), 'old release');
+      await symlink(join(oldRelease, 'napplet-space'), legacy);
+      const accountId = crypto.randomUUID();
+      const configRoot = join(root, 'config');
+      const accountDirectory = join(configRoot, 'napplet-space/accounts/public');
+      await mkdir(accountDirectory, { recursive: true });
+      const accountState = JSON.stringify({
+        version: 1,
+        network: 'public',
+        active: accountId,
+        accounts: [{ id: accountId, pubkey: manifest.pubkey, type: 'local', status: 'ready' }],
+      });
+      await writeFile(join(accountDirectory, 'accounts.json'), accountState, { mode: 0o600 });
+      const accountEnv = { XDG_CONFIG_HOME: configRoot, SPACE_ACCOUNT_HOME: undefined };
+      const beforeAccount = await run([binary, 'account', 'show', '--json'], root, accountEnv);
+      expect(beforeAccount.stdout).toContain(manifest.pubkey);
       const installed = await run(
         [
           '/bin/sh',
@@ -130,8 +151,29 @@ enabled(
         local,
       );
       expect(installed.code, installed.stderr + installed.stdout).toBe(0);
-      const command = join(env.NAPPLET_BIN_DIR, 'napplet-space');
+      const command = join(env.NAPPLET_BIN_DIR, 'soyli');
       const destination = await readlink(command);
+      expect(await readlink(legacy)).toBe(destination);
+      expect(await Bun.file(join(oldRelease, 'napplet-space')).text()).toBe('old release');
+      expect((await run([legacy, '--version'])).stdout).toBe(`soyli ${release.version}\n`);
+      expect((await run([command, '--help'])).stdout).toStartWith('napplet soyLI');
+      expect(await run([command, 'account', 'show', '--json'], root, accountEnv)).toEqual(
+        beforeAccount,
+      );
+      expect(await Bun.file(join(accountDirectory, 'accounts.json')).text()).toBe(accountState);
+      expect(
+        (await Bun.file(join(root, 'installed-project/package.json')).json()).scripts.dev,
+      ).toBe('soyli dev');
+      expect(
+        await Bun.file(join(root, 'installed-project/docs/napplet-space.md')).text(),
+      ).toContain('napplet soyLI integration');
+      // A foreign legacy executable must be left alone while soyli can still update.
+      await rm(legacy);
+      await writeFile(legacy, 'foreign legacy command');
+      const upgraded = await run(['/bin/sh', source], root, local);
+      expect(upgraded.code, upgraded.stderr).toBe(0);
+      expect(upgraded.stdout).toContain('belongs to another installation. Use soyli.');
+      expect(await Bun.file(legacy).text()).toBe('foreign legacy command');
       expect((await run([command, '--version'])).stdout).toContain(release.version);
       const remixed = await run(
         [
@@ -173,12 +215,9 @@ enabled(
       );
       expect(
         (
-          await fetch(
-            new URL(`/${release.version}/napplet-space-linux-x64.tar.gz.sha256`, server.url),
-            {
-              method: 'HEAD',
-            },
-          )
+          await fetch(new URL(`/${release.version}/soyli-linux-x64.tar.gz.sha256`, server.url), {
+            method: 'HEAD',
+          })
         ).headers.get('content-length'),
       ).not.toBeNull();
     } finally {

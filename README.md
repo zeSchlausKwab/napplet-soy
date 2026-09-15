@@ -57,13 +57,16 @@ Start the platform dev stack first to provide the relay. The server creates a pe
 
 ## Make a local napplet
 
-No platform checkout, Bun or Node installation is needed:
+No platform checkout, Bun or Node installation is needed.
+
+Creator CLI: **napplet soyLI**, command `soyli`. The local 0.6.0 rename is pending
+release; see [upgrading and compatibility](docs/CLI.md#rename-and-upgrade--2026-09-15).
 
 ```sh
 curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet
 # Follow the printed PATH instruction if needed.
 cd my-napplet
-napplet-space dev
+soyli dev
 ```
 
 Open <http://localhost:4173> and point your existing coding agent at the new project.
@@ -72,7 +75,7 @@ TypeScript source, its SDK/Vite plugin, lockfile, documentation, MIT license and
 eight official Napplet skills. The CLI prepares a private Node/pnpm toolchain and
 builds the self-contained `dist/index.html`; nothing needs installing globally.
 The preview watches the upstream build and uses the same sandbox and supported
-NAP services as the website. Run `napplet-space build` before check/publish after
+NAP services as the website. Run `soyli build` before check/publish after
 editing. See [the creator CLI guide](docs/CLI.md) for verification commands,
 upstream pins and `skills update` for existing projects. The six single-file
 example starters remain available through explicit `--template` options.
@@ -82,10 +85,10 @@ example starters remain available through explicit `--template` options.
 Interactive `new` offers a new identity, an existing remote signer, or setup later. Once selected, the same identity is reused across projects. Noninteractive creation can use `--identity create`; `--identity later` creates just the preview project.
 
 ```sh
-bun run napplet account create          # create once, then reuse
-bun run napplet account connect         # paste a bunker link at the hidden prompt
-bun run napplet account show
-bun run napplet account export "$HOME/napplet-recovery.ncryptsec"
+bun run soyli account create          # create once, then reuse
+bun run soyli account connect         # paste a bunker link at the hidden prompt
+bun run soyli account show
+bun run soyli account export "$HOME/napplet-recovery.ncryptsec"
 ```
 
 Local keys and NIP-46 session credentials use the OS credential store. New projects contain only the selected creator's public key and network. Export creates a passphrase-encrypted NIP-49 recovery file; `account import` restores it or imports an nsec through hidden input. `account list` and `account use <account-id>` switch saved identities. Add `--network local` for separate test credentials. Linux creator accounts need an unlocked Secret Service/keyring; there is no plaintext fallback. See [identity and recovery](docs/IDENTITY.md).
@@ -111,17 +114,17 @@ These commands affect only this checkout's `.local/pm2` state. They do not insta
 The CLI now freezes selected source, checks it in the shared browser sandbox, pushes a Git release, uploads HTML and a source archive to Blossom, and publishes standard snapshot/current manifests. Retries reuse saved signatures and commits. Try it against the running local services with a matching local creator:
 
 ```sh
-bun run napplet account create --network local
-bun run napplet new local-experiment --network local
+bun run soyli account create --network local
+bun run soyli new local-experiment --network local
 bunx playwright install chromium
-bun run napplet publish --project local-experiment --network local --dry-run
-bun run napplet publish --project local-experiment --network local
-bun run napplet status --project local-experiment --network local
+bun run soyli publish --project local-experiment --network local --dry-run
+bun run soyli publish --project local-experiment --network local
+bun run soyli status --project local-experiment --network local
 # After interruption, finish the saved bytes even if the editor has newer changes:
-bun run napplet publish --project local-experiment --network local --resume
+bun run soyli publish --project local-experiment --network local --resume
 ```
 
-Publication returns `indexed` once the website confirms the exact current/snapshot pair and verified artifact. If the website is still catching up, it returns `announced_pending_index`; use `bun run napplet status --project local-experiment --network local --refresh` to check again without signing or publishing. Keep `.napplet-space` for retry history. Signed creator handles and permanent named routes are available from the napplet detail page; and the public defaults target the deployed napplet.soy services. See [publishing and recovery](docs/PUBLISHING.md) and [persistent indexing](docs/INDEXING.md).
+Publication returns `indexed` once the website confirms the exact current/snapshot pair and verified artifact. If the website is still catching up, it returns `announced_pending_index`; use `bun run soyli status --project local-experiment --network local --refresh` to check again without signing or publishing. Keep `.napplet-space` for retry history. Signed creator handles and permanent named routes are available from the napplet detail page; and the public defaults target the deployed napplet.soy services. See [publishing and recovery](docs/PUBLISHING.md) and [persistent indexing](docs/INDEXING.md).
 
 ## Deploy to a VPS
 
@@ -173,7 +176,7 @@ Standalone creator installation, requirements and release procedure: [CLI guide]
 
 Open a napplet and choose **Remix this** for an exact-version CLI command. Signed source archives retain source and attribution; other napplets provide a verified HTML starting point. Connect the author's Nostr signer to claim a permanent **Named link**. Comments, replies, likes and zaps appear below the player.
 
-CLI 0.4.0 and these website features are live on napplet.soy. The CLI adds the local Listing preview and screenshot capture controls. The website offers install-and-remix, comment likes/zaps, and an initially empty admin Featured collection. For future releases, upload CLI archives before deploying the website. Existing CLI users can rerun the installer and restart `napplet-space dev`; `napplet-space skills update` refreshes their creator guidance. Readable links require a one-time **Named link** claim on the website and then follow future releases. See [CLI instructions](docs/CLI.md) and [community behavior](docs/COMMUNITY.md).
+CLI 0.4.0 and these website features are live on napplet.soy. The CLI adds the local Listing preview and screenshot capture controls. The website offers install-and-remix, comment likes/zaps, and an initially empty admin Featured collection. For future releases, upload CLI archives before deploying the website. Existing CLI users can rerun the installer and restart `soyli dev`; `soyli skills update` refreshes their creator guidance. Readable links require a one-time **Named link** claim on the website and then follow future releases. See [CLI instructions](docs/CLI.md) and [community behavior](docs/COMMUNITY.md).
 
 Creator media: see [where to put assets and current limitations](docs/ASSETS.md).
 The deployed website includes a [pinned original-source browser](docs/REMIXING.md#browsing-a-releases-original-files); its release status is recorded in [A01](AGENDA.md#a01--browse-the-original-source-files).

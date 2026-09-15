@@ -8,31 +8,31 @@ export const walkthrough = {
       title: 'Install',
       caption: 'Create, remix and publish without a website account.',
       detail:
-        'Paste the starter command into a terminal. The CLI prepares a project with Napplet skills. Follow its PATH instruction if shown. macOS or Linux and Git are required; no Bun or Node installation is needed.',
+        'Paste the command above. napplet soyLI sets up your project and coding skills.',
     },
     {
       title: 'Vibe code',
-      caption: 'Open the folder in your coding tool. Run napplet-space dev.',
+      caption: 'Open the folder in your coding tool. Run soyli dev.',
       detail:
-        'Open my-napplet in the AI coding tool you already use. Run napplet-space dev inside that folder, make changes and try the sandbox preview.',
+        'Open the folder in your coding tool. Run soyli dev and try your ideas.',
     },
     {
       title: 'Publish',
       caption: 'Build, review your posting, then publish with your Nostr identity.',
       detail:
-        'Run napplet-space build. Review the title, description, screenshot and publishing destinations in the posting preview. Run napplet-space publish. The CLI can create or connect a Nostr signing identity; no website sign-in is needed.',
+        'Run soyli build. Check your posting preview, then soyli publish. The CLI creates or connects your Nostr identity.',
     },
     {
       title: 'Play',
       caption: 'Open your share link. Play it. Pass it around.',
       detail:
-        'Open the link returned by the CLI and play your napplet in the browser. Share it so other people can explore it and inspect the source.',
+        'Open your share link, play it and pass it around.',
     },
     {
       title: 'Remix',
       caption: 'Choose Remix this. Copy the install-and-remix command. Make it yours.',
       detail:
-        'On a napplet page, choose Remix this and paste its install-and-remix command into your terminal. It also works without an installed CLI. Open the new folder in your coding tool and follow your idea.',
+        'Choose “Remix this” on a napplet. Paste its command and make it yours.',
     },
   ],
 } as const;

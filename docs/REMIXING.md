@@ -3,10 +3,10 @@
 Choose **Remix this** on a napplet page and copy the command. It pins the selected manifest event, so a later publication cannot change the starting point:
 
 ```sh
-napplet-space remix https://napplet.soy/r/EVENT_ID my-remix
+soyli remix https://napplet.soy/r/EVENT_ID my-remix
 cd my-remix
-napplet-space setup
-napplet-space dev
+soyli setup
+soyli dev
 ```
 
 Use `--network local` with a local portable or pinned URL when developing. The CLI also accepts naddr, nevent, note and hexadecimal event identifiers. The website is an optional accelerator: relay lookup uses Applesauce, verifies signatures and matches the exact requested identity.

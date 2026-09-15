@@ -39,13 +39,13 @@ cannot function without it. Keep the existing Vite plugin and lockfile.
 }
 ```
 
-Build, then open `napplet-space dev`. **Settings** opens the same form used beside
+Build, then open `soyli dev`. **Settings** opens the same form used beside
 the website player controls, including in fullscreen. The Listing tab reports the
 static schema's property count/version; Settings also remains available there.
 Edits and Reset defaults are drafts until **Save settings**. Cancel discards them.
 The running app receives the saved snapshot immediately.
 
-Publication destinations still live in `napplet.json`; `napplet-space config`
+Publication destinations still live in `napplet.json`; `soyli config`
 continues to show relay, Blossom, Git and site settings. User settings do not change
 publishing destinations, creator identity, multiplayer provider policy or game rules.
 

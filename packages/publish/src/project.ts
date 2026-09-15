@@ -154,7 +154,7 @@ export async function inspectProject(
       if (path === project.entry && (error as NodeJS.ErrnoException).code === 'ENOENT')
         throw new PublishError(
           'ARTIFACT_MISSING',
-          'Build the project before checking or publishing: napplet-space build.',
+          'Build the project before checking or publishing: soyli build.',
         );
       if (
         (error as NodeJS.ErrnoException).code === 'ENOENT' &&

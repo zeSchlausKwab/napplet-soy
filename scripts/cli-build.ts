@@ -1,4 +1,4 @@
-import { chmod, cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, cp, mkdir, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { previewAssets } from '../apps/cli/src/preview/assets';
@@ -41,7 +41,7 @@ const definitions = {
   NAPPLET_PREVIEW_ASSETS: JSON.stringify(assets),
 };
 for (const platform of selected) {
-  const name = `napplet-space-${platform}`;
+  const name = `soyli-${platform}`;
   const directory = join(output, name);
   await rm(directory, { recursive: true, force: true });
   await mkdir(join(directory, 'lib'), { recursive: true });
@@ -52,13 +52,15 @@ for (const platform of selected) {
     define: definitions,
     compile: {
       target: targets[platform as keyof typeof targets] as Bun.Build.CompileTarget,
-      outfile: join(directory, 'napplet-space'),
+      outfile: join(directory, 'soyli'),
       autoloadDotenv: false,
       autoloadBunfig: false,
     },
   });
   if (!build.success) throw new Error(build.logs.join('\n'));
-  await chmod(join(directory, 'napplet-space'), 0o755);
+  await chmod(join(directory, 'soyli'), 0o755);
+  // Older generated projects can keep using their original command.
+  await symlink('soyli', join(directory, 'napplet-space'));
   await cp(playwrightDirectory(), join(directory, 'lib/playwright-core'), {
     recursive: true,
     dereference: true,

@@ -11,7 +11,7 @@ export async function cliDownload(request: Request, version: string, name: strin
     });
   if (
     !/^\d+\.\d+\.\d+$/.test(version) ||
-    !/^napplet-space-(darwin|linux)-(arm64|x64)\.tar\.gz(\.sha256)?$/.test(name)
+    !/^(?:soyli|napplet-space)-(darwin|linux)-(arm64|x64)\.tar\.gz(\.sha256)?$/.test(name)
   )
     return new Response('Not found', { status: 404, headers });
   const root = process.env.SPACE_CLI_DOWNLOAD_DIR || resolve(process.cwd(), '../../.local/cli');

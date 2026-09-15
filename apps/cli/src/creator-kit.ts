@@ -7,40 +7,40 @@ import settingsExample from '../templates/napplet-settings.ts.txt' with { type: 
 import { AccountError } from '../../../packages/identity/src/signer';
 
 export const upstream = { boilerplate: boilerplate.revision, skills: skills.revision };
-const profile = `# Napplet Space integration
+const profile = `# napplet soyLI integration
 
 This project includes the maintained napplet/boilerplate and unchanged upstream
 napplet-* skills. Start with napplet-make. Protocol guidance stays upstream;
-this note maps its local tooling commands to the installed Napplet Space CLI.
+this note maps its local tooling commands to the installed napplet soyLI.
 
 ## Commands
 
 - The project is already scaffolded. Do not run another creator CLI or re-scaffold it.
 - Skills are already installed locally in .agents/skills and .claude/skills.
   The upstream npx skills command is an alternative for other environments.
-- napplet-space setup prepares the pinned Node/pnpm toolchain and dependencies.
+- soyli setup prepares the pinned Node/pnpm toolchain and dependencies.
   Nothing is installed globally; ordinary pnpm commands also work if you have it.
-- napplet-space run verify runs the upstream guidance/type/build checks.
-- napplet-space run test:conformance runs the upstream reference-shell checks.
+- soyli run verify runs the upstream guidance/type/build checks.
+- soyli run test:conformance runs the upstream reference-shell checks.
   Its pinned test browser is downloaded and cached on first use.
-- napplet-space dev watches the Vite build inside the Napplet Space sandbox.
+- soyli dev watches the Vite build inside the napplet.soy sandbox.
   Use its URL for preview. The upstream pnpm dev URL serves source without a host.
   Switch from Play to Listing to inspect the title, description, tags, creator,
   screenshot, license and publishing destinations. Use Capture screenshot after
   the final build; inspect the saved image in Listing before publishing. Captures
   select a new PNG in napplet.json and preserve previous images.
   The Settings button opens the same live configuration form as the website.
-- napplet-space build makes dist/index.html. Edit index.html, src/main.ts and
+- soyli build makes dist/index.html. Edit index.html, src/main.ts and
   src/styles.css; keep the upstream Vite configuration and dependency lockfile.
-- napplet-space config shows effective publishing targets without a signer or build.
+- soyli config shows effective publishing targets without a signer or build.
   config init writes them into napplet.json for older projects.
-- napplet-space check checks the existing built artifact in our host.
-- napplet-space screenshot saves preview.png and selects it in napplet.json.
+- soyli check checks the existing built artifact in our host.
+- soyli screenshot saves preview.png and selects it in napplet.json.
   Inspect the image: it should show a representative app state, not a blank canvas
   or loading screen. Use screenshot preview-2.png for another capture, or supply
   your own PNG with preview.image. Capture after the final build.
-- napplet-space publish --dry-run inspects source and destinations;
-  napplet-space publish publishes the existing build. Build after editing and
+- soyli publish --dry-run inspects source and destinations;
+  soyli publish publishes the existing build. Build after editing and
   before publishing. Publication and checks never execute project scripts.
 - For older single-file projects whose napplet.json entry is index.html, edit
   that file directly and use dev/check/publish; no build toolchain is required.
@@ -91,8 +91,8 @@ it is \`~/.config/napplet-space/accounts/public/<public-key>.nsec\` (local-netwo
 identities use accounts/local). The file has owner-only permissions. Preserve a
 private copy: it is unencrypted and can recover the creator identity.
 
-napplet-space account backup saves or locates that file for an existing local
-creator. To restore it, use napplet-space account import --stdin < /path/to/key.nsec.
+soyli account backup saves or locates that file for an existing local
+creator. To restore it, use soyli account import --stdin < /path/to/key.nsec.
 Signing continues to use the OS credential store; the project contains only the
 public creator reference. Remote-signer identities are backed up in their signer.
 Never copy the key into source, skills, browser code, or published assets.
@@ -145,12 +145,12 @@ gitignore entries, a static settings example and its single main.ts import, and
 excluding installed skill folders from the boilerplate's repository-guidance scan.
 The guidance check for a schema-free starter now checks our static settings example.
 Skill bodies and licenses are unchanged. Run
-napplet-space skills update to install the CLI's bundled skill revision; modified
+soyli skills update to install the CLI's bundled skill revision; modified
 files are reported as conflicts and preserved. Template/source changes are never
 applied by that command.
 `;
 
-const pointer = `## Napplet Space workspace\n\nRead [docs/napplet-space.md](docs/napplet-space.md) first for this project's CLI commands, installed skills and host capabilities. Use the upstream guidance below with those tooling mappings.\n\n`;
+const pointer = `## napplet soyLI workspace\n\nRead [docs/napplet-space.md](docs/napplet-space.md) first for this project's CLI commands, installed skills and host capabilities. Use the upstream guidance below with those tooling mappings.\n\n`;
 
 export function creatorSkills() {
   const files: Record<string, string> = {

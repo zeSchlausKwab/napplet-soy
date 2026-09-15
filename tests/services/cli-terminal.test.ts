@@ -23,7 +23,7 @@ enabled('native account pair displays a QR and cancels without selecting an iden
     process.env.SPACE_TEST_CLI === '1'
       ? resolve(
           import.meta.dir,
-          `../../.local/cli/${version}/napplet-space-${process.platform}-${process.arch}/napplet-space`,
+          `../../.local/cli/${version}/soyli-${process.platform}-${process.arch}/soyli`,
         )
       : process.env.SPACE_TEST_CLI!;
   let output = '';
@@ -157,7 +157,7 @@ async function interactiveInstall(cancel = false, redirectErrors = false) {
       expect(result).toContain('Preview project retained');
     } else {
       expect(result).toContain('Your napplet is ready');
-      expect(result).toContain('napplet-space dev');
+      expect(result).toContain('soyli dev');
     }
     expect(await Bun.file(join(root, 'creation/napplet.json')).exists()).toBe(true);
     expect(await Bun.file(join(root, 'accounts/accounts.json')).exists()).toBe(false);

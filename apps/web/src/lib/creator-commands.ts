@@ -11,5 +11,5 @@ export function createCommand(template = 'boilerplate') {
 
 export function remixCommand(source: string, install = true) {
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(new URL(source).hostname);
-  return `${install ? INSTALL_COMMAND : 'napplet-space'} remix ${argument(source)} my-remix${local ? ' --network local' : ''}`;
+  return `${install ? INSTALL_COMMAND : 'soyli'} remix ${argument(source)} my-remix${local ? ' --network local' : ''}`;
 }

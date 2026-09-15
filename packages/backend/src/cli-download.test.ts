@@ -20,6 +20,11 @@ test('download route serves only versioned release files, supports HEAD and bloc
     const head = await cliDownload(new Request(request, { method: 'HEAD' }), '0.1.0', name);
     expect(head.headers.get('content-length')).toBe('13');
     expect(await head.text()).toBe('');
+    // Old immutable download URLs remain valid alongside the new executable name.
+    await writeFile(join(root, '0.1.0', 'soyli-linux-x64.tar.gz'), 'renamed bytes');
+    expect(await (await cliDownload(request, '0.1.0', 'soyli-linux-x64.tar.gz')).text()).toBe(
+      'renamed bytes',
+    );
     for (const [version, path] of [
       ['..', name],
       ['0.1.0', '../secret'],

@@ -51,7 +51,7 @@ export function setupListing(signal: AbortSignal) {
       ),
       element(
         'p',
-        'This is a local draft. Run napplet-space check for the build and image validation, then napplet-space publish when ready.',
+        'This is a local draft. Run soyli check for the build and image validation, then soyli publish when ready.',
         'muted',
       ),
     );

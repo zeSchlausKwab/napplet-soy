@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 
-# Napplet Space creator CLI. Inspect this script before running it if you prefer.
+# napplet soyLI creator CLI. Inspect this script before running it if you prefer.
 # Downloads are immutable by version; the archive is verified before extraction.
-version=0.5.0
+version=0.6.0
 base=${NAPPLET_DOWNLOAD_BASE:-https://napplet.soy/cli/download}
 install_root=${NAPPLET_INSTALL_DIR:-"$HOME/.local/share/napplet-space"}
 bin_dir=${NAPPLET_BIN_DIR:-"$HOME/.local/bin"}
@@ -32,9 +32,9 @@ elif command -v shasum >/dev/null 2>&1; then hash() { shasum -a 256 "$1" | cut -
 else fail 'Install a SHA-256 tool (sha256sum or shasum) first.'; fi
 mkdir -p "$install_root/releases" "$bin_dir"
 # Do not replace a command that belongs to a different installation.
-if [ -e "$bin_dir/napplet-space" ] || [ -L "$bin_dir/napplet-space" ]; then
-  [ -L "$bin_dir/napplet-space" ] || fail "$bin_dir/napplet-space already exists and is not managed by this installer."
-  case "$(readlink "$bin_dir/napplet-space")" in "$install_root"/releases/*/napplet-space) ;; *) fail 'An existing napplet-space command belongs to another installation.' ;; esac
+if [ -e "$bin_dir/soyli" ] || [ -L "$bin_dir/soyli" ]; then
+  [ -L "$bin_dir/soyli" ] || fail "$bin_dir/soyli already exists and is not managed by this installer."
+  case "$(readlink "$bin_dir/soyli")" in "$install_root"/releases/*/soyli) ;; *) fail 'An existing soyli command belongs to another installation.' ;; esac
 fi
 stage=$(mktemp -d "$install_root/.install.XXXXXXXX")
 link_stage=''
@@ -42,10 +42,10 @@ cleanup() { rm -rf "$stage"; [ -z "$link_stage" ] || rm -rf "$link_stage"; }
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-name="napplet-space-$os-$arch"
+name="soyli-$os-$arch"
 archive="$name.tar.gz"
 fetch() { curl --fail --show-error --location --proto '=https,http' --proto-redir '=https' --connect-timeout 15 --max-time 300 "$1" -o "$2"; }
-printf 'Downloading Napplet Space %s for %s…\n' "$version" "$os-$arch"
+printf 'Downloading napplet soyLI %s for %s…\n' "$version" "$os-$arch"
 fetch "$base/$version/$archive.sha256" "$stage/checksum"
 expected=$(cut -d ' ' -f 1 < "$stage/checksum")
 case "$expected" in *[!a-f0-9]*|'') fail 'Invalid release checksum.' ;; esac
@@ -58,14 +58,30 @@ while IFS= read -r entry; do
   case "/$entry/" in */../*|*/./*) fail 'Unsafe archive path.' ;; esac
 done < "$stage/entries"
 tar -xzf "$stage/$archive" -C "$stage"
-[ -x "$stage/$name/napplet-space" ] || fail 'The archive did not contain an executable.'
-"$stage/$name/napplet-space" --version
+[ -x "$stage/$name/soyli" ] || fail 'The archive did not contain an executable.'
+"$stage/$name/soyli" --version
 release="$install_root/releases/$version-$os-$arch-$expected"
 if [ ! -d "$release" ]; then mv "$stage/$name" "$release"; fi
 link_stage=$(mktemp -d "$bin_dir/.napplet-link.XXXXXXXX")
-ln -s "$release/napplet-space" "$link_stage/napplet-space"
-mv -f "$link_stage/napplet-space" "$bin_dir/napplet-space"
-printf '\nInstalled %s\n' "$bin_dir/napplet-space"
+ln -s "$release/soyli" "$link_stage/soyli"
+mv -f "$link_stage/soyli" "$bin_dir/soyli"
+# Keep old generated scripts working, but never overwrite a foreign legacy command.
+legacy="$bin_dir/napplet-space"
+managed_legacy=false
+if [ ! -e "$legacy" ] && [ ! -L "$legacy" ]; then
+  managed_legacy=true
+elif [ -L "$legacy" ]; then
+  case "$(readlink "$legacy")" in
+    "$install_root"/releases/*/napplet-space|"$install_root"/releases/*/soyli) managed_legacy=true ;;
+  esac
+fi
+if [ "$managed_legacy" = true ]; then
+  ln -s "$release/soyli" "$link_stage/napplet-space"
+  mv -f "$link_stage/napplet-space" "$legacy"
+else
+  printf 'Kept existing %s; it belongs to another installation. Use soyli.\n' "$legacy"
+fi
+printf '\nInstalled %s\n' "$bin_dir/soyli"
 case ":${PATH:-}:" in *:"$bin_dir":*) ;; *)
   # JSON is not shell quoting: escape single quotes for an exact copyable command.
   quoted_bin=$(printf '%s' "$bin_dir" | sed "s/'/'\\\\''/g")
@@ -83,9 +99,9 @@ if [ "$#" -gt 0 ]; then
   if [ -t 2 ]; then terminal=$(tty <&2); fi
   case "$terminal" in
     /dev/tty) ;; # The generic alias has the same polling problem; skip prompts.
-    /dev/*) [ ! -c "$terminal" ] || exec "$bin_dir/napplet-space" "$@" <"$terminal" ;;
+    /dev/*) [ ! -c "$terminal" ] || exec "$bin_dir/soyli" "$@" <"$terminal" ;;
   esac
   # Headless installation still supports explicit options such as --identity later.
-  exec "$bin_dir/napplet-space" "$@" </dev/null
+  exec "$bin_dir/soyli" "$@" </dev/null
 fi
-printf '\nStart with: napplet-space new my-napplet\nHelp: https://napplet.soy/cli\n'
+printf '\nStart with: soyli new my-napplet\nHelp: https://napplet.soy/cli\n'

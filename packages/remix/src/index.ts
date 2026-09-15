@@ -258,9 +258,9 @@ export async function createRemix(
             name,
             private: true,
             scripts: {
-              dev: 'napplet-space dev',
-              check: 'napplet-space check',
-              publish: 'napplet-space publish',
+              dev: 'soyli dev',
+              check: 'soyli check',
+              publish: 'soyli publish',
             },
           },
           null,

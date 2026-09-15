@@ -64,12 +64,12 @@ captures are saved as `preview.png` beside the release's journal and source arch
 For an image the creator/AI can inspect before publishing:
 
 ```sh
-napplet-space build
-napplet-space screenshot
+soyli build
+soyli screenshot
 # Saves preview.png and selects it with preview.image in napplet.json.
 # Existing images are preserved: use screenshot preview-2.png to capture again.
-napplet-space publish --dry-run
-napplet-space publish
+soyli publish --dry-run
+soyli publish
 ```
 
 Choose a representative state, especially for scenes requiring a start click.

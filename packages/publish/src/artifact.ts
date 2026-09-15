@@ -13,7 +13,7 @@ export function executableBytes(contents: Map<string, Uint8Array>) {
   if (!bytes)
     throw new PublishError(
       'ARTIFACT_MISSING',
-      'Build the project before checking or publishing: napplet-space build.',
+      'Build the project before checking or publishing: soyli build.',
     );
   return bytes;
 }

@@ -1,20 +1,51 @@
-# Creator CLI
+# napplet soyLI — creator CLI
 
-The public installer at `https://napplet.soy/install.sh` installs a standalone
-`napplet-space` executable and its pinned Playwright support files. A separate
+The installer at `https://napplet.soy/install.sh` installs **napplet soyLI** as the
+standalone `soyli` executable, with its pinned Playwright support files. A separate
 Bun, Node, npm, or platform checkout is not required. The executable embeds Bun;
 this is not an alternative runtime implementation for users who reject Bun itself.
+
+## Rename and upgrade — 2026-09-15
+
+CLI **0.6.0 is locally built and verified; publication/deployment is pending**.
+The public site still distributes 0.5.0 until the four new archives are uploaded
+and the updated installer is deployed. The website remains napplet.soy; this is
+only a CLI rename, with no change to Nostr manifests or infrastructure.
+
+Once released, rerun the installer without arguments to upgrade in place:
+
+```sh
+curl -fsSL https://napplet.soy/install.sh | sh
+soyli --version
+# Inside an existing project:
+soyli skills update
+```
+
+The installer creates `~/.local/bin/soyli` and keeps a managed `napplet-space`
+compatibility alias so old project scripts continue working. Archives also include
+that alias. An unrelated existing `soyli` blocks installation; an unrelated
+`napplet-space` is left alone while installing `soyli`. Checksums are verified before
+switching commands, and old release directories remain available.
+
+Accounts, OS vault service names, private backups, toolchain/browser caches,
+`.napplet-space` journals and `docs/napplet-space.md` stay at their existing paths.
+There is no identity migration or regenerated key. As with previous executable
+updates, macOS may ask for Keychain authorization. New projects receive `soyli`
+commands; skills update refreshes unedited managed guidance in existing projects.
+Upstream boilerplate/skill pins and bodies are unchanged.
+
+## Create and publish
 
 ```sh
 curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet
 # Follow the printed PATH instruction if ~/.local/bin is not already on PATH.
 cd my-napplet
-napplet-space dev
+soyli dev
 # After editing (or stopping dev):
-napplet-space build
-napplet-space run verify
-napplet-space check
-napplet-space publish
+soyli build
+soyli run verify
+soyli check
+soyli publish
 ```
 
 `new` starts from the pinned creator-maintained `napplet/boilerplate`, initializes
@@ -39,9 +70,9 @@ absolute path before dependency installation. By default this is
 `~/.config/napplet-space/accounts/public/<public-key>.nsec`, outside the project
 and Git. It is an **unencrypted nsec**, mode 0600 inside the private account
 directory; preserve a private copy. The same creator reuses the same file.
-`napplet-space account backup` creates or locates it for an existing local identity.
-Restore with `napplet-space account import --stdin < /path/to/key.nsec`.
-For an encrypted copy, use `napplet-space account export /path/to/new.ncryptsec`.
+`soyli account backup` creates or locates it for an existing local identity.
+Restore with `soyli account import --stdin < /path/to/key.nsec`.
+For an encrypted copy, use `soyli account export /path/to/new.ncryptsec`.
 Remote identities are backed up in the remote signer instead.
 
 `dev` runs the upstream Vite build watcher and opens the loopback sandbox preview.
@@ -52,12 +83,12 @@ use the private toolchain from the current project. `dev`, `build`, and `run` ex
 your project's tools. **Check and publish never execute project scripts**: build
 your latest changes first; they inspect and run the finished HTML only.
 
-`napplet-space run verify` uses the upstream guidance tests, TypeScript check and
-build. `napplet-space run test:conformance` runs the reference harness and downloads
+`soyli run verify` uses the upstream guidance tests, TypeScript check and
+build. `soyli run test:conformance` runs the reference harness and downloads
 its own pinned Playwright browser on first use. This complements the Space host
 check; skipped reference cases are reported by the upstream harness.
 
-After upgrading the CLI, `napplet-space skills update [--project folder]` adds its
+After upgrading the CLI, `soyli skills update [--project folder]` adds its
 bundled skills to existing projects. It replaces only unchanged managed files,
 leaves edited or foreign files alone, and reports conflicts. It does not migrate
 source code, update dependencies, or fetch unreviewed skill changes from the web.
@@ -80,7 +111,7 @@ requirements; `account check` verifies the selected signer.
   packages or invokes sudo. Alpine/musl and native Windows are not supported.
 - Installer: curl, tar, tty, SHA-256 utilities; HTTPS downloads with checksum verification.
 - Binary/support files: `~/.local/share/napplet-space/releases/<version-platform-hash>`.
-  Command symlink: `~/.local/bin/napplet-space`. `NAPPLET_INSTALL_DIR` and
+  Command symlinks: `~/.local/bin/soyli` and managed legacy `~/.local/bin/napplet-space`. `NAPPLET_INSTALL_DIR` and
   `NAPPLET_BIN_DIR` override these paths. Foreign existing commands are preserved.
   Shell profiles are left unchanged; a copyable PATH export is printed if needed.
 - Credentials: OS store; public account index and private nsec backups:
@@ -115,13 +146,15 @@ Use the pinned Bun 1.3.11 toolchain for builds:
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.5.0/napplet-space-darwin-arm64/napplet-space" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.6.0/soyli-darwin-arm64/soyli" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts
 bun run cli:release --host root@your-vps
 ```
 
+Archives are named `soyli-<platform>.tar.gz` with matching SHA-256 files. Old
+`napplet-space-<platform>.tar.gz` URLs remain served for immutable earlier releases.
 The build embeds the shared preview and disables project `.env`/bunfig autoload.
 It packages the exact locked Playwright core (including its dynamic worker files)
 and dependency notices alongside the executable. Keep the `lib` directory with
@@ -147,8 +180,8 @@ does not create creator keys or publish events.
 
 If an older installer stopped at the identity prompt, open a fresh terminal if
 Ctrl+C does not respond. The CLI is already installed and the project was created:
-enter that project directory and run `~/.local/bin/napplet-space dev`. Creator
-setup can follow with `napplet-space account create` or `napplet-space account connect`.
+enter that project directory and run `~/.local/bin/soyli dev` after upgrading. Creator
+setup can follow with `soyli account create` or `soyli account connect`.
 
 ## Updating the upstream pins
 
@@ -176,13 +209,13 @@ standalone installer before shipping a new immutable CLI version.
 
 ### Project destinations and screenshots (CLI 0.3.1)
 
-`napplet-space config` prints the effective public targets without reading a key
+`soyli config` prints the effective public targets without reading a key
 or contacting services. `config init` writes those values into older projects.
 New projects include editable `publish.networks.public` and `.local` profiles.
 Use `--network local` to inspect the dev stack. CLI publication flags override
 project settings. See [configuration precedence and destinations](PUBLISHING.md#visible-project-destinations-and-previews).
 
-`napplet-space screenshot` captures the current built app, writes `preview.png`
+`soyli screenshot` captures the current built app, writes `preview.png`
 and selects it in `napplet.json`. Inspect that PNG before publishing. A named
 capture (`screenshot preview-2.png`) preserves an existing file. Set
 `preview.delayMs` for startup timing, or select a different PNG with
@@ -196,7 +229,7 @@ older installed binaries remain unchanged until the creator reruns the installer
 
 ## Local listing preview (CLI 0.4.0)
 
-Run `napplet-space dev` in a project, then select **Listing** beside **Play**. This draft
+Run `soyli dev` in a project, then select **Listing** beside **Play**. This draft
 shows the title, description, tags, creator public key, selected screenshot, license,
 identifier, built artifact and effective destinations for the selected network. Use
 `--network local` for local services; the default is public. Publication flags can
@@ -209,12 +242,12 @@ Review the image after the final build; it may need an interactive scene or cust
 for a representative state. Configuration and image changes refresh in Listing.
 
 Missing metadata or a build appears as a draft warning. The listing preview complements
-`napplet-space check`; it does not assert that the artifact passed all publication checks.
+`soyli check`; it does not assert that the artifact passed all publication checks.
 Only public configuration and the selected, bounded project PNG are served by loopback.
 Capturing requires an explicit same-origin action.
 
-Existing projects get this view by updating the CLI and restarting `napplet-space dev`.
-Run `napplet-space skills update` to refresh the separate Space integration guidance;
+Existing projects get this view by updating the CLI and restarting `soyli dev`.
+Run `soyli skills update` to refresh the separate Space integration guidance;
 upstream boilerplate and skill bodies stay unchanged.
 
 Readable links require a one-time claim on the website: connect the publishing account,
@@ -237,7 +270,7 @@ runner currently checks boot/degradation only; it does not exercise configuratio
 
 ## Connect a remote creator (CLI 0.5.0)
 
-Use `napplet-space account pair` to display a connection link and QR for your
+Use `soyli account pair` to display a connection link and QR for your
 NIP-46 signer. `--open` also opens the link in a registered signer app. Use
 `account connect` instead to paste a signer-provided `bunker://` link at a hidden
 prompt. Pairing defaults to our relay and supports a separate `--signer-relay`

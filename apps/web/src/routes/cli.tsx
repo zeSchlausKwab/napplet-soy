@@ -11,7 +11,7 @@ function CliHelp() {
         <br />A working project<span className="coral">.</span>
       </h1>
       <p className="create-intro">
-        Install the creator CLI, open your favorite coding agent, and make something.
+        Install napplet soyLI, open your favorite coding agent, and make something.
       </p>
       <StarterCommand />
       <p className="command-note">
@@ -23,11 +23,11 @@ function CliHelp() {
         <code>
           cd my-napplet
           <br />
-          napplet-space dev
+          soyli dev
           <br />
-          napplet-space build
+          soyli build
           <br />
-          napplet-space publish
+          soyli publish
         </code>
       </div>
       <div className="creation-steps">
@@ -57,7 +57,7 @@ function CliHelp() {
           </p>
           <p>
             The first check or publication downloads a pinned Chromium browser into your cache.
-            Future checks reuse it. Use <code>napplet-space check</code> without publishing.
+            Future checks reuse it. Use <code>soyli check</code> without publishing.
           </p>
         </article>
       </div>
@@ -67,11 +67,11 @@ function CliHelp() {
         <a href="https://github.com/napplet/boilerplate">napplet/boilerplate</a>, including its SDK,
         Vite plugin, documentation, and eight official Napplet skills. Open your coding agent in the
         project folder; AGENTS.md and CLAUDE.md point it to the instructions. Run{' '}
-        <code>napplet-space run verify</code> for the upstream checks or{' '}
-        <code>napplet-space run test:conformance</code> for its reference harness.
+        <code>soyli run verify</code> for the upstream checks or{' '}
+        <code>soyli run test:conformance</code> for its reference harness.
       </p>
       <p className="command-note">
-        For an existing creation, run <code>napplet-space skills update</code> in its folder after
+        For an existing creation, run <code>soyli skills update</code> in its folder after
         updating the CLI. This adds the bundled skills and preserves your edits. The project’s{' '}
         <code>docs/napplet-space.md</code> explains publishing and supported host capabilities.
         Explicit example starters remain available through <code>--template</code>.
@@ -96,8 +96,8 @@ function CliHelp() {
         <article>
           <h2>Need a hand?</h2>
           <p>
-            Run <code>napplet-space doctor</code> for Git and browser diagnostics. Run{' '}
-            <code>napplet-space account check</code> to verify your signer. Alpine/musl and native
+            Run <code>soyli doctor</code> for Git and browser diagnostics. Run{' '}
+            <code>soyli account check</code> to verify your signer. Alpine/musl and native
             Windows packages are not supported yet.
           </p>
         </article>
@@ -111,6 +111,13 @@ function CliHelp() {
         </code>
         . The CLI never runs sudo for you.
       </p>
+      <h2>Upgrading from napplet-space</h2>
+      <p className="command-note">
+        Run <code>curl -fsSL https://napplet.soy/install.sh | sh</code> to update without creating a
+        project. The command is now <code>soyli</code>. Your identities, backups and project state
+        stay in place; the old command remains a compatibility alias. Then run{' '}
+        <code>soyli skills update</code> in each project to refresh its coding guidance.
+      </p>
       <h2>Downloads · {release.version}</h2>
       <p className="command-note">
         Extract the whole archive, including its lib folder. Keep them together. These downloads
@@ -119,11 +126,11 @@ function CliHelp() {
       <ul>
         {(['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64'] as const).map((platform) => (
           <li key={platform}>
-            <a href={`/cli/download/${release.version}/napplet-space-${platform}.tar.gz`}>
+            <a href={`/cli/download/${release.version}/soyli-${platform}.tar.gz`}>
               {platform.replace('darwin', 'macOS')}
             </a>
             {' · '}
-            <a href={`/cli/download/${release.version}/napplet-space-${platform}.tar.gz.sha256`}>
+            <a href={`/cli/download/${release.version}/soyli-${platform}.tar.gz.sha256`}>
               SHA-256
             </a>
           </li>

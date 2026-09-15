@@ -43,7 +43,7 @@ test('scaffolds a standalone Git project with shared restricted preview', async 
   ]);
   expect(await Bun.file(join(path, 'AGENTS.md')).text()).toContain('No CDN');
   expect(await Bun.file(join(path, 'dev.ts')).exists()).toBe(false);
-  expect((await Bun.file(join(path, 'package.json')).json()).scripts.dev).toBe('napplet-space dev');
+  expect((await Bun.file(join(path, 'package.json')).json()).scripts.dev).toBe('soyli dev');
   const process = Bun.spawn(['git', '-C', path, 'rev-parse', '--is-inside-work-tree'], {
     stdout: 'pipe',
   });

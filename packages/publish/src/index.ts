@@ -294,7 +294,7 @@ export async function publishProject(options: PublishOptions) {
             if (options.requirePreview && !preview)
               throw new PublishError(
                 'PREVIEW_REQUIRED',
-                'Publishing requires a preview. Run napplet-space screenshot or update the CLI.',
+                'Publishing requires a preview. Run soyli screenshot or update the CLI.',
               );
             if (
               preview &&

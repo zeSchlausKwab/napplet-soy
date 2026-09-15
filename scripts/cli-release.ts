@@ -12,7 +12,7 @@ if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Invalid release version')
 const root = resolve(import.meta.dir, '../.local/cli');
 const files: string[] = [];
 for (const platform of ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64']) {
-  const name = `napplet-space-${platform}.tar.gz`;
+  const name = `soyli-${platform}.tar.gz`;
   const expected = (await Bun.file(join(root, version, `${name}.sha256`)).text()).trim();
   const actual = new Bun.CryptoHasher('sha256')
     .update(await Bun.file(join(root, version, name)).bytes())

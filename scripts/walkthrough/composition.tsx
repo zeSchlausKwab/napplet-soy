@@ -215,7 +215,7 @@ function Film() {
               <div style={{ width: '53%', padding: '22px 27px', background: '#eeece3' }}>
                 <div style={{ ...mono, fontSize: 19, color: '#5e795e' }}>
                   $ cd my-napplet
-                  <br />$ napplet-space dev
+                  <br />$ soyli dev
                 </div>
                 <div
                   style={{
@@ -244,12 +244,12 @@ function Film() {
           <div style={{ display: 'flex', gap: 24, height: 350 }}>
             <Window title="terminal / my-napplet" dark style={{ flex: 1 }}>
               <div style={{ padding: 23, ...mono, fontSize: 20 }}>
-                <div>$ napplet-space build</div>
+                <div>$ soyli build</div>
                 <div style={{ color: sage, margin: '15px 0', fontSize: 18 }}>
                   Review your posting preview ✓
                 </div>
                 <div style={{ opacity: interpolate(local, [35, 48], [0, 1], clamp) }}>
-                  $ napplet-space publish
+                  $ soyli publish
                 </div>
                 <div
                   style={{

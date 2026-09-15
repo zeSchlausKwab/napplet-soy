@@ -35,7 +35,7 @@ export async function checkPublication(contents: Map<string, Uint8Array>, forceS
     } catch {
       throw new PublishError(
         'BROWSER_REQUIRED',
-        'The check browser could not start. Run napplet-space doctor; Linux needs the Chromium system libraries. Browser setup is available with napplet-space browser install.',
+        'The check browser could not start. Run soyli doctor; Linux needs the Chromium system libraries. Browser setup is available with soyli browser install.',
       );
     }
     const config = JSON.parse(new TextDecoder().decode(contents.get('napplet.json')));
