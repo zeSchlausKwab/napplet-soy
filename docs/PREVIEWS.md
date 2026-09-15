@@ -201,6 +201,7 @@ Chromium listing review, gallery lifecycle/reduced-motion, and static OG checks.
 
 ## Linked assets on detail pages
 
+Deployed in website release `20260915171125013-66174` (2026-09-15), with soyLI 0.8.3 unchanged.
 The single napplet page lists available linked assets immediately below the player:
 its cached preview image, cached WebM clip, additional image/icon or WebM links in
 the selected supported app descriptors, and its pinned source archive. The same

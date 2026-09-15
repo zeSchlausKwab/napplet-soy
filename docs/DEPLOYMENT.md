@@ -937,3 +937,31 @@ Origin handling for media, resources and relay-read before activation. All five 
 services are online with zero restarts; the catalog and public service checks pass.
 Both Caddy configuration hashes are unchanged, and schlaustronics.com returns HTTPS
 200. The existing 50 MiB Blossom limit and prior upload-timeout correction are retained.
+
+
+## Linked asset list — 2026-09-15
+
+Release `20260915171125013-66174` activated website source `af069d2`. Detail pages
+now expose linked images, video clips and source archives beneath the player;
+see [preview delivery and limits](PREVIEWS.md#linked-assets-on-detail-pages).
+The current-listing source lookup also works in the public-dev catalog.
+
+The normal deployment completed all checks locally and on VPS Bun 1.3.8:
+typecheck, 250 repository tests, Go race tests, four relay tests, 18 Blossom tests
+and eight GRASP tests, followed by production builds and candidate activation
+checks. Two focused Chromium fixtures verify actual image/clip responses, source
+archive byte equality, existing gallery/playback/OG behavior, responsive layout,
+SSR links and immersive hiding. No test events were published.
+
+On the unchanged published Drone Zone page, the live list contains its image,
+9-second WebM and source archive. The image endpoint returns PNG, the clip endpoint
+returns a valid partial WebM response, and links render without JavaScript. The
+390px layout fits without horizontal overflow. All five PM2 processes are online
+with zero restarts, the new release's worker heartbeat is ready, and its first
+completed discovery scan is fresh. External Damus query timeouts remain reported;
+owned relay endpoints pass. Both Caddy configuration hashes match the pre-rollout
+values, and schlaustronics.com still returns HTTPS 200.
+
+The public installer remains on soyLI 0.8.3. Existing archive sizes/checksums were
+verified and no CLI artifacts were replaced. The prior runtime deadline and
+indexer-readiness corrections remain included in this release.
