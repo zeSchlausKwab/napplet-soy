@@ -80,6 +80,9 @@ export function Player({
   const declaration = useRef<ReturnType<typeof declaredConfig>>({});
   const host = useRef<ReturnType<typeof attachNappletHost> | undefined>(undefined);
   const currentPubkey = useRef(pubkey);
+  const focusPrompt = useCallback((node: HTMLDivElement | null) => {
+    node?.querySelector<HTMLButtonElement>('button')?.focus();
+  }, []);
   useLayoutEffect(() => {
     currentPubkey.current = pubkey;
     host.current?.updateIdentity(pubkey);
@@ -323,9 +326,7 @@ export function Player({
               role="dialog"
               aria-modal="true"
               aria-label={prompt.kind === 'save' ? 'Save napplet file' : 'Open external link'}
-              ref={(node) => {
-                node?.querySelector<HTMLButtonElement>('button')?.focus();
-              }}
+              ref={focusPrompt}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
                   event.preventDefault();

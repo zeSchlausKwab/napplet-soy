@@ -6,13 +6,13 @@ test('onboarding provides a runtime-free installer and real versioned downloads'
   request,
 }) => {
   await page.goto('/create?template=tiny-tennis');
-  await expect(page.locator('.terminal-box')).toContainText(
+  await expect(page.locator('.terminal-box').first()).toContainText(
     'curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet --template tiny-tennis',
   );
-  await expect(page.locator('.creation-steps')).toContainText('soyli dev');
-  await expect(page.locator('.creation-steps')).toContainText('soyli publish');
-  await page.getByRole('link', { name: /Installation help/ }).click();
-  await expect(page.getByRole('heading', { name: 'No runtime setup' })).toBeVisible();
+  await expect(page.locator('.creation-steps').first()).toContainText('soyli dev');
+  await expect(page.locator('.creation-steps').first()).toContainText('soyli publish');
+  await page.getByRole('navigation', { name: 'Creator guide' }).getByRole('link', { name: 'System setup' }).click();
+  await expect(page.getByRole('heading', { name: 'Settle into your system.' })).toBeVisible();
   expect((await request.get('/install.sh')).status()).toBe(200);
   for (const platform of ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64']) {
     const path = `/cli/download/${release.version}/soyli-${platform}.tar.gz`;

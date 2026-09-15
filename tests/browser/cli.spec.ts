@@ -22,7 +22,7 @@ test.beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'space-cli-browser-'));
   execFileSync(
     'bun',
-    [fileURLToPath(new URL('../../apps/cli/src/index.ts', import.meta.url)), 'new', 'experiment'],
+    [fileURLToPath(new URL('../../apps/cli/src/index.ts', import.meta.url)), 'new', 'experiment', '--template', 'soft-orbit', '--identity', 'later', '--no-install'],
     { cwd: root },
   );
   project = join(root, 'experiment');

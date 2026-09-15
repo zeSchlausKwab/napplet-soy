@@ -103,7 +103,7 @@ test('linked screenshot appears in gallery, player cover and SSR sharing without
     `/api/previews/${entry.revisionId}?v=${entry.preview.hash}`,
   );
   await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(960);
-  await page.getByRole('link', { name: `Play ${entry.title}`, exact: true }).click();
+  await page.locator('.napplet-card .card-heading a').click();
   const cover = page.locator('.player-cover img');
   await expect(cover).toHaveAttribute(
     'src',
