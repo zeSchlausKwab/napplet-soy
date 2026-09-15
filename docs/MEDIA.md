@@ -65,8 +65,8 @@ browser-controlled same-origin fetch metadata is required. `DELETE` cancels stre
 and releases the ticket. The opaque frame receives neither a ticket nor source bytes.
 Admission/moderation is checked again when a stream starts.
 
-The proxy checks public DNS addresses in the actual HTTPS connection lookup, including
-each of at most three redirects. It rejects private/special IPs, HTTP, credentials,
+The proxy validates public DNS addresses and pins the actual HTTPS connection,
+including each of at most three redirects. It rejects private/special IPs, HTTP, credentials,
 nonstandard ports and encoded responses; no cookies/authorization headers are
 forwarded. The byte prefix is sniffed before delivery, rejecting HTML and playlists.
 The rest is streamed with backpressure; live streams need not finish downloading.
@@ -79,9 +79,14 @@ and 24 stream starts per minute per manifest, eight retained tickets per manifes
 support ranges. Stop/retry starts a fresh stream; expiry/limits can require a new
 media session. The resource-bytes API retains its existing smaller limits.
 
-The VPS's Bun 1.3.8 TLS/DNS defect is handled with a streamed Node worker using the
-same policy, bounds and cancellation. Other runtimes use native guarded HTTPS.
-The standalone CLI needs no separate Node installation for audio.
+The compiled CLI uses Bun's native fetch against a validated IP, preserving the
+original Host header, TLS server name and explicit certificate hostname verification.
+This avoids a sustained-stream stall observed in Bun's Node-compatible HTTPS adapter.
+See [Bun's TLS request options](https://bun.com/reference/globals/BunFetchRequestInitTLS).
+The VPS's Bun 1.3.8 TLS/DNS defect is handled with a streamed real Node worker using
+the same policy, bounds and cancellation. The standalone CLI needs no separate Node
+installation for audio. Web and preview server idle timeouts are 60 seconds, above
+the transport's connection and idle deadlines.
 
 ## Verification
 
@@ -90,8 +95,10 @@ session ownership/IDs, commands, gesture retries, cross-session focus and teardo
 The actual upstream shim is exercised in the CLI browser test, including decoded WAV
 playback, gesture retry, mobile layout and account cleanup. The unchanged Drone Zone
 project was also run against its real relay/MP3 stream: the browser reached playing,
-advanced time and paused. Native and Node fallback transports both delivered MP3
-prefix bytes without waiting for EOF and cancelled successfully.
+advanced time and paused. Bun native fetch and Node fallback transports both delivered
+successive MP3 chunks without waiting for EOF and cancelled successfully. The built
+website also streamed the real MP3 through its media route, retained controls in
+fullscreen, paused and released the session on player teardown.
 
 See `packages/runtime/src/media.test.ts`, `packages/backend/src/audio.test.ts` and
 `tests/services/media.test.ts`. Existing runtime browser tests continue to cover

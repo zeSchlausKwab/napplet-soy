@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { createAudioResponder } from './audio-response';
-import { audioMime, audioUrl, openAudioStreamNative } from './audio-stream';
+import { audioMime, audioUrl, openAudioStreamNative, openAudioStreamBun } from './audio-stream';
 import type { publicLookup } from './blossom';
 
 const origin = 'http://localhost:12345',
@@ -88,4 +88,78 @@ test('DNS policy failure creates no ticket and excessive retained tickets are bo
   const respond = createAudioResponder(async () => true, undefined, lookup);
   for (let i = 0; i < 8; i++) expect((await respond(prepare())).status).toBe(200);
   expect((await respond(prepare())).status).toBe(429);
+});
+
+test('Bun streaming pins the destination and TLS name, delivers later chunks and rejects unsafe redirects', async () => {
+  let requested: URL | undefined,
+    options: any,
+    cancelled = false,
+    chunk = 0;
+  const fetcher = (async (url: URL, init: unknown) => {
+    requested = url;
+    options = init;
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          await Bun.sleep(2);
+          const bytes = new Uint8Array(4096);
+          if (!chunk++) bytes.set(new TextEncoder().encode('ID3'));
+          controller.enqueue(bytes);
+        },
+        cancel() {
+          cancelled = true;
+        },
+      }),
+    );
+  }) as unknown as typeof fetch;
+  const result = await openAudioStreamBun(
+    new URL('https://radio.example/live'),
+    new AbortController().signal,
+    0,
+    {
+      resolve: async () => '93.184.215.14',
+      fetch: fetcher,
+    },
+  );
+  expect(requested!.hostname).toBe('93.184.215.14');
+  expect(options.headers.Host).toBe('radio.example');
+  expect(options.tls.serverName).toBe('radio.example');
+  expect(options.tls.rejectUnauthorized).toBe(true);
+  expect(
+    options.tls.checkServerIdentity('93.184.215.14', {
+      subjectaltname: 'DNS:radio.example',
+      subject: {},
+    }),
+  ).toBeUndefined();
+  expect(
+    options.tls.checkServerIdentity('93.184.215.14', {
+      subjectaltname: 'DNS:elsewhere.example',
+      subject: {},
+    }),
+  ).toBeInstanceOf(Error);
+  const reader = result.body.getReader();
+  for (let i = 0; i < 3; i++) expect((await reader.read()).value?.length).toBe(4096);
+  await reader.cancel();
+  expect(cancelled).toBe(true);
+  expect(options.signal.aborted).toBe(true);
+  let fetches = 0;
+  await expect(
+    openAudioStreamBun(new URL('https://radio.example/live'), new AbortController().signal, 0, {
+      resolve: async () => '93.184.215.14',
+      fetch: (async () => {
+        fetches++;
+        return new Response(null, {
+          status: 302,
+          headers: { Location: 'https://127.0.0.1/private' },
+        });
+      }) as unknown as typeof fetch,
+    }),
+  ).rejects.toThrow('source blocked');
+  expect(fetches).toBe(1);
+  await expect(
+    openAudioStreamBun(new URL('https://radio.example/live'), new AbortController().signal, 0, {
+      resolve: async () => '127.0.0.1',
+      fetch: fetcher,
+    }),
+  ).rejects.toThrow('source blocked');
 });

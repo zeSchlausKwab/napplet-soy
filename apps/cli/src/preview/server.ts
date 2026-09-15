@@ -85,6 +85,7 @@ export function startPreviewServer(
     return current.info.id === id && !missingDomains(current.info.requires).length;
   });
   const server = Bun.serve({
+    idleTimeout: 60,
     hostname: '127.0.0.1',
     port,
     async fetch(request) {

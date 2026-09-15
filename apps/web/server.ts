@@ -17,6 +17,9 @@ const { default: app } = (await import(entryPath)) as {
   default: { fetch(request: Request): Promise<Response> };
 };
 const server = Bun.serve({
+  // Media can spend 15s connecting and 30s awaiting a chunk. Keep the server's
+  // idle timeout above those bounded transport deadlines instead of Bun's 10s default.
+  idleTimeout: 60,
   hostname: process.env.HOST ?? '127.0.0.1',
   port: Number(process.env.PORT ?? 3000),
   async fetch(request) {
