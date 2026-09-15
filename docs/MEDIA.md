@@ -1,7 +1,9 @@
 # Audio in the shared host
 
 Implemented in source on **2026-09-15**, prepared for **soyLI 0.8.0** and a matching
-web deployment. Neither has been published by this change. The 0.7.0 distribution
+web deployment. The operator's 0.8.0 installer/checksums and website release
+`20260915113546965-84858` were observed publicly on 2026-09-15; production playback
+acceptance is separate from the local evidence below. The 0.7.0 distribution
 does not expose `media`; upgrading the website does not upgrade installed CLIs.
 
 ## Contract and supported subset

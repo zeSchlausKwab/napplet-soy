@@ -128,8 +128,8 @@ if any, need their own explicit release instructions. `publish --resume` is unre
 to authoring: it continues uploading a frozen release, even when newer edits exist.
 
 Runtime capability support comes from the host, not from the presence of an SDK
-export. The prepared **0.8.0** CLI adds NAP-MEDIA shell-owned audio; the currently
-published 0.7.0 does not include it. The website needs the matching deployment.
+export. **0.8.0 and later** add NAP-MEDIA shell-owned audio; 0.7.0 does not include
+it. The website needs the matching deployment.
 Embedded audio is distinct from host-owned radio streaming; see
 [audio and media sessions](MEDIA.md) for the supported subset and verification.
 

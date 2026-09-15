@@ -816,3 +816,32 @@ Installed creators must separately rerun the installer without new/remix argumen
 verify `soyli --version` reports 0.8.0, stop the old dev server, run `soyli skills update`
 and restart `soyli dev` in their existing project. No identity, dependency or source
 migration is required. Review managed-file conflicts without overwriting local edits.
+
+## Blossom timeout correction and soyLI 0.8.1 — 2026-09-15
+
+Operator deployment of 0.8.0 was observed read-only: public health reports
+`20260915113546965-84858`, the installer selects 0.8.0, and all four public checksum
+files match the prepared release record. This observation does not constitute a
+new VPS deployment, process audit or production audio acceptance check.
+
+Commit `949fc97` replaces Blossom's fixed 20-second upload-body deadline with
+30-second inactivity and five-minute overall limits. The shared client allows six
+minutes for upload and independently gives verification five minutes with a 30-second
+idle timeout. Publication resume uses that same verification policy. The 50 MiB
+blob limit, signature/hash checks, ownership quotas and frozen release identity remain
+unchanged. See [the policy and retry procedure](BLOSSOM.md#upload-timeout-correction--prepared-for-soyli-081).
+
+The paced 11 MiB regression first failed with HTTP 408, then passed while taking
+over 24 seconds. Raw HTTP idle/trickle tests verify explicit 408 responses, removal
+of partial files and release of upload slots. Client tests cover independent phase
+budgets, idle/overall/caller cancellation, changed hashes, oversized responses and
+redirect refusal. Repository checks, the complete Blossom service/process suite,
+publication/retry integration and the production web build passed.
+
+soyLI **0.8.1** archives are prepared locally; their hashes and exact verification
+coverage are in [release-0.8.1.json](../apps/cli/distribution/release-0.8.1.json).
+**No CLI upload or VPS deployment was performed for this correction.** Use the same
+CLI-upload-then-deploy command above. Both the service and creator CLI need updating.
+After installation, verify `soyli --version` reports 0.8.1, then retry the existing
+project with `soyli publish --resume`. Incomplete blobs restart with their existing
+frozen bytes; completed, owned and hash-verified blobs are reused.

@@ -70,9 +70,9 @@ host capability for media sessions, including shell-owned playback: the napplet 
 the host a source and requests playback/control; the host owns the player and policy.
 This is different from embedded sound effects or Web Audio inside the sandbox.
 
-The shared host now implements shell-owned audio, prepared for **soyLI 0.8.0** and
-the corresponding website deployment (not yet released). The currently deployed
-0.7.0 host lacks this domain. Check runtime support; on other clients an optional
+The shared host implements shell-owned audio in **soyLI 0.8.0 and later** and
+the corresponding website deployment. The 0.8.0 release is now published;
+older 0.7.0 hosts lack this domain. Check runtime support; on other clients an optional
 media feature should report unavailability or offer a user-confirmed external link.
 A successful relay lookup only proves station metadata is readable; it does not
 prove playback. See [the audio contract](MEDIA.md) for exact operations and limits.
