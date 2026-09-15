@@ -96,6 +96,45 @@ After publishing, open the napplet page, connect the same creator account and
 choose Named link to claim /@your-handle/your-slug. The name follows later releases.
 Existing published napplets can claim a name without republishing.
 
+## Local Git checkpoints and public releases
+
+new initializes Git but does not create an initial commit. Treat local commits as
+the creator's development checkpoints: make a first commit after reviewing the
+scaffold, then commit coherent changes after the relevant checks. Before pausing,
+save a checkpoint even if the whole napplet is unfinished; describe outstanding
+issues accurately in its message. Do not wait for publication to preserve work.
+Follow the creator's Git preferences and inspect git status and git diff first.
+Review the files being staged, including new files; do not sweep unrelated work or
+secrets into a commit, rewrite history, or push without the creator's authorization.
+
+Local commits and publication serve different purposes. soyli publish freezes the
+selected CURRENT FILE CONTENTS into a separate release repository inside the ignored
+.napplet-space journal, then sends that release history to the configured GRASP.
+It does not commit, push or back up the working repository's branches/history.
+Built projects include tracked and unignored untracked files by default, plus the
+built HTML and selected previews; publish.files can narrow source selection.
+An uncommitted file can therefore be published. Inspect soyli publish --dry-run
+before publishing. Keep private notes ignored and signing keys outside the project.
+GRASP holds published source releases, not unpublished work or all local checkpoints.
+Preserve a separate private backup of the project if those checkpoints matter.
+
+## Pause and resume an existing creation
+
+Keep the same folder, .git history, napplet.json creator/identifier and ignored
+.napplet-space journal. For an AI handoff, save a private .napplet-space/RESUME.md
+with the current goal, changed files, checks and results, known host limitations,
+and next steps. Never include credentials. Do not put a private handoff in public
+source files. A new AI session should read it and inspect Git before changing code.
+
+After a soyLI release, stop the old dev process, update the executable using the
+installer without new/remix arguments, and run soyli skills update in this folder.
+Review reported conflicts; edited guidance is preserved. Start soyli dev again to
+use the updated bundled host. Skills update does not replace source or dependencies;
+follow explicit migration instructions if a release needs changes to those.
+Keep using the existing creator identity. Do not scaffold a replacement project.
+soyli publish --resume resumes a saved PUBLICATION, not authoring: it uploads the
+old frozen bytes even if current files changed. Ordinary editing needs no resume flag.
+
 ## Creator backup
 
 Creating a local identity also saves its private key as an nsec file outside this
@@ -119,9 +158,20 @@ SDK; do not add a bootstrap or a private protocol extension to app code.
 
 This host provides configuration, identity, storage, theme, resource, relay/outbox reads,
 common reads, user-confirmed links and session files. Social writes, signer
-operations, ContextVM and cross-napplet operations are not currently granted.
+operations, media sessions, ContextVM and cross-napplet operations are not currently granted.
 A domain's presence does not promise that every operation will be permitted.
 Our host check complements upstream conformance; report each result separately.
+
+Check host capability discovery before implementing a capability-dependent feature:
+an SDK export or passing upstream reference-shell test does not mean soyLI or the
+deployed website implements that domain. Local and deployed versions may differ.
+NAP-MEDIA shell-owned audio/stream playback is currently unsupported in both hosts.
+Small embedded data/blob audio and Web Audio are separate browser features, subject
+to user activation and codec support. Do not work around missing media support by
+adding direct remote URLs, fetch, an unbounded resource download or a looser CSP.
+For an optional radio feature, keep a clear unavailable state or user-confirmed link
+fallback; if playback is the core purpose, declare media required and report the
+host gap. Test the actual play/pause/volume flow, not only build/startup or relay lookup.
 
 ## User-facing settings
 

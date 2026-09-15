@@ -1,6 +1,6 @@
 # Publishing a creation
 
-The CLI connects creator accounts, Git/GRASP, Blossom and NIP-5D publication, with a durable retry journal. The website's [persistent relay index](INDEXING.md) now confirms address and snapshot routes. A confirmed publication returns `indexed`, `websiteReady: true` and a check timestamp; a website that is unavailable or still catching up leaves the successful relay publication at `announced_pending_index`. Authenticated named-route claims remain ahead.
+The CLI connects creator accounts, Git/GRASP, Blossom and NIP-5D publication, with a durable retry journal. The website's [persistent relay index](INDEXING.md) now confirms address and snapshot routes. A confirmed publication returns `indexed`, `websiteReady: true` and a check timestamp; a website that is unavailable or still catching up leaves the successful relay publication at `announced_pending_index`. Authors can claim named routes on the napplet page after signing in with the publishing identity.
 
 ## Commands available from this checkout
 
@@ -11,11 +11,34 @@ bun run soyli status --project /path/to/my-experiment --network local
 bun run soyli publish --project /path/to/my-experiment --network local --resume
 ```
 
-Start the platform services with `bun run dev` or `bun run dev:prod`. Set up/select an account in the matching network profile. Install the sandbox-check browser once with `bunx playwright install chromium` in this checkout. The CLI still runs from the platform checkout; there is no public installer or globally installed binary yet.
+Start the platform services with `bun run dev` or `bun run dev:prod`. Set up/select an account in the matching network profile. Install the sandbox-check browser once with `bunx playwright install chromium` in this checkout. Creators can also use the standalone `soyli` executable and public installer; see the [CLI guide](CLI.md).
 
 `--dry-run` prints the exact selected files, source size, creator, identifier, artifact hash and resolved service destinations. It does not open a signer, run code, contact a service, create a journal, or commit source. It lists remote and browser checks still required. `status` reads the local journal only; it does not claim to observe the current remote state. `--json` writes one structured result to stdout; publication errors include `code`, `message`, `stage` and `retryable`.
 
 An ordinary `publish` checks the current project. If a different unfinished release exists, it stops and explains `--resume`. Explicit resume finishes the saved bytes and metadata even while the editor contains newer changes. Publish again afterward to release the newer revision. There is no implicit retargeting, discard, force-overwrite, or rollback command.
+
+## Local Git and GRASP release history
+
+The working repository is the developer's checkpoint history. Scaffolding initializes
+it without making a commit; developers and their agents should create reviewed local
+commits as work progresses, including an honest checkpoint before pausing unfinished
+work. Publishing neither creates those commits nor requires them to exist.
+
+For built projects, the publisher selects tracked and unignored untracked files by
+default (or the explicit `publish.files` selection), plus the built HTML and selected
+previews. It reads their **current contents**, not their last committed versions.
+`--dry-run` shows the selection before publication. Ignoring a file does not untrack
+it; review the selection rather than relying on a clean Git status or `.gitignore`
+alone. Source safety checks also reject private/generated paths and likely credentials.
+
+The selected bytes are frozen into a separate Git repository inside the ignored
+`.napplet-space` publication journal. Each new release descends from the previous
+published release. This release repository is what goes to the configured GRASP
+(by default `https://git.napplet.soy`); its exact commit is also archived to Blossom.
+The working `.git`, branches, staging area, hooks and private commit history are not
+pushed or changed. GRASP therefore retains published release history, not all local
+development checkpoints or unpublished work. Keep a separate private project backup
+and preserve the journal for subsequent releases and retries.
 
 ## Destinations and identity
 

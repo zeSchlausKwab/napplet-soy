@@ -93,6 +93,41 @@ bundled skills to existing projects. It replaces only unchanged managed files,
 leaves edited or foreign files alone, and reports conflicts. It does not migrate
 source code, update dependencies, or fetch unreviewed skill changes from the web.
 
+### Local history, pausing and upgrading
+
+`new` initializes Git but makes **no initial commit**. The developer or their coding
+agent should review the scaffold, make the first commit, and commit coherent changes
+after relevant checks. Checkpoint unfinished work before pausing, recording known
+failures honestly. The managed `docs/napplet-space.md` now gives agents this workflow;
+it is guidance, not automatic background commits. Inspect status, diffs and new files
+before staging; keep private notes ignored and credentials outside the project.
+
+Publishing does not require a clean working tree. For built projects, the default
+source selection includes tracked and unignored untracked files, using their current
+bytes. `publish.files` can narrow that selection. Review `soyli publish --dry-run`:
+an uncommitted file can become public. Publication makes a separate release repository
+under `.napplet-space` and pushes its release history to GRASP; it does not push the
+working repository's commits or branches. Local Git checkpoints preserve development
+history; GRASP preserves published source snapshots. Neither is a remote backup of
+unpublished work. See [source publication](PUBLISHING.md#local-git-and-grasp-release-history).
+
+To pause, preserve the whole project folder including `.git`, `napplet.json` and
+`.napplet-space`, plus the creator's separate identity backup. A private, ignored
+`.napplet-space/RESUME.md` can record goals, pending work, checks, host limitations
+and next steps for a new AI session. Do not include secrets.
+
+After a new CLI release, stop the old preview process and use the upgrade command
+above. In the **existing** project, run `soyli skills update`, review any conflicts,
+then `soyli dev`. This uses the newly installed host without scaffolding a new
+project or changing the creator/napplet identifier. Source/dependency migrations,
+if any, need their own explicit release instructions. `publish --resume` is unrelated
+to authoring: it continues uploading a frozen release, even when newer edits exist.
+
+Runtime capability support comes from the host, not from the presence of an SDK
+export. **NAP-MEDIA is not implemented** in soyLI's preview or the website; reinstalling
+the currently published 0.7.0 executable does not add it. Embedded audio is distinct
+from host-owned radio streaming; see [audio and media sessions](ASSETS.md#audio-and-host-media-sessions).
+
 `check` validates the source selection and runs frozen HTML in the same restricted
 sandbox as publication. It needs no identity and publishes nothing. The first
 check/publication downloads a pinned Chromium headless shell. `browser install`

@@ -63,6 +63,27 @@ loads media. Use the listing preview to check name, description and cover, and r
 `soyli check` before publishing. The smoke check verifies startup, not every
 possible asset, interaction, scene or codec. A successful build alone is insufficient.
 
+## Audio and host media sessions
+
+The [NAP-MEDIA proposal](https://github.com/napplet/naps/pull/10) defines a separate
+host capability for media sessions, including shell-owned playback: the napplet gives
+the host a source and requests playback/control; the host owns the player and policy.
+This is different from embedded sound effects or Web Audio inside the sandbox.
+
+As of **2026-09-15**, neither soyLI's local host nor the website implements `media`.
+The upstream SDK exposing `media.createSession` does not make it available in our
+host. Capability discovery omits it, and a manifest requiring `media` cannot launch.
+An optional media feature should report unavailability or offer a user-confirmed
+external link. A successful relay lookup only proves the station metadata is readable;
+it does not prove the host can play its stream.
+
+Do not substitute direct remote `<audio src>` URLs or loosen the sandbox CSP.
+`resource.bytes` downloads a bounded complete resource; its 10 MiB/20-second limits
+make it unsuitable for an indefinite live radio stream. Shell-owned streaming needs
+a NAP-MEDIA implementation, with source policy, user activation, supported actions,
+state/errors and lifecycle cleanup shared by CLI preview and deployed playback.
+This gap is not fixed by refreshing skills or reinstalling the same CLI version.
+
 ## Where the bytes go
 
 - **Runtime:** embedded media goes inside the hash-addressed HTML uploaded to the
