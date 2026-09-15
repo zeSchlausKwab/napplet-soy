@@ -18,15 +18,21 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
 import { Route as ApiAdminRouteImport } from './routes/api.admin'
 import { Route as ApiGallerySocialRouteImport } from './routes/api.gallery-social'
+import { Route as ApiGenealogyRouteImport } from './routes/api.genealogy'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiManifestRouteImport } from './routes/api.manifest'
 import { Route as ApiNamesRouteImport } from './routes/api.names'
+import { Route as ApiProfileRouteImport } from './routes/api.profile'
+import { Route as ApiProfileImageRouteImport } from './routes/api.profile-image'
+import { Route as ApiProfileOgRouteImport } from './routes/api.profile-og'
+import { Route as ApiProfilesRouteImport } from './routes/api.profiles'
 import { Route as ApiPublicationsRouteImport } from './routes/api.publications'
 import { Route as ApiResourcesRouteImport } from './routes/api.resources'
 import { Route as ApiSocialRouteImport } from './routes/api.social'
 import { Route as ApiSourceRouteImport } from './routes/api.source'
 import { Route as ApiZapsRouteImport } from './routes/api.zaps'
 import { Route as NNaddrRouteImport } from './routes/n.$naddr'
+import { Route as PPubkeyRouteImport } from './routes/p.$pubkey'
 import { Route as RSnapshotRouteImport } from './routes/r.$snapshot'
 import { Route as CreatorSlugPlayRouteImport } from './routes/$creator.$slug.play'
 import { Route as ApiArtifactsHashRouteImport } from './routes/api.artifacts.$hash'
@@ -82,6 +88,11 @@ const ApiGallerySocialRoute = ApiGallerySocialRouteImport.update({
   path: '/api/gallery-social',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGenealogyRoute = ApiGenealogyRouteImport.update({
+  id: '/api/genealogy',
+  path: '/api/genealogy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -95,6 +106,26 @@ const ApiManifestRoute = ApiManifestRouteImport.update({
 const ApiNamesRoute = ApiNamesRouteImport.update({
   id: '/api/names',
   path: '/api/names',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProfileRoute = ApiProfileRouteImport.update({
+  id: '/api/profile',
+  path: '/api/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProfileImageRoute = ApiProfileImageRouteImport.update({
+  id: '/api/profile-image',
+  path: '/api/profile-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProfileOgRoute = ApiProfileOgRouteImport.update({
+  id: '/api/profile-og',
+  path: '/api/profile-og',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProfilesRoute = ApiProfilesRouteImport.update({
+  id: '/api/profiles',
+  path: '/api/profiles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicationsRoute = ApiPublicationsRouteImport.update({
@@ -125,6 +156,11 @@ const ApiZapsRoute = ApiZapsRouteImport.update({
 const NNaddrRoute = NNaddrRouteImport.update({
   id: '/n/$naddr',
   path: '/n/$naddr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PPubkeyRoute = PPubkeyRouteImport.update({
+  id: '/p/$pubkey',
+  path: '/p/$pubkey',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RSnapshotRoute = RSnapshotRouteImport.update({
@@ -183,15 +219,21 @@ export interface FileRoutesByFullPath {
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
   '/api/gallery-social': typeof ApiGallerySocialRoute
+  '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
   '/api/names': typeof ApiNamesRoute
+  '/api/profile': typeof ApiProfileRoute
+  '/api/profile-image': typeof ApiProfileImageRoute
+  '/api/profile-og': typeof ApiProfileOgRoute
+  '/api/profiles': typeof ApiProfilesRoute
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
   '/api/social': typeof ApiSocialRoute
   '/api/source': typeof ApiSourceRoute
   '/api/zaps': typeof ApiZapsRoute
   '/n/$naddr': typeof NNaddrRouteWithChildren
+  '/p/$pubkey': typeof PPubkeyRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
@@ -212,15 +254,21 @@ export interface FileRoutesByTo {
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
   '/api/gallery-social': typeof ApiGallerySocialRoute
+  '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
   '/api/names': typeof ApiNamesRoute
+  '/api/profile': typeof ApiProfileRoute
+  '/api/profile-image': typeof ApiProfileImageRoute
+  '/api/profile-og': typeof ApiProfileOgRoute
+  '/api/profiles': typeof ApiProfilesRoute
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
   '/api/social': typeof ApiSocialRoute
   '/api/source': typeof ApiSourceRoute
   '/api/zaps': typeof ApiZapsRoute
   '/n/$naddr': typeof NNaddrRouteWithChildren
+  '/p/$pubkey': typeof PPubkeyRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
@@ -242,15 +290,21 @@ export interface FileRoutesById {
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/api/admin': typeof ApiAdminRoute
   '/api/gallery-social': typeof ApiGallerySocialRoute
+  '/api/genealogy': typeof ApiGenealogyRoute
   '/api/health': typeof ApiHealthRoute
   '/api/manifest': typeof ApiManifestRoute
   '/api/names': typeof ApiNamesRoute
+  '/api/profile': typeof ApiProfileRoute
+  '/api/profile-image': typeof ApiProfileImageRoute
+  '/api/profile-og': typeof ApiProfileOgRoute
+  '/api/profiles': typeof ApiProfilesRoute
   '/api/publications': typeof ApiPublicationsRoute
   '/api/resources': typeof ApiResourcesRoute
   '/api/social': typeof ApiSocialRoute
   '/api/source': typeof ApiSourceRoute
   '/api/zaps': typeof ApiZapsRoute
   '/n/$naddr': typeof NNaddrRouteWithChildren
+  '/p/$pubkey': typeof PPubkeyRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/artifacts/$hash': typeof ApiArtifactsHashRoute
@@ -273,15 +327,21 @@ export interface FileRouteTypes {
     | '/$creator/$slug'
     | '/api/admin'
     | '/api/gallery-social'
+    | '/api/genealogy'
     | '/api/health'
     | '/api/manifest'
     | '/api/names'
+    | '/api/profile'
+    | '/api/profile-image'
+    | '/api/profile-og'
+    | '/api/profiles'
     | '/api/publications'
     | '/api/resources'
     | '/api/social'
     | '/api/source'
     | '/api/zaps'
     | '/n/$naddr'
+    | '/p/$pubkey'
     | '/r/$snapshot'
     | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
@@ -302,15 +362,21 @@ export interface FileRouteTypes {
     | '/$creator/$slug'
     | '/api/admin'
     | '/api/gallery-social'
+    | '/api/genealogy'
     | '/api/health'
     | '/api/manifest'
     | '/api/names'
+    | '/api/profile'
+    | '/api/profile-image'
+    | '/api/profile-og'
+    | '/api/profiles'
     | '/api/publications'
     | '/api/resources'
     | '/api/social'
     | '/api/source'
     | '/api/zaps'
     | '/n/$naddr'
+    | '/p/$pubkey'
     | '/r/$snapshot'
     | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
@@ -331,15 +397,21 @@ export interface FileRouteTypes {
     | '/$creator/$slug'
     | '/api/admin'
     | '/api/gallery-social'
+    | '/api/genealogy'
     | '/api/health'
     | '/api/manifest'
     | '/api/names'
+    | '/api/profile'
+    | '/api/profile-image'
+    | '/api/profile-og'
+    | '/api/profiles'
     | '/api/publications'
     | '/api/resources'
     | '/api/social'
     | '/api/source'
     | '/api/zaps'
     | '/n/$naddr'
+    | '/p/$pubkey'
     | '/r/$snapshot'
     | '/$creator/$slug/play'
     | '/api/artifacts/$hash'
@@ -360,15 +432,21 @@ export interface RootRouteChildren {
   CreateRoute: typeof CreateRoute
   ApiAdminRoute: typeof ApiAdminRoute
   ApiGallerySocialRoute: typeof ApiGallerySocialRoute
+  ApiGenealogyRoute: typeof ApiGenealogyRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiManifestRoute: typeof ApiManifestRoute
   ApiNamesRoute: typeof ApiNamesRoute
+  ApiProfileRoute: typeof ApiProfileRoute
+  ApiProfileImageRoute: typeof ApiProfileImageRoute
+  ApiProfileOgRoute: typeof ApiProfileOgRoute
+  ApiProfilesRoute: typeof ApiProfilesRoute
   ApiPublicationsRoute: typeof ApiPublicationsRoute
   ApiResourcesRoute: typeof ApiResourcesRoute
   ApiSocialRoute: typeof ApiSocialRoute
   ApiSourceRoute: typeof ApiSourceRoute
   ApiZapsRoute: typeof ApiZapsRoute
   NNaddrRoute: typeof NNaddrRouteWithChildren
+  PPubkeyRoute: typeof PPubkeyRoute
   RSnapshotRoute: typeof RSnapshotRouteWithChildren
   ApiArtifactsHashRoute: typeof ApiArtifactsHashRoute
   ApiOgIdRoute: typeof ApiOgIdRoute
@@ -440,6 +518,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGallerySocialRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/genealogy': {
+      id: '/api/genealogy'
+      path: '/api/genealogy'
+      fullPath: '/api/genealogy'
+      preLoaderRoute: typeof ApiGenealogyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -459,6 +544,34 @@ declare module '@tanstack/react-router' {
       path: '/api/names'
       fullPath: '/api/names'
       preLoaderRoute: typeof ApiNamesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/profile': {
+      id: '/api/profile'
+      path: '/api/profile'
+      fullPath: '/api/profile'
+      preLoaderRoute: typeof ApiProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/profile-image': {
+      id: '/api/profile-image'
+      path: '/api/profile-image'
+      fullPath: '/api/profile-image'
+      preLoaderRoute: typeof ApiProfileImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/profile-og': {
+      id: '/api/profile-og'
+      path: '/api/profile-og'
+      fullPath: '/api/profile-og'
+      preLoaderRoute: typeof ApiProfileOgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/profiles': {
+      id: '/api/profiles'
+      path: '/api/profiles'
+      fullPath: '/api/profiles'
+      preLoaderRoute: typeof ApiProfilesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/publications': {
@@ -501,6 +614,13 @@ declare module '@tanstack/react-router' {
       path: '/n/$naddr'
       fullPath: '/n/$naddr'
       preLoaderRoute: typeof NNaddrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$pubkey': {
+      id: '/p/$pubkey'
+      path: '/p/$pubkey'
+      fullPath: '/p/$pubkey'
+      preLoaderRoute: typeof PPubkeyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/r/$snapshot': {
@@ -636,15 +756,21 @@ const rootRouteChildren: RootRouteChildren = {
   CreateRoute: CreateRoute,
   ApiAdminRoute: ApiAdminRoute,
   ApiGallerySocialRoute: ApiGallerySocialRoute,
+  ApiGenealogyRoute: ApiGenealogyRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiManifestRoute: ApiManifestRoute,
   ApiNamesRoute: ApiNamesRoute,
+  ApiProfileRoute: ApiProfileRoute,
+  ApiProfileImageRoute: ApiProfileImageRoute,
+  ApiProfileOgRoute: ApiProfileOgRoute,
+  ApiProfilesRoute: ApiProfilesRoute,
   ApiPublicationsRoute: ApiPublicationsRoute,
   ApiResourcesRoute: ApiResourcesRoute,
   ApiSocialRoute: ApiSocialRoute,
   ApiSourceRoute: ApiSourceRoute,
   ApiZapsRoute: ApiZapsRoute,
   NNaddrRoute: NNaddrRouteWithChildren,
+  PPubkeyRoute: PPubkeyRoute,
   RSnapshotRoute: RSnapshotRouteWithChildren,
   ApiArtifactsHashRoute: ApiArtifactsHashRoute,
   ApiOgIdRoute: ApiOgIdRoute,

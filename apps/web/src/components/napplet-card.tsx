@@ -4,6 +4,7 @@ import { TopicTags } from './topic-tags';
 import { Player } from './player';
 import { GalleryCardSocial } from './gallery-social';
 import { CardShare } from './card-share';
+import { CreatorLink } from './creator-link';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { NappletCard as Card } from '../../../../packages/backend/src/catalog';
 import {
@@ -107,13 +108,7 @@ export function NappletCard({
         <ArrowUpRight size={17} />
       </div>
       <div className={`card-meta${external ? ' public-meta' : ''}`}>
-        {external ? (
-          <span className="public-creator">{napplet.creator}</span>
-        ) : (
-          <Link to="/$creator" params={{ creator: `@${napplet.handle}` }}>
-            <span className="mini-avatar">s</span>@{napplet.handle}
-          </Link>
-        )}
+        <CreatorLink pubkey={napplet.pubkey} />
         <span>
           {external ? (
             <span className={playable ? 'compatibility-ready' : 'compatibility-missing'}>

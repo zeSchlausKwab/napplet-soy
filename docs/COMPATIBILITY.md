@@ -7,6 +7,13 @@ and website release `20260914142718446-76864` include the configuration host.
 
 ## Authority and pins
 
+A13/A21 local update (2026-09-15): profile metadata and ancestry were checked against
+NIP-01, NIP-24 and NIP-5A at
+[`a2494f4f81d46684e5814a9bf35e2b1df978f955`](https://github.com/nostr-protocol/nips/tree/a2494f4f81d46684e5814a9bf35e2b1df978f955).
+The NIP-5D, runtime and creator pins below are unchanged. Host kind-0 edits and
+genealogy add no required manifest metadata, guest signing permissions or new NAPs.
+See [profiles](PROFILES.md) and [ancestry semantics](REMIXING.md#genealogy-on-napplet-pages).
+
 | Contract/tool | Selected baseline |
 | --- | --- |
 | NIP-5D | [PR 2303, 24711d9c47bbdd07908bf1d52bf677d9cbc530f0](https://github.com/dskvr/nips/blob/24711d9c47bbdd07908bf1d52bf677d9cbc530f0/5D.md); rechecked current proposal head on 2026-09-14 |

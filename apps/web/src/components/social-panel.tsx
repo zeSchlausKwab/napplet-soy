@@ -351,16 +351,9 @@ export function NappletSocial({
                 const commentLikes = comment.likes?.filter((e) => e.pubkey === pubkey) ?? [];
                 return (
                   <article key={comment.id} className="comment" id={`comment-${comment.id}`}>
-                    <div className="comment-avatar" aria-hidden>
-                      {(data.profiles[comment.pubkey]?.name ?? comment.pubkey)
-                        .slice(0, 1)
-                        .toUpperCase()}
-                    </div>
                     <div className="comment-body">
                       <div className="comment-meta">
-                        <span title={comment.pubkey}>
-                          {data.profiles[comment.pubkey]?.name ?? short(comment.pubkey)}
-                        </span>
+                        <CreatorLink pubkey={comment.pubkey} />
                         <time dateTime={new Date(comment.created_at * 1000).toISOString()}>
                           {new Date(comment.created_at * 1000).toLocaleDateString()}
                         </time>
@@ -452,3 +445,4 @@ export function NappletSocial({
     discussion,
   });
 }
+import { CreatorLink } from './creator-link';

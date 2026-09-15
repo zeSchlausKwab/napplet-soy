@@ -15,7 +15,7 @@ export class AccountError extends Error {
   }
 }
 export const publishingKinds = [30617, 30618, 24242, 32267, 35129, 15129, 5129];
-export const websiteKinds = [5, 7, 1111, 9734, 27235];
+export const websiteKinds = [0, 5, 7, 1111, 9734, 27235];
 export const defaultSignerRelays = ['wss://relay.napplet.soy'];
 export type SignerOptions = {
   expectedPubkey?: string;

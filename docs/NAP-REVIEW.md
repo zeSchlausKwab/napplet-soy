@@ -125,3 +125,15 @@ change NIP-5D manifests, NAP permissions, artifact formats or publisher eligibil
 NIP-98 remains the admin request protocol. Saved credentials stay in the trusted
 host; running napplets receive only the existing public identity notifications.
 See [identity](IDENTITY.md#website-sign-in) and [moderation](MODERATION.md).
+
+## Creator profiles and ancestry — 2026-09-15
+
+A13/A21 add host profile pages/editing and a genealogy view. Reviewed NIP-01/24
+and NIP-5A at `a2494f4f81d46684e5814a9bf35e2b1df978f955`; the selected NIP-5D pin,
+35129/15129/5129 kinds, artifact verification and NAP operation inventory stay
+unchanged. Current `a`/`A` parent/origin semantics are distinct from snapshot `a`
+self-reference. Space’s optional exact-parent hint is used only when its signed
+target verifies; incomplete ancestry remains a gap. Public key profiles and ancestry
+work without Space aliases or profile metadata. Host kind-0 editing adds no napplet
+signing permission and does not implement new identity-domain operations.
+See [profile limits](PROFILES.md) and [genealogy](REMIXING.md#genealogy-on-napplet-pages).

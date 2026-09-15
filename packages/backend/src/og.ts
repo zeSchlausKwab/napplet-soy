@@ -13,6 +13,8 @@ type Preview = {
   topics: readonly string[];
   slug: string;
   fixture?: boolean;
+  label?: string;
+  footer?: string;
 };
 const escapeXml = (text: string) =>
   text
@@ -51,7 +53,7 @@ export function previewSvg(n: Preview, cover?: Buffer) {
     <path d="M68 48V78M53 63H83M57 52L79 74M57 74L79 52" stroke="#42755d" stroke-width="3"/>
     <text x="98" y="72" font-size="32" font-weight="700">napplet.soy</text>
     <text x="1144" y="68" font-size="19" text-anchor="end" fill="#42755d">SMALL CODE. BIG WEIRD.</text>
-    <text x="56" y="162" font-size="18" fill="#42755d">${escapeXml(lines(n.topics.length ? n.topics.map((t) => `#${t}`).join(' · ') : 'NAPPLET', 58, 1)[0] ?? 'NAPPLET')}</text>
+    <text x="56" y="162" font-size="18" fill="#42755d">${escapeXml(lines(n.topics.length ? n.topics.map((t) => `#${t}`).join(' · ') : (n.label ?? 'NAPPLET'), 58, 1)[0] ?? 'NAPPLET')}</text>
     ${lines(n.title, 19, 3)
       .map(
         (line, i) =>
@@ -65,7 +67,7 @@ export function previewSvg(n: Preview, cover?: Buffer) {
       )
       .join('')}
     <text x="56" y="574" font-size="21">${escapeXml(lines(n.creator, 52, 1)[0] ?? '')}</text>
-    <text x="1144" y="574" font-size="21" text-anchor="end" fill="#42755d">Explore this napplet ↗</text>
+    <text x="1144" y="574" font-size="21" text-anchor="end" fill="#42755d">${escapeXml(n.footer ?? 'Explore this napplet ↗')}</text>
     </g>${art}</svg>`;
 }
 const cache = new Map<string, Promise<Buffer>>();

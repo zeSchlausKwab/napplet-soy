@@ -1,4 +1,6 @@
 import type { Filter } from 'nostr-tools';
+import { ProfileService } from './profiles';
+import { profileView } from '../../protocol/src/profile';
 import { encodeAddress, verifiedEvent, type SignedEvent } from '../../protocol/src';
 import { validateManifest } from '../../protocol/src/manifest';
 import {
@@ -114,6 +116,7 @@ export class SocialService {
       for (let i = 0; i < ids.length; i += 64)
         metadata.push({ kinds: [5], '#e': ids.slice(i, i + 64), limit: 100 });
       found.push(...(await this.relay.query(relays, metadata)));
+      new ProfileService(this.store, this.relay).ingest(found.filter((e) => e.kind === 0));
       this.store.put(
         scope.key,
         found.filter((e) => allowedSocial(e)),
@@ -131,18 +134,18 @@ export class SocialService {
         await validateManifest(e);
         if (!manifestBlocked(e) && socialScope(e).key === context.scope.key) manifests.set(e.id, e);
       } catch {}
-    const events = raw.filter((e) => [1111, 7, 5, 9735, 0].includes(e.kind));
+    const events = raw.filter((e) => [1111, 7, 5, 9735].includes(e.kind));
     const profiles: Record<string, { name: string; about?: string }> = {};
-    for (const e of events
-      .filter((e) => e.kind === 0)
-      .sort((a, b) => b.created_at - a.created_at || a.id.localeCompare(b.id)))
-      if (!profiles[e.pubkey])
-        try {
-          const p = JSON.parse(e.content);
-          profiles[e.pubkey] = {
-            name: String(p.display_name || p.name || e.pubkey.slice(0, 12)).slice(0, 80),
-          };
-        } catch {}
+    const metadata = new ProfileService(this.store, this.relay);
+    metadata.ingest(raw.filter((e) => e.kind === 0));
+    for (const pubkey of new Set([context.manifest.pubkey, ...events.map((e) => e.pubkey)]))
+      try {
+        const event = metadata.event(pubkey);
+        if (event) {
+          profiles[pubkey] = profileView(pubkey, event);
+          if (!events.some((e) => e.id === event.id)) events.push(event);
+        }
+      } catch {}
     const lastActions: Record<string, number> = {};
     for (const e of events.filter((e) => [5, 7, 1111].includes(e.kind)))
       lastActions[e.pubkey] = Math.max(lastActions[e.pubkey] ?? 0, e.created_at);

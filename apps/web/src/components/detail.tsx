@@ -1,4 +1,6 @@
 import { SourceSection } from './source-section';
+import { CreatorLink } from './creator-link';
+import { Genealogy } from './genealogy';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect } from 'react';
@@ -40,14 +42,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
                 {napplet.title}
                 <span className="coral">.</span>
               </h1>
-              <Link
-                to="/$creator"
-                params={{ creator: `@${napplet.handle}` }}
-                className="creator-link"
-              >
-                <span className="mini-avatar">s</span>
-                {napplet.creator} <span>@{napplet.handle}</span>
-              </Link>
+              <CreatorLink pubkey={napplet.pubkey} />
               {actions}
             </div>
             <div className="detail-actions">
@@ -94,6 +89,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
               </div>
             </aside>
           </div>
+          <Genealogy manifest={pinned ? napplet.snapshot : napplet.current} />
           <SourceSection revision={napplet.snapshot.id} />
           {discussion}
           <div className="collection-note">

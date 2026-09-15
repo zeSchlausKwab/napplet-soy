@@ -19,6 +19,41 @@ Publication emits [NIP-5A ancestry](https://github.com/nostr-protocol/nips/blob/
 
 Remix has shipped since CLI 0.3.0; the deployed CLI baseline is now 0.5.0. See the [release record](DEPLOYMENT.md#identity-configuration-and-social-release--2026-09-14).
 
+## Genealogy on napplet pages
+
+Implemented and verified locally on **2026-09-15**, agenda A21; not deployed.
+**The family tree** appears on detail pages when the selected signed manifest
+declares ancestry. It connects known ancestors down to **You are here**, linking
+each parent release and its creator’s Nostr profile. It loads separately from the
+player and never downloads or executes ancestor artifacts.
+
+NIP-5A at [a2494f4f81d46684e5814a9bf35e2b1df978f955](https://github.com/nostr-protocol/nips/blob/a2494f4f81d46684e5814a9bf35e2b1df978f955/5A.md)
+supplies the ancestry semantics, with NIP-5D’s selected napplet kinds retained.
+A current manifest’s single `a` names the immediate parent; `A` names the origin.
+For kind-5129 snapshots, `a` names the snapshotted napplet itself, **never a remix
+parent**. An `A` without an immediate parent produces an explicitly incomplete
+tree and a separate declared-origin link. There is no invented connection across
+missing generations. Standards-only publishers work without Space metadata.
+
+When present, the optional `remix-version` pins the exact parent event. The event’s
+signature, manifest and identity must validate; a current child’s declared parent
+address must agree with that exact event. Without a revision pin, an address-linked
+parent is labeled as its **current release**, which can change after the remix.
+These are author-declared relationships, not proof that code was copied or rebuilt.
+
+Lookup starts with the local index/cache and uses configured relays for missing
+ancestors. It follows at most twelve generations, detects repeated identities/IDs,
+and permits at most four remote requests within a nine-second scheduling window
+(each existing relay request has its own 2.5-second deadline). Four tree requests
+may run concurrently per web process. Exact retrieved manifests use the bounded
+community event cache. Missing, ambiguous, mismatched, blocked/deleted, cyclic and
+truncated ancestry have explicit gaps; an ancestor’s absence never blocks playback.
+This slice shows ancestors, not a reverse index of every descendant or sibling remix.
+
+Verification: unit cases cover standard manifests, snapshot self-addresses, pinned
+generations, origin-only gaps, missing/ambiguous/mismatched parents, cycles, depth
+limits and forged events. The production-build profile/browser test displays a
+three-generation chain and verifies its ordering and creator links.
 
 ## Browsing a release’s original files
 
@@ -67,7 +102,6 @@ and source-to-build correspondence remain author claims, not a verified rebuild.
 
 Asset originals included by the publisher are browsable and downloadable too. See
 [asset authoring and current gaps](ASSETS.md).
-
 
 Verification: 181 repository tests pass, including source retrieval/visibility and
 shared archive adversarial checks. Production-build browser checks cover desktop and

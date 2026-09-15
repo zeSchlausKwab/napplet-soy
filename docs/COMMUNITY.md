@@ -1,5 +1,11 @@
 # Names and community
 
+Local A13/A21 additions (2026-09-15, pending deployment): creator links now open
+portable `/p/<npub>` pages with ordinary Nostr metadata, all discovered creations,
+and an own-profile editor. `@handle` remains a site alias service. Comments and
+saved accounts resolve the shared latest kind-0 cache. See [profiles](PROFILES.md)
+and the [signed remix family tree](REMIXING.md#genealogy-on-napplet-pages).
+
 Creators can connect their Nostr browser signer, open their napplet, and use **Named link** to claim `/@handle/slug`. Claims are NIP-98 signed HTTP requests bound to this site's exact URL, method, timestamp and JSON body. The signer must own the napplet's decoded Nostr identity. No private key goes to the website.
 
 One account has one handle. A handle has at most 128 links. A claimed link cannot move to a different creation, including when the same owner asks; additional slugs preserve previous links. Concurrent claims are serialized in SQLite. Replayed authorization events, reserved handles and ownership collisions fail. Relay hints are normalized out of identity comparisons. The registry currently caps at 20,000 links.
@@ -84,7 +90,6 @@ signed requests, revision checks and replay protection. Selections are stored al
 moderation state and audited, never added to the creator's signed manifest. Featuring
 content does not unblock it or import content that discovery has not indexed.
 
-
 The **2026-09-15 local revision** adds an ordered hero rotation beside the landing
 headline. Admin up/down controls determine priority. The first twelve available,
 unblocked selections appear; addresses resolve current releases, event IDs link
@@ -99,7 +104,6 @@ tabs, offscreen placement and reduced motion stop automatic rotation. Manual arr
 and pause/resume remain available. No napplet executes until the normal player flow.
 The terminal remains first on mobile with Featured below it. These features are
 verified locally, pending deployment, and remain separate from paid placement.
-
 
 ## Gallery social discovery
 

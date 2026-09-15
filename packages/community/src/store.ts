@@ -36,10 +36,29 @@ export class CommunityStore {
       CREATE TABLE IF NOT EXISTS social_events(id TEXT NOT NULL, scope TEXT NOT NULL, created INTEGER NOT NULL, event TEXT NOT NULL, PRIMARY KEY(scope,id));
       CREATE INDEX IF NOT EXISTS social_scope_v2 ON social_events(scope,created);
       CREATE INDEX IF NOT EXISTS social_recent ON social_events(created DESC,id);
+      CREATE TABLE IF NOT EXISTS profiles(pubkey TEXT PRIMARY KEY, id TEXT NOT NULL, created INTEGER NOT NULL, event TEXT NOT NULL);
     `);
   }
   close() {
     this.db.close();
+  }
+  profile(pubkey: string): SignedEvent | null {
+    const row = this.db.query('SELECT event FROM profiles WHERE pubkey=?').get(pubkey) as {
+      event: string;
+    } | null;
+    return row ? JSON.parse(row.event) : null;
+  }
+  putProfile(event: SignedEvent) {
+    const result = this.db.run(
+      `INSERT INTO profiles VALUES(?,?,?,?) ON CONFLICT(pubkey) DO UPDATE SET
+      id=excluded.id,created=excluded.created,event=excluded.event
+      WHERE excluded.created>profiles.created OR (excluded.created=profiles.created AND excluded.id<profiles.id)`,
+      [event.pubkey, event.id, event.created_at, JSON.stringify(event)],
+    );
+    if (result.changes)
+      this.db.exec(
+        'DELETE FROM profiles WHERE rowid IN (SELECT rowid FROM profiles ORDER BY created DESC,id LIMIT -1 OFFSET 10000)',
+      );
   }
   aliases(address: string) {
     return this.db

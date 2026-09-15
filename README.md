@@ -179,4 +179,8 @@ Open a napplet and choose **Remix this** for an exact-version CLI command. Signe
 CLI 0.4.0 and these website features are live on napplet.soy. The CLI adds the local Listing preview and screenshot capture controls. The website offers install-and-remix, comment likes/zaps, and an initially empty admin Featured collection. For future releases, upload CLI archives before deploying the website. Existing CLI users can rerun the installer and restart `soyli dev`; `soyli skills update` refreshes their creator guidance. Readable links require a one-time **Named link** claim on the website and then follow future releases. See [CLI instructions](docs/CLI.md) and [community behavior](docs/COMMUNITY.md).
 
 Creator media: see [where to put assets and current limitations](docs/ASSETS.md).
+Creator profiles and the remix family tree are implemented and verified locally,
+pending deployment: [Nostr profiles](docs/PROFILES.md) and
+[genealogy](docs/REMIXING.md#genealogy-on-napplet-pages). Creator labels open portable
+`/p/<npub>` pages; connected authors can edit their optional kind-0 profile.
 The deployed website includes a [pinned original-source browser](docs/REMIXING.md#browsing-a-releases-original-files); its release status is recorded in [A01](AGENDA.md#a01--browse-the-original-source-files).

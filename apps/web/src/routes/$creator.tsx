@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useMatchRoute, notFound } from '@tanstack/react-router';
 import { getGallery, getCreatorNames } from '@/lib/catalog.functions';
 import { NappletCard } from '@/components/napplet-card';
+import { CreatorLink } from '@/components/creator-link';
 export const Route = createFileRoute('/$creator')({
   loader: async ({ params }) => {
     if (params.creator === '@space-lab')
@@ -30,6 +31,11 @@ function Creator() {
         <span className="coral">.</span>
       </h1>
       <p>Creations with a home here. Pick one up and see where it takes you.</p>
+      {!!aliases.length && (
+        <p>
+          <CreatorLink pubkey={aliases[0].pubkey} />
+        </p>
+      )}
       <div className="creator-aliases">
         {aliases.map((a) => (
           <a key={a.slug} href={`/@${a.handle}/${a.slug}`}>

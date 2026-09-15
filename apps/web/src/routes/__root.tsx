@@ -2,6 +2,7 @@ import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/r
 import { NostrProvider } from '@/components/nostr-provider';
 import { Shell } from '@/components/shell';
 import styles from '@/styles.css?url';
+import { ProfilesProvider } from '@/lib/profiles';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -48,11 +49,13 @@ function Root() {
         <HeadContent />
       </head>
       <body>
-        <NostrProvider>
-          <Shell>
-            <Outlet />
-          </Shell>
-        </NostrProvider>
+        <ProfilesProvider>
+          <NostrProvider>
+            <Shell>
+              <Outlet />
+            </Shell>
+          </NostrProvider>
+        </ProfilesProvider>
         <Scripts />
       </body>
     </html>

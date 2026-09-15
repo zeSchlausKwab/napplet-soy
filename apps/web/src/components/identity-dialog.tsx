@@ -1,4 +1,7 @@
 import { useRef, useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { nip19 } from 'nostr-tools';
+import { CreatorLink } from './creator-link';
 import {
   Copy,
   ExternalLink,
@@ -108,6 +111,16 @@ export function IdentityDialog({
                   : 'your extension'}
             </span>
             <code className="public-key">{identity.pubkey}</code>
+            <Button variant="outline" asChild>
+              <Link
+                to="/p/$pubkey"
+                params={{ pubkey: nip19.npubEncode(identity.pubkey) }}
+                search={{ page: 1, all: false }}
+                onClick={() => changeOpen(false)}
+              >
+                View & edit your profile
+              </Link>
+            </Button>
             {identity.method === 'key' && !identity.reconnect && (
               <>
                 <Button variant="outline" onClick={() => setShowBackup(!showBackup)}>
@@ -158,9 +171,7 @@ export function IdentityDialog({
             {identity.sessions.map((session) => (
               <div className="saved-session" key={session.id}>
                 <div>
-                  <code title={session.pubkey}>
-                    {session.pubkey.slice(0, 10)}…{session.pubkey.slice(-6)}
-                  </code>
+                  <CreatorLink pubkey={session.pubkey} linked={false} />
                   <span className="muted">
                     {session.method === 'key'
                       ? 'Private key'

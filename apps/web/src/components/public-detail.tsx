@@ -1,4 +1,6 @@
 import { SourceSection } from './source-section';
+import { CreatorLink } from './creator-link';
+import { Genealogy } from './genealogy';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, Code2 } from 'lucide-react';
 import { useEffect } from 'react';
@@ -42,7 +44,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
                 {napplet.title}
                 <span className="coral">.</span>
               </h1>
-              <p>{napplet.creator}</p>
+              <CreatorLink pubkey={napplet.pubkey} />
               {actions}
             </div>
             <div className="detail-actions">
@@ -127,6 +129,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
               </div>
             </aside>
           </div>
+          <Genealogy manifest={napplet.manifest} />
           <SourceSection revision={napplet.revisionId} />
           {discussion}
           <div className="collection-note">

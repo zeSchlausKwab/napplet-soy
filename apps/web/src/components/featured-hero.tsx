@@ -136,7 +136,7 @@ export function FeaturedHero({
       >
         <Link {...publicLink(current)}>{current.title}</Link>
         <p>{current.description || 'A little world worth a look.'}</p>
-        <span>{current.creator}</span>
+        <CreatorLink pubkey={current.pubkey} />
       </div>
       {entries.length > 1 && (
         <div className="featured-controls">
@@ -176,3 +176,4 @@ export function FeaturedHero({
     </section>
   );
 }
+import { CreatorLink } from './creator-link';
