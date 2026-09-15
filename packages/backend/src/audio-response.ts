@@ -23,6 +23,7 @@ export function createAudioResponder(
   admit: (manifest: string) => Promise<unknown>,
   transport: (url: URL, signal: AbortSignal) => Promise<AudioStream> = openAudioStream,
   lookup: typeof publicLookup = publicLookup,
+  hostOrigin?: () => string,
 ) {
   const tickets = new Map<string, Ticket>();
   const budgets = new Map<string, { start: number; count: number }>();
@@ -33,7 +34,8 @@ export function createAudioResponder(
     const url = new URL(request.url);
     const fail = (error: string, status: number) => Response.json({ error }, { status, headers });
     const hostRequest =
-      request.headers.get('Origin') === url.origin && request.headers.get('X-Space-Host') === '1';
+      request.headers.get('Origin') === (hostOrigin?.() ?? url.origin) &&
+      request.headers.get('X-Space-Host') === '1';
     const now = Date.now();
     for (const [key, ticket] of tickets)
       if (ticket.expires < now) {

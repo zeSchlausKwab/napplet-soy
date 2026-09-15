@@ -67,6 +67,13 @@ browser-controlled same-origin fetch metadata is required. `DELETE` cancels stre
 and releases the ticket. The opaque frame receives neither a ticket nor source bytes.
 Admission/moderation is checked again when a stream starts.
 
+On the website, audio creation/deletion and resource requests compare the browser's
+Origin with the configured `SPACE_SITE_ORIGIN`. Caddy terminates HTTPS before its
+internal HTTP connection to Bun; that internal URL must not define the public
+origin. Client-supplied forwarded headers do not grant access. Local soyLI preview
+continues to use its own loopback origin. This correction was found during the
+0.8.1 deployment verification; the CLI's local behavior and distribution are unchanged.
+
 The proxy validates public DNS addresses and pins the actual HTTPS connection,
 including each of at most three redirects. It rejects private/special IPs, HTTP, credentials,
 nonstandard ports and encoded responses; no cookies/authorization headers are

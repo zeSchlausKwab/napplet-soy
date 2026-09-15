@@ -90,6 +90,52 @@ test('DNS policy failure creates no ticket and excessive retained tickets are bo
   expect((await respond(prepare())).status).toBe(429);
 });
 
+test('audio behind an HTTPS proxy admits only the configured host origin for create and delete', async () => {
+  const external = 'https://napplet.example';
+  const respond = createAudioResponder(
+    async () => true,
+    undefined,
+    lookup,
+    () => external,
+  );
+  const post = (Origin: string, extra = {}) =>
+    new Request('http://napplet.example/api/media', {
+      method: 'POST',
+      headers: { ...hostHeaders, Origin, ...extra },
+      body: JSON.stringify({ manifest, url: 'https://radio.example/live.mp3' }),
+    });
+  for (const Origin of ['null', 'http://napplet.example', 'https://elsewhere.example'])
+    expect(
+      (
+        await respond(
+          post(Origin, { 'X-Forwarded-Proto': 'https', 'X-Forwarded-Host': 'napplet.example' }),
+        )
+      ).status,
+    ).toBe(403);
+  expect((await respond(post(external, { 'X-Space-Host': '' }))).status).toBe(403);
+  const created = await respond(post(external));
+  expect(created.status).toBe(200);
+  const { url } = await created.json();
+  const remove = (Origin: string) =>
+    respond(
+      new Request('http://napplet.example' + url, {
+        method: 'DELETE',
+        headers: { ...hostHeaders, Origin },
+      }),
+    );
+  expect((await remove('http://napplet.example')).status).toBe(403);
+  expect((await remove(external)).status).toBe(204);
+  expect(
+    (
+      await respond(
+        new Request('http://napplet.example' + url, {
+          headers: { 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Dest': 'audio' },
+        }),
+      )
+    ).status,
+  ).toBe(404);
+});
+
 test('Bun streaming pins the destination and TLS name, delivers later chunks and rejects unsafe redirects', async () => {
   let requested: URL | undefined,
     options: any,

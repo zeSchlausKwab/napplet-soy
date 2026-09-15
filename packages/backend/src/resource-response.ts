@@ -89,6 +89,7 @@ export async function resolveResource(
 /** Both hosted and local preview deployments use this policy; only revision lookup differs. */
 export function createResourceResponder(
   admit: (manifest: string) => Promise<{ servers: string[] } | null | undefined>,
+  hostOrigin?: () => string,
 ) {
   let active = 0;
   const budgets = new Map<string, { start: number; count: number; active: number }>();
@@ -97,7 +98,7 @@ export function createResourceResponder(
     const fail = (error: string, status: number) => Response.json({ error }, { status, headers });
     // Only the first-party host can fetch on behalf of its opaque frame. No cookie credentials are forwarded.
     if (
-      request.headers.get('Origin') !== new URL(request.url).origin ||
+      request.headers.get('Origin') !== (hostOrigin?.() ?? new URL(request.url).origin) ||
       request.headers.get('X-Space-Host') !== '1'
     )
       return fail('blocked-by-policy', 403);

@@ -1,5 +1,7 @@
 import { test, expect } from 'bun:test';
 import { resourceMime, resourceResponse, resolveResource } from './resources';
+import { createResourceResponder } from './resource-response';
+import { siteOrigin } from './site-origin';
 import { fetchPublicBytes, publicResourceUrl } from './blossom';
 import records from '../data/catalog.json';
 import { publicNapplet } from './public-model';
@@ -9,6 +11,44 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 const bytes = (s: string) => new TextEncoder().encode(s);
+test('resources behind an HTTPS proxy admit only the configured host origin', async () => {
+  const external = 'https://napplet.example';
+  const respond = createResourceResponder(
+    async () => ({ servers: [] }),
+    () => external,
+  );
+  const request = (Origin: string, extra = {}) =>
+    new Request('http://napplet.example/api/resources', {
+      method: 'POST',
+      headers: { Origin, 'X-Space-Host': '1', ...extra },
+      body: JSON.stringify({ manifest: 'a'.repeat(64), url: 'data:text/plain,hello' }),
+    });
+  for (const Origin of ['null', 'http://napplet.example', 'https://elsewhere.example'])
+    expect(
+      (
+        await respond(
+          request(Origin, { 'X-Forwarded-Proto': 'https', 'X-Forwarded-Host': 'napplet.example' }),
+        )
+      ).status,
+    ).toBe(403);
+  expect((await respond(request(external, { 'X-Space-Host': '' }))).status).toBe(403);
+  const response = await respond(request(external));
+  expect(response.status).toBe(200);
+  expect(await response.text()).toBe('hello');
+  // The authoring server still defaults to its own loopback request origin.
+  const local = createResourceResponder(async () => ({ servers: [] }));
+  expect(
+    (
+      await local(
+        new Request('http://localhost:4173/api/resources', {
+          method: 'POST',
+          headers: { Origin: 'http://localhost:4173', 'X-Space-Host': '1' },
+          body: JSON.stringify({ manifest: 'a'.repeat(64), url: 'data:text/plain,hello' }),
+        }),
+      )
+    ).status,
+  ).toBe(200);
+});
 test('resource classification ignores upstream MIME and refuses active documents', () => {
   expect(resourceMime(Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]))).toBe('image/png');
   expect(resourceMime(bytes('RIFF1234WEBP'))).toBe('image/webp');
@@ -55,7 +95,7 @@ test('known fixture and relay manifests get the same resource service and capabi
   const request = (manifest: string) =>
     new Request('http://localhost:3000/api/resources', {
       method: 'POST',
-      headers: { Origin: 'http://localhost:3000', 'X-Space-Host': '1' },
+      headers: { Origin: siteOrigin(), 'X-Space-Host': '1' },
       body: JSON.stringify({ manifest, url: 'data:text/plain,hello' }),
     });
   try {
@@ -116,7 +156,7 @@ test('resource endpoint rejects opaque/cross-origin callers and unknown manifest
   }
   const request = new Request(url, {
     method: 'POST',
-    headers: { Origin: new URL(url).origin, 'X-Space-Host': '1' },
+    headers: { Origin: siteOrigin(), 'X-Space-Host': '1' },
     body: JSON.stringify({ manifest: '0'.repeat(64), url: 'https://example.com/picture.png' }),
   });
   expect((await resourceResponse(request)).status).toBe(404);
