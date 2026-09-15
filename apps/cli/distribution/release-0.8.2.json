@@ -47,7 +47,7 @@
     }
   },
   "verification": [
-    "Typecheck and 243 repository tests, plus the authenticated relay tunnel regression",
+    "Typecheck and 244 repository tests pass locally and on VPS Bun 1.3.8",
     "Production web build with same-origin runtime relay-read route",
     "Hinted station regression through actual HTTP host transport, signature/filter checks, private URL and Origin policy, live EOSE, abort/deadline and quota recovery",
     "Guarded real station retrieval under local Bun 1.3.11 and VPS Bun 1.3.8",
@@ -55,8 +55,19 @@
     "Seven scaffold and creator guidance tests",
     "Final packaged darwin-arm64 CLI passes seven distribution, piped-installer terminal and preview tests without Bun/Node on PATH: 77 assertions"
   ],
-  "deployment": "pending",
+  "deployment": "active",
   "publicationVerification": [
     "All four immutable archives uploaded in verified chunks and validated on the VPS before installer activation"
+  ],
+  "websiteRelease": "20260915153437840-89080",
+  "websiteSourceCommit": "911607705713f5d23096905829d86357f73558e3",
+  "deploymentVerifiedAt": "2026-09-15T15:47:37.512661+00:00",
+  "deploymentVerification": [
+    "Deployment completed with 244 repository tests, Go race checks, 4 relay, 18 Blossom and 8 GRASP tests passing locally and on the VPS",
+    "Candidate Origin probes passed for media, resources and relay-read before activation",
+    "Exact published Drone Zone /play route resolves its station and decodes MP3, then pauses through its own controls in desktop and touch/mobile Chromium without query overrides; no napplet edits or republication",
+    "Public installer freshly downloads and checksum-verifies soyLI 0.8.2 in isolated macOS arm64 directories without Bun/Node on PATH; existing installation and identities untouched",
+    "All four public download sizes and checksum files match this release record",
+    "Five PM2 processes online with zero restarts; catalog/relay/Blossom/Git health pass; both Caddy hashes unchanged and schlaustronics.com returns HTTPS 200"
   ]
 }

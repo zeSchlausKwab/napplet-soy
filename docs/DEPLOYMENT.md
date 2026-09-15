@@ -914,3 +914,26 @@ processes online with zero restarts, Caddy active and service startup enabled. B
 `/etc/caddy/Caddyfile` and `/etc/napplet-space/Caddyfile` retained their exact pre-rollout
 SHA-256 values. `schlaustronics.com` still returns HTTPS 200. CLI 0.8.1 archives remain
 unchanged; the follow-up corrects website origin configuration only.
+
+
+## Runtime relay-read correction — 2026-09-15
+
+Release `20260915153437840-89080` is active from website source `9116077`.
+The public installer serves soyLI **0.8.2**; all four archives were uploaded and
+verified before activation. The [release record](../apps/cli/distribution/release-0.8.2.json)
+contains CLI source, SHA-256 values, sizes and execution coverage. Previous archives
+were preserved. A fresh isolated macOS arm64 install passed without Bun/Node on PATH.
+
+The repair separates public runtime reads from discovery relay selection. Explicit
+relay hints and NIP-65 read plans go through a shared, bounded, guarded host transport.
+The exact published Drone Zone immersive route now finds its station, decodes the
+MP3 and pauses through the napplet's own controls in desktop and touch/mobile
+Chromium. These checks use no query override, and the napplet was not edited or
+republished. See [runtime policy](PUBLIC-RUNTIME.md#runtime-relay-routing--soyli-082).
+
+Deployment checks passed locally and on VPS Bun 1.3.8: typecheck, 244 repository tests,
+Go race checks, 4 relay, 18 Blossom and 8 GRASP tests. Candidate probes verified HTTPS
+Origin handling for media, resources and relay-read before activation. All five PM2
+services are online with zero restarts; the catalog and public service checks pass.
+Both Caddy configuration hashes are unchanged, and schlaustronics.com returns HTTPS
+200. The existing 50 MiB Blossom limit and prior upload-timeout correction are retained.

@@ -110,6 +110,10 @@ see [runtime relay reads](PUBLIC-RUNTIME.md#runtime-relay-routing--soyli-082).
 A failed empty lookup reports an error and incomplete results, rather than appearing
 as confirmed absence. The Drone Zone build needs no code change or republication.
 
+The unchanged published /play route passed station lookup, decoded MP3 and its own
+play/pause controls after deployment in desktop and touch/mobile Chromium, without
+query overrides. No napplet edit or republication was needed.
+
 An unchanged temporary copy of the build, with only our relay configured as the
 fallback, resolved the real station via its explicit hint and played/paused the
 256 kbps MP3 through its own controls. This verifies station lookup and media
