@@ -829,7 +829,7 @@ Commit `949fc97` replaces Blossom's fixed 20-second upload-body deadline with
 minutes for upload and independently gives verification five minutes with a 30-second
 idle timeout. Publication resume uses that same verification policy. The 50 MiB
 blob limit, signature/hash checks, ownership quotas and frozen release identity remain
-unchanged. See [the policy and retry procedure](BLOSSOM.md#upload-timeout-correction--prepared-for-soyli-081).
+unchanged. See [the policy and retry procedure](BLOSSOM.md#upload-timeout-correction--soyli-081).
 
 The paced 11 MiB regression first failed with HTTP 408, then passed while taking
 over 24 seconds. Raw HTTP idle/trickle tests verify explicit 408 responses, removal
@@ -867,3 +867,50 @@ Verification passed: typecheck and all 18 local Blossom service/process tests on
 Bun 1.3.11; all 21 Blossom service/process and uploader tests on the VPS's Bun 1.3.8.
 The remote checks used a disposable directory, loopback ports, temporary blob data
 and the deployment's pinned Go PATH. No candidate activation or CLI upload occurred.
+
+
+## Blossom timeout rollout and HTTPS host verification — 2026-09-15
+
+Release `20260915142033151-25517` activated source `27d7ba5`, including the upload
+correction and literal HTTP framing for the Bun 1.3.8 regression tests. The standard
+deployment checks passed locally and on the VPS: 236 repository tests, typecheck,
+Go race tests, four relay tests, 18 Blossom tests and eight GRASP tests. The website
+and discovery index, relay subdomain/compatibility path, Blossom and Git NIP-11
+endpoints passed public HTTPS checks. `schlaustronics.com` continued returning 200.
+
+All four existing public soyLI 0.8.1 archives were SHA-256 checked on the VPS against
+the local release record; no archive was replaced. The live installer selects 0.8.1.
+A fresh temporary macOS arm64 installation verified the served installer, downloaded
+and verified the archive and ran `soyli --version` with Bun/Node absent from PATH.
+The user's installed CLI, accounts and unfinished project were untouched.
+
+A temporary, independently signed 11 MiB upload to the production Blossom service
+took 78,816 ms and returned 201. The downloaded bytes matched the original SHA-256;
+signed deletion returned 204 and subsequent HEAD returned 404. No napplet was
+published. Three live Chromium checks passed: gallery filtering/navigation, no-JS
+responsive SSR and mobile onboarding with all four download links.
+
+Playback verification found an additional production-only origin mismatch: browser
+Origin was HTTPS while Caddy's internal request URL was HTTP. Invalid-body probes
+returned 403 for the correct HTTPS origin and 400 for the HTTP origin, isolating the
+fault before source/DNS validation. Source `f2ffa08` makes the web audio/resource
+responders use `SPACE_SITE_ORIGIN`, preserving loopback defaults in soyLI and rejecting
+opaque/foreign origins and spoofed forwarded headers. All 238 repository tests and
+typecheck pass, including ten audio/resource tests with the production origin set.
+The deployment now checks this origin behavior on the candidate before activation.
+
+Follow-up release `20260915143300255-41346` activated `f2ffa08` successfully. The full
+checks passed again locally and on Bun 1.3.8 (238 repository tests plus the same
+service suites), and the new candidate-origin probes passed. Production Chromium
+created an audio session through HTTPS, streamed the real MP3 beyond four seconds,
+retained its controls in fullscreen, paused, and removed the iframe/audio source on
+teardown. A host resource request returned its expected bytes. The VPS's actual Node
+compatibility worker also independently streamed successive MP3 chunks and cancelled.
+This verifies the supported audio subset on production; physical iOS/Safari acceptance
+and the other unsupported media modes remain as documented in [MEDIA.md](MEDIA.md).
+
+Final checks confirmed the expected release and fresh discovery index, all five PM2
+processes online with zero restarts, Caddy active and service startup enabled. Both
+`/etc/caddy/Caddyfile` and `/etc/napplet-space/Caddyfile` retained their exact pre-rollout
+SHA-256 values. `schlaustronics.com` still returns HTTPS 200. CLI 0.8.1 archives remain
+unchanged; the follow-up corrects website origin configuration only.

@@ -1,10 +1,10 @@
 # Audio in the shared host
 
-Implemented in source on **2026-09-15**, prepared for **soyLI 0.8.0** and a matching
-web deployment. The operator's 0.8.0 installer/checksums and website release
-`20260915113546965-84858` were observed publicly on 2026-09-15; production playback
-acceptance is separate from the local evidence below. The 0.7.0 distribution
-does not expose `media`; upgrading the website does not upgrade installed CLIs.
+Implemented and deployed on **2026-09-15**, available in **soyLI 0.8.0 and later**.
+Website release `20260915143300255-41346` includes the production HTTPS-origin
+correction and passed real audio playback, fullscreen controls, pause and teardown
+checks. The public installer now selects 0.8.1. Upgrading the website does not
+upgrade installed CLIs; the 0.7.0 distribution does not expose `media`.
 
 ## Contract and supported subset
 

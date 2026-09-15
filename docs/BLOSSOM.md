@@ -35,7 +35,7 @@ Current per-service defaults:
 
 These are bounded initial operator policies, not sybil-resistant moderation. Temp-file space is additional to the committed-byte quota. Limits are defined in the server configuration; deployment currently uses these defaults. Back up the complete data directory with the service stopped or a coordinated filesystem snapshot, including SQLite WAL state. Copying only the main SQLite file while live is insufficient. There is no automatic retention, migration/rollback of data schemas, replication or production backup scheduler yet.
 
-### Upload timeout correction — prepared for soyLI 0.8.1
+### Upload timeout correction — soyLI 0.8.1
 
 The previous server cancelled the body after 20 seconds even while bytes were
 arriving. A paced 11 MiB local upload reproduced HTTP 408 under that policy and
@@ -56,8 +56,10 @@ from the beginning; this change does not introduce a chunk-upload protocol.
 
 Timeout constants live in `packages/blossom/src/transfer.ts`; the service factory and
 shared client accept programmatic overrides for testing. They are not new environment
-variables or CLI flags. This correction is implemented and verified locally; the
-operator must deploy the service and upload/install soyLI 0.8.1 to activate both sides.
+variables or CLI flags. The service correction and soyLI 0.8.1 are deployed as of
+2026-09-15. A live 11 MiB upload completed in 79 seconds, returned HTTP 201, and its
+read-back SHA-256 matched; the temporary blob was deleted and a subsequent read
+returned 404. Upgrade an existing CLI to 0.8.1 before retrying `soyli publish --resume`.
 
 ## Local use and VPS wiring
 
