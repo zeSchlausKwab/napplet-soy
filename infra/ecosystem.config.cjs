@@ -34,6 +34,8 @@ module.exports = {
         SPACE_INDEX_DIR: process.env.SPACE_INDEX_DIR || '',
         SPACE_COMMUNITY_DIR: process.env.SPACE_COMMUNITY_DIR || '',
         SPACE_INDEX_RELAYS: process.env.SPACE_INDEX_RELAYS || '',
+        SPACE_INDEX_HINTS: process.env.SPACE_INDEX_HINTS || '',
+        SPACE_BLOSSOM_ORIGIN: process.env.SPACE_BLOSSOM_ORIGIN || '',
         SPACE_RUNTIME_LOCAL_RELAYS: process.env.SPACE_RUNTIME_LOCAL_RELAYS || '',
       },
     },

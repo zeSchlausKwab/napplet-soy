@@ -176,6 +176,7 @@ if [[ -f "$app_root/shared/server.env" ]]; then
 fi
 export PATH="$release_dir/bin:$rust_root/bin:$go_root/go/bin:$app_root/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export SPACE_SITE_ORIGIN="https://$domain"
+export SPACE_BLOSSOM_ORIGIN="https://$blossom_domain"
 export SPACE_CLI_DOWNLOAD_DIR="${SPACE_CLI_DOWNLOAD_DIR:-$app_root/downloads/cli}"
 export PORT="$web_port"
 export SPACE_ADMIN_PUBKEYS="${SPACE_ADMIN_PUBKEYS:-$admin_pubkey}"
@@ -334,14 +335,13 @@ for attempt in {1..30}; do
   sleep 1
 done
 [[ "$healthy" == 1 ]]
-# Exercise the HTTPS browser origin over Caddy's internal HTTP hop. Invalid JSON
-# reaches validation without creating a ticket or fetching any resource.
+# These transports now run in the browser. Do not reactivate a protocol proxy.
 for endpoint in media resources relay-read; do
   code=$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' -H "Origin: https://$domain" -H 'X-Space-Host: 1' -H 'Content-Type: application/json' --data '{' "http://127.0.0.1:$smoke_port/api/$endpoint")
-  [[ "$code" == 400 ]] || { echo "Candidate $endpoint rejected the configured HTTPS origin ($code)." >&2; exit 1; }
-  code=$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' -H "Origin: http://$domain" -H 'X-Space-Host: 1' -H 'Content-Type: application/json' --data '{' "http://127.0.0.1:$smoke_port/api/$endpoint")
-  [[ "$code" == 403 ]] || { echo "Candidate $endpoint accepted a different origin ($code)." >&2; exit 1; }
+  [[ "$code" == 404 ]] || { echo "Candidate still exposes the removed $endpoint proxy ($code)." >&2; exit 1; }
 done
+code=$(curl -sS --max-time 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$smoke_port/api/admin")
+[[ "$code" == 401 ]] || { echo "Candidate administration is not protected ($code)." >&2; exit 1; }
 kill "$smoke_pid"
 wait "$smoke_pid" 2>/dev/null || true
 smoke_pid=''

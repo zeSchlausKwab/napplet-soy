@@ -1,13 +1,13 @@
 import { profileRelays } from '../../../../packages/backend/src/profiles';
 import { createServerFn } from '@tanstack/react-start';
 import { readPolicy } from '../../../../packages/moderation/src/policy';
-import discoveryRelays from '../../../../packages/nostr/discovery-relays.json';
+import { browserRelayDefaults } from '../../../../packages/backend/src/client-network';
 /** Site-owned curation and operator defaults, never a Nostr event/asset proxy. */
 export const getClientPolicy = createServerFn({ method: 'GET' }).handler(async () => {
   const policy = readPolicy();
   const relays = await profileRelays();
   return {
-    relays: relays.length ? relays : ['wss://relay.napplet.soy', ...discoveryRelays],
+    relays: browserRelayDefaults(relays, process.env.SPACE_INDEX_HINTS),
     blossom: [
       process.env.SPACE_INDEX_LOCAL_BLOSSOM ||
         process.env.SPACE_BLOSSOM_ORIGIN ||
