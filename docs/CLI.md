@@ -7,8 +7,9 @@ this is not an alternative runtime implementation for users who reject Bun itsel
 
 ## Rename and upgrade — 2026-09-15
 
-CLI **0.8.2 is prepared** with shared public runtime relay reads. Explicit relay
-hints no longer have to appear in the site's discovery list. It retains 0.8.1's
+CLI **0.8.2 archives are published** with shared public runtime relay reads. Explicit relay
+hints no longer have to appear in the site's discovery list. The matching website
+deployment activates this version in the installer. It retains 0.8.1's
 shared audio host and transfer timeout fixes. See [runtime routing](PUBLIC-RUNTIME.md#runtime-relay-routing--soyli-082).
 
 Rerun the installer without arguments to upgrade in place:
