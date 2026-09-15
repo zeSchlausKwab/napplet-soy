@@ -97,6 +97,26 @@ the same policy, bounds and cancellation. The standalone CLI needs no separate N
 installation for audio. Web and preview server idle timeouts are 60 seconds, above
 the transport's connection and idle deadlines.
 
+## Station lookup limitation — diagnosed 2026-09-15
+
+The media transport can work while a radio napplet fails before creating a session.
+The website currently supplies a napplet's discovery relay list as its runtime read
+allowlist. An `outbox.query` relay hint outside that list is silently filtered out.
+The local preview uses `napplet.json`'s `relays` instead, so the two environments can
+return different station data despite sharing the same host implementation.
+
+This was reproduced with Drone Zone: it explicitly requested Wavefunc's relay, but
+received no events with `incomplete: true` on the website. The same query with that
+relay allowed returned a verified station event; the unchanged published napplet
+then played and paused through the production media endpoint in a controlled browser
+session. Its own error label also treats incomplete empty results as 'Signal not
+found', hiding the difference between a limited lookup and confirmed absence.
+
+The previous streaming acceptance does not establish end-to-end station discovery
+parity. This remains a runtime relay-policy limitation; it is not corrected by the
+0.8.1 audio/HTTPS fixes. An empty incomplete query must not be presented as proof
+that the station event does not exist.
+
 ## Verification
 
 Unit tests cover URL/byte policy, admission, quotas, streaming before EOF, cancellation,
