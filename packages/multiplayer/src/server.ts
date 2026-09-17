@@ -1,9 +1,21 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { Matchmaking, joinSchema, ticketSchema, matchSchema } from './matchmaking';
+import { Boards, boardRegister, boardSubmit, boardRead } from './boards';
+import { Rooms, roomCreate, roomKey, roomNamespace } from './rooms';
 
-export function createMatchmakingServer(service = new Matchmaking()) {
-  const server = new McpServer({ name: 'napplet-space-matchmaking', version: '0.1.0' });
+export function createMatchmakingServer(
+  service = new Matchmaking(),
+  options: {
+    boards?: Boards;
+    rooms?: Rooms;
+    ice?: (actor: string) => Record<string, unknown>;
+  } = {},
+) {
+  const server = new McpServer({ name: 'napplet-soy-backend', version: '1.0.0' });
+  const boards = options.boards ?? new Boards();
+  const rooms = options.rooms ?? new Rooms();
+  const limits = new Map<string, { start: number; calls: number }>();
   const result = (operation: () => Record<string, unknown>) => {
     try {
       const value = operation();
@@ -25,7 +37,16 @@ export function createMatchmakingServer(service = new Matchmaking()) {
   };
   const actor = (meta: Record<string, unknown> | undefined) => {
     const pubkey = meta?.clientPubkey;
-    if (typeof pubkey !== 'string') throw new Error('Authenticated ContextVM client required');
+    if (typeof pubkey !== 'string' || !/^[a-f0-9]{64}$/.test(pubkey))
+      throw new Error('Authenticated ContextVM client required');
+    const now = Date.now();
+    for (const [key, value] of limits) if (value.start + 60_000 <= now) limits.delete(key);
+    const previous = limits.get(pubkey);
+    if (previous && ++previous.calls > 120) throw new Error('Rate limited; retry in a minute');
+    if (!previous) {
+      if (limits.size >= 2000) throw new Error('Provider busy');
+      limits.set(pubkey, { start: now, calls: 1 });
+    }
     return pubkey;
   };
   server.registerTool(
@@ -58,5 +79,87 @@ export function createMatchmakingServer(service = new Matchmaking()) {
     },
     (args, extra) => result(() => service.leave(actor(extra._meta), args)),
   );
+  const tool = (
+    name: string,
+    description: string,
+    inputSchema: z.ZodObject,
+    action: (actor: string, args: unknown) => Record<string, unknown>,
+  ) =>
+    server.registerTool(name, { description, inputSchema }, (args, extra) =>
+      result(() => action(actor(extra._meta), args)),
+    );
+  tool(
+    'soy_session',
+    'Your scoped transport identity and service contract version. This is not your Nostr profile.',
+    z.object({}).strict(),
+    (actor) => ({
+      version: 1,
+      actor,
+      families: ['soy.matchmaking.v1', 'soy.rooms.v1', 'soy.boards.v1'],
+      payments: 'free',
+      updates: 'poll',
+      minimumPollMs: 2000,
+    }),
+  );
+  tool(
+    'soy_board_register',
+    'Register immutable board rules using the napplet author signature. Retrying the same definition is safe.',
+    boardRegister,
+    (actor, args) => boards.register(actor, args),
+  );
+  tool(
+    'soy_board_submit',
+    'Submit a casual, client-reported personal best. Retries cannot add to the score. Transport keys are not Sybil resistant.',
+    boardSubmit,
+    (actor, args) => boards.submit(actor, args),
+  );
+  tool(
+    'soy_board_read',
+    'Read current scores and your personal best. Poll no more often than every two seconds; notifications are not durable state.',
+    boardRead,
+    (actor, args) => boards.read(actor, args),
+  );
+  tool(
+    'soy_room_create',
+    'Create a named room with configurable capacity. Membership expires after 60 seconds without status calls.',
+    roomCreate,
+    (actor, args) => rooms.create(actor, args),
+  );
+  tool(
+    'soy_room_list',
+    'List up to 100 listed rooms for an author-qualified napplet and application protocol. Room IDs are rendezvous, not authorization secrets.',
+    roomNamespace.strict(),
+    (_, args) => rooms.list(args),
+  );
+  tool(
+    'soy_room_join',
+    'Join a room. Returns authenticated transport peer keys for NAP-WEBRTC.',
+    roomKey,
+    (actor, args) => rooms.access(actor, args, true),
+  );
+  tool(
+    'soy_room_status',
+    'Renew your room membership and read current peers. Poll every 2–20 seconds while active.',
+    roomKey,
+    (actor, args) => rooms.access(actor, args, false),
+  );
+  tool(
+    'soy_room_leave',
+    'Leave a room without closing it for the other members.',
+    roomKey,
+    (actor, args) => rooms.leave(actor, args),
+  );
+  if (options.ice)
+    tool(
+      'soy_ice',
+      'Host connectivity credentials. Short-lived TURN credentials never belong in a published napplet.',
+      z.object({}).strict(),
+      (actor) => options.ice!(actor),
+    );
+  const close = server.close.bind(server);
+  server.close = async () => {
+    await close();
+    boards.close();
+  };
   return server;
 }

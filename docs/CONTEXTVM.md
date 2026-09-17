@@ -1,87 +1,110 @@
-# ContextVM and multiplayer
+# ContextVM backend services
 
-The generalized API requirements recorded on 2026-09-14 include random 1v1, free-for-all and multiple named rooms with variable membership
-before freezing a generalized API. Opt-in public activity and Join cards depend on
-the bridge and room contract.
-The three tools below remain the implemented starter, not that generalized API.
+The Soy backend is an MCP server reached directly over signed, NIP-44-encrypted
+Nostr transport. It provides persistent casual scoreboards, leased named rooms,
+and matchmaking. It does not execute uploaded game code or run a game simulation.
+No HTTP endpoint proxies these calls.
 
-2026-09-12. The service starter and tests below are implemented. Browser NAP-CVM mediation, game simulation, and managed deployment of creator code are subsequent slices.
+The service uses `@contextvm/sdk` 0.13.16 and MCP SDK 1.30.0. Browser mediation targets
+[NAP-CVM PR 31, ad68a938](https://github.com/napplet/naps/blob/ad68a938236e9230324e377cd005008a315ff402/naps/NAP-CVM.md).
+Peer transport targets [NAP-WEBRTC PR 59, 5fae95dd](https://github.com/napplet/naps/blob/5fae95dd2c8e59bd06c654e0845656add077dcda/naps/NAP-WEBRTC.md).
+The installed upstream shim is 0.30.0. These are evolving proposal contracts;
+NIP-5D remains authoritative for napplet publication and host messages.
 
-## Decision: a small default service, an open provider boundary
+## Service contract v1
 
-Space should offer matchmaking and room rendezvous as a convenient default. A napplet may use a creator-operated ContextVM for its game rules, persistent world, scoring, or specialized demo. The shared service should not become an interpreter for arbitrary uploaded game code or an unrestricted shared JSON database.
+Input schemas are in `packages/multiplayer/src/contracts.ts`, `rooms.ts` and
+`matchmaking.ts`. All tools return ordinary MCP content plus `structuredContent`;
+errors use `isError`. The transport supplies the authenticated client key.
+Caller-supplied `_meta.clientPubkey` cannot impersonate another player.
 
-ContextVM provides MCP over signed/encrypted Nostr events. It does not supply a game engine or a standard matchmaking API. Our tool contract is an application API, versioned independently of ContextVM and NAP-CVM.
+| Tool                 | Behavior                                                               |
+| -------------------- | ---------------------------------------------------------------------- |
+| `soy_session`        | Current transport actor, contract version, families and polling policy |
+| `soy_board_register` | Creator-authorized registration of immutable board rules               |
+| `soy_board_submit`   | Update the caller's personal best; retries do not add scores           |
+| `soy_board_read`     | Current ordered scores plus the caller's personal best                 |
+| `soy_room_create`    | Create a named, optionally listed room with a chosen capacity          |
+| `soy_room_list`      | List rooms in an author-qualified napplet/protocol namespace           |
+| `soy_room_join`      | Join within provider capacity and return current peer keys             |
+| `soy_room_status`    | Renew membership and return current peers                              |
+| `soy_room_leave`     | Leave without closing the room for other members                       |
+| `space_match_join`   | Join an exact-release queue; repeated joins reuse the ticket           |
+| `space_match_status` | Read own ticket and renew a waiting lease                              |
+| `space_match_leave`  | Leave the fixed match; this older queue contract closes it for peers   |
+| `soy_ice`            | Temporary authenticated TURN credentials for the host                  |
 
-| Concern | Owner | First implementation |
-| --- | --- | --- |
-| Find compatible players | Shared matchmaking ContextVM | Implemented queue join/status/leave |
-| Identify a match and its participants | Shared matchmaking ContextVM | Opaque room ID, authenticated transport pubkeys |
-| Validate moves, determine winners, prevent invalid state transitions | Game-specific ContextVM | Separate follow-up service |
-| Render and collect input | Napplet | Existing sandbox runtime |
-| Sign/encrypt calls, select relays, enforce per-napplet provider policy | Host `cvm` capability | Browser bridge still to implement |
-| Run creator server code | Creator VPS initially; isolated managed workers later | No uploaded server-code execution |
+Room membership lasts 60 seconds without renewal. Poll status every 2–20 seconds.
+Rooms disappear when their last lease expires. Provider defaults are 1,000 rooms,
+eight peers per room, and four room memberships per actor. Capacity is provider
+policy, not a game rule; `SPACE_CVM_MAX_PEERS` can set a limit up to the contract's
+64-peer ceiling. The current browser mesh separately admits eight remote peers.
+Listed rooms are public rendezvous. An unlisted room ID is not an authorization
+credential, and a peer key is not proof of a human, profile, or honest game client.
 
-This supports a quick path: a tiny multiplayer napplet can use the default matchmaker; a more ambitious game can bring a specialized backend. Self-hosting means deploying an ordinary ContextVM server with its own key and relays, not defining a new napplet protocol.
+The existing queue uses `{napplet, artifact, queue, players}`; equivalence includes
+the decoded author-qualified napplet identity, exact aggregate hash, queue and
+requested count. Its default two-player request and maximum eight are explicit
+service limits. Waiting tickets expire after 60 seconds and fixed matches after
+ten minutes. Named rooms cover variable membership without that fixed-match
+lifecycle. Neither mechanism chooses simulation topology or game rules.
 
-## Existing standards and the pinned integration target
+## Durable scores and creator authority
 
-[NAP-CVM draft PR 31](https://github.com/napplet/naps/pull/31), inspected at [ad68a938](https://github.com/napplet/naps/blob/ad68a938236e9230324e377cd005008a315ff402/naps/NAP-CVM.md), defines the `cvm` domain. Its direct API includes discovery, MCP requests, tool/resource wrappers, close, and server notifications. Its optional registry groups providers behind common tool contracts. The corresponding [napplet web SDK implementation](https://github.com/napplet/web/tree/1df6dc87e5eee7257af41efb6247d47ec019e3d8/packages/nap/src/cvm) is the compatibility target, not a new `space.*` browser global.
+Boards use `{napplet, board}` as their namespace. The napplet is a standard naddr;
+relay hints do not change identity. Definitions include title, `highest` or
+`lowest` ordering, and finite minimum/maximum bounds. Rules are immutable: choose
+a new board ID for new rules or a new season. Scores survive service restarts in
+SQLite/WAL. Republishing does not reset them. Remixes get a different napplet
+address and must register their own boards.
 
-Target napplet usage after the bridge is implemented:
+Registration carries an unpublished signed application proof from the naddr's
+author. `boardAuthorization()` specifies its exact kind-1 template: a
+`soy-board-registration-v1` tag, provider `p` tag, and JSON content binding the
+transport caller and full definition. Its timestamp must be within five minutes.
+This is an application authorization format, not a new NIP or a public social
+post. The key never reaches the backend. Replaying a proof for another provider,
+caller, author or definition fails; retrying the same registration is harmless.
 
-```ts
-const result = await window.napplet.cvm.callTool(
-  { pubkey: providerPubkey, relays: providerRelays },
-  'space_match_join',
-  { napplet: myNaddr, artifact: myAggregateHash, queue: 'casual', players: 2 },
-  { payment: 'deny', timeoutMs: 5000 },
-);
+Scores are **client-reported**, keyed to authenticated transport identities.
+They are suitable for casual boards, not prizes or claims of cheat resistance.
+Names are untrusted display strings. The defaults allow 1,000 boards and 1,000
+players per board, return at most 100 rows, and limit each actor to 120 tool calls
+per minute. Per-key limits are not Sybil protection. Exhausted resources fail
+explicitly; they do not silently evict scores or create paid usage.
+
+## Provider selection and schema identity
+
+The host's curated families are `soy.matchmaking.v1`, `soy.rooms.v1` and
+`soy.boards.v1`. These are Soy service contracts exposed through the standard
+NAP-CVM registry, not additions to the NAP browser namespace. Direct `callTool`
+works with other CVM providers. Selecting another provider does not migrate scores,
+rooms or active sessions. There is no automatic stateful-provider fallback.
+
+The service attaches per-tool CEP-15 hashes using the installed SDK's normalized
+schema/JCS implementation under `_meta["io.contextvm/common-schema"]`. A structural
+hash does not prove a provider implements the advertised semantics. No aggregate
+family hash or interchangeable-provider claim is made.
+
+## Operator service
+
 ```
-
-This example is a target contract. The current player injects the shared upstream shim and supported playback domains, but does not advertise `cvm`. A manifest declaring `requires: cvm` is correctly reported as unsupported until the bridge passes interoperability tests.
-
-The host must bind requests to the actual iframe `Window`, its author-qualified manifest identity, and verified aggregate hash. It owns transport keys, request correlation, deadlines, and policy; iframe-provided `pubkey`/origin strings cannot establish the caller's identity. Responses must be verified against the selected server's key. Each iframe/provider session must be disposed when playback stops or changes. Discovery is not permission to call every provider, and a napplet's `payment: allow` is not user authorization to spend.
-
-Use a scoped transport identity per user/napplet where practical; do not lend a shared operator signing key to every game. The backend authenticates the transport pubkey. An `naddr` argument is a queue namespace, not proof of code provenance, ownership, or a human user. Authentication, cross-device identity linking, and Sybil resistance are distinct follow-up decisions.
-
-## Implemented service contract, v1
-
-The authoritative schemas are in [matchmaking.ts](../packages/multiplayer/src/matchmaking.ts), with MCP registration in [server.ts](../packages/multiplayer/src/server.ts).
-
-| Tool | Input | Behavior |
-| --- | --- | --- |
-| `space_match_join` | `napplet` naddr, `artifact` aggregate hash, `queue` (default casual), `players` (2–8, default 2) | Idempotently joins a queue; pairs/groups waiting participants in arrival order |
-| `space_match_status` | `ticket` UUID | Checks the caller's own ticket and renews a waiting lease |
-| `space_match_leave` | `ticket` UUID | Idempotently leaves; closes the match for remaining peers |
-
-Join and status return `{version:1,ticket,state,expiresAt,room,peers}`. `state` is waiting, matched, or closed; `room` is null until matched; `peers` contains the participating transport pubkeys. `expiresAt` is Unix milliseconds. Poll no more than once per two seconds. Waiting leases last 60 seconds; matches expire after ten minutes. A restart loses these ephemeral matches and clients rejoin. There is no durable game state to recover in this starter.
-
-Queue equivalence includes decoded author-qualified napplet address, aggregate hash, queue name, and player count. Relay hints in an naddr do not split a queue. Different releases and remixes do not join accidentally. Each transport actor has one active ticket; leases, a 1,000-ticket cap, and per-key request limits bound service state. Public-key limits are not a complete public-abuse solution.
-
-The room ID is rendezvous data, not an access credential. A game service must authenticate each player itself and validate room membership. Clients cannot write arbitrary room state or submit trusted scores through this service.
-
-## Running the starter
-
-```sh
-# Use an operator-selected local relay; no external defaults are silently contacted.
 SPACE_CVM_RELAYS=ws://127.0.0.1:19347/relay bun run cvm
 ```
 
-The entrypoint uses `@contextvm/sdk` 0.13.16, its Applesauce relay pool, MCP SDK 1.30.0, required encryption, and SDK-injected client pubkeys. It creates a persistent mode-0600 key file at `.local/contextvm/identity` without printing the secret. Override `SPACE_CVM_KEY_PATH` for an existing identity. Public announcements and relay-list publication require `SPACE_CVM_ANNOUNCE=1`.
+Set `SPACE_CVM_KEY_PATH` and `SPACE_CVM_DATA_PATH` to persistent paths outside
+releases. Identity files are mode 0600. `--identity` on the service entrypoint
+prints only its public key. Public announcements are opt-in with
+`SPACE_CVM_ANNOUNCE=1`; `SPACE_CVM_PUBLIC_RELAYS` controls advertised relays while
+`SPACE_CVM_RELAYS` controls actual server connections. The deployment uses the
+local relay connection and advertises the public WSS address.
 
-An actual relay must be supplied; this change does not disguise a test relay as a production service. Tests run the real ContextVM client and server transports against a bounded local NIP-01 fixture, including an attempted `_meta.clientPubkey` impersonation and an encrypted tool round trip.
+`soyli dev` uses the same service implementation with a bounded loopback preview
+relay and per-project data in `.napplet-space/backend`. Full-stack development
+and production use Khatru. The small preview relay is not a production relay.
+Local board provisioning trusts the developer's configuration file and is never
+exposed as an unauthenticated public tool.
 
-`infra/cvm.ecosystem.config.cjs` provides the same Bun process under PM2. Set `SPACE_RELEASE_DIR`, `SPACE_CVM_RELAYS`, and a persistent `SPACE_CVM_KEY_PATH` when deploying separately. Keep the key outside release directories. The web deploy script does not yet activate this optional service or install its relay; that orchestration belongs with the operator relay slice. No ContextVM instance has been deployed to public infrastructure.
-
-## Generalization and rollout
-
-1. Complete the host's draft NAP-CVM bridge against the pinned upstream shim, with two browser clients joining through it. Test iframe spoofing, cancellation, provider identity, and cross-napplet isolation before advertising `cvm`.
-2. Add one original two-player demo and a small game-specific authoritative service. Make move commands idempotent with command IDs and expected revisions. Snapshot state on reconnect; do not assume notifications provide durable replay or exactly-once delivery.
-3. Expose the default matchmaker through `cvm.registry` as a Space-defined family. Use [CEP-15's normalized JSON Schema/JCS hashing](https://docs.contextvm.org/reference/ceps/cep-15/) before treating other providers as equivalent. Our current tools are bespoke MCP tools and do not claim CEP-15 common-schema status yet.
-4. Let creators supply another provider pubkey/relay list. Provider choice is separate from schema compatibility. Switching providers must not silently move an active match or its private state.
-5. Add `napplet backend init` and a self-hosting deploy template. Consider managed creator backends only after defining quotas, process isolation, secret storage, migrations, and lifecycle ownership. These should be separate services from artifact serving and the public web app.
-
-For turn-based games, MCP requests and recoverable notifications are a reasonable first path. For twitch games, measure end-to-end latency before choosing a transport. Matchmaking can return a negotiated session while high-frequency state uses a separately specified host-mediated channel; do not make every animation frame a signed tool call. This is an architectural recommendation, not a performance claim about ContextVM.
-
-Reference revisions: [ContextVM SDK 13772d3](https://github.com/ContextVM/sdk/tree/13772d398c4089fd8a1e9169dac3868e6d562f2c), [ContextVM docs 198d6b6](https://github.com/ContextVM/contextvm-docs/tree/198d6b6873e7d6a277ce6b86d3fc6b98e8af05f6), and the [ContextVM protocol draft](https://docs.contextvm.org/reference/spec/ctxvm-draft-spec/). These are evolving drafts, so record upgraded pins and conformance results together.
+Service tests exercise encrypted transport, caller binding, registration
+ownership, personal-best idempotence, persistence, capacity and lease expiry.
+Production rollout and independently created games require separate verification.

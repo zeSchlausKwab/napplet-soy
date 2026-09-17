@@ -77,11 +77,18 @@ test('ContextVM carries encrypted matchmaking calls and derives the actor from t
         logLevel: 'silent',
       }),
     );
-    expect((await client.listTools()).tools.map((t) => t.name)).toEqual([
-      'space_match_join',
-      'space_match_status',
-      'space_match_leave',
-    ]);
+    expect((await client.listTools()).tools.map((t) => t.name)).toEqual(
+      expect.arrayContaining([
+        'space_match_join',
+        'space_match_status',
+        'space_match_leave',
+        'soy_board_register',
+        'soy_board_submit',
+        'soy_board_read',
+        'soy_room_create',
+        'soy_session',
+      ]),
+    );
     const result = await client.callTool({
       name: 'space_match_join',
       arguments: { napplet: records[0].naddr, artifact: records[0].artifactHash },
