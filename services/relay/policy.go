@@ -11,7 +11,9 @@ import (
 type connectionBudget struct {
 	minute           int64
 	requests, events int
+	service          bool
 }
+type serviceIngressKey struct{}
 type connectionBudgets struct {
 	sync.Mutex
 	values map[*khatru.WebSocket]*connectionBudget
@@ -30,14 +32,20 @@ func (b *connectionBudgets) allow(ctx context.Context, publish bool) bool {
 		return false
 	}
 	if q.minute != minute {
-		q = &connectionBudget{minute: minute}
+		q = &connectionBudget{minute: minute, service: q.service}
 		b.values[ws] = q
 	}
 	if publish {
 		q.events++
+		if q.service {
+			return q.events <= 6000
+		}
 		return q.events <= 120
 	}
 	q.requests++
+	if q.service {
+		return q.requests <= 12000
+	}
 	return q.requests <= 240
 }
 func (b *connectionBudgets) forget(ctx context.Context) {
@@ -49,5 +57,8 @@ func (b *connectionBudgets) forget(ctx context.Context) {
 func (b *connectionBudgets) connect(ctx context.Context) {
 	b.Lock()
 	defer b.Unlock()
-	b.values[khatru.GetConnection(ctx)] = &connectionBudget{minute: time.Now().Unix() / 60}
+	// Khatru starts its socket context from Background; the original HTTP
+	// request retains the private listener marker. It is never a client header.
+	service, _ := khatru.GetConnection(ctx).Request.Context().Value(serviceIngressKey{}).(bool)
+	b.values[khatru.GetConnection(ctx)] = &connectionBudget{minute: time.Now().Unix() / 60, service: service}
 }

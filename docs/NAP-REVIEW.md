@@ -65,7 +65,7 @@ presence is not permission for every operation. The upstream
 [shim integration](../packages/runtime/src/prelude.ts) and
 [host dispatcher](../packages/runtime/src/host.ts) are shared by web and CLI previews.
 
-`cvm`, `intent` and `inc` are not advertised. Account sign-in and surrounding
+`intent` and `inc` are not advertised; the 2026-09-17 update below adds `cvm` and `webrtc`. Account sign-in and surrounding
 website zaps do not automatically implement napplet identity-changing or payment
 capabilities. Inventory all domains, including deployed `common` and `fs`, against
 their exact proposal/SDK sources; the README alone is not a complete compatibility
@@ -188,3 +188,31 @@ a stalled fallback to race the shim's timeout even with verified results in hand
 soyLI 0.8.3 and the shared web host reserve reply-delivery time inside that budget
 and preserve partial-result/error semantics. No protocol fields, permissions,
 SDK versions or proposal pins change. See PUBLIC-RUNTIME.md for timing limits.
+
+## NAP-CVM / NAP-WEBRTC implementation review — 2026-09-17
+
+Reviewed the registry and open pull requests, including
+[NAP-CVM PR 31](https://github.com/napplet/naps/pull/31) at
+`ad68a938236e9230324e377cd005008a315ff402` and
+[NAP-WEBRTC PR 59](https://github.com/napplet/naps/pull/59) at
+`5fae95dd2c8e59bd06c654e0845656add077dcda`. These remain proposal contracts with
+user-selected authority; an open PR is not proof of implementation or universal
+interoperability. The existing NIP-5D pin and upstream shim/creator pins remain.
+
+The shared host now supplies their standard browser envelopes; app-facing CVM
+request/discover/close/registry operations and WebRTC open/send/close/events are
+implemented. The service uses ContextVM SDK 0.13.16, encrypted client identity
+injection and per-tool CEP-15 hashes. CEP-41 streams and oversized transfers are
+disabled; family hash equivalence, payment execution and arbitrary code are not
+implemented. NAP-CONNECT/raw sockets are not a workaround for this boundary.
+
+Backend namespaces are author-qualified addresses; provider configuration and
+board rules are creator-tool metadata, never mandatory napplet manifest fields.
+Native WebRTC signaling is host-owned and separately documented as `soy-rtc/1`.
+The proposal does not prescribe a universal host signaling protocol. No new app
+wire messages or direct sandbox network exemptions were introduced.
+
+[ContextVM](CONTEXTVM.md) records behavior, evidence and remaining acceptance;
+the self-contained [creator guide](BACKEND-CREATOR.md) ships with soyLI. These
+engineering fixtures do not substitute for an isolated creator using only the
+released CLI and shell, or for cross-network transport tests.

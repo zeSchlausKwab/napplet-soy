@@ -10,6 +10,7 @@ import { gitAvailable } from './prerequisites';
 import { version } from './distribution';
 import { watchProject } from './toolchain';
 import { screenshotProject, recordProject } from './project-config';
+import { localBackend } from './backend';
 
 export async function preview(
   directory: string,
@@ -23,10 +24,13 @@ export async function preview(
   const config = await Bun.file(new URL('napplet.json', pathToFileURL(root + '/'))).json();
   const watcher = config.entry === 'dist/index.html' ? await watchProject(root, signal) : undefined;
   let server: ReturnType<typeof startPreviewServer> | undefined;
+  let backend: Awaited<ReturnType<typeof localBackend>>;
   const stop = () => server?.stop(true);
   try {
+    backend = await localBackend(root);
     server = startPreviewServer(pathToFileURL(root + '/'), port, false, await previewAssets(), {
       network,
+      backend: backend?.provider,
       record: (settings) =>
         recordProject(
           root,
@@ -85,6 +89,7 @@ export async function preview(
     signal.removeEventListener('abort', stop);
     stop();
     await watcher?.stop();
+    await backend?.close();
   }
 }
 

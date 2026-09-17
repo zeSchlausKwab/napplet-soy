@@ -169,3 +169,38 @@ func TestLiveSearchAndUnknownDeletionTarget(t *testing.T) {
 	expiredMarker := fixture(t, key, 5, now, nostr.Tags{{"e", noMatch.ID.Hex()}, {"expiration", fmt.Sprint(now + 60)}}, "")
 	publish(t, publisher, expiredMarker, false)
 }
+
+func TestServiceIngressKeepsPublicBudgetAndRejectsBrowsers(t *testing.T) {
+	relay := newRelay(testStore(t))
+	public := httptest.NewServer(relay)
+	defer public.Close()
+	service := httptest.NewServer(serviceRelayHandler(relay))
+	defer service.Close()
+	request, _ := http.NewRequest("GET", service.URL, nil)
+	request.Header.Set("Origin", "http://127.0.0.1")
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusForbidden {
+		t.Fatal("browser reached service ingress")
+	}
+	normal, internal := socket(t, public.URL), socket(t, service.URL)
+	subscriber := socket(t, public.URL)
+	subscriber.WriteJSON([]any{"REQ", "signal", nostr.Filter{Kinds: []nostr.Kind{25050}, LimitZero: true}})
+	if string(read(t, subscriber)[0]) != `"EOSE"` {
+		t.Fatal("expected EOSE")
+	}
+	key := nostr.Generate()
+	for i := 0; i < 121; i++ {
+		event := fixture(t, key, 25050, nostr.Now(), nostr.Tags{}, fmt.Sprint(i))
+		publish(t, normal, event, i < 120)
+		if i < 120 {
+			read(t, subscriber)
+		}
+		event = fixture(t, key, 25050, nostr.Now(), nostr.Tags{}, fmt.Sprint("service", i))
+		publish(t, internal, event, true)
+		read(t, subscriber)
+	}
+}

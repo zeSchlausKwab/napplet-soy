@@ -12,13 +12,25 @@ export const RUNTIME_DOMAINS = [
   'fs',
   'config',
   'media',
+  'cvm',
+  'webrtc',
 ] as const;
-export const RUNTIME_PROFILE = 'space-playback-2';
+export const RUNTIME_PROFILE = 'space-playback-3';
 
 // Only request types understood by this host. Notifications, responses and future
 // operations must be ignored, including unknown operations in supported domains.
 export const HOST_REQUESTS = new Set(
   Object.entries({
+    cvm: [
+      'discover',
+      'request',
+      'close',
+      'registry.list',
+      'registry.has',
+      'registry.describe',
+      'registry.call',
+    ],
+    webrtc: ['open', 'send', 'close'],
     config: ['registerSchema', 'get', 'subscribe', 'unsubscribe', 'openSettings'],
     identity: [
       'getPublicKey',

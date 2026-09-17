@@ -48,7 +48,8 @@ function showPrompt(prompt: HostPrompt | null) {
       ? `Save ${prompt.value}? It will appear below for download.`
       : prompt.value;
   confirm.hidden = prompt.kind === 'link';
-  confirm.textContent = prompt.kind === 'media' ? 'Play audio' : 'Save file';
+  confirm.textContent =
+    prompt.kind === 'media' ? 'Play audio' : prompt.kind === 'network' ? 'Connect' : 'Save file';
   link.hidden = prompt.kind !== 'link';
   if (prompt.kind === 'link') link.href = prompt.value;
   if (!dialog.open) dialog.showModal();
@@ -133,6 +134,8 @@ async function refresh() {
     // Attach before the child's bootstrap can post shell.ready.
     stage.replaceChildren(frame);
     host = attachNappletHost({
+      backend: info.backend,
+      backendAliases: info.backendAliases,
       media: (session) =>
         mediaRoot.render(session ? createElement(MediaControls, { media: session }) : null),
       frame,

@@ -16,7 +16,8 @@ relay_domain=${9:-relay.$domain}
 [[ "$web_port" =~ ^[0-9]{4,5}$ && "$web_port" -ge 1024 && "$web_port" -le 65534 ]] || exit 2
 [[ "$admin_pubkey" =~ ^[a-f0-9]{64}$ ]] || exit 2
 smoke_port=$((web_port+1))
-[[ "$web_port" -lt 19346 || "$web_port" -gt 19349 ]] || exit 2
+[[ "$web_port" -lt 19346 || "$web_port" -gt 19351 ]] || exit 2
+[[ "$web_port" != 3477 && "$web_port" != 3478 ]] || exit 2
 [[ "$release_id" =~ ^[0-9]+-[0-9]+$ ]] || exit 2
 [[ "$domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ ]] || exit 2
 [[ "$blossom_domain" =~ ^[a-z0-9][a-z0-9.-]+\.[a-z]{2,63}$ && "$blossom_domain" != "$domain" ]] || exit 2
@@ -76,7 +77,7 @@ if [[ -f "$app_root/shared/deploy-profile" && "$(cat "$app_root/shared/deploy-pr
   echo 'Changing existing proxy mode or application ports needs an explicit migration.' >&2; exit 1
 fi
 if [[ -n "$(ss -H -ltn "sport = :$smoke_port")" ]]; then echo 'Candidate port is occupied.' >&2; exit 1; fi
-if [[ ! -L "$app_root/current" ]] && [[ -n "$(ss -H -ltn "( sport = :$web_port or sport = :19347 or sport = :19348 or sport = :19349 )")" ]]; then
+if [[ ! -L "$app_root/current" ]] && [[ -n "$(ss -H -ltn "( sport = :$web_port or sport = :19347 or sport = :19348 or sport = :19349 or sport = :19351 )")" ]]; then
   echo 'A required application port is occupied; no changes made.' >&2; exit 1
 fi
 bun_version=1.3.11
@@ -205,6 +206,22 @@ systemd-run --scope --quiet --unit="napplet-build-$release_id" -p MemoryMax=3G -
 
 runuser -u napplet -- "$bun_bin" "$release_dir/scripts/moderation-init.ts" "$SPACE_MODERATION_FILE"
 
+# Durable CVM identity/boards are independent of release directories.
+install -d -o napplet -g napplet -m 700 "$state_root/cvm"
+export SPACE_CVM_KEY_PATH="$state_root/cvm/identity"
+export SPACE_CVM_DATA_PATH="$state_root/cvm/boards.sqlite"
+export SPACE_CVM_RELAYS='ws://127.0.0.1:19351'
+export SPACE_RELAY_CVM_BIND='127.0.0.1:19351'
+export SPACE_CVM_PUBLIC_RELAYS="wss://$relay_domain"
+export SPACE_CVM_ANNOUNCE=1
+SPACE_CVM_PUBKEY=$(runuser -u napplet -- env SPACE_CVM_KEY_PATH="$SPACE_CVM_KEY_PATH" "$bun_bin" "$release_dir/apps/cvm/src/index.ts" --identity)
+export SPACE_CVM_PUBKEY
+if [[ "${SPACE_MANAGED_TURN:-1}" == 1 ]]; then
+  bash "$release_dir/scripts/turn-setup.sh" "$domain" "$state_root"
+  export SPACE_TURN_SECRET_PATH="$state_root/cvm/turn-secret"
+  export SPACE_TURN_URLS="turn:$domain:3478?transport=udp,turn:$domain:3478?transport=tcp"
+fi
+
 start_relay() {
   local source_release=$1
   local origin="https://$domain/relay" aliases=''
@@ -245,6 +262,11 @@ start_indexer() {
   local hints="${SPACE_INDEX_HINTS//wss:\/\/$relay_domain/wss:\/\/$domain\/relay}"
   [[ ! -f "$source_release/index-hints" ]] || hints=$(cat "$source_release/index-hints")
   runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$source_release")" SPACE_INDEX_HINTS="$hints" SPACE_RELEASE_DIR="$source_release" SPACE_RELEASE_ID="$(basename "$source_release")" SPACE_SERVICE_PREFIX=napplet PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/indexer.ecosystem.config.cjs" --update-env
+}
+start_cvm() {
+  local source_release=$1
+  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$source_release")" SPACE_RELEASE_DIR="$source_release" PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/cvm.ecosystem.config.cjs" --update-env
+  runuser -u napplet -- "$(release_bun "$source_release")" "$source_release/scripts/cvm-health.ts"
 }
 indexer_ready() {
   local source_release=$1
@@ -309,6 +331,8 @@ rollback() {
       if [[ -f "$previous/infra/grasp.ecosystem.config.cjs" ]]; then start_grasp "$previous" || true; fi
       pm2_run delete napplet-indexer || true
       if [[ -f "$previous/infra/indexer.ecosystem.config.cjs" ]]; then start_indexer "$previous" || true; fi
+      pm2_run delete napplet-cvm || true
+      if [[ -f "$previous/scripts/cvm-health.ts" ]]; then start_cvm "$previous" || true; fi
       pm2_run delete napplet-web || true
       runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$previous")" SPACE_RELEASE_DIR="$previous" SPACE_RELEASE_ID="$(basename "$previous")" PATH="$previous/bin:$PATH" node "$pm2_bin" start "$previous/infra/ecosystem.config.cjs" --update-env || true
     else
@@ -317,6 +341,7 @@ rollback() {
       pm2_run delete napplet-blossom || true
       pm2_run delete napplet-grasp || true
       pm2_run delete napplet-indexer || true
+      pm2_run delete napplet-cvm || true
       rm -f "$app_root/current"
     fi
     pm2_run save --force || true
@@ -408,6 +433,8 @@ grasp_ready "$release_dir"
 pm2_run delete napplet-indexer || true
 start_indexer "$release_dir"
 indexer_ready "$release_dir"
+pm2_run delete napplet-cvm || true
+start_cvm "$release_dir"
 pm2_run delete napplet-web || true
 runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$bun_bin" SPACE_RELEASE_DIR="$release_dir" SPACE_RELEASE_ID="$release_id" PATH="$PATH" node "$pm2_bin" start "$release_dir/infra/ecosystem.config.cjs" --update-env
 healthy=0

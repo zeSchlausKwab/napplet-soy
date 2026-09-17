@@ -9,6 +9,8 @@ import { regularFile } from '../../../../packages/publish/src/project';
 import { fileURLToPath } from 'node:url';
 import { listingPreview, listingImage, listingVideo } from './listing';
 import type { Network } from '../../../../packages/identity/src/signer';
+import type { BackendProvider } from '../../../../packages/multiplayer/src/client';
+import { backendConfig } from '../../../../packages/multiplayer/src/contracts';
 
 const relayUrl = z
   .string()
@@ -19,6 +21,7 @@ const relayUrl = z
   )
   .transform((url) => url.href);
 const configSchema = z.object({
+  backend: backendConfig.optional(),
   previewId: z.uuid(),
   entry: z.enum(['index.html', 'dist/index.html']),
   requires: z
@@ -29,6 +32,8 @@ const configSchema = z.object({
   servers: z.array(z.url().max(2048)).max(8).default([]),
 });
 export type PreviewRevision = {
+  backend?: BackendProvider;
+  backendAliases?: BackendProvider[];
   id: string;
   artifactHash: string;
   servers: string[];
@@ -45,6 +50,7 @@ export function startPreviewServer(
   assets?: PreviewAssets,
   listing: {
     network: Network;
+    backend?: BackendProvider;
     capture?: () => Promise<unknown>;
     record?: (settings: Recording) => Promise<unknown>;
   } = { network: 'public' },
@@ -61,6 +67,8 @@ export function startPreviewServer(
       throw new Error('Project exceeds preview limits.');
     const artifactHash = await sha256(bytes);
     const info: PreviewRevision = {
+      backend: listing.backend,
+      backendAliases: listing.backend && config.backend?.provider ? [config.backend.provider] : [],
       id: await sha256(`${artifactHash}:${configText}`),
       artifactHash,
       hostIdentity: `local-preview:${config.previewId}:${artifactHash}`,
@@ -70,7 +78,7 @@ export function startPreviewServer(
           ...(config.entry === 'dist/index.html' ? await builtRequirements(bytes) : []),
         ]),
       ],
-      relays: config.relays,
+      relays: [...new Set([...(listing.backend?.relays ?? []), ...config.relays])],
       servers: config.servers,
     };
     return { info, bytes, servers: config.servers };

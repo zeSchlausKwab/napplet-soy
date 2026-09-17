@@ -60,11 +60,21 @@ export async function startBackend(options: {
   relayOnly?: boolean;
   publicRelays?: string[];
 }) {
+  if (
+    options.maxPeers !== undefined &&
+    (!Number.isInteger(options.maxPeers) || options.maxPeers < 2 || options.maxPeers > 64)
+  )
+    throw new Error('Room capacity must be an integer between 2 and 64');
   const signer = await backendIdentity(options.keyPath),
     pubkey = await signer.getPublicKey();
   await mkdir(dirname(options.dataPath), { recursive: true, mode: 0o700 });
   const boards = new Boards(options.dataPath, pubkey);
-  for (const definition of options.localBoards ?? []) boards.provision(definition);
+  try {
+    for (const definition of options.localBoards ?? []) boards.provision(definition);
+  } catch (error) {
+    boards.close();
+    throw error;
+  }
   const server = createMatchmakingServer(undefined, {
     boards,
     rooms: new Rooms(Date.now, 1000, options.maxPeers ?? 8),

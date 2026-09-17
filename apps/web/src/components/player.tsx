@@ -1,4 +1,4 @@
-import { network } from '@/lib/network';
+import { network, backendProvider } from '@/lib/network';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Check, Copy, Expand, Minimize, LoaderCircle, Play, RotateCcw, Square } from 'lucide-react';
 import { playback } from '@/lib/playback-coordinator';
@@ -155,6 +155,7 @@ export function Player({
       host.current = undefined;
       if (!node || !release) return;
       host.current = attachNappletHost({
+        backend: backendProvider(),
         frame: node,
         identity: release.hostIdentity,
         manifestId: release.manifest.id,
@@ -273,7 +274,9 @@ export function Player({
                   ? 'Allow audio playback'
                   : prompt.kind === 'save'
                     ? 'Save napplet file'
-                    : 'Open external link'
+                    : prompt.kind === 'network'
+                      ? 'Allow network connection'
+                      : 'Open external link'
               }
               ref={focusPrompt}
               onKeyDown={(event) => {
@@ -298,7 +301,9 @@ export function Player({
                   ? 'Ready to listen?'
                   : prompt.kind === 'save'
                     ? 'Save a file from this napplet?'
-                    : 'Open this link?'}
+                    : prompt.kind === 'network'
+                      ? 'Connect this napplet?'
+                      : 'Open this link?'}
               </strong>
               <p>{prompt.value}</p>
               {prompt.kind === 'save' && (
@@ -310,7 +315,11 @@ export function Player({
                 </Button>
                 {prompt.kind !== 'link' ? (
                   <Button onClick={() => prompt.answer(true)}>
-                    {prompt.kind === 'media' ? 'Play audio' : 'Save file'}
+                    {prompt.kind === 'media'
+                      ? 'Play audio'
+                      : prompt.kind === 'network'
+                        ? 'Connect'
+                        : 'Save file'}
                   </Button>
                 ) : (
                   <Button asChild>

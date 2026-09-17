@@ -3,6 +3,7 @@ import { AccountError, type Network } from '../../identity/src/signer';
 import { normalizeTopic } from '../../protocol/src/topics';
 import ipaddr from 'ipaddr.js';
 import { remixSchema } from '../../protocol/src/remix';
+import { backendConfig } from '../../multiplayer/src/contracts';
 
 export class PublishError extends AccountError {
   constructor(
@@ -18,6 +19,7 @@ const identifier = z.string().regex(/^[a-z0-9][a-z0-9-]{0,11}[a-z0-9]$|^[a-z0-9]
 export const sourceDefaults = [
   'index.html',
   'napplet.json',
+  'soy-backend.json',
   'LICENSE',
   'README.md',
   'AGENTS.md',
@@ -91,6 +93,7 @@ export const projectSchema = z
     topics: z.array(z.string().max(256)).max(32).default([]),
     relays: z.array(z.string().max(256)).max(8).default([]),
     servers: z.array(z.string().max(256)).max(8).default([]),
+    backend: backendConfig.optional(),
     preview: z
       .object({
         image: z.string().min(1).max(200).optional(),

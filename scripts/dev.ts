@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { buildGrasp, graspBinary, graspVersion } from './grasp-build';
 import { graspHealth, localGraspOrigin, localGraspInstance, seedLocalGrasp } from './grasp';
 import { seedExamples } from './seed';
+import { backendIdentity } from '../packages/multiplayer/src/service';
 import { refreshPublicCatalog } from './publicdev';
 import {
   buildBlossom,
@@ -41,6 +42,7 @@ const env = {
   SPACE_SERVICE_PREFIX: 'napplet-local',
   SPACE_RELAY_BIN: relayBinary,
   SPACE_RELAY_BIND: '127.0.0.1:19347',
+  SPACE_RELAY_CVM_BIND: '127.0.0.1:19351',
   SPACE_RELAY_DATA: resolve(local, 'services/relay'),
   SPACE_RELAY_ORIGIN: `${site}/relay`,
   SPACE_RELAY_INSTANCE: localRelayInstance,
@@ -70,10 +72,25 @@ const env = {
   SPACE_INDEX_RELAYS: localRelayUrl,
   SPACE_RUNTIME_LOCAL_RELAYS: localRelayUrl,
   SPACE_INDEX_LOCAL_BLOSSOM: localBlossomOrigin,
+  SPACE_CVM_APP_NAME: 'napplet-local-cvm',
+  SPACE_CVM_RELAYS: 'ws://127.0.0.1:19351',
+  SPACE_CVM_PUBLIC_RELAYS: localRelayUrl,
+  SPACE_CVM_KEY_PATH: resolve(local, 'services/cvm/identity'),
+  SPACE_CVM_DATA_PATH: resolve(local, 'services/cvm/boards.sqlite'),
+  SPACE_CVM_PUBKEY: '',
 };
 async function prepare() {
   initializePolicy(env.SPACE_MODERATION_FILE);
   await startRelay();
+  env.SPACE_CVM_PUBKEY = await (await backendIdentity(env.SPACE_CVM_KEY_PATH)).getPublicKey();
+  const oldCvm = Bun.spawn(['node', pm2, 'delete', env.SPACE_CVM_APP_NAME], {
+    env,
+    stdout: 'ignore',
+    stderr: 'ignore',
+  });
+  await oldCvm.exited;
+  await run(['node', pm2, 'start', 'infra/cvm.ecosystem.config.cjs', '--update-env']);
+  await run([process.execPath, 'scripts/cvm-health.ts']);
   await startBlossom();
   await startGrasp();
   await startProxy();

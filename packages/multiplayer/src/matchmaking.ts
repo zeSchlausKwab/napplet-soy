@@ -13,6 +13,12 @@ export const joinSchema = z
   })
   .strict();
 export const ticketSchema = z.object({ ticket: z.string().uuid() }).strict();
+export const protocolJoinSchema = joinSchema
+  .omit({ artifact: true })
+  .extend({
+    protocol: z.string().min(1).max(128),
+  })
+  .strict();
 export const matchSchema = z.object({
   version: z.literal(1),
   ticket: z.string().uuid(),
@@ -52,10 +58,21 @@ export class Matchmaking {
     return { ...result, peers: [...result.peers] };
   }
   join(actor: string, input: unknown) {
-    this.authorize(actor);
     const args = joinSchema.parse(input);
+    return this.enqueue(actor, args, ['artifact', args.artifact]);
+  }
+  joinProtocol(actor: string, input: unknown) {
+    const args = protocolJoinSchema.parse(input);
+    return this.enqueue(actor, args, ['protocol', args.protocol]);
+  }
+  private enqueue(
+    actor: string,
+    args: { napplet: string; queue: string; players: number },
+    version: string[],
+  ) {
+    this.authorize(actor);
     const address = identityAddress(decodeAddress(args.napplet));
-    const group = JSON.stringify([address, args.artifact, args.queue, args.players]);
+    const group = JSON.stringify([address, version, args.queue, args.players]);
     const previous = [...this.tickets.values()].find((ticket) => ticket.actor === actor);
     if (previous?.state === 'closed') this.tickets.delete(previous.ticket);
     else if (previous) {

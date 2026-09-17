@@ -4,6 +4,7 @@ import boilerplate from '../vendor/boilerplate.json';
 import skills from '../vendor/skills.json';
 import settingsSchema from '../templates/config.schema.json';
 import settingsExample from '../templates/napplet-settings.ts.txt' with { type: 'text' };
+import backendGuide from '../../../docs/BACKEND-CREATOR.md' with { type: 'text' };
 import { AccountError } from '../../../packages/identity/src/signer';
 
 export const upstream = { boilerplate: boilerplate.revision, skills: skills.revision };
@@ -34,6 +35,10 @@ this note maps its local tooling commands to the installed napplet soyLI.
   src/styles.css; keep the upstream Vite configuration and dependency lockfile.
 - soyli config shows effective publishing targets without a signer or build.
   config init writes them into napplet.json for older projects.
+- For shared scores, matchmaking or peer connections, read docs/napplet-backend.md.
+  soyli backend init pins a visible provider and prepares public soy-backend.json.
+  soyli dev runs an isolated copy of the backend automatically; publishing registers
+  declared boards with the creator's authorization. Backend status checks connectivity.
 - soyli check checks the existing built artifact in our host.
 - soyli screenshot saves preview.png and selects it in napplet.json.
   Inspect the image: it should show a representative app state, not a blank canvas
@@ -157,8 +162,8 @@ degrade gracefully, following upstream guidance. Use the injected namespace and
 SDK; do not add a bootstrap or a private protocol extension to app code.
 
 This host provides configuration, identity, storage, theme, resource, relay/outbox reads,
-common reads, user-confirmed links and session files. Social writes, signer
-operations, ContextVM and cross-napplet operations are not currently granted.
+common reads, user-confirmed links, session files, media, ContextVM and WebRTC.
+Social writes, signer operations and cross-napplet operations are not currently granted.
 A domain's presence does not promise that every operation will be permitted.
 Our host check complements upstream conformance; report each result separately.
 
@@ -240,6 +245,7 @@ const pointer = `## napplet soyLI workspace\n\nRead [docs/napplet-space.md](docs
 export function creatorSkills() {
   const files: Record<string, string> = {
     'docs/napplet-space.md': profile,
+    'docs/napplet-backend.md': backendGuide,
     'docs/napplet-skills-LICENSE.txt': skills.files.LICENSE,
     'CLAUDE.md':
       '@AGENTS.md\n\nThe upstream skills are installed in .claude/skills; begin with napplet-make.\n',

@@ -42,9 +42,10 @@ policy, not a game rule; `SPACE_CVM_MAX_PEERS` can set a limit up to the contrac
 Listed rooms are public rendezvous. An unlisted room ID is not an authorization
 credential, and a peer key is not proof of a human, profile, or honest game client.
 
-The existing queue uses `{napplet, artifact, queue, players}`; equivalence includes
-the decoded author-qualified napplet identity, exact aggregate hash, queue and
-requested count. Its default two-player request and maximum eight are explicit
+The creator queue (`soy_match_join/status/leave`) uses `{napplet, protocol, queue,
+players}`; equivalence includes the decoded author-qualified napplet identity,
+application protocol version, queue and requested count. No self-referential
+build hash is required. Legacy `space_match_*` tools retain exact-artifact matching. Its default two-player request and maximum eight are explicit
 service limits. Waiting tickets expire after 60 seconds and fixed matches after
 ten minutes. Named rooms cover variable membership without that fixed-match
 lifecycle. Neither mechanism chooses simulation topology or game rules.
@@ -108,3 +109,85 @@ exposed as an unauthenticated public tool.
 Service tests exercise encrypted transport, caller binding, registration
 ownership, personal-best idempotence, persistence, capacity and lease expiry.
 Production rollout and independently created games require separate verification.
+
+## Browser and creator integration (soyLI 0.10.0)
+
+The shared host advertises NAP-CVM and NAP-WEBRTC. Both the shell and compiled
+soyLI use the same bridge. See the self-contained [creator guide](BACKEND-CREATOR.md)
+for setup, scores, matching, rooms, lifecycle examples and the complete limits.
+That guide is bundled into new projects and `soyli skills update`.
+
+`/.well-known/napplet.json` is site-owned public provider configuration. It contains
+only the public key and relays, is unavailable when no provider is configured,
+and does not proxy gameplay or CVM calls. Creator configuration pins it into
+`napplet.json`; generated public `soy-backend.json` carries the stable naddr and
+provider into the artifact. Publishing authorizes board registration directly over
+CVM. Dev mode redirects that provider to an isolated instance of the same service.
+
+The host owns a per-tab, napplet- and viewer-scoped transport signer in
+sessionStorage, shared by CVM and WebRTC. It survives same-tab reloads and build
+updates, but is not a durable profile identity. Duplicated tabs may inherit it;
+use independent browser contexts for distinct guest players. Provider sessions
+are capped at four, requests time out in at most 25 seconds after initialization,
+and replies are capped at 256 KB. Payment-required results remain errors.
+
+Registry discovery checks live tool schemas and any advertised CEP-15 hash.
+It never equates semantics based only on tool names. Per-tool hashes are exposed;
+aggregate family-hash matching is not implemented. General MCP notifications
+are forwarded, but CEP-41 streams, payments and large-response transports are
+disabled. Curated families do not imply support for arbitrary backend code.
+
+## WebRTC signaling profile `soy-rtc/1`
+
+NAP-WEBRTC defines the app API and leaves signaling to the host. Soy implements
+its own published profile; this is not a claim of NIP-100 conformance or automatic
+interoperability with every other shell's signaling.
+
+- Events are signed Nostr kind 25050, with `d` = namespace digest and an expiration
+  60 seconds after creation. Targeted messages also carry the recipient `p` tag.
+- The namespace is SHA-256 of UTF-8 JSON `["soy-rtc/1", identity, scope, channel,
+  protocol-or-empty-string]`. Production identity is the verified author's
+  `pubkey:kind:identifier`, without an appended build hash. A snapshot whose
+  address names a different signer uses `snapshotSigner:5129:address` instead. The preview uses its local preview identity. Scope is `["room", roomId]`
+  or `["direct", ...lexicographicallySortedTransportPubkeys]`.
+- A signed plaintext hello body is `{v:"soy-rtc/1",wire,nonce,type:"hello"}`.
+  `nonce` is a fresh UUID per session. Offers/answers are NIP-44 encrypted to the
+  peer and contain `{v,wire,nonce,type,to,sdp}`; `to` binds the recipient's nonce.
+  The lexicographically lower key offers. Non-trickle SDP includes gathered ICE
+  candidates. Hello/offer retransmission runs every two seconds; stalled peers
+  close the session after 45 seconds. Reopening obtains fresh nonces/credentials.
+- The host verifies signatures, namespace, freshness, peer allowlists and nonces,
+  bounds message rates and queued work, and never exposes SDP or TURN secrets to
+  the iframe. Public hellos disclose participation in the opaque rendezvous.
+- Native reliable/ordered data channels carry JSON. Broadcast messages are at most
+  16 KiB, with 256 KiB channel backpressure. Host sends have a separate realtime
+  budget of 120/second and 512 KiB/second. Game traffic does not go through Nostr.
+
+The host is limited to four WebRTC sessions and eight remote peers each. These
+are capacity policies, not game rules. Apps select topology and authority. No
+host migration, authoritative physics, durable world, anti-cheat or simulation
+service is implied. A CVM room alone does not prove WebRTC membership; use explicit
+peer allowlists where needed. The pinned API has no dynamic allowlist update.
+
+The operator's `soy_ice` issues ten-minute HMAC TURN credentials to the verified
+transport caller. Only the host sees them. Browser ICE selects direct traffic
+when possible and TURN otherwise. Reopening requests fresh credentials; long
+sessions and credential renewal still require qualification. No TLS/443 fallback
+is bundled because that port belongs to the shared HTTPS proxy. See
+[deployment configuration](DEPLOYMENT.md#cvm-and-turn-deployment).
+
+Engineering verification: separate Chromium contexts using the actual injected
+shim exercised encrypted CVM score submission/read, protocol matchmaking, forced
+coturn relay selection, peer payloads, 650 gameplay updates, over-limit rejection
+and departure. Service tests cover durable scores/ownership, room leases/capacity,
+and the CLI's signed provisioning/remix isolation. Direct ICE on the development
+machine's VPN interface did not connect. Separate-network direct and TURN tests,
+long-session recovery, deployment and independent creator acceptance remain
+unverified; the fixtures are not claims of those results.
+
+Reproduce service/relay checks with `bun run test:backend`. For the browser fixture,
+run `SPACE_TEST_TURN_BINARY=/path/to/turnserver bun run test:backend:browser`;
+it starts and stops an isolated loopback coturn instance with relay-only ICE and
+asserts the selected candidate is a relay. Without that variable the fixture
+uses direct ICE, which requires locally reachable browser candidates. The service
+tests do not require coturn. No test contacts the production provider.

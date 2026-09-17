@@ -89,7 +89,7 @@ test('NAP handshake, scoped persistence, policy errors and source binding work t
   ).toEqual({
     shell: true,
     storage: true,
-    cvm: false,
+    cvm: true,
     keys: ['level'],
     identity: '',
     private: null,

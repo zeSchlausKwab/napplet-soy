@@ -9,7 +9,7 @@ import shutil
 import tarfile
 import tempfile
 
-SERVICES = ('relay', 'blossom', 'grasp', 'index', 'moderation', 'community')
+SERVICES = ('relay', 'blossom', 'grasp', 'index', 'moderation', 'community', 'cvm')
 CONFIG = ('server.env', 'admin-pubkeys', 'deploy-profile')
 
 def digest(file):

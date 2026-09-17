@@ -71,10 +71,16 @@ explicitly unsupported. Artwork/context do not cause fetching. Session/transport
 unit tests, the real-shim CLI browser test, the Drone Zone live stream and the VPS
 Node fallback were exercised. See [MEDIA.md](MEDIA.md) for limits and release status.
 
-No `cvm`, `inc`, `intent`, `keys`, `notify`, `upload`, payment, raw-device
+No `inc`, `intent`, `keys`, `notify`, `upload`, payment, raw-device
 or unrestricted signing capability is advertised. Required unavailable domains
 gate playback uniformly for every publisher. Website social signing is separate
-from a napplet's grants. The ContextVM process does not imply a browser CVM bridge.
+from a napplet's grants.
+
+The 2026-09-17 source implements the shared NAP-CVM and NAP-WEBRTC browser/CLI
+bridge. [ContextVM](CONTEXTVM.md) records the exact surface, application contracts,
+signaling profile and remaining connectivity acceptance. The actual-shim test
+exercises encrypted scores, matchmaking and forced TURN payloads in two browser
+contexts. This is local evidence, not a public-network or deployment claim.
 
 ## Configuration findings in the upstream toolchain
 

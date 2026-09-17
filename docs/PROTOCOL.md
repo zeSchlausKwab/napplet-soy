@@ -13,6 +13,14 @@ Implementation update (2026-09-13): local fixtures and relay imports use the sam
 
 Standing product rule: a napplet created here is an ordinary public napplet. The client must not require a Space descriptor, hashtag, repository host, alias, or CLI provenance to discover or play it. Optional metadata enriches presentation; it never selects a privileged runtime or determines protocol identity. Apply the same capability, availability, and moderation policies to every publisher. The user has selected the NIP-5D proposal as authoritative, regardless of merge status. Pin its revision and referenced NAP contracts, and treat implementation mismatches as bugs. Known gaps and future relay/media/flavor design are recorded in [CLIENT-DIRECTION.md](CLIENT-DIRECTION.md).
 
+2026-09-17 local backend update: NAP-CVM PR 31 at `ad68a938236e9230324e377cd005008a315ff402`
+and NAP-WEBRTC PR 59 at `5fae95dd2c8e59bd06c654e0845656add077dcda` are the selected
+browser contracts; ContextVM docs were reviewed at `fb5bafc405f7a11b39ff5d46f78c144467df980b`.
+The shared host now exposes both domains. Soy scoreboard/room/matchmaking tools
+are separate versioned MCP contracts; `soy-rtc/1` is documented host signaling,
+not an additional NAP or a NIP-100 conformance claim. No custom manifest metadata
+or Soy publisher provenance is required. [Implementation, limits and verification](CONTEXTVM.md).
+
 ## 1. Compatibility baseline
 
 The current [NIP-5D proposal at commit 24711d9](https://github.com/dskvr/nips/blob/24711d9c47bbdd07908bf1d52bf677d9cbc530f0/5D.md) defines named napplets as kind `35129`, root napplets as `15129`, and immutable snapshots as `5129`. It adopts the file-manifest tag schema and aggregate-hash algorithm from [NIP-5A](https://github.com/nostr-protocol/nips/blob/master/5A.md). Generic nsites use different kinds; they must not be silently treated as sandboxed napplets.

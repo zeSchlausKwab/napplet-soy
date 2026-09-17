@@ -132,7 +132,7 @@ test('a new runtime profile refreshes cached capability decisions and downloads 
     expect(next.source).toBe('network');
     expect(calls).toBe(2);
     expect(next.cache?.runtime).toBe(RUNTIME_PROFILE);
-    const unsupported = sign([...tags, ['requires', 'cvm']]);
+    const unsupported = sign([...tags, ['requires', 'connect']]);
     const result = await refreshPublicCatalog(dir, {
       ...options,
       refresh: true,

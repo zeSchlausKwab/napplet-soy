@@ -1,6 +1,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { Matchmaking, joinSchema, ticketSchema, matchSchema } from './matchmaking';
+import {
+  Matchmaking,
+  joinSchema,
+  protocolJoinSchema,
+  ticketSchema,
+  matchSchema,
+} from './matchmaking';
 import { Boards, boardRegister, boardSubmit, boardRead } from './boards';
 import { Rooms, roomCreate, roomKey, roomNamespace } from './rooms';
 
@@ -88,6 +94,24 @@ export function createMatchmakingServer(
     server.registerTool(name, { description, inputSchema }, (args, extra) =>
       result(() => action(actor(extra._meta), args)),
     );
+  tool(
+    'soy_match_join',
+    'Join an idempotent queue by author-qualified napplet, application protocol version, queue and desired capacity. No build hash is needed. Waiting lease: 60 seconds; matched ticket: 10 minutes.',
+    protocolJoinSchema,
+    (actor, args) => service.joinProtocol(actor, args),
+  );
+  tool(
+    'soy_match_status',
+    'Read your ticket and renew its waiting lease. Poll at most once every two seconds. Matched peers and room are a rendezvous, not game authority.',
+    ticketSchema,
+    (actor, args) => service.status(actor, args),
+  );
+  tool(
+    'soy_match_leave',
+    'Leave your ticket, closing a fixed match for remaining peers. Use named rooms for independent membership.',
+    ticketSchema,
+    (actor, args) => service.leave(actor, args),
+  );
   tool(
     'soy_session',
     'Your scoped transport identity and service contract version. This is not your Nostr profile.',

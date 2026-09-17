@@ -37,7 +37,15 @@ including live streams and play/pause/stop/volume. It is deployed and available 
 unsupported ownership/source modes, limits and evidence. The runtime profile changes
 to `space-playback-2` so the index retries formerly unsupported media creations.
 
-Required unsupported domains still gate launch: for example `inc`, `intent`, `keys`, `upload`, and `cvm`. Composability, napplet signing grants, extended identity lists, filesystem imports, and ContextVM game sessions remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
+Required unsupported domains still gate launch: for example `inc`, `intent`, `keys`, `upload`, and `connect`. Composability, napplet signing grants, extended identity lists, filesystem imports and arbitrary backend execution remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
+
+The 2026-09-17 local source update adds NAP-CVM and NAP-WEBRTC under
+`space-playback-3`. Direct encrypted CVM requests/discovery/registry calls and
+host-owned peer channels work in both website and soyLI preview. Shared scores,
+rooms and queues are separate provider contracts; see [ContextVM](CONTEXTVM.md)
+and the [creator guide](BACKEND-CREATOR.md). This source update is not deployed.
+Provider/peer permission, actor scoping, connection budgets and teardown apply
+to every publisher equally. No game traffic is proxied through the website API.
 
 ## Resource and lifecycle boundaries
 

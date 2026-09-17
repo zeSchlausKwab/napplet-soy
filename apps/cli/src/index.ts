@@ -11,6 +11,7 @@ import {
 } from '../../../packages/identity/src/signer';
 import { ask, hiddenInput as readHiddenInput, secretStdin } from './input';
 import { publishProject, publicationStatus, PublishError } from '../../../packages/publish/src';
+import { initBackend, syncBackend, backendStatus } from './backend';
 import { checkPublication } from './publish-check';
 import { preview, checkProject, doctor } from './local';
 import { installBrowser } from './browser';
@@ -28,6 +29,7 @@ Usage:
   bun run soyli run <package-script> [arguments...]
   bun run soyli exec <project-tool> [arguments...]
   bun run soyli config [init] [--project <folder>]
+  bun run soyli backend init|sync|status [--project <folder>]
   bun run soyli record [preview.webm] [--project <folder>]
   bun run soyli screenshot [preview.png] [--project <folder>]
   bun run soyli skills update [--project <folder>]
@@ -207,6 +209,7 @@ try {
         'config',
         'screenshot',
         'record',
+        'backend',
       ].includes(command)) ||
     ((values.port || values['no-open']) && command !== 'dev')
   )
@@ -289,6 +292,17 @@ try {
       console.log(
         `\nYour napplet is ready at ${directory}\n\n  cd ${folder}\n${remix?.needsSetup ? '  soyli setup\n' : ''}  soyli dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nRun soyli publish to share it.`,
       );
+  } else if (command === 'backend') {
+    if (argument || extra.length || !['init', 'sync', 'status'].includes(action))
+      throw new AccountError('USAGE', 'Use soyli backend init|sync|status [--project folder].');
+    const directory = values.project ?? process.cwd();
+    const result =
+      action === 'init'
+        ? await initBackend(directory, network, accounts)
+        : action === 'sync'
+          ? await syncBackend(directory, network, accounts, { signal: controller.signal, onAuth })
+          : await backendStatus(directory, network);
+    console.log(JSON.stringify(result, null, 2));
   } else if (command === 'skills') {
     if (
       action !== 'update' ||
@@ -414,25 +428,37 @@ try {
             refresh: values.refresh,
             signal: controller.signal,
           })
-        : await publishProject({
-            directory: values.project ?? process.cwd(),
-            network,
-            targets,
-            accounts,
-            dryRun: values['dry-run'],
-            resume: values.resume,
-            check: checkPublication,
-            requirePreview: true,
-            signal: controller.signal,
-            onAuth,
-            progress: json ? undefined : (stage) => process.stderr.write(`Publishing: ${stage}\n`),
-            summary: json
-              ? undefined
-              : (plan) =>
-                  process.stderr.write(
-                    `Creator: ${plan.pubkey}\nSource (${plan.sourceBytes} bytes, ${JSON.stringify(plan.license)}):\n${plan.files.map((file) => `  ${file.path}`).join('\n')}\nRelay: ${plan.targets.relay}\nBlossom: ${plan.targets.blossom}\nGit: ${plan.targets.grasp}\nSite: ${plan.targets.site}\nAdditional relay copies (best effort): ${plan.targets.mirrors.join(', ') || 'none'}\nPreview: selected PNG or automatic sandbox capture\n`,
-                  ),
-          });
+        : await (async () => {
+            if (!values['dry-run'] && !values.resume)
+              await syncBackend(
+                values.project ?? process.cwd(),
+                network,
+                accounts,
+                { signal: controller.signal, onAuth },
+                false,
+              );
+            return publishProject({
+              directory: values.project ?? process.cwd(),
+              network,
+              targets,
+              accounts,
+              dryRun: values['dry-run'],
+              resume: values.resume,
+              check: checkPublication,
+              requirePreview: true,
+              signal: controller.signal,
+              onAuth,
+              progress: json
+                ? undefined
+                : (stage) => process.stderr.write(`Publishing: ${stage}\n`),
+              summary: json
+                ? undefined
+                : (plan) =>
+                    process.stderr.write(
+                      `Creator: ${plan.pubkey}\nSource (${plan.sourceBytes} bytes, ${JSON.stringify(plan.license)}):\n${plan.files.map((file) => `  ${file.path}`).join('\n')}\nRelay: ${plan.targets.relay}\nBlossom: ${plan.targets.blossom}\nGit: ${plan.targets.grasp}\nSite: ${plan.targets.site}\nAdditional relay copies (best effort): ${plan.targets.mirrors.join(', ') || 'none'}\nPreview: selected PNG or automatic sandbox capture\n`,
+                    ),
+            });
+          })();
     if (json) console.log(JSON.stringify(result));
     else if (result.status === 'dry_run') console.log(JSON.stringify(result, null, 2));
     else if (result.status === 'not_started')

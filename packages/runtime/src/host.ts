@@ -8,9 +8,12 @@ import { PlaybackNostr } from '../../nostr/src/playback';
 import { WorkQueue } from './work-queue';
 import { NappletConfig } from './config-session';
 import { NappletMedia } from './media-session';
+import { NappletBackend, transportSigner } from './backend-session';
+import { NappletWebrtc } from './webrtc-session';
+import { rtcConfiguration, type BackendProvider } from '../../multiplayer/src/client';
 
 export type HostPrompt = {
-  kind: 'link' | 'save' | 'media';
+  kind: 'link' | 'save' | 'media' | 'network';
   value: string;
   answer: (accepted: boolean) => void;
 };
@@ -27,6 +30,8 @@ export type HostOptions = {
   declaration?: { schema?: unknown; error?: string };
   configuration?: (config: NappletConfig | null) => void;
   media?: (media: NappletMedia | null) => void;
+  backend?: BackendProvider;
+  backendAliases?: BackendProvider[];
 };
 const envelope = z
   .object({
@@ -63,6 +68,7 @@ export function attachNappletHost(options: HostOptions) {
     let answer: ((accepted: boolean) => void) | undefined;
     const lifetime = new AbortController();
     const resources = new Map<string, AbortController>();
+    let backend: NappletBackend | undefined, webrtc: NappletWebrtc | undefined;
     const nostr = new PlaybackNostr(options.relays, sendScoped, () => pubkey);
     const files = new NappletFiles(sendScoped, (value) => {
       if (active && alive) options.files(value);
@@ -129,6 +135,40 @@ export function attachNappletHost(options: HostOptions) {
     const handle = async (message: Record<string, unknown>) => {
       const type = String(message.type),
         [domain, action] = type.split('.');
+      if (domain === 'cvm' || domain === 'webrtc') {
+        const signerScope = `${options.identity.replace(/:[a-f0-9]{64}$/, '')}:${pubkey ?? 'guest'}`;
+        backend ??= new NappletBackend(
+          transportSigner(sessionStorage, signerScope),
+          options.relays,
+          options.backend,
+          sendScoped,
+          (label) => choose('network', label),
+          options.backendAliases,
+        );
+        if (domain === 'cvm') return backend.handle(message);
+        webrtc ??= new NappletWebrtc(
+          backend.signer,
+          options.identity.replace(/:[a-f0-9]{64}$/, ''),
+          options.backend?.relays ?? options.relays,
+          sendScoped,
+          () =>
+            choose(
+              'network',
+              'Connect to other players? Peers may learn your network address. Gameplay travels directly or through an encrypted TURN relay.',
+            ),
+          async () => {
+            if (!options.backend) return { iceServers: [] };
+            const result = await (await backend!.connection(options.backend)).tool('soy_ice');
+            return rtcConfiguration(
+              result,
+              options.relays.some(
+                (url) => url.startsWith('ws://127.0.0.1:') || url.startsWith('ws://[::1]:'),
+              ),
+            );
+          },
+        );
+        return webrtc.handle(message);
+      }
       if (domain === 'storage') return store(message);
       if (domain === 'fs') return files.handle(message, (name) => choose('save', name));
       if (domain === 'identity') return nostr.identity(action);
@@ -214,6 +254,8 @@ export function attachNappletHost(options: HostOptions) {
         requests.clear();
         answer?.(false);
         media.close();
+        backend?.close();
+        webrtc?.close();
         // close() synchronously notifies live subscriptions; late query completions
         // are suppressed once this scope becomes inactive below.
         nostr.close();
@@ -237,6 +279,9 @@ export function attachNappletHost(options: HostOptions) {
     configWindow = Date.now();
   let mediaCalls = 0,
     mediaWindow = Date.now();
+  let rtcCalls = 0,
+    rtcBytes = 0,
+    rtcWindow = Date.now();
   const listener = (event: MessageEvent) => {
     if (!alive || event.source !== source || event.origin !== 'null') return;
     const parsed = envelope.safeParse(event.data);
@@ -354,7 +399,16 @@ export function attachNappletHost(options: HostOptions) {
           });
       }
     };
-    if (++calls > 600 || scope.requests.size >= 32) {
+    const realtime = message.type === 'webrtc.send';
+    if (Date.now() - rtcWindow >= 1000) {
+      rtcWindow = Date.now();
+      rtcCalls = 0;
+      rtcBytes = 0;
+    }
+    if (
+      (realtime ? ++rtcCalls > 120 || (rtcBytes += size) > 524288 : ++calls > 600) ||
+      scope.requests.size >= 32
+    ) {
       failure(new Error('Request quota exceeded'));
       return;
     }

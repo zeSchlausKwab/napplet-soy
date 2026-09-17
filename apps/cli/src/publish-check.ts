@@ -12,6 +12,7 @@ import { PublishError, type Recording } from '../../../packages/publish/src/conf
 import { AccountError } from '../../../packages/identity/src/signer';
 import { RUNTIME_PROFILE } from '../../../packages/runtime/src/capabilities';
 import { MAX_PREVIEW_BYTES } from '../../../packages/protocol/src/preview';
+import { localBackend } from './backend';
 import {
   builtConfiguration,
   executableBytes,
@@ -27,6 +28,7 @@ export async function checkPublication(
   const directory = await mkdtemp(join(tmpdir(), 'napplet-publish-check-'));
   let browser: import('@playwright/test').Browser | undefined;
   let server: ReturnType<typeof startPreviewServer> | undefined;
+  let backend: Awaited<ReturnType<typeof localBackend>>;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await builtConfiguration(executableBytes(contents));
@@ -45,7 +47,11 @@ export async function checkPublication(
     await mkdir(join(directory, 'dist'));
     for (const path of [executableEntry(contents), 'napplet.json'])
       await Bun.write(join(directory, path), contents.get(path)!);
-    server = startPreviewServer(pathToFileURL(directory + '/'), 0, false, await previewAssets());
+    backend = await localBackend(directory);
+    server = startPreviewServer(pathToFileURL(directory + '/'), 0, false, await previewAssets(), {
+      network: 'local',
+      backend: backend?.provider,
+    });
     await installBrowser(undefined, !!recording);
     try {
       const { chromium } = await browserEngine();
@@ -247,6 +253,7 @@ export async function checkPublication(
     clearTimeout(timer);
     await browser?.close();
     server?.stop(true);
+    await backend?.close();
     await rm(directory, { recursive: true, force: true });
   }
 }

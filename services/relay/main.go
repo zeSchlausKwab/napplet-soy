@@ -140,6 +140,22 @@ func main() {
 		log.Fatal(err)
 	}
 	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
+	// Aggregate CVM replies need a separate bounded budget. This ingress never
+	// appears in Caddy and rejects browser Origin headers, including localhost.
+	var serviceServer *http.Server
+	var serviceListener *trackedListener
+	if bind := os.Getenv("SPACE_SERVICE_CVM_BIND"); bind != "" {
+		host, _, err := net.SplitHostPort(bind)
+		if err != nil || (host != "127.0.0.1" && host != "::1") {
+			log.Fatal("CVM relay ingress must bind literal loopback")
+		}
+		socket, err := net.Listen("tcp", bind)
+		if err != nil {
+			log.Fatal(err)
+		}
+		serviceListener = &trackedListener{Listener: netutil.LimitListener(socket, 16), connections: make(map[*trackedConnection]struct{})}
+		serviceServer = &http.Server{Handler: serviceRelayHandler(relay.WithServiceURL("http://" + serviceListener.Addr().String())), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	var maintenance sync.WaitGroup
@@ -159,8 +175,11 @@ func main() {
 			}
 		}
 	}()
-	finished := make(chan error, 1)
+	finished := make(chan error, 2)
 	go func() { finished <- server.Serve(listener) }()
+	if serviceServer != nil {
+		go func() { finished <- serviceServer.Serve(serviceListener) }()
+	}
 	fmt.Printf("Napplet relay listening on http://%s\n", listener.Addr())
 	select {
 	case <-ctx.Done():
@@ -174,5 +193,19 @@ func main() {
 	defer cancel()
 	server.Shutdown(grace)
 	listener.closeConnections()
+	if serviceServer != nil {
+		serviceServer.Shutdown(grace)
+		serviceListener.closeConnections()
+	}
 	maintenance.Wait()
+}
+
+func serviceRelayHandler(relay http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Origin") != "" {
+			http.Error(w, "service ingress", http.StatusForbidden)
+			return
+		}
+		relay.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), serviceIngressKey{}, true)))
+	})
 }

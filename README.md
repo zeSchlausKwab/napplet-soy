@@ -45,15 +45,23 @@ Paste a portable Nostr napplet link into search to discover a creation not yet
 indexed here. Cold links trigger a bounded relay lookup, including server-rendered
 share metadata once the signed manifest is available. See [discovery and OG](docs/DISCOVERY.md).
 
-## ContextVM starter
+## Shared backend and peer sessions
 
-A small encrypted ContextVM matchmaking service is available with join, status, and leave tools:
+The encrypted ContextVM service offers persistent casual scoreboards, protocol-version
+matchmaking and leased named rooms. The shared browser/soyLI host implements
+NAP-CVM and NAP-WEBRTC. Run the backend alone against a relay with:
 
 ```sh
 SPACE_CVM_RELAYS=ws://127.0.0.1:19347/relay bun run cvm
 ```
 
-Start the platform dev stack first to provide the relay. The server creates a persistent local key automatically. The draft NAP-CVM browser bridge and a playable multiplayer demo are next; the player does not advertise that capability yet. See the [API and provider design](docs/CONTEXTVM.md).
+The platform dev stack starts it automatically. The server keeps a persistent
+private service key and SQLite board data outside release directories. Creators use
+`soyli backend init`, an isolated `soyli dev` backend, and ordinary publishing to
+register declared boards. Read the bundled [creator guide](docs/BACKEND-CREATOR.md)
+and [service contract, signaling and limits](docs/CONTEXTVM.md). This source slice is
+verified locally; production connectivity and independent creator demos remain
+separate acceptance checks.
 
 ## Make a local napplet
 
@@ -166,7 +174,7 @@ Our publishing contract is standard NIP-5D manifests, public relays, retrievable
 
 ## What is still ahead
 
-The gallery merges the persistent SQLite relay index and optional publicdev collection by Nostr identity. Examples enter through the same discovery path as other creations; Featured is an explicit administrator selection. Its separate PM2 worker verifies manifests, downloads artifacts and resolves linked previews. Signed naming claims, comments, likes, zaps, full-index pagination and inline playback are implemented. The public installer distributes standalone macOS/Linux creator packages. The player supports the single-HTML profile and documented playback NAP domains. ContextVM's browser bridge, user-created site layouts, publishing permissions, and full upstream conformance remain ahead; composability is outside the current scope.
+The gallery merges the persistent SQLite relay index and optional publicdev collection by Nostr identity. Examples enter through the same discovery path as other creations; Featured is an explicit administrator selection. Its separate PM2 worker verifies manifests, downloads artifacts and resolves linked previews. Signed naming claims, comments, likes, zaps, full-index pagination and inline playback are implemented. The public installer distributes standalone macOS/Linux creator packages. The player supports the single-HTML profile and documented playback NAP domains. User-created site layouts, iframe publishing permissions and full upstream conformance remain ahead; composability is outside the current scope.
 
 The deployment script includes the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), [GRASP source hosting](docs/GRASP.md), and [persistent website index](docs/INDEXING.md). Creators can claim permanent `/@handle/slug` links, remix pinned source, and comment, like or zap from detail pages. See [remixing](docs/REMIXING.md) and [community actions and limits](docs/COMMUNITY.md).
 

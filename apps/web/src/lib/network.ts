@@ -3,7 +3,9 @@ import { ProtocolClient } from '../../../../packages/client/src/nostr';
 import { readRelayUrl } from '../../../../packages/nostr/src/relay-policy';
 import { resourceUrl } from '../../../../packages/client/src/bytes';
 import defaults from '../../../../packages/nostr/discovery-relays.json';
+import type { BackendProvider } from '../../../../packages/multiplayer/src/client';
 export type ClientPolicy = {
+  backend?: BackendProvider;
   relays: string[];
   blossom: string[];
   rules: { type: string; target: string }[];
@@ -67,6 +69,7 @@ export function manifestAllowed(e: SignedEvent) {
   );
 }
 export const featuredRules = () => policy.featured;
+export const backendProvider = () => policy.backend;
 let instance: ProtocolClient | undefined;
 export const protocolClient = () =>
   (instance ??= new ProtocolClient(() => network().relays, manifestAllowed));

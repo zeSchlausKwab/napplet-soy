@@ -17,6 +17,7 @@ import { Route as CliRouteImport } from './routes/cli'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as NetworkRouteImport } from './routes/network'
 import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
+import { Route as DotwellKnownNappletDotjsonRouteImport } from './routes/[.]well-known.napplet[.]json'
 import { Route as ApiAdminRouteImport } from './routes/api.admin'
 import { Route as ApiAdminAccessRouteImport } from './routes/api.admin-access'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
@@ -73,6 +74,12 @@ const CreatorSlugRoute = CreatorSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => CreatorRoute,
 } as any)
+const DotwellKnownNappletDotjsonRoute =
+  DotwellKnownNappletDotjsonRouteImport.update({
+    id: '/.well-known/napplet.json',
+    path: '/.well-known/napplet.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminRoute = ApiAdminRouteImport.update({
   id: '/api/admin',
   path: '/api/admin',
@@ -158,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/network': typeof NetworkRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
+  '/.well-known/napplet.json': typeof DotwellKnownNappletDotjsonRoute
   '/api/admin': typeof ApiAdminRoute
   '/api/admin-access': typeof ApiAdminAccessRoute
   '/api/health': typeof ApiHealthRoute
@@ -183,6 +191,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/network': typeof NetworkRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
+  '/.well-known/napplet.json': typeof DotwellKnownNappletDotjsonRoute
   '/api/admin': typeof ApiAdminRoute
   '/api/admin-access': typeof ApiAdminAccessRoute
   '/api/health': typeof ApiHealthRoute
@@ -209,6 +218,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/network': typeof NetworkRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
+  '/.well-known/napplet.json': typeof DotwellKnownNappletDotjsonRoute
   '/api/admin': typeof ApiAdminRoute
   '/api/admin-access': typeof ApiAdminAccessRoute
   '/api/health': typeof ApiHealthRoute
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/network'
     | '/$creator/$slug'
+    | '/.well-known/napplet.json'
     | '/api/admin'
     | '/api/admin-access'
     | '/api/health'
@@ -261,6 +272,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/network'
     | '/$creator/$slug'
+    | '/.well-known/napplet.json'
     | '/api/admin'
     | '/api/admin-access'
     | '/api/health'
@@ -286,6 +298,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/network'
     | '/$creator/$slug'
+    | '/.well-known/napplet.json'
     | '/api/admin'
     | '/api/admin-access'
     | '/api/health'
@@ -311,6 +324,7 @@ export interface RootRouteChildren {
   CliRoute: typeof CliRouteWithChildren
   CreateRoute: typeof CreateRoute
   NetworkRoute: typeof NetworkRoute
+  DotwellKnownNappletDotjsonRoute: typeof DotwellKnownNappletDotjsonRoute
   ApiAdminRoute: typeof ApiAdminRoute
   ApiAdminAccessRoute: typeof ApiAdminAccessRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -380,6 +394,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$creator/$slug'
       preLoaderRoute: typeof CreatorSlugRouteImport
       parentRoute: typeof CreatorRoute
+    }
+    '/.well-known/napplet.json': {
+      id: '/.well-known/napplet.json'
+      path: '/.well-known/napplet.json'
+      fullPath: '/.well-known/napplet.json'
+      preLoaderRoute: typeof DotwellKnownNappletDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/admin': {
       id: '/api/admin'
@@ -555,6 +576,7 @@ const rootRouteChildren: RootRouteChildren = {
   CliRoute: CliRouteWithChildren,
   CreateRoute: CreateRoute,
   NetworkRoute: NetworkRoute,
+  DotwellKnownNappletDotjsonRoute: DotwellKnownNappletDotjsonRoute,
   ApiAdminRoute: ApiAdminRoute,
   ApiAdminAccessRoute: ApiAdminAccessRoute,
   ApiHealthRoute: ApiHealthRoute,

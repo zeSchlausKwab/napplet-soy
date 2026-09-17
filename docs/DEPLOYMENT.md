@@ -62,7 +62,7 @@ The `napplet` system account runs the application and, in dedicated mode, Caddy.
 
 Services may have a brief interruption during activation. This does not promise zero-downtime deployment. On activation failure, the error handler returns the active symlink and PM2 web/relay/Blossom/GRASP processes to the previous release where available, and restores the prior Caddy configuration if it was changed. Shared mode checks that the parent config has not changed before replacing it and preserves detected concurrent operator edits. Persistent relay, blob and Git data stay outside release directories. Code rollback does not roll back data. A persistent `grasp/upstream.commit` guard rejects automatic upstream GRASP pin changes, including downgrades. Rehearse a separate full-state migration/restore procedure before changing this guard; see [GRASP operations](GRASP.md). Candidate build failures leave the current processes alone. Old releases remain on disk for inspection; automated retention is deferred.
 
-First-deploy HTTPS issuance depends on public DNS and network reachability. The script validates configuration and checks local application health; it does not certify external DNS, certificate issuance, reboot recovery, or provider firewalls. No firewall or DNS records are modified automatically.
+First-deploy HTTPS issuance depends on public DNS and network reachability. The script validates configuration and checks local application health; it does not certify external DNS, certificate issuance, reboot recovery, or provider firewalls. DNS is not modified automatically. Managed TURN may add the explicit UFW rules described below.
 
 ## Operator commands
 
@@ -1014,3 +1014,72 @@ Both shared Caddy hashes are unchanged:
 - `/etc/napplet-space/Caddyfile`: `ef99cf551dca7c36d7ab82b6075c36bd537034f19e402d63648784b9d65e3c5e`
 
 No test events, payments or creator assets were published during live verification.
+
+## CVM and TURN deployment
+
+Prepared in source on 2026-09-17; **not deployed or tested on the VPS yet**.
+The next operator-run deployment adds a sixth PM2 process, `napplet-cvm`, and a
+separate `napplet-turn` systemd service. Caddy and the other site's configuration
+retain their existing ownership. No new REST gameplay endpoints are introduced.
+
+The CVM identity, SQLite/WAL boards and TURN shared secret live under
+`/var/lib/napplet-space/cvm`, outside releases. Backup now stops CVM along with
+this installation's writers and includes this directory. Treat its identity and
+TURN secret as private. Old backup archives still verify; they have no CVM data.
+Restore this directory before starting the provider, or its key and board state
+will change. Deployments keep board rules/data; code rollback does not undo them.
+
+The service connects to an additional **loopback-only** Khatru listener at
+`127.0.0.1:19351`; this is never exposed by Caddy. It rejects browser Origin headers
+and has a bounded aggregate reply budget (6,000 events/12,000 requests per minute
+per connection; 16 connections). Public relay limits remain unchanged. The same
+relay instance routes messages between the public socket and private ingress.
+`SPACE_CVM_PUBLIC_RELAYS` advertises `wss://relay.<domain>`; the private socket is
+not a discovery hint. Activation checks a real encrypted `soy_session` roundtrip,
+and the web bootstrap exposes only the resulting public provider key/relays.
+
+Managed coturn is enabled by default (`SPACE_MANAGED_TURN=1`). The script installs
+the distro package if absent, uses its own `/etc/napplet-turn/turnserver.conf`, and
+refuses an occupied port 3478 belonging to another service. It does not replace
+another site's coturn config. Required inbound connectivity:
+
+- TCP **and** UDP 3478 (TURN requests).
+- UDP 49160–49200 (relay allocations).
+
+The setup adds these rules only if UFW is already active. Provider-level firewall
+rules still need operator configuration; DNS/port reachability is not proven by
+a local health check. On a NATed VPS set `SPACE_TURN_EXTERNAL_IP` to its public IPv4
+(or coturn public/private IPv4 mapping) in `shared/server.env`. A directly attached
+public IPv4 usually needs no mapping. This profile does not configure IPv6 relay
+sockets or TURN-over-TLS 443. HTTPS/Caddy continues to own 443.
+
+Default coturn budgets: 128 concurrent allocations, 8 per temporary username,
+256 KiB/s per allocation, 8 MiB/s aggregate, 256 MiB memory. Allocations refresh
+with a 600-second maximum lifetime; CVM issues ten-minute HMAC credentials.
+Private/link-local/multicast relay destinations are denied. Per-key quotas are
+not Sybil resistance or a billing system. This initial free profile needs usage
+observation before large promotion; it does not promise a concurrent-user count.
+
+To use operator-managed connectivity, set `SPACE_MANAGED_TURN=0`,
+`SPACE_TURN_URLS` (comma-separated turn/turns URLs), and `SPACE_TURN_SECRET_PATH`
+(a mode-0600 file readable by `napplet`, shared with that TURN server).
+`SPACE_TURN_RELAY_ONLY=1` forces relaying for a connectivity test; normal operation
+uses ICE's direct/fallback selection. Never embed the shared secret in a project,
+public discovery response or PM2 environment value. Disabling managed setup on an
+existing installation does not stop/delete its prior TURN service automatically.
+
+`SPACE_CVM_MAX_PEERS` controls named-room admission (default 8; host remote-peer
+limit remains 8). Fixed queue capacity is 2–8. Larger capacities need deliberate
+host/provider policy work and load qualification, not just a promise in game UI.
+
+`bun run dev` / `dev:prod` start the same CVM under PM2, with isolated local paths
+and the private relay listener. `soyli dev` embeds the same backend with a smaller
+loopback-only Nostr fixture and isolated project data. Neither dev command installs
+coturn or changes system firewall rules.
+
+An actual encrypted service health check gates production activation. TURN setup
+is persistent infrastructure prepared before activation; application rollback
+leaves that service/configuration in place and restores previous PM2 processes
+where present. Test across two real networks, both direct and forced TURN, after
+deployment. Engineering coverage so far is described in [ContextVM](CONTEXTVM.md);
+long sessions and cross-network reachability are still unverified.

@@ -96,8 +96,5 @@ test('file picker cancellation creates nothing and quotas fail before writes', a
   expect(
     (await files.handle({ type: 'fs.list', path: '/files' }, async () => true)).entries,
   ).toEqual([]);
-  expect(missingDomains(['shell', 'storage', 'resource', 'fs', 'cvm', 'inc'])).toEqual([
-    'cvm',
-    'inc',
-  ]);
+  expect(missingDomains(['shell', 'storage', 'resource', 'fs', 'cvm', 'inc'])).toEqual(['inc']);
 });

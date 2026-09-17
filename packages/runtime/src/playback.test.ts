@@ -48,12 +48,12 @@ test('local and imported metadata cannot bypass required capabilities or artifac
   const key = new Uint8Array(32);
   key[31] = 1;
   const manifest = finalizeEvent(
-    { ...record.current, tags: [...record.current.tags, ['requires', 'cvm']] },
+    { ...record.current, tags: [...record.current.tags, ['requires', 'connect']] },
     key,
   );
   const imported = await publicNapplet(manifest);
   expect(imported.availability).toBe('host-required');
   for (const event of [manifest, imported.manifest])
-    await expect(preparePlayback(event, record.artifactHash)).rejects.toThrow('cvm');
+    await expect(preparePlayback(event, record.artifactHash)).rejects.toThrow('connect');
   await expect(preparePlayback(record.current, '0'.repeat(64))).rejects.toThrow('does not match');
 });

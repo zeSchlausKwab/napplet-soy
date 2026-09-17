@@ -5,6 +5,34 @@ import { ApplesauceRelayPool } from '@contextvm/sdk/relay';
 import { EncryptionMode, type NostrSigner } from '@contextvm/sdk/core';
 import { readRelayUrl } from '../../nostr/src/relay-policy';
 
+export function rtcConfiguration(input: unknown, local = false): RTCConfiguration {
+  const value = z
+    .object({
+      iceServers: z
+        .array(
+          z
+            .object({
+              urls: z.array(z.string().max(512)).max(8),
+              username: z.string().max(200).optional(),
+              credential: z.string().max(200).optional(),
+            })
+            .strict(),
+        )
+        .max(4),
+      relayOnly: z.boolean().optional(),
+    })
+    .passthrough()
+    .parse(input);
+  for (const entry of value.iceServers)
+    for (const url of entry.urls) {
+      if (!/^(stun|stuns|turn|turns):[^\s@]+$/.test(url)) throw new Error('Invalid ICE URL');
+      const address = new URL(url.replace(/^[a-z]+:/, 'wss://'));
+      if (local && ['127.0.0.1', '[::1]'].includes(address.hostname)) continue;
+      readRelayUrl(address.href, [], true);
+    }
+  return { iceServers: value.iceServers, iceTransportPolicy: value.relayOnly ? 'relay' : 'all' };
+}
+
 export const providerSchema = z
   .object({
     pubkey: z.string().regex(/^[a-f0-9]{64}$/),

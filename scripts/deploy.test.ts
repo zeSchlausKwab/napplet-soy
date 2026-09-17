@@ -43,7 +43,21 @@ test('shared deployment preserves existing configuration and updates only its ow
 });
 test('application ports reserve a separate smoke port and cannot collide with native services', () => {
   expect(validateWebPort('3040')).toBe(3040);
-  for (const value of ['80', '0', '65535', '19346', '19347', '19348', '19349', '3000;id', '-1'])
+  for (const value of [
+    '80',
+    '0',
+    '65535',
+    '19346',
+    '19347',
+    '19348',
+    '19349',
+    '19350',
+    '19351',
+    '3477',
+    '3478',
+    '3000;id',
+    '-1',
+  ])
     expect(() => validateWebPort(value)).toThrow();
 });
 test('deployment accepts explicit SSH targets and DNS domains', () => {

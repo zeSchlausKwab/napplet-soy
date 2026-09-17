@@ -31,3 +31,14 @@ test('state is bounded and invalid actors cannot create tickets', () => {
   m.join(a, args);
   expect(() => m.join(b, args)).toThrow('full');
 });
+
+test('protocol queues match configurable groups without knowing a build hash', () => {
+  const m = new Matchmaking();
+  const queue = { napplet: args.napplet, protocol: 'arena-v1', players: 3 };
+  const first = m.joinProtocol(a, queue);
+  expect(m.joinProtocol(a, queue).ticket).toBe(first.ticket);
+  expect(m.joinProtocol(b, queue).state).toBe('waiting');
+  expect(m.joinProtocol(c, queue).peers).toEqual([a, b, c]);
+  expect(m.status(a, { ticket: first.ticket }).state).toBe('matched');
+  expect(m.joinProtocol('d'.repeat(64), { ...queue, protocol: 'arena-v2' }).state).toBe('waiting');
+});

@@ -19,6 +19,9 @@ module.exports = {
       kill_timeout: 10000,
       time: true,
       env: {
+        SPACE_CVM_PUBKEY: process.env.SPACE_CVM_PUBKEY || '',
+        SPACE_CVM_PUBLIC_RELAYS:
+          process.env.SPACE_CVM_PUBLIC_RELAYS || process.env.SPACE_CVM_RELAYS || '',
         SPACE_MODERATION_FILE: process.env.SPACE_MODERATION_FILE || '',
         SPACE_ADMIN_PUBKEYS: process.env.SPACE_ADMIN_PUBKEYS || '',
         NODE_ENV: 'production',

@@ -13,7 +13,7 @@ test('state backup restores exact bytes into a new directory and rejects corrupt
     return process.exited;
   };
   try {
-    for (const name of ['relay', 'blossom', 'grasp', 'index', 'moderation', 'community']) {
+    for (const name of ['relay', 'blossom', 'grasp', 'index', 'moderation', 'community', 'cvm']) {
       await mkdir(join(root, 'state', name), { recursive: true });
       await Bun.write(join(root, 'state', name, 'data'), `state:${name}`);
     }
@@ -40,6 +40,7 @@ test('state backup restores exact bytes into a new directory and rejects corrupt
       await run('restore', '--archive', archive, '--destination', join(root, 'restored')),
     ).toBe(0);
     expect(await Bun.file(join(root, 'restored/state/grasp/data')).text()).toBe('state:grasp');
+    expect(await Bun.file(join(root, 'restored/state/cvm/data')).text()).toBe('state:cvm');
     expect(await Bun.file(join(root, 'restored/shared/server.env')).text()).toBe(
       'TEST_FIXTURE=true',
     );

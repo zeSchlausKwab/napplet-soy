@@ -18,16 +18,16 @@ stopped=0
 recover() {
   code=$?
   trap - EXIT
-  if [[ "$stopped" == 1 ]]; then pm2_run restart napplet-relay napplet-blossom napplet-grasp napplet-indexer napplet-web || code=1; fi
+  if [[ "$stopped" == 1 ]]; then pm2_run restart napplet-relay napplet-blossom napplet-grasp napplet-indexer napplet-cvm napplet-web || code=1; fi
   rm -rf "$work"
   exit "$code"
 }
 trap recover EXIT
 # Quiesce only this installation. Caddy and other sites keep running.
 stopped=1
-pm2_run stop napplet-web napplet-indexer napplet-grasp napplet-blossom napplet-relay
+pm2_run stop napplet-web napplet-cvm napplet-indexer napplet-grasp napplet-blossom napplet-relay
 python3 "$release/scripts/backup-data.py" snapshot --state "$state_root" --shared "$app_root/shared" --destination "$work/snapshot" --release "$(basename "$release")"
-pm2_run restart napplet-relay napplet-blossom napplet-grasp napplet-indexer napplet-web
+pm2_run restart napplet-relay napplet-blossom napplet-grasp napplet-indexer napplet-cvm napplet-web
 stopped=0
 name="napplet-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
 python3 "$release/scripts/backup-data.py" pack --snapshot "$work/snapshot" --archive "$work/$name"

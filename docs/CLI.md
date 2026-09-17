@@ -324,3 +324,15 @@ A later build invalidates the selected clip for publishing until you record agai
 or remove `preview.video`. The static screenshot remains available for ordinary
 clients and OG. Run `soyli skills update` to bring this guidance into an existing
 project without replacing upstream skills or re-scaffolding.
+
+## Backend configuration (soyLI 0.10.0)
+
+`soyli backend init` adds editable provider/board configuration and a generated
+public `soy-backend.json` for importing into the artifact. `backend status`
+probes the provider over CVM; `backend sync` registers configured boards with
+creator authorization. Publishing repeats the idempotent registration; it does
+not reset scores. `dev` starts an isolated instance of the same service using
+`.napplet-space/backend`, separate from public data. Read the bundled
+[creator guide](BACKEND-CREATOR.md) for the complete authoring and testing flow.
+New projects and `skills update` include this guide without changing upstream
+skill bodies. Existing projects need an updated executable and restarted preview.

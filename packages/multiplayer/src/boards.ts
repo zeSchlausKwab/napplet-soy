@@ -59,6 +59,7 @@ export class Boards {
   /** Operator-only bootstrap for an isolated local preview; never exposed as an MCP tool. */
   provision(definition: BoardDefinition) {
     definition = boardDefinition.parse(definition);
+    if (definition.minimum > definition.maximum) throw new Error('Invalid score range');
     const { key } = reference(definition);
     const canonical = JSON.stringify({
       ...definition,

@@ -87,7 +87,7 @@ test('known fixture and relay manifests get the same resource service and capabi
     finalizeEvent(
       {
         ...imported.manifest,
-        tags: [...imported.manifest.tags, ['requires', 'cvm']],
+        tags: [...imported.manifest.tags, ['requires', 'connect']],
       },
       key,
     ),

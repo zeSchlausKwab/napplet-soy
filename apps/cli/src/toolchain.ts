@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import pins from '../vendor/toolchain.json';
 import { AccountError } from '../../../packages/identity/src/signer';
+import { backendProject } from './backend';
 
 export const toolchainCache = () =>
   resolve(
@@ -239,6 +240,7 @@ export async function setupProject(directory: string, signal?: AbortSignal) {
 }
 
 export async function buildProject(directory: string, signal?: AbortSignal) {
+  await backendProject(directory);
   if (!(await Bun.file(join(directory, 'node_modules/.modules.yaml')).exists()))
     await setupProject(directory, signal);
   await projectTool(directory, ['run', 'build'], signal);
