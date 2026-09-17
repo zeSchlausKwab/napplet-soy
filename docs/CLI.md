@@ -336,3 +336,8 @@ not reset scores. `dev` starts an isolated instance of the same service using
 [creator guide](BACKEND-CREATOR.md) for the complete authoring and testing flow.
 New projects and `skills update` include this guide without changing upstream
 skill bodies. Existing projects need an updated executable and restarted preview.
+
+The [0.10.0 release record](../apps/cli/distribution/release-0.10.0.json) records
+locally built archives and native execution coverage. This release has not been
+uploaded or deployed. Upload its immutable downloads before activating the updated
+installer; the public site continues to serve the previous version until then.
