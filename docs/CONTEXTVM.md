@@ -137,6 +137,22 @@ aggregate family-hash matching is not implemented. General MCP notifications
 are forwarded, but CEP-41 streams, payments and large-response transports are
 disabled. Curated families do not imply support for arbitrary backend code.
 
+### Remembered multiplayer permission (soyLI 0.10.1)
+
+The first peer-connection request opens a host-owned Allow / Block popup. Either
+choice is remembered for all napplets on that host origin in the current browser
+profile, including guests and later visits. Not now, Escape, timeout and closing
+the player do not save a decision. Network settings on the website and in the
+soyLI preview offers Ask me, Allow and Block. Changing to Ask me or Block closes
+active peer sessions in the current page and other same-origin tabs. A separate
+browser profile or preview origin has its own choice; unavailable browser storage
+falls back to the current page only. Clearing site storage resets the preference.
+
+This is user policy under the pinned NAP-WEBRTC proposal, not an app API extension.
+Napplet storage cannot alter it. Direct/relay selection remains automatic, and
+the popup explains that peers may learn the player's IP address. Approval does
+not grant unfamiliar CVM providers, signing, payments, microphone or camera access.
+
 ## WebRTC signaling profile `soy-rtc/1`
 
 NAP-WEBRTC defines the app API and leaves signaling to the host. Soy implements

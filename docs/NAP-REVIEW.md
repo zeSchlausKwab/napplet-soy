@@ -212,6 +212,11 @@ Native WebRTC signaling is host-owned and separately documented as `soy-rtc/1`.
 The proposal does not prescribe a universal host signaling protocol. No new app
 wire messages or direct sandbox network exemptions were introduced.
 
+The soyLI 0.10.1/shared-host permission update implements the same proposal's
+recommended user policy: a host popup records a browser/origin-wide multiplayer
+choice, editable in Network settings. It changes no NAP messages or upstream
+pins. Explicit Block persists; dismissals do not. Revocation closes active sessions.
+
 [ContextVM](CONTEXTVM.md) records behavior, evidence and remaining acceptance;
 the self-contained [creator guide](BACKEND-CREATOR.md) ships with soyLI. These
 engineering fixtures do not substitute for an isolated creator using only the

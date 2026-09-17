@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { network, saveNetwork } from '@/lib/network';
 import { Button } from '@/components/ui/button';
+import { MultiplayerSettings } from '../../../../packages/runtime/src/multiplayer-settings';
 export const Route = createFileRoute('/network')({ component: Network });
 function Network() {
   const [relays, setRelays] = useState(''),
@@ -69,6 +70,7 @@ function Network() {
         </div>
         {error && <p role="alert">{error}</p>}
       </form>
+      <MultiplayerSettings />
     </section>
   );
 }

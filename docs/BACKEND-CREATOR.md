@@ -5,6 +5,13 @@ It describes the Soy v1 service contract and the standard NAP-CVM / NAP-WEBRTC
 APIs. The app owns game rules, simulation, synchronization and UI. The host owns
 transport keys, Nostr connections, signaling, peer connections and permissions.
 
+The host asks once before connecting to peers and remembers the player's Allow
+or Block choice in that browser for the host site. Players can change it in
+Network settings (also available in soyLI preview). Dismissing leaves it unset;
+blocked requests return an error. Keep a retry path in your connection UI.
+Direct connections and TURN fallback are automatic; no TURN controls are needed
+inside your napplet. The setting does not grant access to unfamiliar CVM providers.
+
 ## Enable a backend
 
 In an existing or new boilerplate:

@@ -327,6 +327,11 @@ project without replacing upstream skills or re-scaffolding.
 
 ## Backend configuration (soyLI 0.10.0)
 
+From soyLI 0.10.1, the preview remembers the host's multiplayer Allow / Block
+choice across visits on the same browser origin. Change it in the preview's
+Network settings. Not now and dismissal leave the choice unset. See
+[multiplayer permission](CONTEXTVM.md#remembered-multiplayer-permission-soyli-0101).
+
 `soyli backend init` adds editable provider/board configuration and a generated
 public `soy-backend.json` for importing into the artifact. `backend status`
 probes the provider over CVM; `backend sync` registers configured boards with

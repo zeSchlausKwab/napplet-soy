@@ -323,3 +323,64 @@ test('an unindexed release loads from chosen infrastructure and an author deleti
   await page.getByRole('link', { name: 'Built HTML', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Nothing orbiting here.' })).toBeVisible();
 });
+
+test('multiplayer popup remembers decisions and Network settings can reset them', async ({
+  page,
+  context,
+}) => {
+  await storageMapping(context);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 390, height: 844 });
+  const start = async () => {
+    await page.goto(`${origin}/n/${entry.naddr}/play`);
+    await expect(page.locator('iframe')).toBeVisible();
+    const frame = page.frames().find((f) => f.parentFrame())!;
+    await frame.waitForFunction(() => !!(window as any).napplet?.webrtc);
+    await frame.evaluate(() => {
+      const w = window as any;
+      w.result = null;
+      void w.napplet.webrtc
+        .open({ scope: { type: 'room', room: crypto.randomUUID(), peers: [] } })
+        .then((result: unknown) => {
+          w.result = result;
+        })
+        .catch((e: Error) => {
+          w.result = { error: e.message };
+        });
+    });
+    return frame;
+  };
+  const result = async (frame: import('@playwright/test').Frame) => {
+    await frame.waitForFunction(() => !!(window as any).result);
+    return frame.evaluate(() => (window as any).result);
+  };
+  const popup = page.getByRole('dialog', { name: 'Allow multiplayer connections', exact: true });
+  let frame = await start();
+  await expect(popup).toBeVisible();
+  await expect(popup).toContainText('all napplets in this browser');
+  await page.screenshot({ path: '/tmp/soy-web-multiplayer-popup.png' });
+  await popup.getByRole('button', { name: 'Not now', exact: true }).click();
+  expect((await result(frame)).error).toContain('denied');
+  frame = await start();
+  await popup.getByRole('button', { name: 'Block', exact: true }).click();
+  expect((await result(frame)).error).toContain('denied');
+  frame = await start();
+  expect((await result(frame)).error).toContain('denied');
+  await expect(popup).not.toBeVisible();
+  await page.goto(`${origin}/network`);
+  const choice = page.getByLabel('Multiplayer permission', { exact: true });
+  await expect(choice).toHaveValue('block');
+  await choice.selectOption('ask');
+  frame = await start();
+  await popup.getByRole('button', { name: 'Allow', exact: true }).click();
+  expect((await result(frame)).session.id).toBeTruthy();
+  frame = await start();
+  expect((await result(frame)).session.id).toBeTruthy();
+  await expect(popup).not.toBeVisible();
+  await page.goto(`${origin}/network`);
+  await expect(choice).toHaveValue('allow');
+  await choice.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: '/tmp/soy-web-multiplayer-settings.png' });
+  expect(errors).toEqual([]);
+});

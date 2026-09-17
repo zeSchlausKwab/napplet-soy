@@ -11,6 +11,7 @@ import { createElement } from 'react';
 import { SettingsControl } from '../../../../packages/runtime/src/settings-panel';
 import { MediaControls } from '../../../../packages/runtime/src/media-controls';
 import { declaredConfig } from '../../../../packages/runtime/src/config-schema';
+import { MultiplayerSettings } from '../../../../packages/runtime/src/multiplayer-settings';
 
 const stage = document.querySelector<HTMLElement>('#stage')!;
 const status = document.querySelector<HTMLElement>('#status')!;
@@ -18,10 +19,13 @@ const dialog = document.querySelector<HTMLDialogElement>('#prompt')!;
 const detail = document.querySelector<HTMLElement>('#prompt-detail')!;
 const confirm = document.querySelector<HTMLButtonElement>('#confirm')!;
 const cancel = document.querySelector<HTMLButtonElement>('#cancel')!;
+const later = document.querySelector<HTMLButtonElement>('#later')!;
 const link = document.querySelector<HTMLAnchorElement>('#open-link')!;
 const exports = document.querySelector<HTMLElement>('#files')!;
 const settingsRoot = createRoot(document.querySelector('#settings')!);
 const mediaRoot = createRoot(document.querySelector('#media')!);
+const networkRoot = createRoot(document.querySelector('#network-settings')!);
+networkRoot.render(createElement(MultiplayerSettings));
 let settingsOpen = false;
 function settingsChanged(open: boolean) {
   settingsOpen = open;
@@ -49,7 +53,15 @@ function showPrompt(prompt: HostPrompt | null) {
       : prompt.value;
   confirm.hidden = prompt.kind === 'link';
   confirm.textContent =
-    prompt.kind === 'media' ? 'Play audio' : prompt.kind === 'network' ? 'Connect' : 'Save file';
+    prompt.kind === 'media'
+      ? 'Play audio'
+      : prompt.kind === 'multiplayer'
+        ? 'Allow'
+        : prompt.kind === 'network'
+          ? 'Connect'
+          : 'Save file';
+  cancel.textContent = prompt.kind === 'multiplayer' ? 'Block' : 'Cancel';
+  later.hidden = prompt.kind !== 'multiplayer';
   link.hidden = prompt.kind !== 'link';
   if (prompt.kind === 'link') link.href = prompt.value;
   if (!dialog.open) dialog.showModal();
@@ -57,10 +69,11 @@ function showPrompt(prompt: HostPrompt | null) {
 }
 confirm.onclick = () => choice?.answer(true);
 cancel.onclick = () => choice?.answer(false);
+later.onclick = () => choice?.dismiss();
 link.onclick = () => choice?.answer(true);
 dialog.oncancel = (event) => {
   event.preventDefault();
-  choice?.answer(false);
+  choice?.dismiss();
 };
 
 function showFiles(files: ExportFile[]) {
@@ -177,6 +190,7 @@ window.addEventListener('pagehide', () => {
   host?.close();
   settingsRoot.unmount();
   mediaRoot.unmount();
+  networkRoot.unmount();
   showFiles([]);
 });
 void refresh();

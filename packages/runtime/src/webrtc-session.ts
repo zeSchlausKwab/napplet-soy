@@ -98,10 +98,13 @@ export class NappletWebrtc {
       throw new Error('WebRTC session limit reached');
     this.opening++;
     try {
-      this.permission ??= this.consent();
-      if (!(await this.permission)) {
-        this.permission = undefined;
-        throw new Error('Peer connection denied');
+      const permission = (this.permission ??= this.consent());
+      const allowed = await permission;
+      if (this.permission === permission) this.permission = undefined;
+      if (!allowed) {
+        throw new Error(
+          'Peer connection denied. You can change multiplayer permission in Network settings.',
+        );
       }
       if (!this.alive) throw new Error('Player closed');
       const self = await this.signer.getPublicKey();
@@ -176,6 +179,7 @@ export class NappletWebrtc {
       ],
       content,
     });
+    if (!this.sessions.has(s.id)) return;
     await s.pool.publish(event, { abortSignal: AbortSignal.timeout(4000) });
   }
   private async start(s: Session) {
@@ -190,6 +194,10 @@ export class NappletWebrtc {
         void this.receive(s, event).catch(() => {});
       },
     );
+    if (!this.sessions.has(s.id)) {
+      await s.pool.disconnect();
+      return;
+    }
     const hello = () => {
       if (!this.sessions.has(s.id)) return;
       void this.publish(s, { type: 'hello' }).catch(() => {});
@@ -229,6 +237,7 @@ export class NappletWebrtc {
     const body = JSON.parse(
       recipient ? await this.signer.nip44.decrypt(event.pubkey, event.content) : event.content,
     );
+    if (!this.sessions.has(s.id)) return;
     if (
       body.v !== 'soy-rtc/1' ||
       body.wire !== s.wire ||
@@ -394,8 +403,8 @@ export class NappletWebrtc {
     session.state = 'closed';
     this.event(session, { type: 'closed', reason });
   }
-  close() {
-    for (const id of this.sessions.keys()) this.closeSession(id, 'Player closed');
+  close(reason = 'Player closed') {
+    for (const id of this.sessions.keys()) this.closeSession(id, reason);
     this.alive = false;
   }
 }

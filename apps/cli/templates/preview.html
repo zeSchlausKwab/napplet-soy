@@ -74,6 +74,7 @@
     }
     dialog div {
       display: flex;
+      flex-wrap: wrap;
       gap: 16px;
       align-items: center;
     }
@@ -227,6 +228,10 @@
     <div id="settings"></div>
     <button id="reload">Reload preview</button
     ><button id="connect">Connect browser extension</button>
+    <details style="width: 100%">
+      <summary style="cursor: pointer">Network settings</summary>
+      <div id="network-settings"></div>
+    </details>
   </header>
   <div id="media" style="padding: 0 20px"></div>
   <p id="status" role="status">Preparing preview…</p>
@@ -279,7 +284,8 @@
   <dialog id="prompt" aria-label="Napplet permission" aria-describedby="prompt-detail">
     <p id="prompt-detail"></p>
     <div>
-      <button id="cancel">Cancel</button><button id="confirm">Save file</button
+      <button id="cancel">Cancel</button><button id="later" hidden>Not now</button
+      ><button id="confirm">Save file</button
       ><a id="open-link" target="_blank" rel="noopener noreferrer" hidden>Open link</a>
     </div>
   </dialog>

@@ -11,11 +11,17 @@ import { NappletMedia } from './media-session';
 import { NappletBackend, transportSigner } from './backend-session';
 import { NappletWebrtc } from './webrtc-session';
 import { rtcConfiguration, type BackendProvider } from '../../multiplayer/src/client';
+import {
+  multiplayerPermission,
+  saveMultiplayerPermission,
+  subscribeMultiplayerPermission,
+} from './multiplayer-permission';
 
 export type HostPrompt = {
-  kind: 'link' | 'save' | 'media' | 'network';
+  kind: 'link' | 'save' | 'media' | 'network' | 'multiplayer';
   value: string;
   answer: (accepted: boolean) => void;
+  dismiss: () => void;
 };
 export type HostOptions = {
   frame: HTMLIFrameElement;
@@ -66,6 +72,7 @@ export function attachNappletHost(options: HostOptions) {
       if (active) send(message);
     };
     let answer: ((accepted: boolean) => void) | undefined;
+    let promptKind: HostPrompt['kind'] | undefined;
     const lifetime = new AbortController();
     const resources = new Map<string, AbortController>();
     let backend: NappletBackend | undefined, webrtc: NappletWebrtc | undefined;
@@ -78,30 +85,44 @@ export function attachNappletHost(options: HostOptions) {
       `${options.identity}:${pubkey ?? 'guest'}`,
       crypto.randomUUID(),
     );
-    const choose = (kind: HostPrompt['kind'], value: string, acceptedAction?: () => void) =>
+    const choose = (
+      kind: HostPrompt['kind'],
+      value: string,
+      actions: { accept?: () => void; decide?: (accepted: boolean) => void } = {},
+    ) =>
       new Promise<boolean>((resolve) => {
         if (answer || !alive || !active) {
           resolve(false);
           return;
         }
         const timer = setTimeout(() => complete(false), 25000);
-        const complete = (accepted: boolean) => {
+        const complete = (accepted: boolean, explicit = false) => {
           if (answer !== complete) return;
           clearTimeout(timer);
           answer = undefined;
+          promptKind = undefined;
           options.prompt(null);
-          if (alive && active && accepted) acceptedAction?.();
+          if (alive && active) {
+            if (explicit) actions.decide?.(accepted);
+            if (accepted) actions.accept?.();
+          }
           resolve(alive && active && accepted);
         };
         answer = complete;
-        options.prompt({ kind, value, answer: complete });
+        promptKind = kind;
+        options.prompt({
+          kind,
+          value,
+          answer: (accepted) => complete(accepted, true),
+          dismiss: () => complete(false),
+        });
       });
     const media = new NappletMedia({
       manifest: options.manifestId,
       send: sendScoped,
       activate: (label, play) => {
         const previous = answer;
-        void choose('media', label, play);
+        void choose('media', label, { accept: play });
         const own = answer !== previous ? answer : undefined;
         return () => own?.(false);
       },
@@ -151,11 +172,19 @@ export function attachNappletHost(options: HostOptions) {
           options.identity.replace(/:[a-f0-9]{64}$/, ''),
           options.backend?.relays ?? options.relays,
           sendScoped,
-          () =>
-            choose(
-              'network',
-              'Connect to other players? Peers may learn your network address. Gameplay travels directly or through an encrypted TURN relay.',
-            ),
+          async () => {
+            const permission = multiplayerPermission();
+            if (permission !== 'ask') return permission === 'allow';
+            return choose(
+              'multiplayer',
+              'Let napplets connect to other players? Direct connections can share your IP address with peers. Your choice is remembered for all napplets in this browser on this site. You can change it in Network settings.',
+              {
+                decide: (accepted) => {
+                  saveMultiplayerPermission(accepted ? 'allow' : 'block');
+                },
+              },
+            );
+          },
           async () => {
             if (!options.backend) return { iceServers: [] };
             const result = await (await backend!.connection(options.backend)).tool('soy_ice');
@@ -249,6 +278,14 @@ export function attachNappletHost(options: HostOptions) {
       resetBudget: () => {
         resourceCalls = 0;
       },
+      multiplayerChanged: () => {
+        const allowed = multiplayerPermission() === 'allow';
+        if (promptKind === 'multiplayer') answer?.(allowed);
+        if (!allowed) {
+          webrtc?.close('Multiplayer permission changed');
+          webrtc = undefined;
+        }
+      },
       close: (reason: string) => {
         for (const fail of requests) fail(new Error(reason));
         requests.clear();
@@ -266,6 +303,9 @@ export function attachNappletHost(options: HostOptions) {
     };
   };
   let account = createAccount(options.pubkey);
+  const unsubscribePermission = subscribeMultiplayerPermission(() => {
+    account.multiplayerChanged();
+  });
   const config = new NappletConfig({
     storage: localStorage,
     identity: options.identity,
@@ -432,6 +472,7 @@ export function attachNappletHost(options: HostOptions) {
     close() {
       if (!alive) return;
       alive = false;
+      unsubscribePermission();
       window.removeEventListener('message', listener);
       account.close('Player closed');
       config.close();
