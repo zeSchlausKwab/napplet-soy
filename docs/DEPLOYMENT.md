@@ -29,6 +29,14 @@ All three hostnames—`napplet.example`, `blossom.napplet.example`, and `git.nap
 
 The command runs local checks, uploads an allowlisted archive of the working source tree, and invokes [deploy-remote.sh](../scripts/deploy-remote.sh). Uncommitted source changes are included; `.git`, dependencies, builds, local state, and `.env` files are excluded. The remote build uses `bun.lock` and does not reuse macOS native dependencies on Linux.
 
+The archive also includes `docs/BACKEND-CREATOR.md`, which the source CLI imports
+to bundle its creator guide. Local checks extract the actual deployment archive
+and exercise CLI account lookup and boilerplate scaffolding before upload. This
+catches missing bundled files that tests in the full checkout cannot detect. If a
+candidate failed with `Cannot find module '../../../docs/BACKEND-CREATOR.md'`, rerun
+the normal deploy command from the corrected checkout; the failure occurs before
+service activation and does not require a state restore.
+
 ## Installed layout and service ownership
 
 | Location                                        | Purpose                                                                                                               |

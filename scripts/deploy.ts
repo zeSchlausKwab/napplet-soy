@@ -58,6 +58,35 @@ async function run(args: string[], stdin?: string) {
   });
   if ((await child.exited) !== 0) throw new Error(`Command failed: ${args[0]}`);
 }
+
+// Keep the upload and archive regression check on the same packaging path.
+export async function createDeploymentArchive(archive: string) {
+  await run([
+    'tar',
+    '--no-xattrs',
+    '--exclude=node_modules',
+    '--exclude=dist',
+    '--exclude=.output',
+    '--exclude=.tanstack',
+    '--exclude=.env',
+    '--exclude=.env.*',
+    '--exclude=.local',
+    '-czf',
+    archive,
+    'package.json',
+    'LICENSE',
+    'bun.lock',
+    'tsconfig.json',
+    'docs/BACKEND-CREATOR.md',
+    'apps',
+    'packages',
+    'scripts',
+    'infra',
+    'services',
+    'tests/services',
+    'tests/fixtures',
+  ]);
+}
 if (import.meta.main) {
   const { values } = parseArgs({
     args: process.argv.slice(2),
@@ -135,30 +164,7 @@ if (import.meta.main) {
       await run(['bun', 'run', 'test:relay']);
       await run(['bun', 'run', 'test:blossom']);
       await run(['bun', 'run', 'test:grasp']);
-      await run([
-        'tar',
-        '--no-xattrs',
-        '--exclude=node_modules',
-        '--exclude=dist',
-        '--exclude=.output',
-        '--exclude=.tanstack',
-        '--exclude=.env',
-        '--exclude=.env.*',
-        '--exclude=.local',
-        '-czf',
-        archive,
-        'package.json',
-        'LICENSE',
-        'bun.lock',
-        'tsconfig.json',
-        'apps',
-        'packages',
-        'scripts',
-        'infra',
-        'services',
-        'tests/services',
-        'tests/fixtures',
-      ]);
+      await createDeploymentArchive(archive);
       await run(['scp', ...sshOptions, archive, `${host}:/tmp/napplet-${release}.tar.gz`]);
       const script = await Bun.file(new URL('./deploy-remote.sh', import.meta.url)).text();
       // Arguments have an allowlisted alphabet; never interpolate arbitrary input into a remote shell.
