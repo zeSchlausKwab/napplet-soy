@@ -5,6 +5,22 @@ standalone `soyli` executable, with its pinned Playwright support files. A separ
 Bun, Node, npm, or platform checkout is not required. The executable embeds Bun;
 this is not an alternative runtime implementation for users who reject Bun itself.
 
+## Collaboration — local 0.12.0
+
+One remix supports both your own publication and upstream proposals. Code and pushed
+Git history are public by default. Save changes with `soyli checkpoint "Description"`,
+then `soyli propose "Description"` and/or `soyli publish`. `soyli review` opens the
+proposal inbox with built preview, Git diff and local maintainer actions. Agents can
+use `proposals --json` and revision-pinned `merge`; Git push and napplet release stay
+separate. See [the complete workflow and limits](COLLABORATION.md).
+
+Creator, identity and service overrides live in the ignored
+`.napplet-space/project.json` binding. `soyli config` displays it. Git-backed remix
+preserves tracked source unchanged; archive/HTML fallbacks remain supported. Old
+synthetic-history publication journals are not silently adopted or rewritten.
+This release is prepared locally; the live installer changes only after release
+upload and an explicit operator deployment.
+
 ## Multiplayer development checks — local 0.11.0
 
 `soyli multiplayer tests/multiplayer.mjs --players 2 --latency 50 --jitter 15`
@@ -96,8 +112,9 @@ It reloads after each build. Legacy HTML examples reload on save without a build
 `--no-open`, `--port` and `--project` support existing workflows. `build` builds
 once, `setup` installs with the frozen lockfile, and `run <script>` / `exec <tool>`
 use the private toolchain from the current project. `dev`, `build`, and `run` execute
-your project's tools. **Check and publish never execute project scripts**: build
-your latest changes first; they inspect and run the finished HTML only.
+your project's tools. **Publish and propose build dist/index.html projects** before
+checking the artifact. `check` inspects and runs the finished HTML without building.
+Opening a proposal never runs its source build unless you explicitly use `review --rebuild`.
 
 `soyli run verify` uses the upstream guidance tests, TypeScript check and
 build. `soyli run test:conformance` runs the reference harness and downloads
@@ -118,14 +135,14 @@ failures honestly. The managed `docs/napplet-space.md` now gives agents this wor
 it is guidance, not automatic background commits. Inspect status, diffs and new files
 before staging; keep private notes ignored and credentials outside the project.
 
-Publishing does not require a clean working tree. For built projects, the default
-source selection includes tracked and unignored untracked files, using their current
-bytes. `publish.files` can narrow that selection. Review `soyli publish --dry-run`:
-an uncommitted file can become public. Publication makes a separate release repository
-under `.napplet-space` and pushes its release history to GRASP; it does not push the
-working repository's commits or branches. Local Git checkpoints preserve development
-history; GRASP preserves published source snapshots. Neither is a remote backup of
-unpublished work. See [source publication](PUBLISHING.md#local-git-and-grasp-release-history).
+Publishing and proposing require a clean committed working tree. Use ordinary Git
+or `soyli checkpoint "Describe the change"`; checkpoint explicitly stages all source
+changes after credential checks. Inspect `git diff` and `soyli publish --dry-run` first.
+The actual Git tip and reachable history are public when pushed to GRASP, including
+older/deleted source. `publish.files` cannot conceal tracked history. Local-only
+changes stay local until `propose`, `push`, or `publish`. Source archives reflect the
+committed tree; built HTML and screenshots are separate Blossom artifacts.
+See [collaboration](COLLABORATION.md) for proposing, reviewing and merging.
 
 To pause, preserve the whole project folder including `.git`, `napplet.json` and
 `.napplet-space`, plus the creator's separate identity backup. A private, ignored
@@ -186,8 +203,9 @@ manager if additional dependencies need installation scripts.
 Publishing accepts a finished self-contained `index.html` or `dist/index.html`.
 For the upstream profile it selects Git-visible source files plus the built HTML,
 excluding ignored dependencies and private state. Existing byte limits, regular-file
-checks and credential detection apply; use `publish.files` to narrow selection.
-The source repository includes editable source and the exact built artifact.
+checks and credential detection apply. `publish.files` adds release inputs but cannot
+exclude committed Git history. The source repository contains the real committed
+source; ignored build output is uploaded separately as the playable Blossom artifact.
 Required domains combine `napplet.json` with standard `napplet-requires` build
 metadata. The artifact and NIP-5D publication format are the same for both profiles.
 
@@ -350,7 +368,10 @@ Network settings. Not now and dismissal leave the choice unset. See
 [multiplayer permission](CONTEXTVM.md#remembered-multiplayer-permission-soyli-0101).
 
 `soyli backend init` adds editable provider/board configuration and a generated
-public `soy-backend.json` for importing into the artifact. `backend status`
+runtime `.napplet-space/soy-backend.json` for importing into the artifact. The file is
+ignored locally; the public provider settings become part of the built HTML. Existing
+projects importing `../soy-backend.json` must update that import to
+`../.napplet-space/soy-backend.json`. `backend status`
 probes the provider over CVM; `backend sync` registers configured boards with
 creator authorization. Publishing repeats the idempotent registration; it does
 not reset scores. `dev` starts an isolated instance of the same service using

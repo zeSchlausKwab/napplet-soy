@@ -2,6 +2,7 @@ import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { Accounts } from '../../../packages/identity/src/accounts';
 import { ProtocolClient } from '../../../packages/client/src/nostr';
 import { defaultTargets } from '../../../packages/publish/src/config';
 import { readBinding } from '../../../packages/publish/src/binding';
@@ -30,6 +31,7 @@ import { previewAssets } from './preview/assets';
 import { startPreviewServer } from './preview/server';
 import { localBackend } from './backend';
 import { buildProject, setupProject } from './toolchain';
+import { projectSchema } from '../../../packages/publish/src/config';
 
 export async function proposalList(options: CollaborationOptions & { reference?: string }) {
   const targets = defaultTargets(options.network);
@@ -59,7 +61,7 @@ export async function proposalList(options: CollaborationOptions & { reference?:
       repository = await readRepository(client, tag(root, 'a') ?? '');
       selected = root.kind === 1619 ? tag(root, 'E') : root.id;
     }
-    return { repository, proposals: await readProposals(client, repository), selected };
+    return { repository, proposals: await readProposals(client, repository, selected), selected };
   } finally {
     client.close();
   }
@@ -82,6 +84,7 @@ export async function review(
     noOpen?: boolean;
     json?: boolean;
     rebuild?: boolean;
+    ready?: (info: { url: string }) => Promise<void>;
   },
 ) {
   let state = await proposalList(options);
@@ -196,6 +199,7 @@ export async function review(
     previews.set(key, server);
     return server.url.href;
   }
+  const account = await (options.accounts ?? new Accounts(options.network)).current();
   let mutating = false;
   const server = Bun.serve({
     hostname: '127.0.0.1',
@@ -206,7 +210,7 @@ export async function review(
       if (url.pathname === '/')
         return new Response(reviewHtml, {
           headers: {
-            'Content-Type': 'text/html',
+            'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-store',
             'Content-Security-Policy':
               "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src http://127.0.0.1:*; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
@@ -224,6 +228,8 @@ export async function review(
             proposals: state.proposals,
             selected: state.selected,
             target,
+            account: account?.pubkey,
+            maintainer: !!account && state.repository.maintainers.includes(account.pubkey),
           });
         if (request.method !== 'POST') return new Response('Not found', { status: 404 });
         if (Number(request.headers.get('content-length') ?? 0) > 8192)
@@ -270,21 +276,7 @@ export async function review(
     },
   });
   const url = `${server.url}#${token}`;
-  console.log(
-    options.json
-      ? JSON.stringify({
-          url,
-          target,
-          repository: state.repository.address,
-          proposals: state.proposals.map(compact),
-        })
-      : `Review changes: ${url}\nOpening a preview runs only its checked HTML in the sandbox. Build scripts run only with --rebuild.\nCtrl+C stops the review.`,
-  );
-  if (!options.noOpen && !options.json)
-    Bun.spawn([process.platform === 'darwin' ? 'open' : 'xdg-open', url], {
-      stdout: 'ignore',
-      stderr: 'ignore',
-    });
+  let closeBackend: (() => Promise<void>) | undefined;
   try {
     if (options.rebuild) {
       const p = state.proposals.find((p) => p.root.id === state.selected);
@@ -293,22 +285,37 @@ export async function review(
       const fetched = await source(p.root.id, p.revision.id);
       if (!fetched.folder) throw new Error('Use ngit to apply this patch first.');
       await sourceGit(fetched.folder, ['checkout', '--detach', fetched.head!]);
-      await setupProject(fetched.folder, options.signal);
-      await buildProject(fetched.folder, options.signal);
+      const project = projectSchema.parse(
+        await Bun.file(join(fetched.folder, 'napplet.json')).json(),
+      );
+      if (project.entry === 'dist/index.html') {
+        await setupProject(fetched.folder, options.signal);
+        await buildProject(fetched.folder, options.signal);
+      }
       const backend = await localBackend(fetched.folder);
       const built = startPreviewServer(pathToFileURL(fetched.folder + '/'), 0, false, assets, {
         network: 'local',
         backend: backend?.provider,
       });
       previews.set(p.revision.id, built);
-      options.signal?.addEventListener(
-        'abort',
-        () => {
-          void backend?.close();
-        },
-        { once: true },
-      );
+      closeBackend = backend?.close;
     }
+    console.log(
+      options.json
+        ? JSON.stringify({
+            url,
+            target,
+            repository: state.repository.address,
+            proposals: state.proposals.map(compact),
+          })
+        : `Review changes: ${url}\nOpening a preview runs only its checked HTML in the sandbox. Build scripts run only with --rebuild.\nCtrl+C stops the review.`,
+    );
+    if (!options.noOpen && !options.json)
+      Bun.spawn([process.platform === 'darwin' ? 'open' : 'xdg-open', url], {
+        stdout: 'ignore',
+        stderr: 'ignore',
+      });
+    await options.ready?.({ url });
     if (!options.signal?.aborted)
       await new Promise<void>((resolve) =>
         options.signal?.addEventListener('abort', () => resolve(), { once: true }),
@@ -316,10 +323,11 @@ export async function review(
   } finally {
     server.stop(true);
     for (const p of previews.values()) p.stop(true);
+    await closeBackend?.();
     await rm(temp, { recursive: true, force: true });
   }
 }
-const reviewHtml = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Review · napplet soyLI</title><style>
+const reviewHtml = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Review · napplet soyLI</title><style>
 :root{font-family:system-ui;color:#2d3228;background:#f7f5ec}*{box-sizing:border-box}body{margin:0}header{padding:24px 4vw;display:flex;align-items:center;justify-content:space-between}h1{font-size:32px;letter-spacing:-1px;margin:10px 0}small,.muted{color:#727868}main{display:grid;grid-template-columns:280px minmax(0,1fr);gap:28px;padding:0 4vw 40px}button,textarea,select{font:inherit;border:1px solid #c9cbbb;border-radius:8px;padding:10px 14px;background:transparent;color:inherit}button{cursor:pointer}button:hover,button.active{background:#e3ead9}button:disabled{opacity:.5;cursor:wait}nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}aside button{display:block;text-align:left;width:100%;margin:8px 0}aside small{display:block;margin-top:6px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#293126;color:#e1e7d8;border-radius:10px;padding:22px;max-height:650px;overflow:auto;font-size:13px}iframe{border:1px solid #c9cbbb;width:100%;height:65vh;border-radius:12px;background:#eeede4}textarea{width:100%;min-height:90px}#status{color:#566d4b}#meta{overflow-wrap:anywhere}article{margin:14px 0;padding:12px;background:#efeede;border-radius:8px}@media(max-width:720px){main{grid-template-columns:1fr}aside{display:flex;overflow:auto;gap:8px}aside button{min-width:220px}iframe{height:55vh}}
 </style></head><body><header><div><small>NAPPLET SOYLI / COLLABORATE</small><h1>A better version starts here.</h1><small>Public source. Real Git. Play before you merge.</small></div><button id="refresh">Refresh</button></header><main><aside id="list"></aside><section><h2 id="title">Choose a proposal</h2><div id="meta" class="muted"></div><select id="revisions" aria-label="Source revision"></select><nav><button data-tab="proposed">Play proposed</button><button data-tab="original">Play original</button><button data-tab="diff">Changes</button><button data-tab="discussion">Discussion</button></nav><div id="content"></div><p id="status" role="status"></p><nav><button id="merge">Merge locally</button><button id="close">Close proposal</button><button id="reopen">Reopen</button></nav><small>A local merge keeps contributor history. Push Git and release the napplet separately.</small></section></main><script>
 const token=location.hash.slice(1);history.replaceState(null,'',location.pathname);let state,selected,revision;
@@ -327,7 +335,7 @@ const $=id=>document.getElementById(id), tag=(e,n)=>e.tags.find(t=>t[0]===n)?.[1
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'x-review-token':token,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const value=await r.json();if(!r.ok)throw Error(value.error);return value}
 async function busy(button,fn){const label=button.textContent;button.disabled=true;button.textContent='Working…';try{await fn()}catch(e){$('status').textContent=e.message}finally{button.disabled=false;button.textContent=label}}
 function data(){return{id:selected.root.id,revision:revision.id,target:state.target}}
-function select(p,r){selected=p;revision=r??p.revision;$('title').textContent=p.title;$('meta').textContent=p.status+' · '+p.root.pubkey.slice(0,16)+' · source '+(tag(revision,'c')??'patch');$('content').replaceChildren();$('status').textContent='Preview is attributed to this contributor; a signature is not proof of a reproducible source build.';$('revisions').replaceChildren(...p.revisions.map(e=>{const o=document.createElement('option');o.value=e.id;o.textContent=new Date(e.created_at*1000).toLocaleString()+' · '+e.id.slice(0,12);o.selected=e.id===revision.id;return o}));$('merge').disabled=!state.target||p.patch}
+function select(p,r){selected=p;revision=r??p.revision;$('title').textContent=p.title;$('meta').textContent=p.status+' · '+p.root.pubkey.slice(0,16)+' · source '+(tag(revision,'c')??'patch');$('content').replaceChildren();$('status').textContent='Preview is attributed to this contributor; a signature is not proof of a reproducible source build.';$('revisions').replaceChildren(...p.revisions.map(e=>{const o=document.createElement('option');o.value=e.id;o.textContent=new Date(e.created_at*1000).toLocaleString()+' · '+e.id.slice(0,12);o.selected=e.id===revision.id;return o}));$('merge').hidden=!state.maintainer;$('merge').disabled=!state.target||p.patch||!['open','draft'].includes(p.status);['close','reopen'].forEach(a=>$(a).hidden=!(state.maintainer||state.account===p.root.pubkey))}
 async function load(){const old=selected,rev=revision;state=await api('/state');$('list').replaceChildren(...state.proposals.map(p=>{const b=document.createElement('button');b.textContent=p.title;const s=document.createElement('small');s.textContent=p.status+' · '+p.root.pubkey.slice(0,10);b.append(s);b.onclick=()=>select(p);return b}));if(!state.proposals.length)$('list').textContent='No proposals yet.';const p=state.proposals.find(p=>p.root.id===(old?.root.id??state.selected))??state.proposals[0];if(p){const r=p.revisions.find(r=>r.id===rev?.id);select(p,r);if(r&&r.id!==p.revision.id)$('status').textContent='A newer revision is available. Your reviewed revision stays selected.'}}
 $('refresh').onclick=e=>busy(e.target,async()=>{await api('/refresh',{});await load()});$('revisions').onchange=e=>select(selected,selected.revisions.find(r=>r.id===e.target.value));
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>busy(b,async()=>{if(!selected)return;const tab=b.dataset.tab;if(tab==='diff'){const x=await api('/diff',data());const pre=document.createElement('pre');pre.textContent=x.diff;$('content').replaceChildren(pre)}else if(tab==='discussion'){$('content').replaceChildren(...selected.comments.map(c=>{const a=document.createElement('article');a.textContent=c.pubkey.slice(0,12)+': '+c.content;return a}));const text=document.createElement('textarea');text.placeholder='Discuss the change or request changes';const send=document.createElement('button');send.textContent='Post comment';send.onclick=()=>busy(send,async()=>{await api('/action',{...data(),action:'comment',text:text.value});text.value='';$('status').textContent='Comment posted.'});$('content').append(text,send)}else{const x=await api('/play',{...data(),original:tab==='original'});const iframe=document.createElement('iframe');iframe.src=x.url;iframe.title=selected.title; $('content').replaceChildren(iframe)}}));

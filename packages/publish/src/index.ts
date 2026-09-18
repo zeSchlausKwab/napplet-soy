@@ -306,6 +306,18 @@ export async function publishProject(options: PublishOptions) {
                 'REMOTE_CONFLICT',
                 'A remote release or source state differs from this journal. Restore the current journal or choose a new napplet identifier; stale releases are never forced over it.',
               );
+            if (
+              sourceState?.tags.some(
+                (t) =>
+                  t[0].startsWith('refs/') &&
+                  t[0] !== 'refs/heads/main' &&
+                  !/^refs\/tags\/release-[a-f0-9]{16}$/.test(t[0]),
+              )
+            )
+              throw new PublishError(
+                'SOURCE_LAYOUT',
+                'This repository has additional Git refs. Use ngit for this layout; soyLI will not remove them.',
+              );
             const sourceBaseCommit =
               sourceState?.tags.find((t) => t[0] === 'refs/heads/main')?.[1] ?? null;
             if (sourceBaseCommit) {
@@ -410,6 +422,7 @@ export async function publishProject(options: PublishOptions) {
               baseSource: sourceState?.id ?? null,
               sourceBaseCommit,
               baseAnnouncement: announcement?.id ?? null,
+              ...(announcement ? { repositoryAnnouncement: announcement } : {}),
               ...frozen,
               check,
               ...(preview
@@ -504,6 +517,7 @@ export async function publishProject(options: PublishOptions) {
           local: options.network === 'local',
           createdAt: job.createdAt,
           releaseRefs: job.releaseRefs,
+          announcement: job.repositoryAnnouncement,
           signer: job.source
             ? {
                 getPublicKey: async () => job!.plan.pubkey,

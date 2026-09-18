@@ -26,6 +26,7 @@ import { Route as ApiProfileOgRouteImport } from './routes/api.profile-og'
 import { Route as ApiPublicationsRouteImport } from './routes/api.publications'
 import { Route as NNaddrRouteImport } from './routes/n.$naddr'
 import { Route as PPubkeyRouteImport } from './routes/p.$pubkey'
+import { Route as ProposalsProposalRouteImport } from './routes/proposals.$proposal'
 import { Route as RSnapshotRouteImport } from './routes/r.$snapshot'
 import { Route as CreatorSlugPlayRouteImport } from './routes/$creator.$slug.play'
 import { Route as ApiOgIdRouteImport } from './routes/api.og.$id'
@@ -120,6 +121,11 @@ const PPubkeyRoute = PPubkeyRouteImport.update({
   path: '/p/$pubkey',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProposalsProposalRoute = ProposalsProposalRouteImport.update({
+  id: '/proposals/$proposal',
+  path: '/proposals/$proposal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RSnapshotRoute = RSnapshotRouteImport.update({
   id: '/r/$snapshot',
   path: '/r/$snapshot',
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/api/publications': typeof ApiPublicationsRoute
   '/n/$naddr': typeof NNaddrRouteWithChildren
   '/p/$pubkey': typeof PPubkeyRoute
+  '/proposals/$proposal': typeof ProposalsProposalRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/api/publications': typeof ApiPublicationsRoute
   '/n/$naddr': typeof NNaddrRouteWithChildren
   '/p/$pubkey': typeof PPubkeyRoute
+  '/proposals/$proposal': typeof ProposalsProposalRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/api/publications': typeof ApiPublicationsRoute
   '/n/$naddr': typeof NNaddrRouteWithChildren
   '/p/$pubkey': typeof PPubkeyRoute
+  '/proposals/$proposal': typeof ProposalsProposalRoute
   '/r/$snapshot': typeof RSnapshotRouteWithChildren
   '/$creator/$slug/play': typeof CreatorSlugPlayRoute
   '/api/og/$id': typeof ApiOgIdRoute
@@ -255,6 +264,7 @@ export interface FileRouteTypes {
     | '/api/publications'
     | '/n/$naddr'
     | '/p/$pubkey'
+    | '/proposals/$proposal'
     | '/r/$snapshot'
     | '/$creator/$slug/play'
     | '/api/og/$id'
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/api/publications'
     | '/n/$naddr'
     | '/p/$pubkey'
+    | '/proposals/$proposal'
     | '/r/$snapshot'
     | '/$creator/$slug/play'
     | '/api/og/$id'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/api/publications'
     | '/n/$naddr'
     | '/p/$pubkey'
+    | '/proposals/$proposal'
     | '/r/$snapshot'
     | '/$creator/$slug/play'
     | '/api/og/$id'
@@ -333,6 +345,7 @@ export interface RootRouteChildren {
   ApiPublicationsRoute: typeof ApiPublicationsRoute
   NNaddrRoute: typeof NNaddrRouteWithChildren
   PPubkeyRoute: typeof PPubkeyRoute
+  ProposalsProposalRoute: typeof ProposalsProposalRoute
   RSnapshotRoute: typeof RSnapshotRouteWithChildren
   ApiOgIdRoute: typeof ApiOgIdRoute
 }
@@ -456,6 +469,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$pubkey'
       fullPath: '/p/$pubkey'
       preLoaderRoute: typeof PPubkeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proposals/$proposal': {
+      id: '/proposals/$proposal'
+      path: '/proposals/$proposal'
+      fullPath: '/proposals/$proposal'
+      preLoaderRoute: typeof ProposalsProposalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/r/$snapshot': {
@@ -585,6 +605,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicationsRoute: ApiPublicationsRoute,
   NNaddrRoute: NNaddrRouteWithChildren,
   PPubkeyRoute: PPubkeyRoute,
+  ProposalsProposalRoute: ProposalsProposalRoute,
   RSnapshotRoute: RSnapshotRouteWithChildren,
   ApiOgIdRoute: ApiOgIdRoute,
 }

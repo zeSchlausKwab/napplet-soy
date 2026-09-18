@@ -36,9 +36,9 @@ this note maps its local tooling commands to the installed napplet soyLI.
 - soyli build makes dist/index.html. Edit index.html, src/main.ts and
   src/styles.css; keep the upstream Vite configuration and dependency lockfile.
 - soyli config shows effective publishing targets without a signer or build.
-  config init writes them into napplet.json for older projects.
+  config init writes editable targets into the ignored .napplet-space/project.json binding.
 - For shared scores, matchmaking or peer connections, read docs/napplet-backend.md.
-  soyli backend init pins a visible provider and prepares public soy-backend.json.
+  soyli backend init pins a visible provider and prepares public .napplet-space/soy-backend.json.
   soyli dev runs an isolated copy of the backend automatically; publishing registers
   declared boards with the creator's authorization. Backend status checks connectivity.
 - For real-time multiplayer, read the responsive synchronization section of that guide.
@@ -62,17 +62,18 @@ this note maps its local tooling commands to the installed napplet soyLI.
   preview.recording.durationMs is 2000–8000; startMs is 0–10000 after normal startup.
   A changed build needs a fresh clip, or remove preview.video to publish only a PNG.
 - soyli publish --dry-run inspects source and destinations;
-  soyli publish publishes the existing build. Build after editing and
-  before publishing. Publication and checks never execute project scripts.
+  soyli publish requires a committed clean tree, builds dist/index.html projects,
+  then checks the artifact and publishes. Preview/review opening never runs build scripts.
 - For older single-file projects whose napplet.json entry is index.html, edit
   that file directly and use dev/check/publish; no build toolchain is required.
 
 ## Metadata and host support
 
-napplet.json owns this client's creator reference, name, identifier, topic labels,
-relay/resource hints and publication destinations. It replaces the upstream
-CLI's deployment configuration in this workflow; never put creator secrets in
-the project. Read it before publishing and tell the creator the effective targets.
+napplet.json contains portable name, description, runtime requirements and settings.
+.napplet-space/project.json contains the local creator, publication identifier,
+upstream and service overrides. soyli config shows effective destinations and both
+paths. This binding stays out of Git changes proposed upstream. Never put secrets
+in either file. Preserve the binding and journals when moving the project.
 
 New projects expose publish.networks.public and publish.networks.local explicitly:
 relay is the primary manifest/descriptor relay, blossom receives the HTML, source
@@ -121,20 +122,31 @@ Follow the creator's Git preferences and inspect git status and git diff first.
 Review the files being staged, including new files; do not sweep unrelated work or
 secrets into a commit, rewrite history, or push without the creator's authorization.
 
-Local commits and publication serve different purposes. soyli publish freezes the
-selected CURRENT FILE CONTENTS into a separate release repository inside the ignored
-.napplet-space journal, then sends that release history to the configured GRASP.
-It does not commit, push or back up the working repository's branches/history.
-Built projects include tracked and unignored untracked files by default, plus the
-built HTML and selected previews; publish.files can narrow source selection.
-An uncommitted file can therefore be published. Inspect soyli publish --dry-run
-before publishing. Keep private notes ignored and signing keys outside the project.
-GRASP holds published source releases, not unpublished work or all local checkpoints.
-Preserve a separate private backup of the project if those checkpoints matter.
+Use soyli checkpoint "Describe your changes" (or ordinary git add/commit) to save
+reviewed changes. soyli publish and soyli propose require a clean committed tree.
+When shared, code and pushed Git commit ancestry are public and open source by
+default. Ignoring a file does not erase its old committed contents. Keep private
+notes and generated state ignored and keys outside the project. The public source
+archive is the actual Git tree; ignored built HTML and previews are separate blobs.
+
+One remix supports both paths, in either order:
+- soyli publish releases your own version under its local publication identity.
+- soyli propose "Description" submits an ordinary NIP-34 proposal upstream with a
+  checked runnable preview. Run it again after a new checkpoint to update that PR.
+  Use propose --resume after an interrupted submission.
+- soyli review opens the local proposal inbox, source diff and original/proposed
+  player. Opening a review never runs contributor setup/build scripts. Explicit
+  review <id> --rebuild opts into them in a temporary checkout.
+- soyli proposals --json gives agent-readable proposals and exact revisions.
+- soyli merge <id> --revision <event-id> --target <reviewed-HEAD> merges locally.
+  soyli push publishes Git state; soyli publish separately releases the napplet.
+Use the same selected revision for testing and merge. A changed target or proposal
+requires another review. Ordinary Git/ngit remain available for branches, patches,
+conflicts and maintainer layouts outside this simple creator workflow.
 
 ## Pause and resume an existing creation
 
-Keep the same folder, .git history, napplet.json creator/identifier and ignored
+Keep the same folder, .git history, napplet.json and local publication binding in the ignored
 .napplet-space journal. For an AI handoff, save a private .napplet-space/RESUME.md
 with the current goal, changed files, checks and results, known host limitations,
 and next steps. Never include credentials. Do not put a private handoff in public

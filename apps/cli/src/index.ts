@@ -226,6 +226,20 @@ try {
   if (!['publish', 'status', 'propose'].includes(command) && publishingOptions)
     throw new AccountError('USAGE', 'Publication options are only valid for publish/status.');
   if (
+    command === 'propose' &&
+    (values['dry-run'] ||
+      values.refresh ||
+      values.relay ||
+      values.blossom ||
+      values.grasp ||
+      values.site ||
+      values.mirror)
+  )
+    throw new AccountError(
+      'USAGE',
+      'Propose accepts --resume and uses the targets shown by soyli config. Edit those targets before proposing; --dry-run is only available for publish.',
+    );
+  if (
     (values['no-install'] && !['new', 'remix'].includes(command)) ||
     (values.project &&
       ![

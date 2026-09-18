@@ -131,6 +131,7 @@ export async function prepareSource(input: {
   local?: boolean;
   createdAt?: number;
   upstream?: string;
+  announcement?: SignedEvent;
   releaseRefs?: Record<string, string>;
 }) {
   const origin = graspOrigin(input.origin, input.local);
@@ -172,14 +173,16 @@ export async function prepareSource(input: {
     return event;
   }
   return {
-    announcement: await sign(30617, [
-      ['d', input.identifier],
-      ['name', input.title],
-      ...(input.upstream ? [['u', input.upstream]] : []),
-      ['clone', urls.clone],
-      ['relays', urls.relay],
-      ['r', roots[0], 'euc'],
-    ]),
+    announcement: input.announcement
+      ? verifiedEvent(input.announcement)
+      : await sign(30617, [
+          ['d', input.identifier],
+          ['name', input.title],
+          ...(input.upstream ? [['u', input.upstream]] : []),
+          ['clone', urls.clone],
+          ['relays', urls.relay],
+          ['r', roots[0], 'euc'],
+        ]),
     // This first publishing adapter explicitly owns one main branch. It never pushes private local branches or tags.
     state: await sign(30618, [
       ['d', input.identifier],

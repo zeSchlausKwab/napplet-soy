@@ -31,15 +31,15 @@ The tested release must record exact SDK, shim, template, conformance, ngit, GRA
 
 ## 2. Domain identities
 
-| Entity | Identifier | Meaning |
-| --- | --- | --- |
-| Creator | Nostr public key | Author who signs the napplet's releases |
-| Napplet | `35129:<author-hex>:<d-tag>` or `15129:<author-hex>:` | Stable identity across title changes and releases |
-| Release | Signed kind-5129 snapshot event ID | Immutable reference to one publication |
-| Artifact | NIP-5A aggregate hash | Identity of the playable files, independent of metadata |
-| Source repository | `30617:<maintainer-hex>:<repo-id>` | NIP-34 repository address |
-| Source revision | Repository address plus exact Git object ID | Source selected for a release |
-| Remix | New napplet address plus parent release reference | Independent creation with explicit ancestry |
+| Entity            | Identifier                                            | Meaning                                                 |
+| ----------------- | ----------------------------------------------------- | ------------------------------------------------------- |
+| Creator           | Nostr public key                                      | Author who signs the napplet's releases                 |
+| Napplet           | `35129:<author-hex>:<d-tag>` or `15129:<author-hex>:` | Stable identity across title changes and releases       |
+| Release           | Signed kind-5129 snapshot event ID                    | Immutable reference to one publication                  |
+| Artifact          | NIP-5A aggregate hash                                 | Identity of the playable files, independent of metadata |
+| Source repository | `30617:<maintainer-hex>:<repo-id>`                    | NIP-34 repository address                               |
+| Source revision   | Repository address plus exact Git object ID           | Source selected for a release                           |
+| Remix             | New napplet address plus parent release reference     | Independent creation with explicit ancestry             |
 
 Use a short generated `d-tag`, for example `plasma-k4m2`, with a separate editable display title. Limit generated IDs to 1–13 lowercase letters/digits/hyphens, with no trailing hyphen, as a conservative profile choice; do not claim the current napplet implementation itself enforces that length. Never derive identity solely from a mutable title or globally reserve titles.
 
@@ -108,14 +108,14 @@ A creator signature and matching source archive prove what the creator published
 
 ## 7. Social event mapping
 
-| Interaction | Protocol | Space aggregation rule |
-| --- | --- | --- |
-| Profiles | Nostr kind 0 | Existing author identity; merge updates according to Nostr rules |
-| Like | [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md), kind 7 | Include required target `e` and addressable `a` reference; count one active like per actor and napplet address across releases |
-| Comment | [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md), kind 1111 | Root at napplet address; include the required root/parent tags, author tags, kinds, and current target event reference |
-| Reply | NIP-22, kind 1111 | Preserve root napplet scope, point parent at the comment |
-| Zap | [NIP-57](https://github.com/nostr-protocol/nips/blob/master/57.md), request 9734 and receipt 9735 | Pay creator; use address reference and the relevant event reference; aggregate validated receipts across versions |
-| Retraction | NIP-09 deletion request | Apply only where ownership and protocol rules authorize it; do not promise network-wide erasure |
+| Interaction | Protocol                                                                                          | Space aggregation rule                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Profiles    | Nostr kind 0                                                                                      | Existing author identity; merge updates according to Nostr rules                                                               |
+| Like        | [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md), kind 7                        | Include required target `e` and addressable `a` reference; count one active like per actor and napplet address across releases |
+| Comment     | [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md), kind 1111                     | Root at napplet address; include the required root/parent tags, author tags, kinds, and current target event reference         |
+| Reply       | NIP-22, kind 1111                                                                                 | Preserve root napplet scope, point parent at the comment                                                                       |
+| Zap         | [NIP-57](https://github.com/nostr-protocol/nips/blob/master/57.md), request 9734 and receipt 9735 | Pay creator; use address reference and the relevant event reference; aggregate validated receipts across versions              |
+| Retraction  | NIP-09 deletion request                                                                           | Apply only where ownership and protocol rules authorize it; do not promise network-wide erasure                                |
 
 Persist raw signed events and deduplicate by event ID. Resolve event-only legacy references through known manifest history where possible; do not invent missing relationships. Validate referenced authors and event kinds rather than trusting tags alone. For reactions, a deleted old like must not erase a newer like; define active-event reduction and cover it with fixtures.
 
@@ -160,3 +160,20 @@ change NIP-5D manifests, NAP permissions, artifact formats or publisher eligibil
 NIP-98 remains the admin request protocol. Saved credentials stay in the trusted
 host; running napplets receive only the existing public identity notifications.
 See [identity](IDENTITY.md#website-sign-in) and [moderation](MODERATION.md).
+
+## Git proposals and optional built review — soyLI 0.12.0 (local)
+
+The collaboration adapter follows [NIP-34 at
+6d2979b3f503a8539c983efbcdcf901bbcf9ed23](https://github.com/nostr-protocol/nips/blob/6d2979b3f503a8539c983efbcdcf901bbcf9ed23/34.md):
+1618 roots, author-only 1619 revisions, 1111 discussion and authorized 1630–1633
+status. Publication now preserves real Git history. A single remix can publish an
+independent napplet or propose the same changes upstream; neither happens merely
+on clone. Proposal refs use GRASP-01 `refs/nostr/<event-id>` without updating a
+maintainer branch. The existing GRASP 3.0.2 pin is retained.
+
+The optional `soy-preview` tag binds a hash-addressed JSON descriptor, signed
+snapshot and source commit to the exact PR revision. It adds no requirement to
+NIP-34 discovery or NIP-5D playback; attachments are not gallery publications.
+See [the complete attachment and review contract](COLLABORATION.md). The selected
+NIP-5D authority and all NAP pins remain unchanged. This is local implementation,
+not a claim of production rollout or source-to-build reproducibility.

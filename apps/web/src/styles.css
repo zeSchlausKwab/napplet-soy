@@ -2986,3 +2986,121 @@ a.nostr-creator:hover .creator-name {
 .comment-napplet .player-expanded { border-radius: 0; }
 .comment-napplet .player-controls { flex-wrap: wrap; }
 @media(max-width: 480px) { .comment-media > img, .comment-media > video { max-height: 320px; } }
+
+/* NIP-34 collaboration: a compact source inbox, with deliberate playback. */
+.proposal-section {
+  margin-block: 2.5rem 4rem;
+}
+.proposal-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.proposal-count {
+  font: 0.8rem var(--font-mono, monospace);
+  color: var(--muted-foreground);
+}
+.proposal-list {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1.4rem 0;
+}
+.proposal-row {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: transparent;
+  cursor: pointer;
+}
+.proposal-row:hover,
+.proposal-row.selected {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+.proposal-row strong {
+  display: block;
+}
+.proposal-row small,
+.proposal-state {
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+}
+.proposal-row small {
+  display: block;
+  margin-top: 0.35rem;
+}
+.proposal-review {
+  padding: 1.4rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--primary) 3%, transparent);
+}
+.proposal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+.proposal-toolbar select {
+  max-width: 100%;
+  font-size: 0.8rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--background);
+}
+.proposal-description,
+.proposal-comments p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.proposal-command {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  background: #293126;
+  color: #e2e7d8;
+  border-radius: 0.7rem;
+  margin-top: 1.3rem;
+}
+.proposal-command code {
+  flex: 1;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.proposal-command button {
+  flex-shrink: 0;
+}
+.proposal-comments article {
+  padding: 0.8rem 0;
+}
+.proposal-comments small {
+  color: var(--muted-foreground);
+}
+.proposal-section .muted {
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+}
+@media (max-width: 640px) {
+  .proposal-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .proposal-review {
+    padding: 0.8rem;
+  }
+  .proposal-toolbar label {
+    width: 100%;
+  }
+  .proposal-command {
+    gap: 0.4rem;
+    padding: 0.6rem;
+  }
+}

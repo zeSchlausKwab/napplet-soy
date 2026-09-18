@@ -153,9 +153,12 @@ export function proposalsFromEvents(repo: Repository, inputs: SignedEvent[]): Pr
     };
   });
 }
-export async function readProposals(client: ProtocolClient, repo: Repository) {
+export async function readProposals(client: ProtocolClient, repo: Repository, selected?: string) {
   const roots = await client.query(
-    [{ kinds: [1617, 1618], '#a': [repo.address], limit: 100 }],
+    [
+      { kinds: [1617, 1618], '#a': [repo.address], limit: 100 },
+      ...(selected ? [{ kinds: [1617, 1618], ids: [proposalId(selected)], limit: 1 }] : []),
+    ],
     repo.relays,
   );
   if (!roots.length) return [];

@@ -17,28 +17,28 @@ Start the platform services with `bun run dev` or `bun run dev:prod`. Set up/sel
 
 An ordinary `publish` checks the current project. If a different unfinished release exists, it stops and explains `--resume`. Explicit resume finishes the saved bytes and metadata even while the editor contains newer changes. Publish again afterward to release the newer revision. There is no implicit retargeting, discard, force-overwrite, or rollback command.
 
-## Local Git and GRASP release history
+## Real Git history
 
-The working repository is the developer's checkpoint history. Scaffolding initializes
-it without making a commit; developers and their agents should create reviewed local
-commits as work progresses, including an honest checkpoint before pausing unfinished
-work. Publishing neither creates those commits nor requires them to exist.
+Source is the actual committed working repository. Save a checkpoint with
+`soyli checkpoint "Describe the change"` or ordinary Git before sharing. The CLI
+requires a clean source tree and builds projects with `entry: dist/index.html`
+before its sandbox check. Build output and screenshots are separate release inputs;
+Git commits and authorship are preserved, and the source archive is that exact tree.
 
-For built projects, the publisher selects tracked and unignored untracked files by
-default (or the explicit `publish.files` selection), plus the built HTML and selected
-previews. It reads their **current contents**, not their last committed versions.
-`--dry-run` shows the selection before publication. Ignoring a file does not untrack
-it; review the selection rather than relying on a clean Git status or `.gitignore`
-alone. Source safety checks also reject private/generated paths and likely credentials.
+Code and the ancestry reachable from the pushed main/release refs are public and
+open source by default. Other local branches are not pushed automatically. History
+checks reject known credential paths/content, including deleted files still reachable
+in history. These checks cannot prove an absence of secrets. Ignoring a file does not
+remove a previously committed version. `publish.files` may include additional release
+inputs, but no longer conceals tracked files or old commits from a Git publication.
 
-The selected bytes are frozen into a separate Git repository inside the ignored
-`.napplet-space` publication journal. Each new release descends from the previous
-published release. This release repository is what goes to the configured GRASP
-(by default `https://git.napplet.soy`); its exact commit is also archived to Blossom.
-The working `.git`, branches, staging area, hooks and private commit history are not
-pushed or changed. GRASP therefore retains published release history, not all local
-development checkpoints or unpublished work. Keep a separate private project backup
-and preserve the journal for subsequent releases and retries.
+The journal retains the committed source and frozen build inputs for retry; it does
+not manufacture a separate release history. `source-commit` equals the real source
+HEAD. Existing synthetic-history journals require explicit migration or a fresh
+publication identity; automatic adoption/rewriting is not performed.
+
+One remix can be published independently and proposed upstream in either order.
+See [collaboration](COLLABORATION.md) for proposals, built review and maintainer actions.
 
 ## Destinations and identity
 
@@ -49,34 +49,40 @@ and preserve the journal for subsequent releases and retries.
 
 The managed public defaults are deployed at napplet.soy. Public mode additionally mirrors manifests to `wss://relay.damus.io` and `wss://nos.lol`. Local mode has no public mirrors or fallback. Automated publication tests use isolated services; public deployment checks verify existing content without writing test publications. See the dated verification records in [deployment](DEPLOYMENT.md).
 
-Override destinations with `--relay`, `--blossom`, `--grasp`, `--site` and repeated `--mirror`. Alternatively put `relay`, `blossom`, `grasp`, `site` and `mirrors` in `napplet.json.publish`; an empty `mirrors` array disables mirrors. Flags take precedence over project settings and defaults. Persist custom defaults in the project if subsequent ordinary publishes should use them without flags. `--resume` uses the journal's original destinations; conflicting overrides are rejected.
+Override destinations with `--relay`, `--blossom`, `--grasp`, `--site` and repeated `--mirror`. Alternatively put `relay`, `blossom`, `grasp`, `site` and `mirrors` in `.napplet-space/project.json` under `project.publish`; an empty `mirrors` array disables mirrors. Flags take precedence over project settings and defaults. Persist custom defaults in the project if subsequent ordinary publishes should use them without flags. `--resume` uses the journal's original destinations; conflicting overrides are rejected.
 
 Public endpoints require HTTPS/WSS without credentials, query strings or fragments; service origins have no path. Literal private IPs and localhost/local names are rejected. Local service endpoints require literal-loopback HTTP/WS. The website link may use localhost. These CLI endpoints are operator/creator configuration, not URLs taken from untrusted gallery metadata; DNS pinning against rebinding is implemented in the gallery downloader, not this publisher.
 
-An existing project `creator` must match the selected account and network. No credentials are selected from a project's public key. A missing creator reference uses the selected account. Each generated identifier is stable and independent of its title; older starter projects derive a stable 13-character identifier from their existing `previewId`. Changing the identity or service destinations of a published project requires a separate project. Restoring a lost journal is required to continue an existing remote identity safely; automatic adoption and remix remain ahead.
+An existing project `creator` must match the selected account and network. No credentials are selected from a project's public key. A missing creator reference uses the selected account. Each generated identifier is stable and independent of its title; older starter projects derive a stable 13-character identifier from their existing `previewId`. Changing the identity or service destinations of a published project requires a separate project. Restoring a lost journal is required to continue an existing remote identity safely; automatic journal adoption remains separate work; remix is supported.
 
 ## Source and sandbox checks
 
-For legacy `entry: index.html` projects, the default public file set is `index.html`, `napplet.json`, `LICENSE`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `dev.ts`, `package.json`, `.gitignore`, and the three bundled `.napplet` preview files. Missing optional files are omitted. `publish.files` can specify up to 128 explicit relative files; HTML, configuration and license are always required. Paths cannot contain whitespace/traversal or symlinks. The complete selected source is limited to 40 MiB; HTML is limited to 10 MiB and must be nonempty UTF-8. A nonempty license file is required. Unsupported mandatory NAP domains are rejected.
+Tracked source and selected release inputs are inspected, up to 128 files and
+40 MiB; playable HTML is limited to 10 MiB. A nonempty LICENSE is required. Managed
+Git history is bounded to 10,000 reachable objects and 40 MiB of blobs. Regular
+relative paths are required; symlinks, submodules, Git attributes/modules, private
+state/dependency folders and likely credentials are refused. Git hooks are disabled.
 
-The publisher rejects credential filenames, Git internals, dependency folders, `.env` files, Git attribute/module files and several recognizable credential formats. These checks reduce accidental disclosure; they do not prove the source contains no secrets. Dry-run and the interactive publication summary make the scope reviewable. Nothing invokes project build scripts, package lifecycle commands or Git hooks.
-
-Source is copied into a dedicated release repository under the ignored `.napplet-space` directory. Each release commit descends from the prior published commit and retains its release tag. The ordinary working repository and its index are untouched; unrelated branches, unselected files and earlier private commits are not pushed. This intentionally revises the original proposal to commit the whole local working repository. Extra source files must be selected explicitly. Automatic preservation of an arbitrary repository's history is not implemented.
+The CLI builds source only on explicit publish/propose/build commands. Library
+callers supply their built artifact; checks and merely opening a review do not run
+project scripts. Standard build metadata and required NAP domains are checked.
 
 The browser check runs the frozen HTML under our current shared host, CSP, opaque iframe sandbox and shim. It checks startup, the shell handshake, script errors and CSP violations, while blocking external network requests. It does not use an inherited preview server or modified runtime bundle. This is a startup smoke check, not comprehensive gameplay, performance, NAP, or external-service conformance testing. The compiler runs in a fresh Bun process to avoid the pinned runtime's known build/read issue after networking. The check report records the runtime profile and browser version.
 
 The archive is Git's tar of the exact frozen commit and contains the selected regular files. The playable artifact is the archived entry selected in `napplet.json`: `index.html`
 for legacy projects or `dist/index.html` for the upstream boilerplate. Built projects
 include Git-visible source files plus their ignored built HTML by default, so the
-repository retains editable TypeScript, the locked toolchain configuration and the
-exact executable artifact. The publisher reads standard `napplet-requires` metadata
-from built HTML in addition to configured requirements. It never runs build scripts;
-creators must build their latest source before publishing. This records exact bytes,
+release journal retains editable TypeScript, the locked toolchain configuration and
+the executable artifact. The Git repository and source tar preserve the actual
+committed source tree; ignored build output is a separate Blossom artifact. The
+publisher reads standard `napplet-requires` metadata from built HTML in addition to
+configured requirements. CLI publish/propose build dist projects before calling the
+sandbox checker; the checker itself executes only the frozen HTML. This records exact bytes,
 not an independently reproducible-build attestation. Both tar and HTML are uploaded to Blossom and independently retrieved/hash-checked.
 
 ## Journal and retry behavior
 
-`.napplet-space/<network>/index.json` selects the pending/latest job. Each job directory stores its public plan, source repository, archive, signed events, checks and receipts. The journal has a schema and content fingerprints. An exclusive SQLite lock covers the project across processes and network profiles; OS process exit releases it. Atomic JSON replacement and fsync preserve completed checkpoints. Native Git objects and source files are also retained locally. Keep this directory when moving to another machine: dropping it loses the retry/concurrency history.
+`.napplet-space/<network>/index.json` selects the pending/latest job. Each job directory stores its public plan, clean source repository, separate frozen `files/` inputs, archive, signed events, checks and receipts. The journal has a schema and content fingerprints. An exclusive SQLite lock covers the project across processes and network profiles; OS process exit releases it. Atomic JSON replacement and fsync preserve completed checkpoints. Native Git objects and source files are also retained locally. Keep this directory when moving to another machine: dropping it loses the retry/concurrency history.
 
 1. Inspect the source and selected identity. Query the newest remote current manifest and Git announcement/state with an explicit completed relay query.
 2. Run the sandbox check; reject edits made during that check. Freeze the file set, commit and source archive.
@@ -104,7 +110,7 @@ Source state retains at most 128 release refs in this initial adapter. Reaching 
 
 Publication uses the authoritative [pinned NIP-5D proposal](https://github.com/dskvr/nips/blob/24711d9c47bbdd07908bf1d52bf677d9cbc530f0/5D.md), the [NIP-5A manifest tag schema](https://github.com/nostr-protocol/nips/blob/master/5A.md), and [NIP-34 Git URLs/state](https://github.com/nostr-protocol/nips/blob/master/34.md). Named current events are kind 35129, snapshots are kind 5129 without a `d` tag, and both carry the same single `/index.html` mapping, aggregate, server hints, title/description, required domains and optional topic hashtags. Snapshot `a` references its own napplet address. `source` is an ordinary `nostr://` repository URL.
 
-Two optional provenance tags, `source-commit` and `source-archive`, carry the exact Git commit and content-addressed source tar URL. These are Space publishing conventions, not NIP-5D requirements. Clients may ignore them; ordinary `source`, manifest and Blossom discovery still work. There is no mandatory descriptor, branded hashtag or current-to-snapshot pointer. Automatic screenshot/video upload and linked descriptor authoring remain ahead; the existing reader continues to accept other clients' optional preview metadata.
+Two optional provenance tags, `source-commit` and `source-archive`, carry the exact Git commit and content-addressed source tar URL. These are Space publishing conventions, not NIP-5D requirements. Clients may ignore them; ordinary `source`, manifest and Blossom discovery still work. There is no mandatory descriptor, branded hashtag or current-to-snapshot pointer. Automatic screenshots and optional video descriptor authoring are supported; metadata from other clients remains optional.
 
 ## Verification
 
@@ -123,7 +129,7 @@ Persistent website ingestion, confirmed playable links, authenticated names, the
 
 Run `soyli config` to inspect effective destinations without an account,
 build, or network request. `soyli config init` materializes the current
-network's targets in an older project's `napplet.json`. New projects and remixes
+network's targets in `.napplet-space/project.json` under `project.publish`. New projects and remixes
 include explicit public and local profiles:
 
 ```json
@@ -153,7 +159,7 @@ include explicit public and local profiles:
 Merge this into the existing project configuration; do not replace its identity,
 entry, license, or other metadata. Precedence is CLI target flags, selected
 `publish.networks` profile, legacy direct `publish` fields, then built-in defaults.
-`publish.files` remains a shared source selection. Top-level `relays` and `servers`
+`publish.files` can add release inputs but does not remove tracked Git history. Top-level `relays` and `servers`
 are runtime read/resource hints; they are never upload destinations.
 
 `relay` receives signed manifests and preview descriptors. `blossom` receives

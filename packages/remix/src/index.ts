@@ -170,13 +170,18 @@ export async function loadRemix(reference: string, network: Network, signal: Abo
   if (!artifact) throw new Error('No verified download is available for this version');
   let files: Map<string, Uint8Array> | undefined;
   const archive = manifest.tags.find((t) => t[0] === 'source-archive')?.[1];
+  let archiveError: unknown;
   if (archive) {
-    const url = new URL(archive),
-      hash = /\/([a-f0-9]{64})(?:\.tar)?$/.exec(url.pathname)?.[1];
-    if (!hash) throw new Error('The signed source archive needs a content hash');
-    const bytes = await remixBytes(url, network === 'local', signal, 50 * 1024 * 1024);
-    if ((await sha256(bytes)) !== hash) throw new Error('Source archive hash mismatch');
-    files = sourceArchive(bytes);
+    try {
+      const url = new URL(archive),
+        hash = /\/([a-f0-9]{64})(?:\.tar)?$/.exec(url.pathname)?.[1];
+      if (!hash) throw new Error('The signed source archive needs a content hash');
+      const bytes = await remixBytes(url, network === 'local', signal, 50 * 1024 * 1024);
+      if ((await sha256(bytes)) !== hash) throw new Error('Source archive hash mismatch');
+      files = sourceArchive(bytes);
+    } catch (error) {
+      archiveError = error;
+    }
   }
   let repository: Awaited<ReturnType<typeof readRepository>> | undefined;
   const source = manifest.tags.find((t) => t[0] === 'source')?.[1];
@@ -197,6 +202,7 @@ export async function loadRemix(reference: string, network: Network, signal: Abo
       client.close();
     }
   }
+  if (archiveError && !repository) throw archiveError;
   return { manifest, artifact, files, repository, network };
 }
 
@@ -228,6 +234,9 @@ export async function createRemix(
         lineage.sourceCommit,
         input.network === 'local',
       );
+      const clonedProject = projectSchema.parse(
+        await Bun.file(join(target, 'napplet.json')).json(),
+      );
       const previewId = crypto.randomUUID();
       await writeBinding(target, {
         version: 1,
@@ -246,7 +255,12 @@ export async function createRemix(
           manifest: input.manifest,
         },
       });
-      return { directory: target, lineage, source: 'git', needsSetup: entry === 'dist/index.html' };
+      return {
+        directory: target,
+        lineage,
+        source: 'git',
+        needsSetup: clonedProject.entry === 'dist/index.html',
+      };
     }
     for (const [path, bytes] of files) {
       if (path === 'napplet.json') continue;

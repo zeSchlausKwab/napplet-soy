@@ -74,7 +74,14 @@ export async function cloneRevision(
 }
 export async function mergeReviewed(
   directory: string,
-  input: { head: string; target: string; revision: string; clones: string[]; local?: boolean },
+  input: {
+    head: string;
+    target: string;
+    revision: string;
+    clones: string[];
+    local?: boolean;
+    author?: string;
+  },
 ) {
   const current = await committedSource(directory);
   if (current !== input.target)
@@ -87,16 +94,27 @@ export async function mergeReviewed(
   });
   if ((await committedSource(directory)) !== current)
     throw new Error('The target changed during preparation.');
-  await sourceGit(directory, [
-    '-c',
-    'core.fsmonitor=false',
-    'merge',
-    '--no-ff',
-    '--no-edit',
-    '-m',
-    `Merge proposal ${input.revision}`,
-    input.head,
-  ]);
+  await sourceGit(
+    directory,
+    [
+      '-c',
+      'core.fsmonitor=false',
+      'merge',
+      '--no-ff',
+      '--no-edit',
+      '-m',
+      `Merge proposal ${input.revision}`,
+      input.head,
+    ],
+    input.author
+      ? {
+          GIT_AUTHOR_NAME: input.author,
+          GIT_AUTHOR_EMAIL: `${input.author}@nostr`,
+          GIT_COMMITTER_NAME: input.author,
+          GIT_COMMITTER_EMAIL: `${input.author}@nostr`,
+        }
+      : {},
+  );
   return {
     state: 'merged_locally' as const,
     commit: await committedSource(directory),

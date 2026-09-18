@@ -166,7 +166,6 @@ iframe permission is introduced. Unknown references require verified napplet
 resolution before playback. Site aliases remain site-local; optional presentation
 does not change interoperability. See [rich comment limits](COMMUNITY.md#rich-comment-presentation--2026-09-15).
 
-
 ## Runtime relay routing correction — 2026-09-15
 
 Rechecked [NAP-OUTBOX proposal 32](https://github.com/napplet/naps/pull/32) and
@@ -178,7 +177,6 @@ reads with public destination checks, bounded filters/streams, TLS and cancellat
 Publishing remains disabled in playback. This fixes the discovery/runtime allowlist
 conflation; it does not claim full outbox intelligence or publishing conformance.
 See [implemented routing policy](PUBLIC-RUNTIME.md#runtime-relay-routing--soyli-082).
-
 
 ## Read deadline correction — 2026-09-15
 
@@ -227,3 +225,18 @@ addresses, SDP and credentials. No diagnostic operation is added to the napplet 
 the self-contained [creator guide](BACKEND-CREATOR.md) ships with soyLI. These
 engineering fixtures do not substitute for an isolated creator using only the
 released CLI and shell, or for cross-network transport tests.
+
+## 2026-09-18 — Git collaboration review
+
+NIP-34 reviewed at `6d2979b3f503a8539c983efbcdcf901bbcf9ed23` against the
+[official specification](https://github.com/nostr-protocol/nips/blob/6d2979b3f503a8539c983efbcdcf901bbcf9ed23/34.md)
+and ngit's [PR guide](https://ngit.dev/pull-requests). GRASP remains pinned to
+3.0.2 / `cdda4a23fe5dede2411e18aaa8b82c1747c97ddf`; its standard PR purgatory
+requires target Git data, so the client pushes the signed event ref and verifies
+relay read-back rather than treating an OK acknowledgement as discoverability.
+Optional GRASP-06 hosting is not required or enabled by this change.
+
+No NAP or authoritative NIP-5D pin changes. Built review reuses normal sandbox
+playback with separate state and guest identity. Optional `soy-preview` is a Soy
+attachment convention, explicitly documented in [COLLABORATION.md](COLLABORATION.md),
+not claimed as a standardized NAP or prerequisite for external proposals.

@@ -155,6 +155,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
           </div>
           <Genealogy manifest={napplet.manifest} />
           <SourceSection
+            manifest={napplet.manifest}
             revision={napplet.revisionId}
             hasArchive={napplet.manifest.tags.some((tag) => tag[0] === 'source-archive')}
           />

@@ -609,6 +609,7 @@ test('collaboration: two creators publish, propose, review the exact Git tip, me
       target: sourceTip,
     });
     expect(merged).toMatchObject({ state: 'merged_locally', released: false, pushed: false });
+    expect(await sourceGit(original, ['log', '-1', '--format=%an'])).toBe(alice.pubkey);
     expect((await readProposals(client, repo))[0].status).toBe('open');
     await pushSource({ directory: original, network: 'local', accounts: owner });
     expect((await readProposals(client, repo))[0].status).toBe('merged');
@@ -622,6 +623,282 @@ test('collaboration: two creators publish, propose, review the exact Git tip, me
     expect(await sourceGit(original, ['merge-base', '--is-ancestor', updated.head, 'HEAD'])).toBe(
       '',
     );
+
+    // Propose before a personal napplet exists; interrupt after Git and retry identical bytes.
+    const authorIndex = await new Journal(original, 'local').index();
+    const authorJob = await new Journal(original, 'local').load(authorIndex.latest!);
+    const second = await createRemix(
+      services.directory,
+      'proposal-first',
+      await loadRemix(
+        nip19.neventEncode({ id: authorJob.current!.id, relays: [services.targets.relay] }),
+        'local',
+        AbortSignal.timeout(15000),
+      ),
+    );
+    const secondBinding = (await readBinding(second.directory))!;
+    secondBinding.project.creator = { pubkey: bob.pubkey, network: 'local' };
+    secondBinding.project.publish = { networks: { local: services.targets } };
+    await writeBinding(second.directory, secondBinding);
+    await Bun.write(join(second.directory, 'index.html'), '<p>A third idea</p>');
+    await checkpoint(second.directory, 'Third idea', bob.pubkey);
+    const secondOptions = { ...options, directory: second.directory, description: 'Third idea' };
+    let checks = 0;
+    await expect(
+      propose({
+        ...secondOptions,
+        check: async () => {
+          checks++;
+          return check();
+        },
+        checkpoint: async (phase) => {
+          if (phase === 'source') throw new Error('Simulated interruption after Git push');
+        },
+      }),
+    ).rejects.toThrow('Simulated interruption');
+    const recovered = await propose({
+      ...secondOptions,
+      resume: true,
+      check: async () => {
+        checks++;
+        return check();
+      },
+    });
+    expect(checks).toBe(1);
+    expect(recovered.proposal).not.toBe(proposed.proposal);
+    expect((await new Journal(second.directory, 'local').index()).latest).toBeNull();
+    expect(
+      await readRelay(services.targets.grasp.replace('http:', 'ws:') + '/', {
+        ids: [recovered.proposal],
+      }),
+    ).toHaveLength(1);
+    await proposalAction({
+      directory: original,
+      network: 'local',
+      accounts: owner,
+      proposal: recovered.proposal,
+      action: 'comment',
+      text: 'Please tune the controls',
+    });
+    await proposalAction({
+      directory: original,
+      network: 'local',
+      accounts: owner,
+      proposal: recovered.proposal,
+      action: 'close',
+      text: 'Later',
+    });
+    expect(
+      (await readProposals(client, repo)).find((p) => p.root.id === recovered.proposal)?.status,
+    ).toBe('closed');
+    await Bun.write(join(second.directory, 'README.md'), 'A third proposal update');
+    await checkpoint(second.directory, 'Document third idea', bob.pubkey);
+    await expect(propose(secondOptions)).rejects.toThrow('Reopen');
+    await proposalAction({
+      directory: original,
+      network: 'local',
+      accounts: owner,
+      proposal: recovered.proposal,
+      action: 'reopen',
+    });
+    expect(
+      (await readProposals(client, repo)).find((p) => p.root.id === recovered.proposal)?.status,
+    ).toBe('open');
+
+    // Browser acceptance uses the same one-command review entry point.
+    const { review } = await import('../../apps/cli/src/review');
+    const { browserEngine } = await import('../../apps/cli/src/browser');
+    const browser = await (await browserEngine()).chromium.launch({ headless: true });
+    const lifetime = new AbortController();
+    try {
+      await review({
+        directory: original,
+        network: 'local',
+        accounts: owner,
+        reference: recovered.proposal,
+        noOpen: true,
+        signal: lifetime.signal,
+        ready: async ({ url }) => {
+          const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+          await page.goto(url);
+          await page.getByRole('heading', { name: 'Third idea', exact: true }).waitFor();
+          await page.locator('[data-tab="diff"]').click();
+          await page.waitForFunction(() =>
+            document.querySelector('#content')?.textContent?.includes('A third idea'),
+          );
+          await page.locator('[data-tab="proposed"]').click();
+          await page.waitForFunction(() =>
+            document.querySelector('#content iframe')?.getAttribute('src'),
+          );
+          await page.frameLocator('#content iframe').locator('iframe').waitFor();
+          expect(
+            await page.frameLocator('#content iframe').locator('iframe').getAttribute('sandbox'),
+          ).toBe('allow-scripts');
+          await page.screenshot({
+            path: join(import.meta.dir, '../../.local/collaboration-review.png'),
+            fullPage: true,
+          });
+          const status = await page.evaluate(
+            async () =>
+              (
+                await fetch('/action', {
+                  method: 'POST',
+                  headers: { 'x-review-token': 'wrong' },
+                  body: '{}',
+                })
+              ).status,
+          );
+          expect(status).toBe(403);
+          await page.setViewportSize({ width: 390, height: 844 });
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          ).toBe(true);
+          lifetime.abort();
+        },
+      });
+    } finally {
+      lifetime.abort();
+      await browser.close();
+    }
+
+    // Explicit source rebuild also works for single-file projects, without package scripts.
+    const rebuiltLifetime = new AbortController();
+    await review({
+      directory: original,
+      network: 'local',
+      accounts: owner,
+      reference: recovered.proposal,
+      rebuild: true,
+      noOpen: true,
+      signal: rebuiltLifetime.signal,
+      ready: async ({ url }) => {
+        const u = new URL(url),
+          token = u.hash.slice(1);
+        const response = await fetch(`${u.origin}/play`, {
+          method: 'POST',
+          headers: { 'x-review-token': token },
+          body: JSON.stringify({ id: recovered.proposal, revision: recovered.revision }),
+        });
+        expect(response.status).toBe(200);
+        expect((await fetch((await response.json()).url)).status).toBe(200);
+        rebuiltLifetime.abort();
+      },
+    });
+
+    let reviewedRevision = recovered.revision;
+    // The production web bundle reads the same proposal and Blossom attachment directly.
+    const { initializePolicy } = await import('../../packages/moderation/src/policy');
+    const policy = join(services.directory, 'web-policy.json');
+    initializePolicy(policy);
+    const probe = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: () => new Response() });
+    const webPort = probe.port;
+    probe.stop(true);
+    const origin = `http://127.0.0.1:${webPort}`;
+    const web = Bun.spawn([process.execPath, 'apps/web/server.ts'], {
+      cwd: join(import.meta.dir, '../..'),
+      env: {
+        PATH: process.env.PATH,
+        HOST: '127.0.0.1',
+        PORT: String(webPort),
+        SPACE_SITE_ORIGIN: origin,
+        SPACE_INDEX_RELAYS: [
+          services.targets.relay,
+          services.targets.grasp.replace('http:', 'ws:') + '/',
+        ].join(','),
+        SPACE_INDEX_DIR: join(services.directory, 'web-index'),
+        SPACE_INDEX_LOCAL_BLOSSOM: services.targets.blossom,
+        SPACE_PUBLICDEV: '0',
+        SPACE_MODERATION_FILE: policy,
+      },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const webOut = new Response(web.stdout).text(),
+      webErr = new Response(web.stderr).text();
+    const webBrowser = await (await browserEngine()).chromium.launch({ headless: true });
+    try {
+      let ready = false;
+      for (let i = 0; i < 100; i++) {
+        try {
+          if ((await fetch(origin)).ok) {
+            ready = true;
+            break;
+          }
+        } catch {}
+        await Bun.sleep(100);
+      }
+      if (!ready) throw new Error('Web proposal test server did not start');
+      const page = await webBrowser.newPage({ viewport: { width: 1365, height: 1000 } }),
+        errors: string[] = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      await page.goto(`${origin}/proposals/${recovered.proposal}`);
+      await page.getByRole('button', { name: 'Play proposed', exact: true }).waitFor();
+      const beforeUpdate = await page.locator('.proposal-toolbar select').inputValue();
+      const newer = await propose(secondOptions);
+      expect(newer.revision).not.toBe(beforeUpdate);
+      reviewedRevision = newer.revision;
+      await page.getByRole('button', { name: 'Refresh proposals' }).click();
+      await page.getByText('A newer revision is available.', { exact: false }).waitFor();
+      expect(await page.locator('.proposal-toolbar select').inputValue()).toBe(beforeUpdate);
+      await page.getByRole('button', { name: 'Play proposed', exact: true }).click();
+      await page.locator('.proposal-review iframe').waitFor();
+      expect(await page.locator('.proposal-review iframe').getAttribute('sandbox')).toBe(
+        'allow-scripts',
+      );
+      await page
+        .frameLocator('.proposal-review iframe')
+        .getByText('A third idea', { exact: true })
+        .waitFor();
+      expect(errors).toEqual([]);
+      await page.screenshot({
+        path: join(import.meta.dir, '../../.local/collaboration-web.png'),
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+    } finally {
+      await webBrowser.close();
+      web.kill('SIGTERM');
+      await web.exited;
+      await Promise.all([webOut, webErr]);
+    }
+    // The same proposal-first checkout can later release its independent napplet.
+    const independent = await publishProject({
+      directory: second.directory,
+      network: 'local',
+      accounts: contributor,
+      check,
+    });
+    expect(independent.status).toBe('announced_pending_index');
+    const reviewedTarget = await sourceGit(original, ['rev-parse', 'HEAD']);
+    await Bun.write(join(original, 'index.html'), '<p>A different third idea</p>');
+    await expect(
+      proposalAction({
+        directory: original,
+        network: 'local',
+        accounts: owner,
+        proposal: recovered.proposal,
+        action: 'merge',
+        revision: reviewedRevision,
+        target: reviewedTarget,
+      }),
+    ).rejects.toMatchObject({ code: 'SOURCE_DIRTY' });
+    const checkpointResult = await checkpoint(original, 'A conflicting owner change', alice.pubkey);
+    await expect(
+      proposalAction({
+        directory: original,
+        network: 'local',
+        accounts: owner,
+        proposal: recovered.proposal,
+        action: 'merge',
+        revision: reviewedRevision,
+        target: checkpointResult.commit,
+      }),
+    ).rejects.toThrow('Merge conflicts');
+    expect(await sourceGit(original, ['rev-parse', 'HEAD'])).toBe(checkpointResult.commit);
+    expect(await sourceGit(original, ['status', '--porcelain'])).toBe('');
   } finally {
     client.close();
     await services.close();

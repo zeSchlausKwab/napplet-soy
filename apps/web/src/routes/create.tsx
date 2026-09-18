@@ -33,6 +33,10 @@ function Create() {
         open your favorite coding agent, and follow your curiosity.
       </p>
       <p className="account-free-note">Create, remix and publish. No website account needed.</p>
+      <p>
+        Your code and shared Git history are open source by default. Publish your own version or
+        propose improvements to the original.
+      </p>
       <StarterCommand template={template} />
       <p className="command-note">
         macOS and Linux. No Bun or Node installation needed. Git is required.

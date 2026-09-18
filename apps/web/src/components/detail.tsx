@@ -93,6 +93,7 @@ export function Detail({ napplet, pinned = false }: { napplet: Napplet; pinned?:
           </div>
           <Genealogy manifest={pinned ? napplet.snapshot : napplet.current} />
           <SourceSection
+            manifest={pinned ? napplet.snapshot : napplet.current}
             revision={napplet.snapshot.id}
             hasArchive={napplet.snapshot.tags.some((tag) => tag[0] === 'source-archive')}
           />

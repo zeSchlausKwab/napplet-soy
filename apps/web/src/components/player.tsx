@@ -46,6 +46,7 @@ function FileExports({ files }: { files: ExportFile[] }) {
 
 export function Player({
   napplet,
+  reviewScope,
   pinned = false,
   autoPlay = false,
   compact = false,
@@ -57,6 +58,7 @@ export function Player({
   returnLabel = 'Back to gallery',
 }: {
   napplet: Napplet | PublicNapplet;
+  reviewScope?: string;
   pinned?: boolean;
   autoPlay?: boolean;
   compact?: boolean;
@@ -84,7 +86,7 @@ export function Player({
   }, []);
   useLayoutEffect(() => {
     currentPubkey.current = pubkey;
-    host.current?.updateIdentity(pubkey);
+    host.current?.updateIdentity(reviewScope ? null : pubkey);
   }, [pubkey]);
   const [playing, setPlaying] = useState(autoPlay || immersive),
     [doc, setDoc] = useState(''),
@@ -155,14 +157,16 @@ export function Player({
       host.current = undefined;
       if (!node || !release) return;
       host.current = attachNappletHost({
-        backend: backendProvider(),
+        backend: reviewScope ? undefined : backendProvider(),
         frame: node,
-        identity: release.hostIdentity,
+        identity: reviewScope
+          ? `proposal:${reviewScope}:${release.manifest.id}`
+          : release.hostIdentity,
         manifestId: release.manifest.id,
         servers: [...release.servers, ...network().blossom],
         localServers: network().blossom,
         relays: release.relays,
-        pubkey: currentPubkey.current,
+        pubkey: reviewScope ? null : currentPubkey.current,
         prompt: setPrompt,
         files: setExports,
         declaration: declaration.current,
@@ -170,7 +174,7 @@ export function Player({
         media: setMedia,
       });
     },
-    [release],
+    [release, reviewScope],
   );
   useEffect(() => {
     setExports([]);

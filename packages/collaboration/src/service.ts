@@ -23,7 +23,7 @@ import {
   type Proposal,
   type Repository,
 } from './protocol';
-import { mergeReviewed } from './git';
+import { mergeReviewed, cloneUrl } from './git';
 
 export type CollaborationOptions = {
   directory: string;
@@ -124,7 +124,7 @@ export async function propose(
           );
         if (!saved || saved.commit !== commit) {
           if (saved?.root) {
-            const current = (await readProposals(client, repository)).find(
+            const current = (await readProposals(client, repository, saved.root.id)).find(
               (p) => p.root.id === saved.root.id,
             );
             if (!current || current.revision.id !== saved.event.id)
@@ -282,6 +282,31 @@ export async function propose(
       });
       await options.checkpoint?.('source');
       await client.publish(verifiedEvent(saved.event), saved.relays);
+      // GRASP-01 holds a PR in purgatory until its c commit is available in the
+      // target repository. Push only the immutable event ref, never a maintainer branch.
+      for (const clone of repository.clones.slice(0, 4)) {
+        try {
+          await sourceGit(join(saved.folder, 'source'), [
+            'push',
+            '--no-verify',
+            cloneUrl(clone, options.network === 'local'),
+            `${saved.commit}:refs/nostr/${saved.event.id}`,
+          ]);
+          break;
+        } catch {}
+      }
+      const inbox = new ProtocolClient(() =>
+        repository.relays.length ? repository.relays : client.relays(),
+      );
+      try {
+        const visible = await inbox.query([{ ids: [saved.event.id], limit: 1 }], repository.relays);
+        if (!visible.some((e) => e.id === saved.event.id))
+          throw new Error(
+            'The upstream relay has not made this proposal queryable. Retry with propose --resume.',
+          );
+      } finally {
+        inbox.close();
+      }
       await options.checkpoint?.('proposal');
       saved.done = true;
       await atomic(path, saved);
@@ -319,7 +344,7 @@ export async function proposalAction(
       root = (await client.query([{ ids: [id], kinds: [1618, 1617], limit: 1 }]))[0];
     if (!root) throw new Error('Proposal unavailable.');
     const repository = await readRepository(client, tag(root, 'a') ?? '');
-    const proposal = (await readProposals(client, repository)).find((p) => p.root.id === id);
+    const proposal = (await readProposals(client, repository, id)).find((p) => p.root.id === id);
     if (!proposal) throw new Error('Proposal unavailable.');
     if (!account) throw new Error('Sign in with soyli account connect or create.');
     const maintainer = repository.maintainers.includes(account.pubkey);
@@ -375,6 +400,7 @@ export async function proposalAction(
         target: options.target,
         revision: proposal.revision.id,
         clones: proposal.clones,
+        author: account.pubkey,
         local: options.network === 'local',
       });
     }
@@ -388,7 +414,10 @@ export async function proposalAction(
     const comment = options.action === 'comment';
     const template = {
       kind: comment ? 1111 : options.action === 'close' ? 1632 : 1630,
-      created_at: Math.floor(Date.now() / 1000),
+      created_at: Math.max(
+        Math.floor(Date.now() / 1000),
+        (proposal.statusEvent?.created_at ?? root.created_at) + 1,
+      ),
       content: options.text ?? '',
       tags: comment
         ? [
@@ -418,6 +447,15 @@ export async function proposalAction(
     let event: SignedEvent;
     try {
       event = verifiedEvent(JSON.parse(await readFile(outbox, 'utf8')));
+      if (
+        !comment &&
+        proposal.statusEvent &&
+        proposal.statusEvent.id !== event.id &&
+        proposal.statusEvent.created_at >= event.created_at
+      ) {
+        event = verifiedEvent(await signer.signEvent(template));
+        await atomic(outbox, event);
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       event = verifiedEvent(await signer.signEvent(template));
@@ -457,6 +495,15 @@ export async function pushSource(options: CollaborationOptions) {
         repository.relays,
       ),
     )[0];
+    if (
+      previous?.tags.some(
+        (t) =>
+          t[0].startsWith('refs/') &&
+          t[0] !== 'refs/heads/main' &&
+          !/^refs\/tags\/release-[a-f0-9]{16}$/.test(t[0]),
+      )
+    )
+      throw new Error('This repository has additional refs; use ngit. soyLI will not remove them.');
     const parent = previous && tag(previous, 'refs/heads/main');
     if (parent) await sourceGit(options.directory, ['merge-base', '--is-ancestor', parent, commit]);
     signer = await (options.accounts ?? new Accounts(options.network)).signer({
@@ -508,7 +555,10 @@ export async function pushSource(options: CollaborationOptions) {
       if (!included) continue;
       const event = await signer.signEvent({
         kind: 1631,
-        created_at: Math.floor(Date.now() / 1000),
+        created_at: Math.max(
+          Math.floor(Date.now() / 1000),
+          (proposal.statusEvent?.created_at ?? proposal.revision.created_at) + 1,
+        ),
         content: 'Merged and published in Git.',
         tags: [
           ['e', proposal.root.id, '', 'root'],

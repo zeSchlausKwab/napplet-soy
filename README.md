@@ -67,8 +67,9 @@ separate acceptance checks.
 
 No platform checkout, Bun or Node installation is needed.
 
-Creator CLI: **napplet soyLI**, command `soyli`. The local 0.6.0 rename is pending
-release; see [upgrading and compatibility](docs/CLI.md#rename-and-upgrade--2026-09-15).
+Creator CLI: **napplet soyLI**, command `soyli`. Local **0.12.0** adds public Git
+collaboration; deployment and archive upload are separate from local verification.
+See [upgrading and compatibility](docs/CLI.md#rename-and-upgrade--2026-09-15).
 
 ```sh
 curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet
@@ -83,10 +84,33 @@ TypeScript source, its SDK/Vite plugin, lockfile, documentation, MIT license and
 eight official Napplet skills. The CLI prepares a private Node/pnpm toolchain and
 builds the self-contained `dist/index.html`; nothing needs installing globally.
 The preview watches the upstream build and uses the same sandbox and supported
-NAP services as the website. Run `soyli build` before check/publish after
-editing. See [the creator CLI guide](docs/CLI.md) for verification commands,
+NAP services as the website. Save a reviewed Git checkpoint before publishing;
+`publish` builds the upstream project and checks the result. Run `soyli build` before
+standalone `check` after editing. See [the creator CLI guide](docs/CLI.md) for verification commands,
 upstream pins and `skills update` for existing projects. The six single-file
 example starters remain available through explicit `--template` options.
+
+## Collaborate on a napplet
+
+Source and pushed Git history are public by default. A single Git-backed remix
+preserves the original history and can propose changes upstream, publish an independent
+napplet, or do both. Editing and local checkpoints do not upload anything.
+
+```sh
+soyli remix <napplet-link> my-idea
+cd my-idea
+# Edit and test with your coding agent.
+soyli checkpoint "Improve the controls"
+soyli propose "Improve the controls"
+# Maintainer, in the original project:
+soyli review
+```
+
+The review workbench opens a proposal inbox, playable versions, Git diffs and
+public discussion. Accepting merges locally; `soyli push` publishes Git and
+`soyli publish` releases the napplet. The website reads NIP-34 proposals directly
+from relays and offers shareable previews. No website account is needed; ordinary
+Git/ngit remain available. [Workflow and current limits](docs/COLLABORATION.md).
 
 ## Creator identity
 

@@ -60,6 +60,7 @@ export const jobSchema = z
     baseSource: hash.nullable(),
     sourceBaseCommit: commit.nullable(),
     baseAnnouncement: hash.nullable(),
+    repositoryAnnouncement: eventSchema.optional(),
     commit,
     archiveHash: hash,
     archiveBytes: z

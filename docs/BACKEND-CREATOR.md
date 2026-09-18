@@ -29,9 +29,18 @@ Read the printed provider key and relay destinations. They remain editable:
 ```json
 {
   "backend": {
-    "provider": { "pubkey": "<64-character-provider-public-key>", "relays": ["wss://relay.napplet.soy"] },
+    "provider": {
+      "pubkey": "<64-character-provider-public-key>",
+      "relays": ["wss://relay.napplet.soy"]
+    },
     "boards": [
-      { "board": "highscore-v1", "title": "High scores", "order": "highest", "minimum": 0, "maximum": 1000000 }
+      {
+        "board": "highscore-v1",
+        "title": "High scores",
+        "order": "highest",
+        "minimum": 0,
+        "maximum": 1000000
+      }
     ]
   }
 }
@@ -39,8 +48,8 @@ Read the printed provider key and relay destinations. They remain editable:
 
 This is a fragment to merge into the existing file, not a replacement project.
 Use `boards: []` for matchmaking without scores. The CLI generates public
-`soy-backend.json` with `{version, napplet, provider, boards}`. Import it from your
-source (`import backend from '../soy-backend.json'` in `src/main.ts`). Do not
+`.napplet-space/soy-backend.json` with `{version, napplet, provider, boards}`. Import it from your
+source (`import backend from '../.napplet-space/soy-backend.json'` in `src/main.ts`). Do not
 handwrite its naddr, copy a different creator's namespace, or put secrets in it.
 Keep it in the source release so other creators can inspect the destinations.
 
@@ -84,7 +93,7 @@ stable author-qualified naddr. Relay hints are not part of namespace identity.
 
 ```js
 import { cvm, webrtc } from '@napplet/sdk';
-import backend from '../soy-backend.json';
+import backend from '../.napplet-space/soy-backend.json';
 
 async function call(tool, args = {}) {
   // The preview host maps this public provider to the isolated local service.
@@ -92,11 +101,21 @@ async function call(tool, args = {}) {
   const result = backend.provider
     ? await cvm.callTool(backend.provider, tool, args)
     : await cvm.registry.call(
-        tool.startsWith('soy_board_') ? 'soy.boards.v1'
-          : tool.startsWith('soy_match_') ? 'soy.matchmaking.v1' : 'soy.rooms.v1',
-        tool, args);
+        tool.startsWith('soy_board_')
+          ? 'soy.boards.v1'
+          : tool.startsWith('soy_match_')
+            ? 'soy.matchmaking.v1'
+            : 'soy.rooms.v1',
+        tool,
+        args,
+      );
   if (result.isError) {
-    throw new Error(result.content?.filter(x => x.type === 'text').map(x => x.text).join('\n') || 'Backend request failed');
+    throw new Error(
+      result.content
+        ?.filter((x) => x.type === 'text')
+        .map((x) => x.text)
+        .join('\n') || 'Backend request failed',
+    );
   }
   return result.structuredContent;
 }
@@ -150,16 +169,19 @@ hash is required. Player count is an application choice within provider limits.
 ```js
 const protocol = 'my-game-v1';
 let ticket = await call('soy_match_join', {
-  napplet: backend.napplet, protocol, queue: 'casual', players: desiredPlayers
+  napplet: backend.napplet,
+  protocol,
+  queue: 'casual',
+  players: desiredPlayers,
 });
 while (ticket.state === 'waiting') {
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise((resolve) => setTimeout(resolve, 2000));
   ticket = await call('soy_match_status', { ticket: ticket.ticket });
 }
 if (ticket.state !== 'matched') throw new Error('Match closed; join again');
 
 let sessionId;
-const stopEvents = webrtc.onEvent(event => {
+const stopEvents = webrtc.onEvent((event) => {
   if (event.sessionId !== sessionId) return;
   if (event.type === 'peer') updatePeer(event.pubkey, event.state);
   if (event.type === 'message') validateAndApply(event.from, event.payload);
@@ -167,7 +189,8 @@ const stopEvents = webrtc.onEvent(event => {
 });
 const { session } = await webrtc.open({
   scope: { type: 'room', room: ticket.room, peers: ticket.peers },
-  channel: 'game', protocol
+  channel: 'game',
+  protocol,
 });
 sessionId = session.id;
 // Wait for a peer "joined" event before sending; open() only starts negotiation.
@@ -206,11 +229,11 @@ connects directly to the host. One room session can contain multiple peers; the
 four-session limit is not a four-connection limit. With a known participant set:
 
 ```js
-const peers = actor === authority
-  ? members.filter(key => key !== actor)
-  : [authority];
+const peers = actor === authority ? members.filter((key) => key !== actor) : [authority];
 const { session } = await webrtc.open({
-  scope: { type: 'room', room, peers }, channel: 'game', protocol
+  scope: { type: 'room', room, peers },
+  channel: 'game',
+  protocol,
 });
 ```
 

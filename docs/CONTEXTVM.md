@@ -129,7 +129,7 @@ That guide is bundled into new projects and `soyli skills update`.
 `/.well-known/napplet.json` is site-owned public provider configuration. It contains
 only the public key and relays, is unavailable when no provider is configured,
 and does not proxy gameplay or CVM calls. Creator configuration pins it into
-`napplet.json`; generated public `soy-backend.json` carries the stable naddr and
+`napplet.json`; generated public `.napplet-space/soy-backend.json` carries the stable naddr and
 provider into the artifact. Publishing authorizes board registration directly over
 CVM. Dev mode redirects that provider to an isolated instance of the same service.
 
@@ -171,7 +171,7 @@ interoperability with every other shell's signaling.
 - Events are signed Nostr kind 25050, with `d` = namespace digest and an expiration
   60 seconds after creation. Targeted messages also carry the recipient `p` tag.
 - The namespace is SHA-256 of UTF-8 JSON `["soy-rtc/1", identity, scope, channel,
-  protocol-or-empty-string]`. Production identity is the verified author's
+protocol-or-empty-string]`. Production identity is the verified author's
   `pubkey:kind:identifier`, without an appended build hash. A snapshot whose
   address names a different signer uses `snapshotSigner:5129:address` instead. The preview uses its local preview identity. Scope is `["room", roomId]`
   or `["direct", ...lexicographicallySortedTransportPubkeys]`.
