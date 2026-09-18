@@ -1,3 +1,4 @@
+import { effectiveProject, readBinding, writeBinding } from '../../../packages/publish/src/binding';
 import { join } from 'node:path';
 import { mkdir, writeFile, rename, rm } from 'node:fs/promises';
 import { PrivateKeySigner } from '@contextvm/sdk/signer';
@@ -29,6 +30,15 @@ async function publicFile(path: string, bytes: Uint8Array | string) {
     await rm(temporary, { force: true });
   }
 }
+async function saveLocalBackend(
+  directory: string,
+  config: import('../../../packages/publish/src/config').Project,
+) {
+  const binding = (await readBinding(directory)) ?? { version: 1 as const, project: {} };
+  binding.project.creator = config.creator;
+  binding.project.backend = config.backend;
+  await writeBinding(directory, binding);
+}
 export async function backendProject(directory: string, creator?: string) {
   let raw: Uint8Array;
   try {
@@ -37,7 +47,10 @@ export async function backendProject(directory: string, creator?: string) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw e;
   }
-  const project = projectSchema.parse(JSON.parse(new TextDecoder().decode(raw)));
+  const project = await effectiveProject(
+    directory,
+    projectSchema.parse(JSON.parse(new TextDecoder().decode(raw))),
+  );
   if (!project.backend) return undefined;
   const pubkey = creator ?? project.creator?.pubkey ?? developmentAuthor;
   const napplet = encodeAddress({ kind: 35129, pubkey, identifier: projectIdentity(project) });
@@ -50,17 +63,22 @@ export async function backendProject(directory: string, creator?: string) {
   const bytes = new TextEncoder().encode(JSON.stringify(context, null, 2) + '\n');
   let previous: Uint8Array | undefined;
   try {
-    previous = await regularFile(directory, 'soy-backend.json', 16384);
+    previous = await regularFile(directory, '.napplet-space/soy-backend.json', 16384);
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
   }
-  if (!previous || !Buffer.from(previous).equals(Buffer.from(bytes)))
-    await publicFile(join(directory, 'soy-backend.json'), bytes);
+  if (!previous || !Buffer.from(previous).equals(Buffer.from(bytes))) {
+    await mkdir(join(directory, '.napplet-space'), { recursive: true, mode: 0o700 });
+    await publicFile(join(directory, '.napplet-space/soy-backend.json'), bytes);
+  }
   return { project, napplet, pubkey };
 }
 export async function resolveBackendProvider(directory: string, network: Network) {
-  const project = projectSchema.parse(
-    JSON.parse(new TextDecoder().decode(await regularFile(directory, 'napplet.json', 16384))),
+  const project = await effectiveProject(
+    directory,
+    projectSchema.parse(
+      JSON.parse(new TextDecoder().decode(await regularFile(directory, 'napplet.json', 16384))),
+    ),
   );
   if (!project.backend) throw new Error('Add backend: { boards: [] } to napplet.json first.');
   const target = resolveTargets(project, network);
@@ -83,8 +101,11 @@ export async function syncBackend(
   signerOptions = {},
   prepare = true,
 ) {
-  const config = projectSchema.parse(
-    JSON.parse(new TextDecoder().decode(await regularFile(directory, 'napplet.json', 16384))),
+  const config = await effectiveProject(
+    directory,
+    projectSchema.parse(
+      JSON.parse(new TextDecoder().decode(await regularFile(directory, 'napplet.json', 16384))),
+    ),
   );
   if (!config.backend) return { boards: 0 };
   const account = await accounts.current();
@@ -99,7 +120,7 @@ export async function syncBackend(
     if (!prepare)
       throw new Error('Pin the backend before publishing: soyli backend sync, then soyli build.');
     config.backend.provider = provider;
-    await publicFile(join(directory, 'napplet.json'), JSON.stringify(config, null, 2) + '\n');
+    await saveLocalBackend(directory, config);
     await backendProject(directory, account.pubkey);
   }
   const expected = encodeAddress({
@@ -108,7 +129,9 @@ export async function syncBackend(
     identifier: projectIdentity(config),
   });
   const context = JSON.parse(
-    new TextDecoder().decode(await regularFile(directory, 'soy-backend.json', 16384)),
+    new TextDecoder().decode(
+      await regularFile(directory, '.napplet-space/soy-backend.json', 16384),
+    ),
   );
   if (
     context.napplet !== expected ||
@@ -144,8 +167,11 @@ export async function initBackend(
   network: Network,
   accounts: Pick<Accounts, 'current'>,
 ) {
-  const config = projectSchema.parse(
-    JSON.parse(new TextDecoder().decode(await regularFile(directory, 'napplet.json', 16384))),
+  const config = await effectiveProject(
+    directory,
+    projectSchema.parse(
+      JSON.parse(new TextDecoder().decode(await regularFile(directory, 'napplet.json', 16384))),
+    ),
   );
   const account = await accounts.current();
   if (account && config.creator && config.creator.pubkey !== account.pubkey)
@@ -154,12 +180,12 @@ export async function initBackend(
     );
   if (account) config.creator = { pubkey: account.pubkey, network };
   config.backend ??= { boards: [] };
-  await publicFile(join(directory, 'napplet.json'), JSON.stringify(config, null, 2) + '\n');
+  await saveLocalBackend(directory, config);
   let warning: string | undefined;
   if (!config.backend.provider) {
     try {
       config.backend.provider = await resolveBackendProvider(directory, network);
-      await publicFile(join(directory, 'napplet.json'), JSON.stringify(config, null, 2) + '\n');
+      await saveLocalBackend(directory, config);
     } catch {
       warning =
         'Default provider unavailable. Local preview works; run backend sync and rebuild when the provider is available.';
@@ -170,7 +196,7 @@ export async function initBackend(
     napplet: result!.napplet,
     provider: config.backend.provider,
     config: 'napplet.json',
-    context: 'soy-backend.json',
+    context: '.napplet-space/soy-backend.json',
     preview: 'isolated local CVM',
     warning,
   };

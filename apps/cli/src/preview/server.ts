@@ -1,3 +1,4 @@
+import { readBinding } from '../../../../packages/publish/src/binding';
 import { recordingSchema, type Recording } from '../../../../packages/publish/src/config';
 import { videoBytesResponse } from '../../../../packages/backend/src/preview-videos';
 import { z } from 'zod';
@@ -60,7 +61,9 @@ export function startPreviewServer(
     // BunFile caches stat/size: create fresh handles after every editor save.
     const configFile = Bun.file(new URL('napplet.json', root));
     if (configFile.size > 16384) throw new Error('Project configuration is too large.');
-    const configText = await configFile.text();
+    const portableText = await configFile.text();
+    const binding = await readBinding(fileURLToPath(root));
+    const configText = JSON.stringify({ ...JSON.parse(portableText), ...(binding?.project ?? {}) });
     const config = configSchema.parse(JSON.parse(configText));
     const bytes = await regularFile(fileURLToPath(root), config.entry, MAX_ARTIFACT_BYTES);
     if (bytes.length > MAX_ARTIFACT_BYTES || configText.length > 16384)

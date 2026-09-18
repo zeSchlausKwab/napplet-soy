@@ -1,3 +1,7 @@
+import { checkpoint, committedSource } from '../../../packages/publish/src/git-source';
+import { propose, proposalAction, pushSource } from '../../../packages/collaboration/src/service';
+import { proposalList, review } from './review';
+import { readBinding, writeBinding } from '../../../packages/publish/src/binding';
 import { projectConfiguration, screenshotProject, recordProject } from './project-config';
 import { parseArgs } from 'node:util';
 import { join } from 'node:path';
@@ -26,6 +30,13 @@ const help = `napplet soyLI
 Usage:
   bun run soyli new <folder> [--template boilerplate] [--identity create|connect|later] [--no-install]
   bun run soyli remix <portable-link-or-nostr-id> <folder> [--identity create|connect|later]
+  bun run soyli checkpoint "Describe your changes"
+  bun run soyli propose "Describe the proposal" [--resume]
+  bun run soyli proposals [repository-or-proposal] [--json]
+  bun run soyli review [repository-or-proposal] [--no-open] [--rebuild]
+  bun run soyli merge <proposal> --revision <event-id> --target <reviewed-local-commit>
+  bun run soyli comment <proposal> "Comment" | close|reopen <proposal> ["Reason"]
+  bun run soyli push
   bun run soyli setup|build [--project <folder>]
   bun run soyli run <package-script> [arguments...]
   bun run soyli exec <project-tool> [arguments...]
@@ -107,6 +118,9 @@ try {
       args: process.argv.slice(2),
       allowPositionals: true,
       options: {
+        revision: { type: 'string' },
+        target: { type: 'string' },
+        rebuild: { type: 'boolean' },
         template: { type: 'string' },
         'no-install': { type: 'boolean' },
         identity: { type: 'string' },
@@ -209,7 +223,7 @@ try {
     values.grasp ||
     values.site ||
     values.mirror;
-  if (!['publish', 'status'].includes(command) && publishingOptions)
+  if (!['publish', 'status', 'propose'].includes(command) && publishingOptions)
     throw new AccountError('USAGE', 'Publication options are only valid for publish/status.');
   if (
     (values['no-install'] && !['new', 'remix'].includes(command)) ||
@@ -227,14 +241,89 @@ try {
         'record',
         'backend',
         'multiplayer',
+        'checkpoint',
+        'propose',
+        'proposals',
+        'review',
+        'merge',
+        'comment',
+        'close',
+        'reopen',
+        'push',
       ].includes(command)) ||
-    ((values.port || values['no-open']) && command !== 'dev')
+    ((values.port || values['no-open']) && !['dev', 'review'].includes(command))
   )
     throw new AccountError(
       'USAGE',
       'Use --project with dev/check/publish/status; --port and --no-open with dev.',
     );
-  if (command === 'new' || command === 'remix') {
+  const collaboration = {
+    directory: values.project ?? process.cwd(),
+    network,
+    accounts,
+    signal: controller.signal,
+    onAuth,
+  };
+  if (
+    [
+      'checkpoint',
+      'propose',
+      'proposals',
+      'review',
+      'merge',
+      'comment',
+      'close',
+      'reopen',
+      'push',
+    ].includes(command)
+  ) {
+    let result: unknown;
+    if (command === 'checkpoint') {
+      if (!action || argument) throw new Error('Use checkpoint "Describe your changes".');
+      const account = await accounts.current();
+      result = await checkpoint(collaboration.directory, action, account?.pubkey);
+    } else if (command === 'propose') {
+      if ((!action && !values.resume) || argument)
+        throw new Error('Use propose "Description" or propose --resume.');
+      if (!values.resume) {
+        await committedSource(collaboration.directory);
+        if (
+          (await Bun.file(join(collaboration.directory, 'napplet.json')).json()).entry ===
+          'dist/index.html'
+        )
+          await buildProject(collaboration.directory, controller.signal);
+      }
+      result = await propose({
+        ...collaboration,
+        description: action ?? '',
+        resume: values.resume,
+        check: checkPublication,
+      });
+    } else if (command === 'proposals')
+      result = await proposalList({ ...collaboration, reference: action });
+    else if (command === 'review') {
+      await review({
+        ...collaboration,
+        reference: action,
+        noOpen: values['no-open'],
+        json,
+        rebuild: values.rebuild,
+        port: values.port ? Number(values.port) : undefined,
+      });
+    } else if (command === 'push') result = await pushSource(collaboration);
+    else {
+      if (!action) throw new Error('Supply a proposal event id.');
+      result = await proposalAction({
+        ...collaboration,
+        proposal: action,
+        action: command as 'merge' | 'comment' | 'close' | 'reopen',
+        revision: values.revision,
+        target: values.target,
+        text: argument,
+      });
+    }
+    if (result) console.log(JSON.stringify(result, null, json ? undefined : 2));
+  } else if (command === 'new' || command === 'remix') {
     if (
       !action ||
       (command === 'new' ? !!argument : !argument || !!values.template) ||
@@ -262,7 +351,7 @@ try {
           )
         : undefined;
     const directory = remix?.directory ?? (await scaffold(process.cwd(), folder, template));
-    if (remix) await installCreatorSkills(directory);
+    if (remix && remix.source !== 'git') await installCreatorSkills(directory);
     createdProject = directory;
     let account = values.identity === 'later' ? null : await accounts.current();
     let identity = values.identity;
@@ -284,10 +373,9 @@ try {
     if (identity === 'connect') account = await connect();
     if (identity === 'later') account = null;
     if (account) {
-      const configPath = join(directory, 'napplet.json');
-      const config = await Bun.file(configPath).json();
-      config.creator = { pubkey: account.pubkey, network };
-      await Bun.write(configPath, JSON.stringify(config, null, 2) + '\n');
+      const binding = (await readBinding(directory)) ?? { version: 1 as const, project: {} };
+      binding.project.creator = { pubkey: account.pubkey, network };
+      await writeBinding(directory, binding);
     }
     const backupFile = account?.type === 'local' ? await accounts.backup(account.id) : undefined;
     // Report recovery information before dependency setup, which may be interrupted or fail.
@@ -307,7 +395,7 @@ try {
       );
     else
       console.log(
-        `\nYour napplet is ready at ${directory}\n\n  cd ${folder}\n${remix?.needsSetup ? '  soyli setup\n' : ''}  soyli dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nRun soyli publish to share it.`,
+        `\nYour napplet is ready at ${directory}\n\n  cd ${folder}\n${remix?.needsSetup ? '  soyli setup\n' : ''}  soyli dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nYour code and pushed Git history are open source by default.\nSave edits with soyli checkpoint "Describe your changes", then soyli publish or soyli propose "Description".`,
       );
   } else if (command === 'multiplayer') {
     if (
@@ -490,6 +578,14 @@ try {
                 { signal: controller.signal, onAuth },
                 false,
               );
+            if (!values['dry-run'] && !values.resume) {
+              await committedSource(collaboration.directory);
+              if (
+                (await Bun.file(join(collaboration.directory, 'napplet.json')).json()).entry ===
+                'dist/index.html'
+              )
+                await buildProject(collaboration.directory, controller.signal);
+            }
             return publishProject({
               directory: values.project ?? process.cwd(),
               network,

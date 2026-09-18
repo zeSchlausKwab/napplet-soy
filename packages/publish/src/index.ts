@@ -33,6 +33,7 @@ import { PublicationRelays } from './relay';
 import { ownedBlobs, verifiedBlob } from './blobs';
 import { confirmWebsite } from './website';
 import { executableBytes } from './artifact';
+import { committedSource } from './git-source';
 
 export { PublishError } from './config';
 type RelayOperations = Pick<PublicationRelays, 'latest' | 'ensure' | 'close'>;
@@ -129,10 +130,12 @@ export async function publicationStatus(
 async function verifyFrozen(journal: Journal, job: PublishJob) {
   const directory = journal.directory(job.id);
   const inspected = await inspectProject(
-    join(directory, 'source'),
+    join(directory, 'files'),
     job.plan.network,
     job.plan.pubkey,
     job.plan.targets,
+    job.commit,
+    job.plan.files.map((f) => f.path),
   );
   if (
     inspected.fingerprint !== job.fingerprint ||
@@ -252,6 +255,7 @@ export async function publishProject(options: PublishOptions) {
       }
       try {
         if (!options.resume) {
+          await committedSource(root);
           const inspected = await inspectProject(
             root,
             options.network,
@@ -297,15 +301,28 @@ export async function publishProject(options: PublishOptions) {
               relays.latest(source.relay, account.pubkey, plan.identifier, 30618),
               relays.latest(source.relay, account.pubkey, plan.identifier, 30617),
             ]);
-            if (
-              (current?.id ?? null) !== (previous?.current?.id ?? null) ||
-              (sourceState?.id ?? null) !== (previous?.source?.state.id ?? null) ||
-              (announcement?.id ?? null) !== (previous?.source?.announcement.id ?? null)
-            )
+            if ((current?.id ?? null) !== (previous?.current?.id ?? null))
               throw new PublishError(
                 'REMOTE_CONFLICT',
                 'A remote release or source state differs from this journal. Restore the current journal or choose a new napplet identifier; stale releases are never forced over it.',
               );
+            const sourceBaseCommit =
+              sourceState?.tags.find((t) => t[0] === 'refs/heads/main')?.[1] ?? null;
+            if (sourceBaseCommit) {
+              if (!/^[a-f0-9]{40}$/.test(sourceBaseCommit))
+                throw new PublishError('REMOTE_CONFLICT', 'Invalid remote source commit.');
+              await sourceGit(root, [
+                'merge-base',
+                '--is-ancestor',
+                sourceBaseCommit,
+                inspected.plan.sourceCommit,
+              ]).catch(() => {
+                throw new PublishError(
+                  'REMOTE_CONFLICT',
+                  'Fetch and integrate the remote Git branch before publishing.',
+                );
+              });
+            }
             const now = Math.floor(Date.now() / 1000);
             const createdAt = Math.max(
               now,
@@ -356,12 +373,7 @@ export async function publishProject(options: PublishOptions) {
               journal.directory(id),
               inspected.contents,
               createdAt,
-              previous
-                ? {
-                    directory: join(journal.directory(previous.id), 'source'),
-                    commit: previous.commit,
-                  }
-                : undefined,
+              { directory: root, commit: inspected.plan.sourceCommit },
             );
             if (preview) {
               const path = join(journal.directory(id), 'preview.png');
@@ -374,6 +386,11 @@ export async function publishProject(options: PublishOptions) {
               await durableFile(path, video);
             }
             const releaseRefs = {
+              ...Object.fromEntries(
+                (sourceState?.tags ?? [])
+                  .filter((t) => /^refs\/tags\/release-[a-f0-9]{16}$/.test(t[0]))
+                  .map((t) => [t[0], t[1]]),
+              ),
               ...previous?.releaseRefs,
               [`refs/tags/release-${id.slice(0, 16)}`]: frozen.commit,
             };
@@ -391,6 +408,7 @@ export async function publishProject(options: PublishOptions) {
               parent: previous?.id ?? null,
               baseCurrent: current?.id ?? null,
               baseSource: sourceState?.id ?? null,
+              sourceBaseCommit,
               baseAnnouncement: announcement?.id ?? null,
               ...frozen,
               check,
@@ -631,12 +649,7 @@ export async function publishProject(options: PublishOptions) {
           origin: job.plan.targets.grasp,
           local: options.network === 'local',
           publication: job.source,
-          expectedCommit:
-            previous?.id === job.parent
-              ? previous.commit
-              : job.parent
-                ? (await journal.load(job.parent)).commit
-                : null,
+          expectedCommit: job.sourceBaseCommit,
         });
         job.receipts.source = true;
         await save();

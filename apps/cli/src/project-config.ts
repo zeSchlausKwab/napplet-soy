@@ -1,3 +1,4 @@
+import { effectiveProject, readBinding, writeBinding } from '../../../packages/publish/src/binding';
 import { rename, rm, writeFile, lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { realpath as realDirectory } from 'node:fs/promises';
@@ -48,16 +49,20 @@ export async function projectConfiguration(
   network: Network,
   initialize = false,
 ) {
-  const { root, bytes, project } = await readProject(directory);
+  const { root, bytes, project: portable } = await readProject(directory);
+  const project = await effectiveProject(root, portable);
   const targets = resolveTargets(project, network);
   if (initialize) {
     project.publish = {
       ...project.publish,
       networks: { ...project.publish?.networks, [network]: targets },
     };
-    await saveProject(root, bytes, project);
+    const binding = (await readBinding(root)) ?? { version: 1 as const, project: {} };
+    binding.project.publish = project.publish;
+    await writeBinding(root, binding);
   }
   return {
+    binding: join(root, '.napplet-space/project.json'),
     file: join(root, 'napplet.json'),
     network,
     targets,
@@ -82,7 +87,7 @@ export async function screenshotProject(directory: string, network: Network, nam
   const { plan, contents, fingerprint } = await inspectProject(
     root,
     network,
-    project.creator?.pubkey ?? '0'.repeat(64),
+    (await effectiveProject(root, project)).creator?.pubkey ?? '0'.repeat(64),
   );
   const checked = await checkPublication(contents, true);
   if ((await inspectProject(root, network, plan.pubkey)).fingerprint !== fingerprint)
@@ -134,7 +139,7 @@ export async function recordProject(
   const { plan, contents, fingerprint } = await inspectProject(
     root,
     network,
-    project.creator?.pubkey ?? '0'.repeat(64),
+    (await effectiveProject(root, project)).creator?.pubkey ?? '0'.repeat(64),
   );
   const recording = recordingSchema.parse(settings ?? project.preview?.recording ?? {});
   const checked = await checkPublication(contents, false, recording);

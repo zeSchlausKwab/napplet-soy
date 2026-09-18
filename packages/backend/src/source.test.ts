@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { finalizeEvent } from 'nostr-tools';
 import { aggregateHash, sha256, type SignedEvent } from '../../protocol/src';
-import { freezeSource } from '../../publish/src/project';
+import { freezeFixture as freezeSource } from '../../publish/src/testing';
 import { initializePolicy, updatePolicy } from '../../moderation/src/policy';
 import { createSourceBrowser, downloadSourceArchive, SOURCE_TEXT_LIMIT } from './source';
 

@@ -1,0 +1,200 @@
+import { nip19 } from 'nostr-tools';
+import { z } from 'zod';
+import { verifiedEvent, sha256, type SignedEvent } from '../../protocol/src';
+import { validateManifest } from '../../protocol/src/manifest';
+import type { ProtocolClient } from '../../client/src/nostr';
+
+export const commitPattern = /^[a-f0-9]{40}$/;
+export const tag = (event: SignedEvent, name: string) => event.tags.find((t) => t[0] === name)?.[1];
+export const values = (event: SignedEvent, name: string) =>
+  event.tags.filter((t) => t[0] === name).flatMap((t) => t.slice(1));
+export const latest = (events: SignedEvent[]) =>
+  [...events].sort((a, b) => b.created_at - a.created_at || a.id.localeCompare(b.id));
+export function repositoryRef(reference: string) {
+  let ref = reference.replace(/^nostr:\/\//, '').replace(/^nostr:/, ''),
+    relays: string[] = [];
+  if (ref.startsWith('naddr1')) {
+    const decoded = nip19.decode(ref);
+    if (decoded.type !== 'naddr' || decoded.data.kind !== 30617)
+      throw new Error('Expected a Git repository address.');
+    ref = `30617:${decoded.data.pubkey}:${decoded.data.identifier}`;
+    relays = decoded.data.relays ?? [];
+  } else if (ref.startsWith('npub1')) {
+    const parts = ref.split('/'),
+      decoded = nip19.decode(parts[0]);
+    if (decoded.type !== 'npub' || ![2, 3].includes(parts.length))
+      throw new Error('Invalid repository URL.');
+    if (parts.length === 3) {
+      const hint = decodeURIComponent(parts[1]);
+      relays = [/^wss?:/.test(hint) ? hint : `wss://${hint}`];
+    }
+    ref = `30617:${decoded.data}:${decodeURIComponent(parts.at(-1)!)}`;
+  }
+  const match = /^30617:([a-f0-9]{64}):([^\u0000-\u001f]{1,256})$/.exec(ref);
+  if (!match) throw new Error('Use a NIP-34 repository address or nostr:// clone URL.');
+  return { address: ref, pubkey: match[1], identifier: match[2], relays };
+}
+export function proposalId(value: string) {
+  value = value.replace(/^nostr:/, '');
+  if (/^(nevent|note)1/.test(value)) {
+    const d = nip19.decode(value);
+    value = d.type === 'nevent' ? d.data.id : d.type === 'note' ? d.data : '';
+  }
+  if (!/^[a-f0-9]{64}$/.test(value)) throw new Error('Use the full proposal event id or nevent.');
+  return value;
+}
+export type Repository = ReturnType<typeof repositoryRef> & {
+  event: SignedEvent;
+  clones: string[];
+  maintainers: string[];
+  euc?: string;
+};
+export async function readRepository(
+  client: ProtocolClient,
+  reference: string,
+): Promise<Repository> {
+  const ref = repositoryRef(reference);
+  const event = latest(
+    await client.query(
+      [{ kinds: [30617], authors: [ref.pubkey], '#d': [ref.identifier], limit: 5 }],
+      ref.relays,
+    ),
+  )[0];
+  if (!event) throw new Error('Repository announcement unavailable.');
+  return {
+    ...ref,
+    event,
+    relays: [...new Set([...values(event, 'relays'), ...ref.relays])].slice(0, 8),
+    clones: values(event, 'clone'),
+    maintainers: [
+      ...new Set([
+        event.pubkey,
+        ...values(event, 'maintainers').filter((p) => /^[a-f0-9]{64}$/.test(p)),
+      ]),
+    ],
+    euc: event.tags.find((t) => t[0] === 'r' && t[2] === 'euc')?.[1],
+  };
+}
+export type Proposal = {
+  root: SignedEvent;
+  revision: SignedEvent;
+  revisions: SignedEvent[];
+  status: 'open' | 'merged' | 'closed' | 'draft';
+  statusEvent?: SignedEvent;
+  comments: SignedEvent[];
+  head?: string;
+  base?: string;
+  clones: string[];
+  title: string;
+  patch: boolean;
+};
+export function proposalsFromEvents(repo: Repository, inputs: SignedEvent[]): Proposal[] {
+  const events = inputs.flatMap((input) => {
+    try {
+      const e = verifiedEvent(input);
+      return e.created_at <= Date.now() / 1000 + 60 ? [e] : [];
+    } catch {
+      return [];
+    }
+  });
+  return latest(
+    events.filter(
+      (e) =>
+        (e.kind === 1618 || (e.kind === 1617 && values(e, 't').includes('root'))) &&
+        values(e, 'a').includes(repo.address),
+    ),
+  ).map((root) => {
+    const revisions = latest([
+      root,
+      ...events.filter(
+        (e) =>
+          e.kind === 1619 &&
+          e.pubkey === root.pubkey &&
+          tag(e, 'E') === root.id &&
+          tag(e, 'P') === root.pubkey &&
+          values(e, 'a').includes(repo.address) &&
+          commitPattern.test(tag(e, 'c') ?? '') &&
+          values(e, 'clone').length > 0,
+      ),
+    ]);
+    const revision = revisions[0];
+    const statusEvent = latest(
+      events.filter(
+        (e) =>
+          [1630, 1631, 1632, 1633].includes(e.kind) &&
+          (e.pubkey === root.pubkey || repo.maintainers.includes(e.pubkey)) &&
+          e.tags.some((t) => t[0] === 'e' && t[1] === root.id && t[3] === 'root'),
+      ),
+    )[0];
+    const comments = events
+      .filter(
+        (e) =>
+          e.kind === 1111 &&
+          tag(e, 'E') === root.id &&
+          tag(e, 'K') === String(root.kind) &&
+          tag(e, 'P') === root.pubkey,
+      )
+      .sort((a, b) => a.created_at - b.created_at);
+    return {
+      root,
+      revision,
+      revisions,
+      status:
+        ({ 1630: 'open', 1631: 'merged', 1632: 'closed', 1633: 'draft' } as const)[
+          statusEvent?.kind as 1630
+        ] ?? 'open',
+      statusEvent,
+      comments,
+      head: tag(revision, root.kind === 1617 ? 'commit' : 'c'),
+      base: tag(revision, 'merge-base'),
+      clones: values(revision, 'clone'),
+      title: tag(root, 'subject') ?? 'Change proposal',
+      patch: root.kind === 1617,
+    };
+  });
+}
+export async function readProposals(client: ProtocolClient, repo: Repository) {
+  const roots = await client.query(
+    [{ kinds: [1617, 1618], '#a': [repo.address], limit: 100 }],
+    repo.relays,
+  );
+  if (!roots.length) return [];
+  const ids = roots.map((e) => e.id);
+  const related = await client.query(
+    [
+      { kinds: [1619, 1111], '#E': ids, limit: 500 },
+      { kinds: [1630, 1631, 1632, 1633], '#e': ids, limit: 500 },
+    ],
+    repo.relays,
+  );
+  return proposalsFromEvents(repo, [...roots, ...related]);
+}
+export const previewSchema = z
+  .object({
+    version: z.literal(1),
+    commit: z.string().regex(commitPattern),
+    manifest: z.unknown(),
+    check: z.object({ profile: z.string().max(80), browser: z.string().max(80) }),
+    image: z.string().max(2048).optional(),
+  })
+  .strict();
+export async function validatePreview(bytes: Uint8Array, revision: SignedEvent) {
+  const attachments = revision.tags.filter((t) => t[0] === 'soy-preview');
+  if (attachments.length !== 1 || attachments[0].length !== 4)
+    throw new Error('No unambiguous playable preview for this revision.');
+  const attachment = attachments[0];
+  if (bytes.length > 65536 || (await sha256(bytes)) !== attachment[2])
+    throw new Error('Preview descriptor hash mismatch.');
+  const preview = previewSchema.parse(
+    JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)),
+  );
+  if (preview.commit !== tag(revision, 'c') || preview.commit !== attachment[3])
+    throw new Error('Preview belongs to another source commit.');
+  const release = await validateManifest(preview.manifest);
+  if (
+    release.manifest.pubkey !== revision.pubkey ||
+    tag(release.manifest, 'source-commit') !== preview.commit
+  )
+    throw new Error('Preview author or source mismatch.');
+  return { ...preview, manifest: release.manifest, artifactHash: release.artifactHash };
+}

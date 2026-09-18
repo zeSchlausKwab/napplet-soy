@@ -44,6 +44,7 @@ const planSchema = z
       .int()
       .nonnegative()
       .max(40 * 1024 * 1024),
+    sourceCommit: commit,
     remix: remixSchema.optional(),
   })
   .strict();
@@ -57,6 +58,7 @@ export const jobSchema = z
     parent: hash.nullable(),
     baseCurrent: hash.nullable(),
     baseSource: hash.nullable(),
+    sourceBaseCommit: commit.nullable(),
     baseAnnouncement: hash.nullable(),
     commit,
     archiveHash: hash,

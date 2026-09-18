@@ -44,6 +44,7 @@ export async function sourceGit(
   directory: string,
   args: string[],
   extra: Record<string, string> = {},
+  outputLimit = 2 * 1024 * 1024,
 ) {
   const env: Record<string, string> = {
     PATH: process.env.PATH ?? '/usr/bin:/bin',
@@ -93,7 +94,7 @@ export async function sourceGit(
         const next = await reader.read();
         if (next.done) break;
         size += next.value.byteLength;
-        if (size > 2 * 1024 * 1024) {
+        if (size > outputLimit) {
           child.kill('SIGKILL');
           throw new Error('Git output exceeded its limit');
         }
@@ -129,6 +130,7 @@ export async function prepareSource(input: {
   signer: SourceSigner;
   local?: boolean;
   createdAt?: number;
+  upstream?: string;
   releaseRefs?: Record<string, string>;
 }) {
   const origin = graspOrigin(input.origin, input.local);
@@ -173,6 +175,7 @@ export async function prepareSource(input: {
     announcement: await sign(30617, [
       ['d', input.identifier],
       ['name', input.title],
+      ...(input.upstream ? [['u', input.upstream]] : []),
       ['clone', urls.clone],
       ['relays', urls.relay],
       ['r', roots[0], 'euc'],

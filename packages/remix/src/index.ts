@@ -1,3 +1,7 @@
+import { ProtocolClient } from '../../client/src/nostr';
+import { readRepository, repositoryRef } from '../../collaboration/src/protocol';
+import { cloneRevision } from '../../collaboration/src/git';
+import { writeBinding } from '../../publish/src/binding';
 import { loopbackRelayUrl } from '../../nostr/src/relay-policy';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -174,13 +178,33 @@ export async function loadRemix(reference: string, network: Network, signal: Abo
     if ((await sha256(bytes)) !== hash) throw new Error('Source archive hash mismatch');
     files = sourceArchive(bytes);
   }
-  return { manifest, artifact, files };
+  let repository: Awaited<ReturnType<typeof readRepository>> | undefined;
+  const source = manifest.tags.find((t) => t[0] === 'source')?.[1];
+  const commit = manifest.tags.find((t) => t[0] === 'source-commit')?.[1];
+  if (source?.startsWith('nostr://') && /^[a-f0-9]{40}$/.test(commit ?? '')) {
+    const client = new ProtocolClient(() =>
+      network === 'local'
+        ? [
+            ...hints,
+            ...repositoryRef(source).relays.map(loopbackRelayUrl),
+            'ws://127.0.0.1:19347/relay',
+          ]
+        : [...hints, 'wss://relay.napplet.soy', ...discoveryRelays],
+    );
+    try {
+      repository = await readRepository(client, source);
+    } finally {
+      client.close();
+    }
+  }
+  return { manifest, artifact, files, repository, network };
 }
 
 export async function createRemix(
   parent: string,
   name: string,
-  input: Awaited<ReturnType<typeof loadRemix>>,
+  input: Omit<Awaited<ReturnType<typeof loadRemix>>, 'repository' | 'network'> &
+    Partial<Pick<Awaited<ReturnType<typeof loadRemix>>, 'repository' | 'network'>>,
 ) {
   if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(name))
     throw new AccountError('REMIX_FOLDER', 'Choose a new lowercase folder name.');
@@ -197,6 +221,33 @@ export async function createRemix(
   const target = resolve(parent, name);
   await mkdir(target); // Refuse overwrite before writing any source.
   try {
+    if (input.repository && lineage.sourceCommit) {
+      const clone = await cloneRevision(
+        target,
+        input.repository,
+        lineage.sourceCommit,
+        input.network === 'local',
+      );
+      const previewId = crypto.randomUUID();
+      await writeBinding(target, {
+        version: 1,
+        project: {
+          previewId,
+          identifier: `n-${previewId.replaceAll('-', '').slice(0, 11)}`,
+          remix: lineage,
+          creator: undefined,
+          publish: projectPublishingDefaults(),
+        },
+        upstream: {
+          address: input.repository.address,
+          relays: input.repository.relays,
+          clone,
+          commit: lineage.sourceCommit,
+          manifest: input.manifest,
+        },
+      });
+      return { directory: target, lineage, source: 'git', needsSetup: entry === 'dist/index.html' };
+    }
     for (const [path, bytes] of files) {
       if (path === 'napplet.json') continue;
       await mkdir(dirname(join(target, path)), { recursive: true });

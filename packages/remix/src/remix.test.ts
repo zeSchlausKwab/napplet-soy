@@ -8,7 +8,7 @@ import { aggregateHash, sha256 } from '../../protocol/src';
 import { remixLineage } from '../../protocol/src/remix';
 import { createRemix, loadRemix } from './index';
 import { sourceArchive } from './archive';
-import { freezeSource } from '../../publish/src/project';
+import { freezeFixture as freezeSource } from '../../publish/src/testing';
 
 test('remix downloads exact signed archive and makes a fresh project with source and credit intact', async () => {
   const root = await mkdtemp(join(tmpdir(), 'napplet-remix-'));

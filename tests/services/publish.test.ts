@@ -4,7 +4,10 @@ import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Accounts, NativeVault, type Vault } from '../../packages/identity/src/accounts';
-import { publishProject } from '../../packages/publish/src';
+import {
+  publishProject as publishCommitted,
+  type PublishOptions,
+} from '../../packages/publish/src';
 import { Journal } from '../../packages/publish/src/journal';
 import { checkPublication } from '../../apps/cli/src/publish-check';
 import { sourceGit, sourceUrls } from '../../packages/grasp/src/client';
@@ -15,6 +18,17 @@ import { buildGrasp, graspBinary } from '../../scripts/grasp-build';
 import { graspEnvironment } from '../../scripts/grasp';
 import { verifyEvent, type Filter, type NostrEvent } from 'nostr-tools';
 
+// Existing transport tests checkpoint their edited fixture before publishing it.
+async function publishProject(options: PublishOptions) {
+  if (!options.resume && !options.dryRun) {
+    await sourceGit(options.directory, ['init', '--initial-branch=main']);
+    await Bun.write(join(options.directory, '.git/info/exclude'), '.napplet-space/\n');
+    await sourceGit(options.directory, ['add', '--all', '--', '.']);
+    if (await sourceGit(options.directory, ['status', '--porcelain']))
+      await sourceGit(options.directory, ['commit', '-m', 'Fixture checkpoint']);
+  }
+  return publishCommitted(options);
+}
 // This independent reader uses the wire protocol directly, without our publishing or catalog adapters.
 async function readRelay(url: string, filter: Filter): Promise<NostrEvent[]> {
   return new Promise((resolve, reject) => {
@@ -344,6 +358,7 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
         services.targets.site,
       ];
       expect((await run(['publish', ...flags, '--dry-run'])).status).toBe('dry_run');
+      await run(['checkpoint', 'Initial creation', '--project', created.directory]);
       const first = await run(['publish', ...flags]);
       expect(first.status).toBe('announced_pending_index');
       expect((await run(['publish', ...flags])).currentId).toBe(first.currentId);
@@ -362,6 +377,7 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
         join(created.directory, 'napplet.json'),
         JSON.stringify({ ...config, title: 'After process termination' }),
       );
+      await run(['checkpoint', 'Update title', '--project', created.directory]);
       const worker = join(services.directory, 'crash-worker.ts');
       await Bun.write(
         worker,
@@ -453,3 +469,161 @@ test.skipIf(process.env.SPACE_TEST_NATIVE_KEYSTORE !== '1')(
   },
   120000,
 );
+
+test('collaboration: two creators publish, propose, review the exact Git tip, merge and release separately', async () => {
+  const services = await stack();
+  const { checkpoint } = await import('../../packages/publish/src/git-source');
+  const { writeBinding, readBinding } = await import('../../packages/publish/src/binding');
+  const { loadRemix, createRemix } = await import('../../packages/remix/src');
+  const { propose, proposalAction, pushSource } =
+    await import('../../packages/collaboration/src/service');
+  const { readRepository, readProposals, validatePreview, tag } =
+    await import('../../packages/collaboration/src/protocol');
+  const { ProtocolClient } = await import('../../packages/client/src/nostr');
+  const { nip19 } = await import('nostr-tools');
+  const client = new ProtocolClient(() => [
+    services.targets.relay,
+    services.targets.grasp.replace('http:', 'ws:') + '/',
+  ]);
+  const store = new Map<string, string>();
+  const vault: Vault = {
+    get: async (id) => store.get(id) ?? null,
+    set: async (id, value) => {
+      store.set(id, value);
+    },
+    delete: async (id) => {
+      store.delete(id);
+    },
+  };
+  try {
+    const owner = new Accounts('local', join(services.directory, 'owner'), vault),
+      contributor = new Accounts('local', join(services.directory, 'contributor'), vault);
+    const alice = await owner.create(),
+      bob = await contributor.create();
+    expect(alice.pubkey).not.toBe(bob.pubkey);
+    const original = join(services.directory, 'original');
+    await mkdir(original);
+    await Bun.write(
+      join(original, 'napplet.json'),
+      JSON.stringify({
+        schema: 'space-local-project/v1',
+        name: 'Together',
+        entry: 'index.html',
+        previewId: crypto.randomUUID(),
+        identifier: 'together',
+        license: 'MIT',
+      }),
+    );
+    await Bun.write(join(original, 'index.html'), '<p>One idea</p>');
+    await Bun.write(join(original, 'LICENSE'), 'MIT');
+    await Bun.write(join(original, '.gitignore'), '.napplet-space/\n');
+    await checkpoint(original, 'First real source commit', alice.pubkey);
+    await writeBinding(original, {
+      version: 1,
+      project: {
+        creator: { pubkey: alice.pubkey, network: 'local' },
+        publish: { networks: { local: services.targets } },
+      },
+    });
+    const check = async () => ({ profile: 'integration', browser: 'fixture' });
+    const first = await publishProject({
+      directory: original,
+      network: 'local',
+      accounts: owner,
+      check,
+    });
+    const sourceTip = await sourceGit(original, ['rev-parse', 'HEAD']);
+    expect(first.status).toBe('announced_pending_index');
+    const latestOwner = await new Journal(original, 'local').index(),
+      originalJob = await new Journal(original, 'local').load(latestOwner.latest!);
+    expect(originalJob.commit).toBe(sourceTip);
+    const link = nip19.neventEncode({
+      id: originalJob.current!.id,
+      relays: [services.targets.relay],
+    });
+    const loaded = await loadRemix(link, 'local', AbortSignal.timeout(15000));
+    const remix = await createRemix(services.directory, 'change', loaded);
+    expect(remix.source).toBe('git');
+    expect(await sourceGit(remix.directory, ['rev-parse', 'HEAD'])).toBe(sourceTip);
+    expect(await sourceGit(remix.directory, ['status', '--porcelain'])).toBe('');
+    expect(await Bun.file(join(remix.directory, 'napplet.json')).text()).toBe(
+      await Bun.file(join(original, 'napplet.json')).text(),
+    );
+    const binding = (await readBinding(remix.directory))!;
+    binding.project.creator = { pubkey: bob.pubkey, network: 'local' };
+    binding.project.publish = { networks: { local: services.targets } };
+    await writeBinding(remix.directory, binding);
+    await Bun.write(join(remix.directory, 'index.html'), '<p>Two ideas</p>');
+    await checkpoint(remix.directory, 'A second idea', bob.pubkey);
+    const own = await publishProject({
+      directory: remix.directory,
+      network: 'local',
+      accounts: contributor,
+      check,
+    });
+    expect(own.status).toBe('announced_pending_index');
+    const options = {
+      directory: remix.directory,
+      network: 'local' as const,
+      accounts: contributor,
+      check,
+      description: 'Try a second idea',
+    };
+    const proposed = await propose(options);
+    const repo = await readRepository(client, binding.upstream!.address);
+    const found = (await readProposals(client, repo))[0];
+    expect(found.root.id).toBe(proposed.proposal);
+    expect(found.head).toBe(await sourceGit(remix.directory, ['rev-parse', 'HEAD']));
+    const descriptor = await fetch(tag(found.revision, 'soy-preview')!).then((r) => r.bytes());
+    const preview = await validatePreview(descriptor, found.revision);
+    expect(preview.commit).toBe(found.head!);
+    // An independent Git client retrieves the proposal's exact c tag and contributor ancestry.
+    const observer = join(services.directory, 'observer');
+    await sourceGit(services.directory, ['clone', found.clones[0], observer]);
+    expect(await sourceGit(observer, ['rev-parse', 'HEAD'])).toBe(found.head!);
+    expect(await sourceGit(observer, ['log', '-1', '--format=%an'])).toBe(bob.pubkey);
+    expect((await propose({ ...options, resume: true })).proposal).toBe(proposed.proposal);
+    await Bun.write(join(remix.directory, 'README.md'), '# Both ideas\n');
+    await checkpoint(remix.directory, 'Explain the idea', bob.pubkey);
+    const updated = await propose({ ...options, description: 'Document it too' });
+    expect(updated.proposal).toBe(proposed.proposal);
+    expect(updated.revision).not.toBe(proposed.revision);
+    await expect(
+      proposalAction({
+        directory: original,
+        network: 'local',
+        accounts: owner,
+        proposal: proposed.proposal,
+        action: 'merge',
+        revision: proposed.revision,
+        target: sourceTip,
+      }),
+    ).rejects.toThrow('Pin');
+    const merged = await proposalAction({
+      directory: original,
+      network: 'local',
+      accounts: owner,
+      proposal: proposed.proposal,
+      action: 'merge',
+      revision: updated.revision,
+      target: sourceTip,
+    });
+    expect(merged).toMatchObject({ state: 'merged_locally', released: false, pushed: false });
+    expect((await readProposals(client, repo))[0].status).toBe('open');
+    await pushSource({ directory: original, network: 'local', accounts: owner });
+    expect((await readProposals(client, repo))[0].status).toBe('merged');
+    const released = await publishProject({
+      directory: original,
+      network: 'local',
+      accounts: owner,
+      check,
+    });
+    expect(released.status).toBe('announced_pending_index');
+    expect(await sourceGit(original, ['merge-base', '--is-ancestor', updated.head, 'HEAD'])).toBe(
+      '',
+    );
+  } finally {
+    client.close();
+    await services.close();
+  }
+}, 120000);

@@ -6,7 +6,8 @@ import { boilerplateFiles, creatorSkills, installCreatorSkills } from './creator
 import boilerplate from '../vendor/boilerplate.json';
 import skills from '../vendor/skills.json';
 import { scaffold } from './scaffold';
-import { inspectProject, freezeSource } from '../../../packages/publish/src/project';
+import { inspectProject } from '../../../packages/publish/src/project';
+import { freezeFixture as freezeSource } from '../../../packages/publish/src/testing';
 import { executableBytes } from '../../../packages/publish/src/artifact';
 import { sha256 } from '../../../packages/protocol/src';
 
@@ -72,7 +73,14 @@ test('publishing freezes editable upstream source and the separate built artifac
   expect(inspected.contents.get('index.html')).not.toEqual(executableBytes(inspected.contents));
   const frozenDirectory = join(root, 'frozen');
   await freezeSource(frozenDirectory, inspected.contents, 1800000000);
-  const frozen = await inspectProject(join(frozenDirectory, 'source'), 'local', 'a'.repeat(64));
+  const frozen = await inspectProject(
+    join(frozenDirectory, 'files'),
+    'local',
+    'a'.repeat(64),
+    {},
+    inspected.plan.sourceCommit,
+    inspected.plan.files.map((f) => f.path),
+  );
   expect(frozen.fingerprint).toBe(inspected.fingerprint);
   expect(frozen.plan).toEqual(inspected.plan);
 });

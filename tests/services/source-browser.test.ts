@@ -8,7 +8,7 @@ import { aggregateHash, sha256 } from '../../packages/protocol/src';
 import { DiscoveryQueue } from '../../packages/backend/src/discovery-queue';
 import { IndexStore } from '../../packages/backend/src/index-store';
 import { publicNapplet } from '../../packages/backend/src/public-model';
-import { freezeSource } from '../../packages/publish/src/project';
+import { freezeFixture as freezeSource } from '../../packages/publish/src/testing';
 import { initializePolicy } from '../../packages/moderation/src/policy';
 
 test('source browser: pinned tree, safe highlighting, downloads, fallbacks, moderation and mobile layout', async () => {

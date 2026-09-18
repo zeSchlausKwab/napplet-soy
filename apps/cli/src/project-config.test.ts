@@ -29,11 +29,13 @@ test('effective targets are readable before setup and editable per network witho
       grasp: 'https://git.napplet.soy',
     });
     await projectConfiguration(root, 'public', true);
-    const configured = await Bun.file(join(root, 'napplet.json')).json();
+    const binding = await Bun.file(join(root, '.napplet-space/project.json')).json();
+    const configured = binding.project;
     expect(configured.publish.networks.public.relay).toBe('wss://relay.napplet.soy/');
     configured.publish.networks.public.blossom = 'https://assets.example.com';
     configured.publish.networks.public.mirrors = [];
-    await Bun.write(join(root, 'napplet.json'), JSON.stringify(configured));
+    await Bun.write(join(root, '.napplet-space/project.json'), JSON.stringify(binding));
+    expect(await Bun.file(join(root, 'napplet.json')).json()).toEqual(project);
     expect((await projectConfiguration(root, 'public')).targets).toMatchObject({
       blossom: 'https://assets.example.com',
       mirrors: [],

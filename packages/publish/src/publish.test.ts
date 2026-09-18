@@ -6,11 +6,26 @@ import { join } from 'node:path';
 import { Accounts, type Vault } from '../../identity/src/accounts';
 import { sha256, validateRelease, verifiedEvent, type SignedEvent } from '../../protocol/src';
 import { sourceGit, sourceUrls } from '../../grasp/src/client';
-import { publishProject, publicationStatus, type PublishOptions } from './index';
+import {
+  publishProject as publishCommitted,
+  publicationStatus,
+  type PublishOptions,
+} from './index';
 import { Journal } from './journal';
 import { newer } from './relay';
 import { appReferences, descriptorImages } from '../../protocol/src/preview';
 
+// Existing publication cases explicitly checkpoint fixture edits before sharing.
+async function publishProject(options: PublishOptions) {
+  if (!options.resume && !options.dryRun) {
+    await sourceGit(options.directory, ['init', '--initial-branch=main']);
+    await Bun.write(join(options.directory, '.git/info/exclude'), '.napplet-space/\n');
+    await sourceGit(options.directory, ['add', '--all', '--', '.']);
+    if (await sourceGit(options.directory, ['status', '--porcelain']))
+      await sourceGit(options.directory, ['commit', '-m', 'Fixture checkpoint']);
+  }
+  return publishCommitted(options);
+}
 const previewPng = new Uint8Array(
   Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lS8AAAAASUVORK5CYII=',
@@ -376,9 +391,9 @@ test('first publish is standard and retry preserves every signed event, artifact
   const f = await fixture();
   try {
     await sourceGit(f.project, ['init', '--initial-branch=main']);
-    await Bun.write(join(f.project, 'unrelated-private.txt'), 'private old history');
-    await sourceGit(f.project, ['add', '--', 'unrelated-private.txt']);
-    await sourceGit(f.project, ['commit', '-m', 'Private work']);
+    await Bun.write(join(f.project, 'earlier-source.txt'), 'Public source history');
+    await sourceGit(f.project, ['add', '--', 'earlier-source.txt']);
+    await sourceGit(f.project, ['commit', '-m', 'Earlier source work']);
     const first = await publishProject(f.options);
     expect(first.status).toBe('announced_pending_index');
     const job = await f.load();
@@ -388,9 +403,9 @@ test('first publish is standard and retry preserves every signed event, artifact
     expect(job.snapshot!.tags.some((t) => t[0] === 'd')).toBe(false);
     expect(job.current!.tags.find((t) => t[0] === 'source')![1]).toStartWith('nostr://');
     const repo = join(f.journal.directory(job.id), 'source');
-    expect(await sourceGit(repo, ['rev-list', '--count', 'HEAD'])).toBe('1');
-    expect(await sourceGit(repo, ['ls-tree', '-r', '--name-only', 'HEAD'])).not.toContain(
-      'private',
+    expect(await sourceGit(repo, ['rev-list', '--count', 'HEAD'])).toBe('2');
+    expect(await sourceGit(repo, ['ls-tree', '-r', '--name-only', 'HEAD'])).toContain(
+      'earlier-source',
     );
     const writes = [...f.writes];
     const second = await publishProject(f.options);
@@ -435,7 +450,8 @@ test('a built project uploads compiled HTML and publishes editable source with s
     ]);
     const source = join(f.journal.directory(job.id), 'source');
     expect(await sourceGit(source, ['show', 'HEAD:src/main.ts'])).toContain('export const message');
-    expect(await sourceGit(source, ['show', 'HEAD:dist/index.html'])).toBe(html);
+    await expect(sourceGit(source, ['show', 'HEAD:dist/index.html'])).rejects.toThrow();
+    expect(job.commit).toBe(await sourceGit(f.project, ['rev-parse', 'HEAD']));
     expect(await sourceGit(source, ['show', 'HEAD:index.html'])).toContain('/src/main.ts');
     const writes = [...f.writes];
     expect(await publishProject(f.options)).toMatchObject({

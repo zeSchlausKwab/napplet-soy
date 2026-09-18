@@ -56,7 +56,9 @@ test('creator sync registers boards over encrypted CVM and generated public cont
     await Bun.write(join(directory, 'napplet.json'), JSON.stringify(project));
     await backendProject(directory);
     await syncBackend(directory, 'local', accounts);
-    const context = JSON.parse(await readFile(join(directory, 'soy-backend.json'), 'utf8'));
+    const context = JSON.parse(
+      await readFile(join(directory, '.napplet-space/soy-backend.json'), 'utf8'),
+    );
     expect(context.napplet).not.toBe(address);
     expect(service.boards.read('guest', { napplet: context.napplet, board: 'main' }).rows).toEqual(
       [],

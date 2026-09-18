@@ -15,6 +15,8 @@ import {
 } from './config';
 import type { Network } from '../../identity/src/signer';
 import { builtRequirements } from './artifact';
+import { effectiveProject } from './binding';
+import { committedSource, inspectHistory } from './git-source';
 
 export const MAX_SOURCE_BYTES = 40 * 1024 * 1024;
 export type SourceFile = { path: string; hash: string; size: number };
@@ -52,7 +54,7 @@ export async function regularFile(root: string, path: string, limit: number) {
     await file.close();
   }
 }
-function checkSource(path: string, bytes: Uint8Array) {
+export function checkSource(path: string, bytes: Uint8Array) {
   if (
     path
       .split('/')
@@ -83,9 +85,11 @@ export async function inspectProject(
   network: Network,
   pubkey: string,
   overrides: Partial<Targets> = {},
+  frozenCommit?: string,
+  frozenFiles?: string[],
 ) {
   const root = await realpath(directory);
-  const configBytes = await regularFile(root, 'napplet.json', 16384);
+  let configBytes = await regularFile(root, 'napplet.json', 16384);
   let project;
   try {
     project = projectSchema.parse(
@@ -97,6 +101,8 @@ export async function inspectProject(
       'Invalid napplet.json. Choose index.html or the upstream dist/index.html artifact.',
     );
   }
+  project = await effectiveProject(root, project);
+  configBytes = new TextEncoder().encode(JSON.stringify(project, null, 2) + '\n');
   if (project.creator && (project.creator.pubkey !== pubkey || project.creator.network !== network))
     throw new PublishError(
       'CREATOR_MISMATCH',
@@ -104,7 +110,7 @@ export async function inspectProject(
     );
   const targets = resolveTargets(project, network, overrides);
   const built = project.entry === 'dist/index.html';
-  const defaults = built
+  const defaults = !frozenCommit
     ? (
         await sourceGit(root, [
           '-c',
@@ -114,14 +120,14 @@ export async function inspectProject(
           '--others',
           '--exclude-standard',
           '-z',
-        ])
+        ]).catch(() => sourceDefaults.join('\0'))
       )
         .split('\0')
         .filter(Boolean)
     : sourceDefaults;
   const selected = [
     ...new Set([
-      ...(project.publish?.files ?? defaults),
+      ...(frozenFiles ?? [...defaults, ...(project.publish?.files ?? [])]),
       ...(built ? [project.entry] : []),
       ...(project.preview?.image ? [project.preview.image] : []),
       ...(project.preview?.video ? [project.preview.video.file] : []),
@@ -205,6 +211,8 @@ export async function inspectProject(
     files,
     artifactHash: await sha256(html),
     sourceBytes: total,
+    sourceCommit:
+      frozenCommit ?? (await sourceGit(root, ['rev-parse', 'HEAD']).catch(() => '0'.repeat(40))),
     ...(project.remix ? { remix: project.remix } : {}),
   };
   return { root, plan, contents, fingerprint: await sha256(JSON.stringify(plan)) };
@@ -220,42 +228,36 @@ export async function durableFile(path: string, bytes: Uint8Array | string) {
     await file.close();
   }
 }
-/** Build only the explicit public file set. User Git history/config/hooks never enter this repository. */
+/** Freeze actual committed history; built files are separate immutable release inputs. */
 export async function freezeSource(
   directory: string,
   contents: Map<string, Uint8Array>,
   createdAt: number,
-  parent?: { directory: string; commit: string },
+  parent: { directory: string; commit: string },
 ) {
+  await inspectHistory(parent.directory, parent.commit);
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const repo = join(directory, 'source');
-  // A preparation interrupted before a journal is activated has not published anything.
   await rm(repo, { recursive: true, force: true });
   await mkdir(repo);
   await sourceGit(repo, ['init', '--initial-branch=main']);
-  if (parent) {
-    await sourceGit(repo, [
-      '-c',
-      'protocol.file.allow=always',
-      'fetch',
-      '--no-tags',
-      parent.directory,
-      parent.commit,
-    ]);
-    await sourceGit(repo, ['update-ref', 'refs/heads/main', parent.commit]);
-  }
-  for (const [path, bytes] of contents) await durableFile(join(repo, path), bytes);
-  // Stage exactly the explicit file list, with no inherited filters or Git configuration.
-  await sourceGit(repo, ['add', '--force', '--', ...contents.keys()]);
-  await sourceGit(repo, ['commit', '--allow-empty', '-m', 'Publish napplet source'], {
-    GIT_AUTHOR_DATE: `${createdAt} +0000`,
-    GIT_COMMITTER_DATE: `${createdAt} +0000`,
-  });
-  const commit = await sourceGit(repo, ['rev-parse', 'HEAD']);
+  await sourceGit(repo, [
+    '-c',
+    'protocol.file.allow=always',
+    'fetch',
+    '--no-tags',
+    parent.directory,
+    parent.commit,
+  ]);
+  await sourceGit(repo, ['checkout', '-B', 'main', parent.commit]);
+  const frozen = join(directory, 'files');
+  await rm(frozen, { recursive: true, force: true });
+  for (const [path, bytes] of contents) await durableFile(join(frozen, path), bytes);
+  // The exact selection is needed when checking frozen builds outside a Git worktree.
+  const commit = parent.commit;
   const archive = join(directory, 'source.tar');
   await sourceGit(repo, ['archive', '--format=tar', `--output=${archive}`, commit]);
   const bytes = await regularFile(directory, 'source.tar', 50 * 1024 * 1024);
-  // fsync the archive before the active journal can reference it.
   const file = await open(archive, 'r+');
   try {
     await file.sync();

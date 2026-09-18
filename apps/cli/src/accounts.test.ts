@@ -150,8 +150,8 @@ test('boilerplate onboarding reports a reusable backup outside Git and the CLI c
     expect(backupFile).toBe(join(directory, 'accounts/accounts/public', `${account.pubkey}.nsec`));
     expect((await stat(backupFile)).mode & 0o777).toBe(0o600);
     const secret = (await readFile(backupFile, 'utf8')).trim();
-    const config = await Bun.file(join(created.directory, 'napplet.json')).json();
-    expect(config.creator).toEqual({ pubkey: account.pubkey, network: 'public' });
+    const config = await Bun.file(join(created.directory, '.napplet-space/project.json')).json();
+    expect(config.project.creator).toEqual({ pubkey: account.pubkey, network: 'public' });
     expect((await cli(['account', 'backup'])).backupFile).toBe(backupFile);
     expect((await cli(['account', 'create'])).backupFile).toBe(backupFile);
     const reused = await cli(['new', 'second-boilerplate', '--no-install']);
