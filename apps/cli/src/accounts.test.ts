@@ -37,6 +37,17 @@ test('account show reports absence without provisioning a key or account files',
   expect(JSON.parse(result.stdout)).toEqual({ account: null });
   expect(result.saved).toBe(false);
 });
+test('fresh identity flag cannot silently affect unrelated commands', async () => {
+  for (const args of [
+    ['account', 'show', '--new'],
+    ['new', 'unexpected', '--new'],
+  ]) {
+    const result = await run(args);
+    expect(result.code).toBe(1);
+    expect(JSON.parse(result.stdout).error.code).toBe('USAGE');
+    expect(result.saved).toBe(false);
+  }
+});
 test('pair reports a one-time connection URI, times out without credentials and rejects unrelated options', async () => {
   const relay = Bun.serve({
     hostname: '127.0.0.1',
@@ -156,6 +167,24 @@ test('boilerplate onboarding reports a reusable backup outside Git and the CLI c
     expect((await cli(['account', 'create'])).backupFile).toBe(backupFile);
     const reused = await cli(['new', 'second-boilerplate', '--no-install']);
     expect(reused.backupFile).toBe(backupFile);
+    const fresh = await cli(['account', 'create', '--new']);
+    expect(fresh.account.pubkey).not.toBe(account.pubkey);
+    expect(fresh.backupFile).not.toBe(backupFile);
+    expect((await stat(fresh.backupFile)).mode & 0o777).toBe(0o600);
+    expect((await cli(['account', 'show'])).account).toEqual(fresh.account);
+    expect((await cli(['account', 'create'])).backupFile).toBe(fresh.backupFile);
+    const saved = (await cli(['account', 'list'])).accounts;
+    expect(saved.map((entry: { pubkey: string }) => entry.pubkey)).toEqual([
+      account.pubkey,
+      fresh.account.pubkey,
+    ]);
+    expect(saved.find((entry: { selected: boolean }) => entry.selected).id).toBe(fresh.account.id);
+    expect((await cli(['account', 'use', account.id])).account).toEqual(account);
+    expect((await cli(['account', 'backup'])).backupFile).toBe(backupFile);
+    expect((await readFile(backupFile, 'utf8')).trim()).toBe(secret);
+    expect(await Bun.file(join(created.directory, '.napplet-space/project.json')).json()).toEqual(
+      config,
+    );
     const deferred = await cli(['new', 'later-boilerplate', '--identity', 'later', '--no-install']);
     expect(deferred.backupFile).toBeUndefined();
     const imported = await cli(

@@ -80,6 +80,46 @@ test('creation saves a private portable backup that restores the same identity a
   expect(await Bun.file(path).exists()).toBe(false);
   expect(await accounts.current()).toEqual(original);
 });
+test('explicit fresh creation selects a different signer and preserves the previous key and backup', async () => {
+  const { accounts, vault } = fixture('fresh-creator');
+  const original = await accounts.create();
+  const originalPath = await accounts.backup();
+  const originalBackup = await readFile(originalPath, 'utf8');
+  const originalCredential = vault.values.get(original.id);
+  const created = await accounts.create({ fresh: true });
+  expect(created.pubkey).not.toBe(original.pubkey);
+  expect(await accounts.current()).toEqual(created);
+  expect(await accounts.create()).toEqual(created);
+  expect(await accounts.list()).toEqual([original, created]);
+  expect(vault.values.get(original.id)).toBe(originalCredential);
+  expect(await readFile(originalPath, 'utf8')).toBe(originalBackup);
+  const path = await accounts.backup();
+  expect(path).not.toBe(originalPath);
+  expect((await stat(path)).mode & 0o777).toBe(0o600);
+  expect(
+    (await fixture('restored-fresh').accounts.import((await readFile(path, 'utf8')).trim())).pubkey,
+  ).toBe(created.pubkey);
+  expect(await accounts.use(original.id)).toEqual(original);
+  expect(await accounts.current()).toEqual(original);
+  expect(await accounts.backup()).toBe(originalPath);
+});
+test('failed fresh creation preserves the selected identity and its backup', async () => {
+  const { accounts, vault } = fixture('fresh-unavailable');
+  const original = await accounts.create();
+  const path = await accounts.backup();
+  const backup = await readFile(path, 'utf8');
+  vault.set = async () => {
+    throw new AccountError('KEYSTORE_UNAVAILABLE', 'Unavailable');
+  };
+  await expect(accounts.create({ fresh: true })).rejects.toMatchObject({
+    code: 'KEYSTORE_UNAVAILABLE',
+  });
+  expect(await accounts.current()).toEqual(original);
+  expect(await accounts.create()).toEqual(original);
+  expect(await accounts.list()).toEqual([original]);
+  expect(await readFile(path, 'utf8')).toBe(backup);
+  expect(vault.values.size).toBe(1);
+});
 test('backup preserves corrupt or symlinked destinations and never substitutes another creator', async () => {
   const { accounts, vault } = fixture('backup-destination');
   const original = await accounts.create();

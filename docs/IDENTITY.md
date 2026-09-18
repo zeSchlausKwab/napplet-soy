@@ -12,7 +12,15 @@ bun run soyli account check
 
 Interactive project creation offers **create**, **connect existing**, or **set up later**. A selected account is reused. Local creators also get an automatic private-key backup; an existing valid backup is reused without unlocking the keystore, while saving a missing backup requires access to the stored key. Remote signers are not contacted just to scaffold a project. Noninteractive `new` reuses an existing selection, or leaves identity unset; `--identity create` explicitly enables first-use provisioning, and `--identity later` bypasses account setup entirely. If setup fails after scaffolding, the generated preview remains usable; finish setup with the account commands rather than recreating the directory.
 
-`account create` is idempotent: it reuses the selected account. `account import` and `account connect` add and select an identity while retaining earlier entries. `account list` displays their public keys, types, status and account IDs. `account use <account-id>` verifies the stored signer before selecting it. An npub is also accepted; use the account ID when multiple sessions represent the same public key.
+`account create` is idempotent: it reuses the selected account. To generate a different private key, use `account create --new`. This adds and selects a new local identity, saves its own private backup, and retains all previous identities and backups. `new`/`remix` onboarding continues to reuse the selected creator; `--new` is only valid with `account create`.
+
+```sh
+bun run soyli account create --new
+bun run soyli account list
+bun run soyli account use <previous-account-id>
+```
+
+`account import` and `account connect` also add and select an identity while retaining earlier entries. `account list` displays public keys, types, status and account IDs. `account use <account-id>` verifies the stored signer before selecting it. An npub is also accepted; use the account ID when multiple sessions represent the same public key. Changing the selected account does not rewrite existing projects' creator bindings. Switch back to the matching creator when publishing those projects.
 
 New projects store only `creator: {pubkey, network}` in `napplet.json`. This is a public authorship reference, not access to a key. The publisher matches it against the explicitly selected signer; cloning/remixing someone else's project must never select their credentials. A missing reference uses the current account. The local `previewId` and browser-extension identity belong to preview behavior and remain independent of the publishing signer.
 
@@ -31,7 +39,7 @@ The implementation uses [Bun's native Secrets API](https://bun.sh/docs/runtime/s
 
 Missing, locked or unavailable native storage produces an actionable error. Signing has no file/env fallback: restoring a backup is an explicit import into the credential store. Linux needs a running, unlocked Secret Service such as GNOME Keyring or KWallet; headless Linux without one cannot persist creator credentials through this implementation. The VPS services have separate service identities and do not need a creator account. Native macOS behavior is tested; Linux and Windows credential stores are not yet validated here.
 
-A public pending reservation is flushed before storing a credential. Activation happens only after reading that credential back. If the process dies between those steps, another account setup recovers the reserved identity instead of silently generating a replacement. A pending reservation with no stored credential can be discarded safely because it was never activated or published. Missing keys for an already selected account never trigger key rotation. Damaged metadata is reported and preserved. Previously selected identities remain available when importing/connecting fails.
+A public pending reservation is flushed before storing a credential. Activation happens only after reading that credential back. If the process dies between those steps, `account create` without `--new` recovers the reserved identity instead of silently generating a replacement. A pending reservation with no stored credential can be discarded safely because it was never activated or published. Missing keys for an already selected account never trigger key rotation. Damaged metadata is reported and preserved. Previously selected identities remain available when creating/importing/connecting fails before activation.
 
 The OS credential store protects the signing credential at rest. The portable nsec backup is unencrypted, protected by owner-only filesystem permissions; preserve a private copy. JavaScript must still hold key material temporarily to sign or export; strings and OS/runtime memory cannot be guaranteed fully erased. No private key is passed to Git, a build command, a generated preview bundle, SSR, or project configuration.
 

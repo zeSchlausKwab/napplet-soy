@@ -237,10 +237,10 @@ export class Accounts {
   async list() {
     return (await this.read()).accounts;
   }
-  async create() {
+  async create({ fresh = false }: { fresh?: boolean } = {}) {
     return this.locked(async (index) => {
       const selected = index.accounts.find((a) => a.id === index.active);
-      if (selected) {
+      if (selected && !fresh) {
         if (selected.type === 'local') await this.backupAccount(selected);
         return selected;
       }

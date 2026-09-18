@@ -103,6 +103,11 @@ absolute path before dependency installation. By default this is
 and Git. It is an **unencrypted nsec**, mode 0600 inside the private account
 directory; preserve a private copy. The same creator reuses the same file.
 `soyli account backup` creates or locates it for an existing local identity.
+`soyli account create` also reuses the selected identity. Use
+`soyli account create --new` to generate and select a different private key with
+its own backup. Previous identities and backups remain available through
+`soyli account list` and `soyli account use <account-id>`. Existing projects keep
+their creator bindings; switch back to the matching identity to publish them.
 Restore with `soyli account import --stdin < /path/to/key.nsec`.
 For an encrypted copy, use `soyli account export /path/to/new.ncryptsec`.
 Remote identities are backed up in the remote signer instead.

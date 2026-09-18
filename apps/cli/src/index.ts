@@ -47,7 +47,8 @@ Usage:
   bun run soyli record [preview.webm] [--project <folder>]
   bun run soyli screenshot [preview.png] [--project <folder>]
   bun run soyli skills update [--project <folder>]
-  bun run soyli account create|show|list|check|backup
+  bun run soyli account create [--new]
+  bun run soyli account show|list|check|backup
   bun run soyli account connect [--stdin]
   bun run soyli account pair [--signer-relay <url>] [--timeout <seconds>] [--open]
   bun run soyli account import [--stdin]
@@ -62,7 +63,8 @@ Usage:
   bun run soyli --version
 
 All commands accept --network public|local and --json.
-Create reuses your selected account. Connect accepts a hidden bunker link.
+Create reuses your selected account; account create --new creates and selects another.
+Previous identities and backups are kept. Connect accepts a hidden bunker link.
 Pair creates a nostrconnect link and QR to approve in your signer (120-second wait).
 Signer relays carry encrypted signing requests; they do not change publishing targets.
 Create and new save a private nsec backup outside Git projects and report its path.
@@ -124,6 +126,7 @@ try {
         template: { type: 'string' },
         'no-install': { type: 'boolean' },
         identity: { type: 'string' },
+        new: { type: 'boolean' },
         network: { type: 'string', default: 'public' },
         stdin: { type: 'boolean' },
         'passphrase-stdin': { type: 'boolean' },
@@ -201,6 +204,8 @@ try {
     if (!json && backupFile) console.log(backupNotice(backupFile));
   };
   const [command, action, argument, ...extra] = positionals;
+  if (values.new && !(command === 'account' && action === 'create'))
+    throw new AccountError('USAGE', 'Use --new only with account create.');
   if (
     (values['signer-relay'] || (values.timeout && command !== 'multiplayer') || values.open) &&
     !(command === 'account' && action === 'pair')
@@ -655,7 +660,13 @@ try {
       throw new AccountError('USAGE', 'Invalid account command/options. Use --help.');
     switch (action) {
       case 'create': {
-        const account = await accounts.create();
+        const account = await accounts.create({ fresh: values.new });
+        if (!json)
+          console.log(
+            values.new
+              ? `New creator selected. Previous identities are kept; see ${commandName} account list.`
+              : `Creator ready (reuses the selected identity when present). For a different key, use ${commandName} account create --new.`,
+          );
         output(account, account.type === 'local' ? await accounts.backup(account.id) : undefined);
         break;
       }
