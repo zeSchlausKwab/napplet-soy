@@ -1,6 +1,7 @@
 /* Keep generated client bundles out of the subsequent SSR class scan. */
 @import 'tailwindcss' source('./');
 @import 'tw-animate-css';
+@import './documentation.css';
 @import '@fontsource/dm-sans/400.css';
 @import '@fontsource/dm-sans/500.css';
 @import '@fontsource/dm-sans/600.css';
@@ -552,6 +553,7 @@ pre:focus-visible {
 }
 .site-footer > div {
   gap: 22px;
+  flex-wrap: wrap;
 }
 .site-footer > span > svg {
   color: var(--coral);

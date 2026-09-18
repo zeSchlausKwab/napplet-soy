@@ -15,6 +15,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CliRouteImport } from './routes/cli'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as NetworkRouteImport } from './routes/network'
 import { Route as CreatorSlugRouteImport } from './routes/$creator.$slug'
 import { Route as DotwellKnownNappletDotjsonRouteImport } from './routes/[.]well-known.napplet[.]json'
@@ -63,6 +64,11 @@ const CliRoute = CliRouteImport.update({
 const CreateRoute = CreateRouteImport.update({
   id: '/create',
   path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NetworkRoute = NetworkRouteImport.update({
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
+  '/docs': typeof DocsRoute
   '/network': typeof NetworkRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/.well-known/napplet.json': typeof DotwellKnownNappletDotjsonRoute
@@ -196,6 +203,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
+  '/docs': typeof DocsRoute
   '/network': typeof NetworkRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/.well-known/napplet.json': typeof DotwellKnownNappletDotjsonRoute
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/cli': typeof CliRouteWithChildren
   '/create': typeof CreateRoute
+  '/docs': typeof DocsRoute
   '/network': typeof NetworkRoute
   '/$creator/$slug': typeof CreatorSlugRouteWithChildren
   '/.well-known/napplet.json': typeof DotwellKnownNappletDotjsonRoute
@@ -253,6 +262,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cli'
     | '/create'
+    | '/docs'
     | '/network'
     | '/$creator/$slug'
     | '/.well-known/napplet.json'
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cli'
     | '/create'
+    | '/docs'
     | '/network'
     | '/$creator/$slug'
     | '/.well-known/napplet.json'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cli'
     | '/create'
+    | '/docs'
     | '/network'
     | '/$creator/$slug'
     | '/.well-known/napplet.json'
@@ -335,6 +347,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CliRoute: typeof CliRouteWithChildren
   CreateRoute: typeof CreateRoute
+  DocsRoute: typeof DocsRoute
   NetworkRoute: typeof NetworkRoute
   DotwellKnownNappletDotjsonRoute: typeof DotwellKnownNappletDotjsonRoute
   ApiAdminRoute: typeof ApiAdminRoute
@@ -392,6 +405,13 @@ declare module '@tanstack/react-router' {
       path: '/create'
       fullPath: '/create'
       preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/network': {
@@ -595,6 +615,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CliRoute: CliRouteWithChildren,
   CreateRoute: CreateRoute,
+  DocsRoute: DocsRoute,
   NetworkRoute: NetworkRoute,
   DotwellKnownNappletDotjsonRoute: DotwellKnownNappletDotjsonRoute,
   ApiAdminRoute: ApiAdminRoute,

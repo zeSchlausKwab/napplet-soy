@@ -12,8 +12,8 @@ JavaScript. Existing paper/ink colors, typography and shadcn buttons carry throu
 The page describes the visitor's play/inspect/remix/publish flow, the CLI and its
 creator-maintained boilerplate, configurable publishing destinations, signed Nostr
 listings, Blossom assets and Git sources. It distinguishes browser sign-in from
-napplet permissions, explains opt-in playback and local moderation scope, and does
-not present ContextVM multiplayer as available. Runtime details remain governed by
+napplet permissions, explains opt-in playback and local moderation scope, and
+describes shared scores, CVM matchmaking and NAP-WEBRTC support. Runtime details remain governed by
 [compatibility review](NAP-REVIEW.md) and [playback](PUBLIC-RUNTIME.md).
 
 Resource links include Napplet, napplet.run, NAPs, boilerplate, Gitworkshop, Blossom,
@@ -42,3 +42,33 @@ All fourteen external resource/stack/protocol links returned HTTP 200 on 2026-09
 The 2026-09-15 local revision updates the identity explanation to describe remembered
 connections and opt-in private-key storage. See [identity](IDENTITY.md#website-sign-in);
 this documentation change does not mark the revision deployed.
+
+## soyLI field guide and FAQ — 2026-09-18
+
+The new `/docs` route is the practical soyLI reference, separate from `/create`'s
+installation, platform requirements and downloads. The header and footer, creator
+guide and About page link to it. It covers the edit/check/checkpoint/publish loop,
+identity switching and recovery, listing previews and assets, visible provider
+configuration, Git-backed proposals and review, backend setup and troubleshooting.
+Commands wrap on narrow screens and have copy buttons with a manual-copy fallback.
+Section anchors and all reference text are server rendered. The native FAQ
+disclosures work with a keyboard or touch, including without JavaScript.
+
+`/about#faq` distinguishes account-free creation from pseudonymous publication:
+every publication has a signing key, and source/Git metadata or provider connection
+information can identify a creator. It covers website versus CLI identity selection,
+key reuse, backups, system requirements, public history, proposals, custom providers,
+readable/player links and the limits of content removal.
+
+Keep user-facing commands consistent with the CLI and the linked feature guides.
+The new `account create --new` flag is explicitly marked as source-only until a
+packaged release includes it; remove that notice only when the downloadable CLI
+supports it. The creator guide now includes a Git checkpoint before publication.
+These documentation changes are local, not a deployment or CLI release.
+
+Verification: production build and typecheck pass. An isolated Chromium check
+verifies SSR metadata and content, all section anchors, native FAQ keyboard access
+without JavaScript, copy success/fallback, internal navigation, hydration without
+page errors and 320/390/768/1365px layouts without horizontal overflow. Desktop and
+mobile screenshots were visually reviewed; local evidence is under
+`.local/soyli-docs-check/` and `.local/soyli-docs-browser.log`.

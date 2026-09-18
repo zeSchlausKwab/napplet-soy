@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { ArrowUpRight, Asterisk, Code2, GitFork, Play, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getProjectLinks } from '@/lib/about.functions';
+import { AboutFaq } from '@/components/about-faq';
 
 const description =
   'How napplet.soy works: play tiny creations, inspect their source, remix them and share through Nostr.';
@@ -47,7 +48,7 @@ const resources = [
   ],
   [
     'ContextVM',
-    'Services over Nostr, informing our future multiplayer work.',
+    'Services over Nostr for shared scores and matchmaking.',
     'https://github.com/ContextVM',
   ],
 ];
@@ -72,6 +73,9 @@ function About() {
             </Button>
             <Link to="/create">
               Make it yours <ArrowUpRight size={15} />
+            </Link>
+            <Link to="/docs">
+              soyLI documentation <ArrowUpRight size={15} />
             </Link>
           </div>
         </div>
@@ -138,7 +142,11 @@ function About() {
             </p>
             <p>
               Our CLI uses this site’s infrastructure by default. Creators can inspect and change
-              relay, Blossom and Git destinations in their project’s <code>napplet.json</code>.
+              relay, Blossom and Git destinations with <code>soyli config</code>. The{' '}
+              <Link to="/docs" hash="destinations">
+                documentation
+              </Link>{' '}
+              explains the local overrides.
             </p>
           </div>
           <dl className="about-glossary">
@@ -174,7 +182,8 @@ function About() {
             </p>
             <p>
               Some napplets need capabilities we do not support yet. Those stay visible through the
-              gallery’s availability filter. Multiplayer through ContextVM is still being developed.
+              gallery’s availability filter. Supported capabilities include shared scores and
+              matchmaking through ContextVM, with peer connections through NAP-WEBRTC.
             </p>
           </div>
           <div>
@@ -196,9 +205,10 @@ function About() {
           </div>
         </div>
       </section>
+      <AboutFaq />
       <section className="about-section" aria-labelledby="about-resources">
         <div className="about-section-heading">
-          <span className="eyebrow">04 / KEEP EXPLORING</span>
+          <span className="eyebrow">05 / KEEP EXPLORING</span>
           <h2 id="about-resources">Built with others. Open to more.</h2>
         </div>
         <p className="about-stack">

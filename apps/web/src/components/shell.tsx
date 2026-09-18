@@ -30,6 +30,9 @@ export function Shell({ children }: { children: ReactNode }) {
           <Link to="/create">
             Make something <ArrowUpRight size={13} />
           </Link>
+          <Link to="/docs" activeProps={{ className: 'nav-active' }}>
+            Docs
+          </Link>
         </nav>
         <div className="header-actions">
           <Button asChild variant="ghost" size="icon" className="about-link">
@@ -75,6 +78,7 @@ export function Shell({ children }: { children: ReactNode }) {
             Network settings
           </Link>
           <Link to="/admin">Administration</Link>
+          <Link to="/docs">soyLI docs</Link>
           <Link to="/about">About</Link>
           <a href="https://github.com/napplet/naps" target="_blank" rel="noreferrer">
             The protocol <ArrowUpRight size={13} />

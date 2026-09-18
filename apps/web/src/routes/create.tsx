@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { WandSparkles, ArrowUpRight } from 'lucide-react';
 import { StarterCommand } from '@/components/starter-command';
 import release from '../../../cli/distribution/version.json';
@@ -46,6 +46,7 @@ function Create() {
         sign in here.
       </p>
       <nav className="creator-guide-nav" aria-label="Creator guide">
+        <Link to="/docs">soyLI documentation</Link>
         <a href="#setup">Getting started</a>
         <a href="#skills">Skills & boilerplate</a>
         <a href="#platforms">System setup</a>
@@ -65,6 +66,8 @@ function Create() {
             soyli dev
             <br />
             soyli build
+            <br />
+            soyli checkpoint "My first napplet"
             <br />
             soyli publish
           </code>
@@ -102,8 +105,9 @@ function Create() {
               it alongside the cover.
             </p>
             <p>
-              Build your latest changes, then run <code>soyli publish</code> to check your creation,
-              publish to Nostr, and get a link to share.
+              Build and review your changes, save a Git checkpoint, then run{' '}
+              <code>soyli publish</code> to check your creation, publish to Nostr, and get a link to
+              share.
             </p>
             <p>
               The first check or publication downloads a pinned Chromium browser into your cache.

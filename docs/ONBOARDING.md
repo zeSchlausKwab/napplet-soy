@@ -43,7 +43,7 @@ verification below describes that release. See [CLI upgrade compatibility](CLI.m
 
 ## Combined creator guide — 2026-09-15
 
-`/create` is the single onboarding and soyLI help route. It retains the starter
+`/create` is the combined onboarding and download route. It retains the starter
 command and inline walkthrough, account-free creation, coding/publishing steps,
 listing/screenshot checks, upstream skills and verification commands, OS requirements,
 Chromium libraries, upgrade instructions and all platform downloads/checksums.
@@ -51,6 +51,12 @@ Section links jump to setup, skills, platforms, upgrading and downloads.
 `/cli` permanently redirects (308) to `/create`, preserving the selected template
 and section fragment. Existing `/cli/download/<version>/<file>` links remain unchanged.
 The landing hero's Setup help links directly to `/create#setup`. Deployed 2026-09-15.
+
+Local follow-up, 2026-09-18: `/docs` adds a linked soyLI field guide for day-to-day
+commands, identities, publishing and collaboration. `/about#faq` answers common
+questions, including pseudonymous publication and identity reuse. `/create` keeps
+all setup and download information and now includes a Git checkpoint before
+publication. See [About and documentation](ABOUT.md#soyli-field-guide-and-faq--2026-09-18).
 
 ## Maintaining the guide
 
