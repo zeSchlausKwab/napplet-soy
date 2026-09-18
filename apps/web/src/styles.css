@@ -3070,11 +3070,13 @@ a.nostr-creator:hover .creator-name {
 }
 .proposal-command code {
   flex: 1;
-  overflow-x: auto;
+  min-width: 0;
   font-size: 0.8rem;
-  white-space: nowrap;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
-.proposal-command button {
+.proposal-command button,
+.proposal-command > svg {
   flex-shrink: 0;
 }
 .proposal-comments article {

@@ -97,6 +97,8 @@ status is an authorized claim, not independent proof of integration into a Git b
 
 The shell's **Proposed changes** section queries Nostr directly. `/proposals/<event-id>`
 is a shareable observer view with revision selection, discussion and opt-in playback.
+The local-review command appears only after selecting a proposal; the empty inbox
+shows contribution guidance. Long commands wrap visually and copy as one command.
 External proposals without Soy metadata remain visible, with a local-review command.
 External patch roots (1617) can be read; applying/revising patch series uses ngit.
 

@@ -104,7 +104,7 @@ export function Proposals({ manifest, reference }: { manifest?: SignedEvent; ref
     }
   }
   if (!source?.startsWith('nostr://') && !reference) return null;
-  const command = `soyli review ${proposal?.root.id ?? source ?? reference}`;
+  const command = proposal ? `soyli review ${proposal.root.id}` : undefined;
   return (
     <section className="proposal-section" aria-label="Proposed changes">
       <div className="source-section-heading">
@@ -228,27 +228,31 @@ export function Proposals({ manifest, reference }: { manifest?: SignedEvent; ref
           <a href={`/proposals/${proposal.root.id}`}>Link to this proposal ↗</a>
         </div>
       )}
-      <div className="proposal-command">
-        <Terminal size={17} />
-        <code>{command}</code>
-        <Button
-          variant="ghost"
-          aria-label="Copy review command"
-          onClick={() => {
-            void navigator.clipboard.writeText(command).then(
-              () => setCopied(true),
-              () => setError('Could not copy the command.'),
-            );
-          }}
-        >
-          <Copy size={15} />
-          {copied ? 'Copied' : ''}
-        </Button>
-      </div>
-      <p className="muted">
-        Review the diff, discuss changes and merge locally with soyLI. Ordinary Git and ngit work
-        too.
-      </p>
+      {command && (
+        <>
+          <div className="proposal-command">
+            <Terminal size={17} />
+            <code>{command}</code>
+            <Button
+              variant="ghost"
+              aria-label="Copy review command"
+              onClick={() => {
+                void navigator.clipboard.writeText(command).then(
+                  () => setCopied(true),
+                  () => setError('Could not copy the command.'),
+                );
+              }}
+            >
+              <Copy size={15} />
+              {copied ? 'Copied' : ''}
+            </Button>
+          </div>
+          <p className="muted">
+            Review this proposal’s diff, discuss changes and merge locally with soyLI. Ordinary
+            Git and ngit work too.
+          </p>
+        </>
+      )}
       {error && <p role="alert">{error}</p>}
     </section>
   );
