@@ -5,6 +5,8 @@ import skills from '../vendor/skills.json';
 import settingsSchema from '../templates/config.schema.json';
 import settingsExample from '../templates/napplet-settings.ts.txt' with { type: 'text' };
 import backendGuide from '../../../docs/BACKEND-CREATOR.md' with { type: 'text' };
+import multiplayerSync from '../templates/multiplayer-sync.ts.txt' with { type: 'text' };
+import multiplayerScenario from '../templates/multiplayer-scenario.mjs.txt' with { type: 'text' };
 import { AccountError } from '../../../packages/identity/src/signer';
 
 export const upstream = { boilerplate: boilerplate.revision, skills: skills.revision };
@@ -39,6 +41,13 @@ this note maps its local tooling commands to the installed napplet soyLI.
   soyli backend init pins a visible provider and prepares public soy-backend.json.
   soyli dev runs an isolated copy of the backend automatically; publishing registers
   declared boards with the creator's authorization. Backend status checks connectivity.
+- For real-time multiplayer, read the responsive synchronization section of that guide.
+  Copy/adapt docs/examples/multiplayer-scenario.mjs into your tests and use
+  soyli multiplayer tests/multiplayer.mjs --latency 50 --jitter 15.
+  Test a guest's visible movement/aim/shot feedback, not only connection success.
+  Connection diagnostics in the preview show route, RTT, buffering and traffic.
+  Keep your own game/topology/scenario tests in the project's verification workflow;
+  the upstream verify command and soyli check do not certify multiplayer responsiveness.
 - soyli check checks the existing built artifact in our host.
 - soyli screenshot saves preview.png and selects it in napplet.json.
   Inspect the image: it should show a representative app state, not a blank canvas
@@ -246,6 +255,8 @@ export function creatorSkills() {
   const files: Record<string, string> = {
     'docs/napplet-space.md': profile,
     'docs/napplet-backend.md': backendGuide,
+    'docs/examples/multiplayer-sync.ts': multiplayerSync,
+    'docs/examples/multiplayer-scenario.mjs': multiplayerScenario,
     'docs/napplet-skills-LICENSE.txt': skills.files.LICENSE,
     'CLAUDE.md':
       '@AGENTS.md\n\nThe upstream skills are installed in .claude/skills; begin with napplet-make.\n',

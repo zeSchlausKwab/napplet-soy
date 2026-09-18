@@ -11,6 +11,15 @@ Peer transport targets [NAP-WEBRTC PR 59, 5fae95dd](https://github.com/napplet/n
 The installed upstream shim is 0.30.0. These are evolving proposal contracts;
 NIP-5D remains authoritative for napplet publication and host messages.
 
+The local creator workflow also includes `soyli multiplayer <scenario.mjs>`:
+independent guest contexts, a disposable backend, seeded per-hop delay/jitter,
+optional local coturn, creator assertions and a JSON report. Preview connection
+diagnostics expose sanitized host observations. These tools change no NAP messages
+or signaling profile. Read the [creator testing and synchronization guide](BACKEND-CREATOR.md#responsive-synchronization).
+Scenario success covers its assertions; it does not qualify public-network latency,
+packet loss, n-player capacity or long-session TURN renewal. Website background
+lifecycle and transient delivery profiles remain separate follow-up work.
+
 ## Service contract v1
 
 Input schemas are in `packages/multiplayer/src/contracts.ts`, `rooms.ts` and

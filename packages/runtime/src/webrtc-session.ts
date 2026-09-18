@@ -3,6 +3,7 @@ import { verifyEvent, type NostrEvent } from 'nostr-tools';
 import { ApplesauceRelayPool } from '@contextvm/sdk/relay';
 import type { PrivateKeySigner } from '@contextvm/sdk/signer';
 import { sha256 } from '../../protocol/src/artifact';
+import { peerDiagnostics } from './webrtc-diagnostics';
 
 const hex = z.string().regex(/^[a-f0-9]{64}$/);
 const openSchema = z
@@ -155,6 +156,16 @@ export class NappletWebrtc {
     } finally {
       this.opening--;
     }
+  }
+  /** Diagnostic UI lives in the host; this is not an extra NAP operation. */
+  diagnostics() {
+    return Promise.all(
+      [...this.sessions.values()].flatMap((session) =>
+        [...session.peers].map(([key, peer]) =>
+          peerDiagnostics(session.id, key, peer.pc, peer.channel),
+        ),
+      ),
+    );
   }
   private allowed(s: Session, key: string) {
     return (

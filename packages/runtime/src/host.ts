@@ -273,6 +273,7 @@ export function attachNappletHost(options: HostOptions) {
       requests,
       handle,
       media,
+      diagnostics: () => webrtc?.diagnostics() ?? Promise.resolve([]),
       send: sendScoped,
       cancel: (id: string) => resources.get(id)?.abort(),
       resetBudget: () => {
@@ -461,6 +462,7 @@ export function attachNappletHost(options: HostOptions) {
   };
   window.addEventListener('message', listener);
   return {
+    diagnostics: () => (alive ? account.diagnostics() : Promise.resolve([])),
     updateIdentity(pubkey: string | null) {
       if (!alive || account.pubkey === pubkey) return;
       account.close('Identity changed');

@@ -116,6 +116,12 @@ export async function checkProject(directory: string, network: Network) {
     previewBytes: preview.length,
     artifactHash: plan.artifactHash,
     sourceBytes: plan.sourceBytes,
+    ...(plan.requires.includes('webrtc')
+      ? {
+          multiplayer:
+            'Gameplay not tested. Run soyli multiplayer <scenario.mjs> with guest responsiveness assertions.',
+        }
+      : {}),
   };
 }
 

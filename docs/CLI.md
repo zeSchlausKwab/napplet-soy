@@ -5,6 +5,23 @@ standalone `soyli` executable, with its pinned Playwright support files. A separ
 Bun, Node, npm, or platform checkout is not required. The executable embeds Bun;
 this is not an alternative runtime implementation for users who reject Bun itself.
 
+## Multiplayer development checks — local 0.11.0
+
+`soyli multiplayer tests/multiplayer.mjs --players 2 --latency 50 --jitter 15`
+runs a creator-owned scenario against the frozen build with independent guest
+browsers and a disposable local backend. It records explicit timing budgets and
+assertions in `.napplet-space/multiplayer/latest.json` and exits nonzero on failure,
+empty tests, browser errors or timeout. `--turn-binary /path/to/turnserver` starts an
+optional isolated coturn and forces relay candidates; it does not use production
+TURN credentials. Normal preview also has Connection diagnostics for route, RTT,
+buffering and traffic. No external Bun/Node or Playwright installation is needed.
+
+`soyli skills update` delivers the guide and adaptable scenario/synchronization
+examples in `docs/examples/`, preserving creator edits. Read
+[the complete testing contract](BACKEND-CREATOR.md#repeatable-multiplayer-scenarios)
+before adapting a scenario; local test scripts execute trusted project code.
+The 0.11.0 changes are local until release publication and operator deployment.
+
 ## Rename and upgrade — 2026-09-15
 
 CLI **0.8.2 is published and deployed** with shared public runtime relay reads. Explicit relay

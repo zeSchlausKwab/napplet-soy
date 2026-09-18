@@ -19,6 +19,7 @@ import { commandName, version } from './distribution';
 import { setupProject, buildProject, projectTool, installConformanceBrowser } from './toolchain';
 import { installCreatorSkills } from './creator-kit';
 import { loadRemix, createRemix } from '../../../packages/remix/src';
+import { testMultiplayer, multiplayerOptions } from './multiplayer';
 
 const help = `napplet soyLI
 
@@ -30,6 +31,8 @@ Usage:
   bun run soyli exec <project-tool> [arguments...]
   bun run soyli config [init] [--project <folder>]
   bun run soyli backend init|sync|status [--project <folder>]
+  bun run soyli multiplayer <scenario.mjs> [--players 2] [--latency 50] [--jitter 15] [--seed 1]
+    [--project <folder>] [--timeout 60] [--turn-binary <coturn-executable>]
   bun run soyli record [preview.webm] [--project <folder>]
   bun run soyli screenshot [preview.png] [--project <folder>]
   bun run soyli skills update [--project <folder>]
@@ -127,6 +130,11 @@ try {
         'signer-relay': { type: 'string', multiple: true },
         timeout: { type: 'string' },
         open: { type: 'boolean' },
+        players: { type: 'string' },
+        latency: { type: 'string' },
+        jitter: { type: 'string' },
+        seed: { type: 'string' },
+        'turn-binary': { type: 'string' },
       },
     });
   } catch {
@@ -180,10 +188,18 @@ try {
   };
   const [command, action, argument, ...extra] = positionals;
   if (
-    (values['signer-relay'] || values.timeout || values.open) &&
+    (values['signer-relay'] || (values.timeout && command !== 'multiplayer') || values.open) &&
     !(command === 'account' && action === 'pair')
   )
     throw new AccountError('USAGE', 'Use --signer-relay, --timeout and --open with account pair.');
+  if (
+    (values.players || values.latency || values.jitter || values.seed || values['turn-binary']) &&
+    command !== 'multiplayer'
+  )
+    throw new AccountError(
+      'USAGE',
+      'Use --players, --latency, --jitter, --seed and --turn-binary with multiplayer.',
+    );
   const publishingOptions =
     values['dry-run'] ||
     values.resume ||
@@ -210,6 +226,7 @@ try {
         'screenshot',
         'record',
         'backend',
+        'multiplayer',
       ].includes(command)) ||
     ((values.port || values['no-open']) && command !== 'dev')
   )
@@ -292,6 +309,42 @@ try {
       console.log(
         `\nYour napplet is ready at ${directory}\n\n  cd ${folder}\n${remix?.needsSetup ? '  soyli setup\n' : ''}  soyli dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nRun soyli publish to share it.`,
       );
+  } else if (command === 'multiplayer') {
+    if (
+      !action ||
+      argument ||
+      extra.length ||
+      values.template ||
+      values.identity ||
+      values.stdin ||
+      values['passphrase-stdin']
+    )
+      throw new AccountError('USAGE', 'Use soyli multiplayer <scenario.mjs> [--project folder].');
+    const parsed = multiplayerOptions.safeParse({
+      players: Number(values.players ?? 2),
+      latencyMs: Number(values.latency ?? 0),
+      jitterMs: Number(values.jitter ?? 0),
+      seed: Number(values.seed ?? 1),
+      timeoutMs: Number(values.timeout ?? 60) * 1000,
+      turnBinary: values['turn-binary'],
+    });
+    if (!parsed.success)
+      throw new AccountError(
+        'USAGE',
+        'Choose 2–8 players, 0–1000 ms latency, 0–500 ms jitter, seed 1–2147483647 and a 1–300 second timeout.',
+      );
+    const result = await testMultiplayer(
+      values.project ?? process.cwd(),
+      action,
+      parsed.data,
+      controller.signal,
+    );
+    console.log(
+      json
+        ? JSON.stringify(result)
+        : `${result.status === 'passed' ? 'Passed' : 'Failed'}: ${result.checks.length} scenario assertions.\n${result.failure ? result.failure + '\n' : ''}${result.warnings.map((warning) => warning + '\n').join('')}Report: ${result.reportPath}`,
+    );
+    if (result.status !== 'passed') process.exitCode = 1;
   } else if (command === 'backend') {
     if (argument || extra.length || !['init', 'sync', 'status'].includes(action))
       throw new AccountError('USAGE', 'Use soyli backend init|sync|status [--project folder].');

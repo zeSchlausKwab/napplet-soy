@@ -193,6 +193,135 @@ put an intended recipient in the validated app message if needed. There is no
 NAP selector for unordered delivery in the pinned proposal. Coalesce obsolete
 updates on backpressure; do not send assets or a complete world every frame.
 
+### Responsive synchronization
+
+A connected data channel is only a transport. For a fast-action game, the creator
+still needs to implement responsive synchronization. A guest that waits for the
+host's snapshot before drawing its own movement pays for the whole round trip,
+plus the input and snapshot scheduling intervals. Rendering at 60 FPS does not
+smooth a world that jumps to a new position only when a packet arrives.
+
+For a game with one simulation authority, start with a **star**: every guest
+connects directly to the host. One room session can contain multiple peers; the
+four-session limit is not a four-connection limit. With a known participant set:
+
+```js
+const peers = actor === authority
+  ? members.filter(key => key !== actor)
+  : [authority];
+const { session } = await webrtc.open({
+  scope: { type: 'room', room, peers }, channel: 'game', protocol
+});
+```
+
+Validate the authority and membership at the application layer. For changing
+membership, follow the restrictions below; don't silently accept arbitrary peers
+to avoid reconnection. Forwarding trees are a deliberate bandwidth/scale tradeoff:
+each intermediary adds a network hop and possibly another send interval. A slow
+intermediary affects every descendant. Mesh and lockstep can suit other games;
+there is no universal required topology.
+
+Keep these responsibilities separate:
+
+1. **Predict the local player.** Apply movement and local aiming immediately using
+   the same fixed-step rules as the host. Send sequenced input. The host returns
+   authoritative state and the last input sequence actually applied for each player.
+   Reconcile by discarding acknowledged inputs and replaying the remaining inputs
+   over that state. Immediate shot animation need not grant an authoritative hit.
+2. **Interpolate remote players.** Keep timestamped snapshots and render between
+   two known states on a slightly delayed simulation timeline. Use host tick numbers
+   and a local monotonic arrival anchor; wall clocks on different machines differ.
+   Start with a buffer around two snapshot intervals, then measure. Handle teleports,
+   spawn/death and stale data explicitly instead of interpolating every field.
+3. **Send useful data.** Inputs go upstream; compact world snapshots go downstream.
+   A leaf should not echo the world back. Names/settings belong in infrequent control
+   messages. Use a fixed-step accumulator and a send deadline; don't reset a nominal
+   20 Hz deadline to every delayed render frame. Cap catch-up work after suspension.
+4. **Bound recovery.** Ignore stale sequence numbers, validate ranges and sender
+   authority, cap pending input/snapshot queues, discard obsolete unsent updates
+   under backpressure, and request a fresh state when the backlog is no longer safe.
+   Reconnection, host departure and peer membership changes need explicit behavior.
+
+`docs/examples/multiplayer-sync.ts` contains small application-side prediction and
+snapshot-buffer examples. Copy/adapt them to the game's state and collision rules;
+they are not new host APIs or an engine. `advance(input)` represents one fixed
+simulation step. The host must process/ack that same sequence exactly once: merely
+receiving the latest input is not acknowledgment that every tick was simulated.
+Validate untrusted snapshots before passing them to either helper. Keep predicted
+render state separate from authoritative scores/hits. For a held-input protocol,
+adapt the history to tick ranges rather than pretending one packet equals one tick.
+
+### Repeatable multiplayer scenarios
+
+The CLI runs creator-owned JavaScript/TypeScript scenarios with its bundled browser:
+
+```sh
+soyli build
+soyli multiplayer tests/multiplayer.mjs
+soyli multiplayer tests/multiplayer.mjs --players 4 --latency 50 --jitter 15 --seed 1
+# Optional: use an installed coturn executable for a disposable, forced relay test.
+soyli multiplayer tests/multiplayer.mjs --turn-binary /path/to/turnserver --latency 50
+```
+
+`skills update` supplies `docs/examples/multiplayer-scenario.mjs`. Copy it into your
+tests, adapt its Host/Join/readiness selectors, and observe your rendered player
+state. An unadapted example fails rather than claiming the game works. The command
+uses the current build without running a build, publishing, or changing application
+source. Its scenario is **trusted local test code**, like an ordinary project test;
+don't run a scenario from an untrusted checkout without reviewing it.
+
+The default is two isolated guest browser contexts; `--players` accepts 2–8.
+These temporary contexts allow peer connections for the test; they do not alter
+the player's normal browser permissions.
+Configured backend calls are mapped to a disposable local CVM/room/board instance.
+The temporary copy is removed on completion. This does not reuse or modify the
+dev backend's state. Chromium is cached on first use; Bun/Node and project Playwright
+dependencies are not required for `.mjs` scenarios. Each run replaces
+`.napplet-space/multiplayer/latest.json`, including failures. A failed assertion,
+empty scenario, browser error or timeout returns a nonzero exit status.
+Reports identify the CLI version and exact artifact hash. Final diagnostics have
+a separate bounded deadline; an unavailable observation is reported as a warning
+without discarding the scenario's assertions.
+
+The scenario exports a default async function receiving:
+
+- `players`: `{page, frame}` for each independent browser; these are Playwright
+  handles for the trusted preview and sandboxed napplet respectively.
+- `check(name, boolean)`: record a required assertion and fail if false.
+- `measure(name, milliseconds, maximum)`: record an observed timing and its budget.
+- `network({latencyMs, jitterMs, seed})`: adjust simulated conditions on all players.
+- `diagnostics()`: per-player arrays of connected/connecting peers with selected
+  route, native RTT, queued bytes and cumulative message/byte counts.
+- `signal`: cancellation/timeout signal. `--timeout` is 60 seconds by default,
+  accepts 1–300, and includes local service/browser startup after any first-use
+  Chromium download. Cleanup may take a few additional seconds.
+
+`--latency` adds 0–1000 ms **per outgoing hop**, so 50 adds about 100 ms per round
+trip. `--jitter` adds a seeded ±0–500 ms variation, clamped at zero. The simulator
+preserves message order, bounds queued bytes and cancels queued sends when a channel
+closes. It adds delay around real RTC traffic; it does not emulate packet loss,
+bandwidth contention or SCTP retransmission. Native RTT excludes this added delay.
+The report records simulation conditions separately. Do not interpret it as public
+network qualification. Direct local ICE can fail on VPNs; use the optional isolated
+coturn path to exercise the same shared host over a known relay route. This does not
+test the deployed TURN configuration or credentials.
+
+For fast controls, a useful starting budget is visible local feedback within 50 ms
+under an added 50–100 ms each way. Set budgets appropriate to your game. Measure
+host and guests; include remote movement continuity, correction after a disagreement,
+simultaneous firing, joins/leaves and reconnection. Time actual rendered-state changes,
+not just key handlers or receipt of an input. Keep the assertions in the project's
+normal verification script. Our connection smoke checks and `soyli check` cannot
+infer whether arbitrary game logic is responsive. `soyli check` explicitly reports
+gameplay as untested when the artifact requires WebRTC.
+
+The normal `soyli dev` preview's **Connection diagnostics** panel shows live direct
+or relay selection, RTT, buffering and send/receive rates. These are host-side
+observations, not napplet-facing protocol extensions. Reports/panels omit native
+candidate addresses, SDP and TURN credentials. A low transport RTT with poor guest
+controls points toward application scheduling/synchronization; also test actual
+separate networks, packet loss and long sessions before making performance claims.
+
 ## Named rooms and changing membership
 
 Instead of fixed-match tickets, use:

@@ -6,6 +6,7 @@ import { attachNappletHost, type HostPrompt } from '../../../../packages/runtime
 import type { ExportFile } from '../../../../packages/runtime/src/filesystem';
 import type { PreviewRevision } from './server';
 import { setupListing } from './listing-client';
+import { setupDiagnostics } from './diagnostics';
 import { createRoot } from 'react-dom/client';
 import { createElement } from 'react';
 import { SettingsControl } from '../../../../packages/runtime/src/settings-panel';
@@ -39,6 +40,10 @@ let loaded = '';
 let pubkey: string | null = null;
 const lifetime = new AbortController();
 setupListing(lifetime.signal);
+const diagnostics = () => host?.diagnostics() ?? Promise.resolve([]);
+setupDiagnostics(diagnostics, lifetime.signal);
+// Only the trusted local preview/scenario runner can access this opaque-frame parent.
+Object.assign(window, { soyliPreview: { diagnostics } });
 
 function showPrompt(prompt: HostPrompt | null) {
   choice = prompt;

@@ -217,6 +217,12 @@ recommended user policy: a host popup records a browser/origin-wide multiplayer
 choice, editable in Network settings. It changes no NAP messages or upstream
 pins. Explicit Block persists; dismissals do not. Revocation closes active sessions.
 
+The 2026-09-18 soyLI multiplayer lab adds only creator-side testing and host-side
+diagnostics. It uses the same pinned CVM/WebRTC envelopes. Artificial delay/jitter
+exists only in runner-owned browser contexts and preserves ordered delivery; the
+production channel profile is unchanged. Diagnostic reports omit native candidates,
+addresses, SDP and credentials. No diagnostic operation is added to the napplet API.
+
 [ContextVM](CONTEXTVM.md) records behavior, evidence and remaining acceptance;
 the self-contained [creator guide](BACKEND-CREATOR.md) ships with soyLI. These
 engineering fixtures do not substitute for an isolated creator using only the
