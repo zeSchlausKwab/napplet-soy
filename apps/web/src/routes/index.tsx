@@ -89,7 +89,7 @@ function Gallery() {
             <div className="hero-intro">
               <p>Tiny games. Happy accidents. Wonderfully unnecessary things.</p>
               <p>Made by people with an idea and an afternoon.</p>
-              <p className="hero-aside">A little place for devs to live out their AI psychosis.</p>
+              <p className="hero-aside">A little place for devs to live out their <span className="underline">AI psychosis</span>.</p>
             </div>
           </div>
           <SoyliIdentity compact />

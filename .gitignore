@@ -12,3 +12,4 @@ playwright-report/
 
 # Local planning is private until explicitly published.
 /AGENDA.md
+output/
