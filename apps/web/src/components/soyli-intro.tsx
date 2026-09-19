@@ -1,17 +1,21 @@
-import { BookOpen, Film, ShieldCheck } from 'lucide-react';
+import { BookOpen, Film, Pause, Play, ShieldCheck } from 'lucide-react';
 
 /** Shared spelling, pronunciation and supplied artwork across creator entry points. */
 export function SoyliIdentity({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`soyli-identity${compact ? ' soyli-identity-compact' : ''}`}>
-      <img
-        className="soyli-mascot"
-        src="/brand/soy-mascot.png"
-        width={1254}
-        height={1254}
-        alt="soyLI’s smiling tofu mascot"
-        decoding="async"
-      />
+      <label className="soyli-mascot soyli-mascot-sprite" title="Pause / resume Soybert">
+        <input
+          type="checkbox"
+          className="soyli-animation-toggle"
+          aria-label="Pause Soybert animation"
+        />
+        <span className="soyli-sprite-frame" role="img" aria-label="Soybert using a laptop" />
+        <span className="soyli-animation-hint" aria-hidden="true">
+          <Pause className="soyli-pause-icon" size={12} />
+          <Play className="soyli-play-icon" size={12} />
+        </span>
+      </label>
       <div className="soyli-dictionary">
         <div className="soyli-name-line">
           <strong className="soyli-wordmark">
@@ -38,8 +42,8 @@ export function SoyliBenefits() {
         <div>
           <h3>Context for your agent</h3>
           <p>
-            A working project, skills and protocol guidance. Simple commands, with the context
-            built in.
+            A working project, skills and protocol guidance. Simple commands, with the context built
+            in.
           </p>
         </div>
       </li>

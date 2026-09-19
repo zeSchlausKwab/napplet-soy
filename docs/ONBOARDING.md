@@ -65,8 +65,8 @@ publication. See [About and documentation](ABOUT.md#soyli-field-guide-and-faq--2
 The landing and documentation intros present soyLI as a command line for the
 agentic age: bundled project/skill/protocol context, cover and preview-clip capture,
 and publication validation. `SoyliIdentity` shares the spelling and dictionary-style
-pronunciation, **soy–el–eye**, IPA **/ˌsɔɪ.ɛlˈaɪ/**, a play on C-L-I. The supplied
-mascot is served unchanged from `/brand/soy-mascot.png` and also appears on `/create`.
+pronunciation, **soy–el–eye**, IPA **/ˌsɔɪ.ɛlˈaɪ/**, a play on C-L-I. The shared
+identity also appears on `/create`.
 `SoyliBenefits` shares the three capability summaries on the landing and docs pages.
 
 Copy distinguishes startup/publication checks from upstream conformance checks
@@ -85,6 +85,16 @@ footer brand mark and browser favicon, retaining the napplet.soy wordmark. Deskt
 and phone sizes keep the home link and identity controls usable. Build, typecheck
 and local browser checks verify the image paths, favicon, home navigation and
 320/390/768/1365px layouts. Evidence: `.local/soyli-main-logo-check/`. Not deployed.
+
+The soyLI companion now uses the supplied `/brand/soybert-laptop.png` sprite sheet:
+nine equal cells in a 3×3 grid, animated left to right and top to bottom over 1.8
+seconds using discrete CSS frames. Clicking or tapping the mascot pauses/resumes
+the animation; the control also supports keyboard focus and Space. It works without
+JavaScript. Reduced-motion preferences show the first frame with no animation.
+The header, footer and favicon retain the static `/brand/soy-mascot.png` artwork.
+The sheet is served unchanged. Build, typecheck and local browser checks passed
+for all nine frames, pause/keyboard/touch controls, reduced motion and responsive
+layouts on all three pages. Screenshots: `.local/soybert-sprite-check/`. Not deployed.
 
 ### Shared source and walkthrough generation
 

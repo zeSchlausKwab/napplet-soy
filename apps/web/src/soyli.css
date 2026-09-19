@@ -10,6 +10,108 @@
   object-fit: contain;
   flex-shrink: 0;
 }
+.soyli-mascot-sprite {
+  display: block;
+  position: relative;
+}
+.soyli-sprite-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: url('/brand/soybert-laptop.png') 0 0 / 300% 300% no-repeat;
+  animation: soybert-typing 1.8s step-end infinite;
+}
+/* Nine equal cells, read left to right, then top to bottom. Never interpolate across cells. */
+@keyframes soybert-typing {
+  0%,
+  100% {
+    background-position: 0 0;
+  }
+  11.111111% {
+    background-position: 50% 0;
+  }
+  22.222222% {
+    background-position: 100% 0;
+  }
+  33.333333% {
+    background-position: 0 50%;
+  }
+  44.444444% {
+    background-position: 50% 50%;
+  }
+  55.555556% {
+    background-position: 100% 50%;
+  }
+  66.666667% {
+    background-position: 0 100%;
+  }
+  77.777778% {
+    background-position: 50% 100%;
+  }
+  88.888889% {
+    background-position: 100% 100%;
+  }
+}
+.soyli-animation-toggle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  z-index: 1;
+  cursor: pointer;
+}
+.soyli-animation-toggle:checked ~ .soyli-sprite-frame {
+  animation-play-state: paused;
+}
+.soyli-mascot-sprite:has(.soyli-animation-toggle:focus-visible) {
+  outline: 2px solid var(--coral);
+  outline-offset: 3px;
+  border-radius: 5px;
+}
+.soyli-animation-hint {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--background);
+  color: #547050;
+  opacity: 0;
+}
+.soyli-mascot-sprite:hover .soyli-animation-hint,
+.soyli-animation-toggle:focus-visible ~ .soyli-animation-hint,
+.soyli-animation-toggle:checked ~ .soyli-animation-hint {
+  opacity: 1;
+}
+.soyli-play-icon {
+  display: none;
+}
+.soyli-animation-toggle:checked ~ .soyli-animation-hint .soyli-pause-icon {
+  display: none;
+}
+.soyli-animation-toggle:checked ~ .soyli-animation-hint .soyli-play-icon {
+  display: block;
+}
+@media (hover: none) {
+  .soyli-animation-hint {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .soyli-sprite-frame {
+    animation: none;
+  }
+  .soyli-animation-toggle,
+  .soyli-animation-hint {
+    display: none;
+  }
+}
 .soyli-dictionary {
   min-width: 0;
 }
