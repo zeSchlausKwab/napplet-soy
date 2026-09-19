@@ -191,6 +191,13 @@ search/tag, availability, Featured and moderation filters. Zero/unknown entries 
 excluded; ties use newest manifest then event ID. Most zapped ranks by total millisats,
 not number of invoices or receipt events. All card copies coordinate one active player.
 
+The social carousels sit on a sage background. The normal grid begins on a cream
+background with a dark **All napplets** tab, mirroring the playground entrance.
+Its heading becomes **Matching napplets** for a search/tag query or **Featured
+napplets** for the unfiltered Featured view, and shows the matching count. The grid,
+pagination and empty results belong to this named section. This presentation change
+is verified locally at 320–1920px; it has not been deployed.
+
 The browser queries counts directly over Nostr, processing up to 12 threads per
 sweep with three concurrent readers. It refreshes every thirty seconds (five while
 filling the cache), pauses while hidden and refreshes after acknowledged actions.

@@ -21,7 +21,7 @@ export function Shell({ children }: { children: ReactNode }) {
             height={1254}
             alt=""
           />
-          napplet<span className="brand-dot">.soy</span>
+          <span className="brand-wordmark">napplet.soy</span>
         </Link>
         <nav aria-label="Main navigation">
           <Link

@@ -113,6 +113,16 @@ the 48-assertion onboarding check passed, plus local layout checks at five width
 from 320 to 1920px, gallery visual fixtures, the Explore anchor, docs header and
 mobile identity popup. Screenshots: `.local/landing-bands-check/`. Not deployed.
 
+The header wordmark is now real text in **Fredoka Bold**, with a cream fill and
+dark brown stroke matching the supplied rounded-letter reference. The Latin 700
+font is self-hosted through pinned `@fontsource/fredoka` 5.3.0; no external font
+service is contacted. Fredoka is licensed under the
+[SIL Open Font License](https://github.com/google/fonts/blob/main/ofl/fredoka/OFL.txt),
+also shipped at `/fonts/Fredoka-OFL.txt`. Responsive sizes preserve navigation and
+identity controls at 320–1920px. Build/typecheck, the existing onboarding check and
+local font-loading/layout/menu checks passed. Screenshots:
+`.local/wordmark-collection-check/`. Implemented locally, not deployed.
+
 ### Shared source and walkthrough generation
 
 - `apps/web/src/lib/creator-commands.ts` owns copyable install/create/remix commands.

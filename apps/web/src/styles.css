@@ -8,6 +8,7 @@
 @import '@fontsource/dm-sans/600.css';
 @import '@fontsource/dm-sans/700.css';
 @import '@fontsource/dm-mono/400.css';
+@import '@fontsource/fredoka/latin-700.css';
 @custom-variant dark (&:is(.dark *));
 @theme inline {
   --color-background: var(--background);
@@ -107,7 +108,8 @@ pre:focus-visible {
 /* Extend the color bands to the viewport edges without changing content alignment
    or clipping focus rings, menus and other foreground content. */
 .site-header::before,
-.explore-section::before {
+.explore-section::before,
+.napplet-collection::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -120,21 +122,20 @@ pre:focus-visible {
 .site-header {
   --band-color: #e0e7d5;
 }
-.site-header .brand-dot {
-  color: #68745e;
-}
 .brand {
-  font-size: 25px;
-  font-weight: 700;
-  letter-spacing: -1.25px;
   display: flex;
   align-items: center;
   gap: 9px;
 }
-.brand-dot {
-  color: #878779;
-  margin-left: -9px;
-  font-weight: 400;
+.brand-wordmark {
+  display: block;
+  font: 700 34px/1 'Fredoka', 'DM Sans', sans-serif;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+  color: #fff2d5;
+  -webkit-text-stroke: 4px #32231c;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 #32231c;
 }
 .brand-mark {
   width: 54px;
@@ -365,14 +366,23 @@ pre:focus-visible {
   isolation: isolate;
   background: var(--band-color);
   margin-top: 24px;
-  padding: 42px 0 36px;
+  padding: 42px 0 0;
+}
+.napplet-collection {
+  --band-color: var(--background);
+  position: relative;
+  isolation: isolate;
+  background: var(--band-color);
+  margin-top: 42px;
+  padding: 46px 0 36px;
 }
 .explore-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.explore-top h2 {
+.explore-top h2,
+.collection-heading {
   position: absolute;
   top: -24px;
   left: 0;
@@ -388,7 +398,8 @@ pre:focus-visible {
   font-weight: 600;
   margin: 0;
 }
-.explore-top h2 span {
+.explore-top h2 span,
+.collection-heading span {
   font-family: var(--mono);
   font-size: 10px;
   color: #c6d2b2;
@@ -1347,6 +1358,9 @@ pre:focus-visible {
   .site-header {
     gap: 35px;
   }
+  .brand-wordmark {
+    font-size: 30px;
+  }
   .make-link {
     display: none;
   }
@@ -1382,9 +1396,6 @@ pre:focus-visible {
     height: 77px;
     gap: 15px;
   }
-  .brand {
-    font-size: 22px;
-  }
   .brand-mark {
     width: 44px;
     height: 44px;
@@ -1416,7 +1427,8 @@ pre:focus-visible {
     font-size: 9px;
     letter-spacing: 0.8px;
   }
-  .explore-top h2 {
+  .explore-top h2,
+  .collection-heading {
     font-size: 20px;
   }
   .explore-top p {
@@ -2103,7 +2115,7 @@ pre:focus-visible {
 .card-social .card-share { min-width: 36px; padding-inline: .5rem; }
 .card-social .card-share:first-child { margin-left: auto; }
 .card-sats { font-size: .68rem; opacity: .8; }
-.social-discovery { margin: 0 0 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+.social-discovery { margin: 0; padding-bottom: .5rem; }
 .social-discovery-note { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; color: var(--muted-foreground); font-size: .75rem; margin: .3rem 0 1.3rem; }
 .social-discovery-note span { display: flex; align-items: center; gap: .35rem; }
 .social-rail + .social-rail { margin-top: 1.6rem; }
@@ -2627,9 +2639,9 @@ pre:focus-visible {
 @media (max-width: 400px) { .saved-session { align-items: flex-start; flex-direction: column; } }
 @media (max-width: 360px) {
   .site-header { gap: 8px; }
-  .site-header .brand { font-size: 20px; gap: 6px; }
+  .site-header .brand { gap: 6px; }
+  .site-header .brand-wordmark { font-size: 24px; -webkit-text-stroke-width: 3px; }
   .site-header .brand-mark { width: 40px; height: 40px; }
-  .site-header .brand-dot { margin-left: -6px; }
   .site-header .header-actions { gap: 4px; }
   .site-header .connect-button { padding-inline: 8px; }
 }

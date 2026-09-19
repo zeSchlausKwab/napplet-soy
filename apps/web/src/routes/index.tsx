@@ -89,7 +89,10 @@ function Gallery() {
             <div className="hero-intro">
               <p>Tiny games. Happy accidents. Wonderfully unnecessary things.</p>
               <p>Made by people with an idea and an afternoon.</p>
-              <p className="hero-aside">A little place for devs to live out their <span className="underline">AI psychosis</span>.</p>
+              <p className="hero-aside">
+                A little place for devs to live out their{' '}
+                <span className="underline">AI psychosis</span>.
+              </p>
             </div>
           </div>
           <SoyliIdentity compact />
@@ -259,70 +262,80 @@ function Gallery() {
         )}
         {lookupError && <p role="alert">{lookupError}</p>}
         <SocialRankings active={active} setActive={setActive} />
-        <div className="napplet-grid">
-          {napplets.map((n, index) => (
-            <NappletCard
-              key={n.revisionId}
-              napplet={n}
-              index={index}
-              playing={active === `grid:${n.revisionId}`}
-              onPlay={() => setActive(`grid:${n.revisionId}`)}
-              onStop={() =>
-                setActive((current) => (current === `grid:${n.revisionId}` ? null : current))
-              }
-            />
-          ))}
-        </div>
-        {pages > 1 && (
-          <nav className="gallery-pagination" aria-label="Gallery pages">
-            {page > 1 ? (
-              <Link
-                to="/"
-                search={{ ...search, page: page - 1 }}
-                hash="explore"
-                className="pagination-link"
-              >
-                ← Previous
-              </Link>
-            ) : (
-              <span />
-            )}
-            <span>
-              Page {page} of {pages} · {matches} napplets
-            </span>
-            {page < pages ? (
-              <Link
-                to="/"
-                search={{ ...search, page: page + 1 }}
-                hash="explore"
-                className="pagination-link"
-              >
-                Next →
-              </Link>
-            ) : (
-              <span />
-            )}
-          </nav>
-        )}
-        {!napplets.length && (
-          <div className="empty-results">
-            <h3>
-              {search.sort === 'featured'
-                ? 'No featured napplets found.'
-                : 'No little wonders found.'}
-            </h3>
-            <p>
-              {!search.unavailable && unavailableCount > 0
-                ? `${unavailableCount} matching ${unavailableCount === 1 ? 'napplet is' : 'napplets are'} unavailable. Use “Show unavailable” to include them.`
-                : search.sort === 'featured'
-                  ? 'Featured napplets are selected by the site administrator. Explore Newest to see the whole playground.'
-                  : 'Try a different word or open up the filters.'}
-            </p>
-            <Button variant="outline" onClick={() => update({ q: '', tag: '' })}>
-              Clear search and tag
-            </Button>
+        <section className="napplet-collection" aria-labelledby="collection-heading">
+          <h3 id="collection-heading" className="collection-heading">
+            {search.q || search.tag
+              ? 'Matching napplets'
+              : search.sort === 'featured'
+                ? 'Featured napplets'
+                : 'All napplets'}
+            <span>{matches}</span>
+          </h3>
+          <div className="napplet-grid">
+            {napplets.map((n, index) => (
+              <NappletCard
+                key={n.revisionId}
+                napplet={n}
+                index={index}
+                playing={active === `grid:${n.revisionId}`}
+                onPlay={() => setActive(`grid:${n.revisionId}`)}
+                onStop={() =>
+                  setActive((current) => (current === `grid:${n.revisionId}` ? null : current))
+                }
+              />
+            ))}
           </div>
-        )}
+          {pages > 1 && (
+            <nav className="gallery-pagination" aria-label="Gallery pages">
+              {page > 1 ? (
+                <Link
+                  to="/"
+                  search={{ ...search, page: page - 1 }}
+                  hash="explore"
+                  className="pagination-link"
+                >
+                  ← Previous
+                </Link>
+              ) : (
+                <span />
+              )}
+              <span>
+                Page {page} of {pages} · {matches} napplets
+              </span>
+              {page < pages ? (
+                <Link
+                  to="/"
+                  search={{ ...search, page: page + 1 }}
+                  hash="explore"
+                  className="pagination-link"
+                >
+                  Next →
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
+          )}
+          {!napplets.length && (
+            <div className="empty-results">
+              <h3>
+                {search.sort === 'featured'
+                  ? 'No featured napplets found.'
+                  : 'No little wonders found.'}
+              </h3>
+              <p>
+                {!search.unavailable && unavailableCount > 0
+                  ? `${unavailableCount} matching ${unavailableCount === 1 ? 'napplet is' : 'napplets are'} unavailable. Use “Show unavailable” to include them.`
+                  : search.sort === 'featured'
+                    ? 'Featured napplets are selected by the site administrator. Explore Newest to see the whole playground.'
+                    : 'Try a different word or open up the filters.'}
+              </p>
+              <Button variant="outline" onClick={() => update({ q: '', tag: '' })}>
+                Clear search and tag
+              </Button>
+            </div>
+          )}
+        </section>
       </section>
       <section className="create-banner">
         <span className="banner-star">✳</span>

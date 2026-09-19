@@ -48,6 +48,7 @@
     "@contextvm/sdk": "0.13.16",
     "@fontsource/dm-mono": "5.3.0",
     "@fontsource/dm-sans": "5.3.0",
+    "@fontsource/fredoka": "5.3.0",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@napplet/shim": "0.30.0",
     "@noble/curves": "2.0.1",
