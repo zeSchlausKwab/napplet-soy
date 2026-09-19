@@ -1,7 +1,7 @@
 import { linkedMedia } from '../../../../packages/protocol/src/linked-media';
 import { PreviewCover } from './preview-cover';
 import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, Play, Info } from 'lucide-react';
+import { Expand, Play, Info } from 'lucide-react';
 import { TopicTags } from './topic-tags';
 import { Player } from './player';
 import { GalleryCardSocial } from './gallery-social';
@@ -118,7 +118,19 @@ export function NappletCard({
       )}
       <div className="card-heading">
         <Link {...link}>{napplet.title}</Link>
-        <ArrowUpRight size={17} />
+        <Link
+          to={napplet.naddr ? '/n/$naddr/play' : '/r/$snapshot/play'}
+          params={
+            napplet.naddr
+              ? { naddr: napplet.naddr }
+              : { snapshot: external ? napplet.revisionId : napplet.snapshotId }
+          }
+          className="card-fullscreen"
+          aria-label={`Open ${napplet.title} fullscreen`}
+          title="Open fullscreen"
+        >
+          <Expand size={18} aria-hidden="true" />
+        </Link>
       </div>
       <div className={`card-meta${external ? ' public-meta' : ''}`}>
         <CreatorLink pubkey={napplet.pubkey} />

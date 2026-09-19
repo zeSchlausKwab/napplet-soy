@@ -166,7 +166,24 @@ and pause/resume remain available. No napplet executes until the normal player f
 The terminal remains first on mobile with Featured below it. These features are
 verified and deployed in `20260915084016730-23084`, and remain separate from paid placement.
 
+Local slider revision: featured previews and their captions now move together in a
+horizontal scroll-snap track. Touch/trackpad swipes, arrow buttons and left/right
+keys on the focused track select a slide. Manual interaction pauses rotation;
+automatic/button changes slide smoothly unless reduced motion is requested.
+Offscreen slides are inert so their links do not enter the keyboard focus order.
+The selected slide stays aligned after resize or refreshed curation. The browser
+regression test `tests/services/featured-slider.test.ts` covers automatic rotation,
+animated movement, keyboard wrapping, reduced motion, resize and an actual touch
+gesture without accidental navigation. Implemented and verified locally, not deployed.
+
 ## Gallery social discovery
+
+Card titles still open the detail page. The adjacent expand icon is a separate,
+44px fullscreen link to the portable `/n/<naddr>/play` or `/r/<event-id>/play` route,
+including cards reused in social carousels. It opens the immersive player view;
+browser-native fullscreen remains subject to the browser's user-gesture controls.
+Both address and revision links are covered by the featured-slider browser test.
+This revision is verified locally, not deployed.
 
 Every normal gallery card shows unique-author likes, visible comments/replies, verified
 zap receipt count, and sats received. Unknown/unavailable counts use a dash rather than

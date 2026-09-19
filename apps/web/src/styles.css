@@ -574,8 +574,19 @@ pre:focus-visible {
   margin-top: 13px;
   letter-spacing: -0.2px;
 }
-.card-heading > svg {
-  color: #8d907f;
+.card-fullscreen {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin-block: -10px;
+  border-radius: 6px;
+  color: #68735b;
+}
+.card-fullscreen:hover {
+  color: var(--foreground);
+  background: #dfe5d4;
 }
 .card-meta {
   display: flex;
@@ -2607,6 +2618,11 @@ pre:focus-visible {
 
 /* One editorial preview in the hero; executable napplets open in the shared player. */
 .featured-hero { width: min(43%, 490px); flex-shrink: 0; min-width: 0; }
+.featured-slider { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; border-radius: 10px; }
+.featured-slider::-webkit-scrollbar { display: none; }
+.featured-slider:focus-visible { outline: 2px solid var(--coral); outline-offset: 5px; }
+.featured-slide { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; padding-bottom: 5px; }
+.featured-slide .featured-art { transform: none; }
 .featured-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
 .featured-heading > span:last-child { font: 10px var(--mono); color: #7c856a; white-space: nowrap; }
 .featured-heading .eyebrow { margin-bottom: 0; display: flex; gap: 7px; font-size: 9px; letter-spacing: 1px; }
@@ -2615,8 +2631,9 @@ pre:focus-visible {
 .featured-art img.generated-poster { object-fit: contain; }
 .featured-open { position: absolute; bottom: 16px; right: 16px; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #faf8ed; color: #293021; box-shadow: 0 3px 16px #29302114; }
 .featured-caption { padding-top: 22px; }
-.featured-caption > a { overflow-wrap: anywhere; font-size: clamp(19px, 2.3vw, 29px); line-height: 1.2; letter-spacing: -0.8px; font-weight: 600; }
+.featured-caption > a:not(.nostr-creator) { overflow-wrap: anywhere; font-size: clamp(19px, 2.3vw, 29px); line-height: 1.2; letter-spacing: -0.8px; font-weight: 600; }
 .hero .featured-caption p { font-size: 12px; line-height: 1.7; margin: 10px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.featured-caption > .nostr-creator { font-size: 11px; }
 .featured-caption > span { font-size: 10px; color: #7c856a; overflow-wrap: anywhere; }
 .featured-controls { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
 .featured-all { margin-left: auto; display: flex; align-items: center; gap: 5px; font-size: 10px; }

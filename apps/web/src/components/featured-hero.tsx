@@ -24,11 +24,42 @@ export function FeaturedHero({
   const [reduced, setReduced] = useState(true);
   const [visible, setVisible] = useState(false);
   const root = useRef<HTMLElement>(null);
+  const slider = useRef<HTMLDivElement>(null);
+  const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const destination = useRef<number | null>(null);
   const index = Math.max(
     0,
     entries.findIndex((n) => n.revisionId === selection),
   );
   const current = entries[index];
+  const selectedIndex = useRef(index);
+  selectedIndex.current = index;
+  function select(next: number) {
+    clearTimeout(settle.current);
+    destination.current = next;
+    setSelection(entries[next].revisionId);
+    slider.current?.scrollTo({
+      left: next * slider.current.clientWidth,
+      behavior: reduced ? 'instant' : 'smooth',
+    });
+  }
+  // Keep the selected item aligned after a resize or refreshed editorial order.
+  useEffect(() => {
+    const element = slider.current;
+    if (!element) return;
+    const align = () => {
+      clearTimeout(settle.current);
+      destination.current = null;
+      element.scrollTo({ left: selectedIndex.current * element.clientWidth, behavior: 'instant' });
+    };
+    align();
+    const observer = new ResizeObserver(align);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      clearTimeout(settle.current);
+    };
+  }, [entries]);
   useEffect(() => setEntries(initial), [initial]);
   useEffect(() => {
     let alive = true,
@@ -77,15 +108,17 @@ export function FeaturedHero({
   }, [!!current]);
   useEffect(() => {
     if (entries.length < 2 || paused || hovered || focused || reduced || !visible) return;
-    const timer = setInterval(
-      () => setSelection(entries[(index + 1) % entries.length].revisionId),
-      7000,
-    );
+    const timer = setInterval(() => select((index + 1) % entries.length), 7000);
     return () => clearInterval(timer);
   }, [entries, index, paused, hovered, focused, reduced, visible]);
   function move(offset: number) {
     setPaused(true);
-    setSelection(entries[(index + offset + entries.length) % entries.length].revisionId);
+    select((index + offset + entries.length) % entries.length);
+  }
+  function interact() {
+    destination.current = null;
+    clearTimeout(settle.current);
+    setPaused(true);
   }
   if (!current) return empty;
   return (
@@ -112,32 +145,84 @@ export function FeaturedHero({
           {String(index + 1).padStart(2, '0')} / {String(entries.length).padStart(2, '0')}
         </span>
       </div>
-      <Link
-        {...publicLink(current)}
-        className="featured-art"
-        aria-label={`Explore featured napplet: ${current.title}`}
-      >
-        <img
-          src={publicPoster(current)}
-          className={!current.preview ? 'generated-poster' : undefined}
-          width={720}
-          height={450}
-          alt=""
-          referrerPolicy="no-referrer"
-        />
-        <span className="featured-open">
-          <ArrowUpRight size={22} />
-        </span>
-      </Link>
       <div
-        className="featured-caption"
+        ref={slider}
+        className="featured-slider"
+        tabIndex={entries.length > 1 ? 0 : undefined}
+        role="group"
+        aria-label="Featured slides"
+        onPointerDown={interact}
+        onWheel={interact}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget || entries.length < 2) return;
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+          event.preventDefault();
+          move(event.key === 'ArrowLeft' ? -1 : 1);
+        }}
+        onScroll={() => {
+          clearTimeout(settle.current);
+          settle.current = setTimeout(() => {
+            const element = slider.current;
+            if (!element?.clientWidth) return;
+            // A previous scroll's debounce can fire during a new smooth movement.
+            // Only gestures may change selection before the requested slide arrives.
+            if (destination.current !== null) {
+              if (Math.abs(element.scrollLeft - destination.current * element.clientWidth) > 2)
+                return;
+              destination.current = null;
+            }
+            const next = Math.max(
+              0,
+              Math.min(entries.length - 1, Math.round(element.scrollLeft / element.clientWidth)),
+            );
+            setSelection(entries[next].revisionId);
+          }, 150);
+        }}
+      >
+        {entries.map((entry, slide) => (
+          <div
+            key={entry.revisionId}
+            className="featured-slide"
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${slide + 1} of ${entries.length}: ${entry.title}`}
+            inert={slide !== index}
+          >
+            <Link
+              {...publicLink(entry)}
+              className="featured-art"
+              aria-label={`Explore featured napplet: ${entry.title}`}
+              draggable={false}
+            >
+              <img
+                src={publicPoster(entry)}
+                className={!entry.preview ? 'generated-poster' : undefined}
+                width={720}
+                height={450}
+                alt=""
+                draggable={false}
+                loading={slide === 0 ? 'eager' : 'lazy'}
+                referrerPolicy="no-referrer"
+              />
+              <span className="featured-open">
+                <ArrowUpRight size={22} />
+              </span>
+            </Link>
+            <div className="featured-caption">
+              <Link {...publicLink(entry)}>{entry.title}</Link>
+              <p>{entry.description || 'A little world worth a look.'}</p>
+              <CreatorLink pubkey={entry.pubkey} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <span
+        className="sr-only"
         aria-live={paused || reduced || focused ? 'polite' : 'off'}
         aria-atomic="true"
       >
-        <Link {...publicLink(current)}>{current.title}</Link>
-        <p>{current.description || 'A little world worth a look.'}</p>
-        <CreatorLink pubkey={current.pubkey} />
-      </div>
+        {index + 1} of {entries.length}: {current.title}
+      </span>
       {entries.length > 1 && (
         <div className="featured-controls">
           <Button
