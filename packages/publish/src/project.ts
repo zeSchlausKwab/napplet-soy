@@ -240,7 +240,7 @@ export async function freezeSource(
   const repo = join(directory, 'source');
   await rm(repo, { recursive: true, force: true });
   await mkdir(repo);
-  await sourceGit(repo, ['init', '--initial-branch=main']);
+  await sourceGit(repo, ['init']);
   await sourceGit(repo, [
     '-c',
     'protocol.file.allow=always',

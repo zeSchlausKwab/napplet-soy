@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from 'bun:test';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // Exercise the shipped command in its own process. Besides checking the real
@@ -33,6 +33,66 @@ async function scaffold(parent: string, name: string, template: string) {
 }
 const root = await mkdtemp(join(tmpdir(), 'space-cli-test-'));
 afterAll(() => rm(root, { recursive: true, force: true }));
+test('bootstrap supports older Git and explains existing destinations and Git initialization failures', async () => {
+  const tools = join(root, 'old-git-tools');
+  await mkdir(tools);
+  await writeFile(
+    join(tools, 'git'),
+    `#!/bin/sh
+for argument in "$@"; do
+  case "$argument" in --initial-branch*) exit 129;; esac
+done
+if [ "$FAIL_INIT" = 1 ] && [ "$1" = init ]; then exit 1; fi
+exec "$REAL_GIT" "$@"
+`,
+    { mode: 0o755 },
+  );
+  const run = async (name: string, fail = false) => {
+    const child = Bun.spawn(
+      [
+        process.execPath,
+        new URL('./index.ts', import.meta.url).pathname,
+        'new',
+        name,
+        '--identity',
+        'later',
+        '--no-install',
+        '--json',
+      ],
+      {
+        cwd: root,
+        env: {
+          PATH: `${tools}:${process.env.PATH}`,
+          REAL_GIT: Bun.which('git')!,
+          FAIL_INIT: fail ? '1' : '0',
+          SPACE_ACCOUNT_HOME: join(root, 'isolated-accounts'),
+        },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+    const [code, stdout, stderr] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+    ]);
+    return { code, data: JSON.parse(stdout), stderr };
+  };
+  const created = await run('intel-boilerplate');
+  expect(created.code).toBe(0);
+  const head = Bun.spawn(['git', '-C', join(root, 'intel-boilerplate'), 'symbolic-ref', 'HEAD'], {
+    stdout: 'pipe',
+  });
+  expect(await new Response(head.stdout).text()).toBe('refs/heads/main\n');
+  expect(await head.exited).toBe(0);
+  await writeFile(join(root, 'intel-boilerplate/README.md'), 'Keep my work');
+  const repeated = await run('intel-boilerplate');
+  expect(repeated.data.error.code).toBe('DESTINATION_EXISTS');
+  expect(await Bun.file(join(root, 'intel-boilerplate/README.md')).text()).toBe('Keep my work');
+  const failed = await run('git-init-failure', true);
+  expect(failed.data.error.code).toBe('GIT_INIT_FAILED');
+  expect(failed.data.error.message).toContain('git-init-failure');
+});
 test('scaffolds a standalone Git project with shared restricted preview', async () => {
   const path = await scaffold(root, 'little-orbit', 'soft-orbit');
   expect(await Bun.file(join(path, 'index.html')).text()).toContain('<canvas');

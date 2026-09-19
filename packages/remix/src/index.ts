@@ -340,7 +340,8 @@ export async function createRemix(
       (files.has('.gitignore') ? decode('.gitignore') : '') +
         '\n.napplet-space/\nnode_modules/\n.env\n.env.*\n*.nsec\n',
     );
-    await sourceGit(target, ['init', '--initial-branch=main']);
+    await sourceGit(target, ['init']);
+    await sourceGit(target, ['symbolic-ref', 'HEAD', 'refs/heads/main']);
     return {
       directory: target,
       lineage,

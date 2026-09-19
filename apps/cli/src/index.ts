@@ -7,7 +7,11 @@ import { parseArgs } from 'node:util';
 import { join } from 'node:path';
 import { nip19 } from 'nostr-tools';
 import { scaffold, ScaffoldInputError } from './scaffold';
-import { Accounts, type Account } from '../../../packages/identity/src/accounts';
+import {
+  Accounts,
+  dangerousFileKeystore,
+  type Account,
+} from '../../../packages/identity/src/accounts';
 import {
   AccountError,
   defaultSignerRelays,
@@ -63,6 +67,8 @@ Usage:
   bun run soyli --version
 
 All commands accept --network public|local and --json.
+Development fallback: SOYLI_DANGEROUS_PLAINTEXT_KEYS=1 enables separate, unencrypted
+owner-only account files outside Git. Unset it to return to OS-vault accounts.
 Create reuses your selected account; account create --new creates and selects another.
 Previous identities and backups are kept. Connect accepts a hidden bunker link.
 Pair creates a nostrconnect link and QR to approve in your signer (120-second wait).
@@ -174,6 +180,10 @@ try {
     throw new AccountError('USAGE', 'Choose --network public or local.');
   const network = values.network as Network;
   const accounts = new Accounts(network);
+  if (dangerousFileKeystore())
+    process.stderr.write(
+      `WARNING: Dangerous plaintext key storage enabled at ${accounts.directory}. Keys are NOT encrypted. Keep this directory private and outside Git.\n`,
+    );
   const onAuth = async (url: string) => {
     if (!process.stdin.isTTY || json)
       throw new AccountError(

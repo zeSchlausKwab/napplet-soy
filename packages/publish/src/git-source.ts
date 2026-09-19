@@ -74,7 +74,8 @@ export async function checkpoint(directory: string, message: string, author?: st
   if (!message.trim() || message.length > 1000)
     throw new Error('Provide a short checkpoint description.');
   await sourceGit(directory, ['rev-parse', '--git-dir']).catch(async () => {
-    await sourceGit(directory, ['init', '--initial-branch=main']);
+    await sourceGit(directory, ['init']);
+    await sourceGit(directory, ['symbolic-ref', 'HEAD', 'refs/heads/main']);
   });
   // Never auto-stage or commit as a side effect of publish/propose. This is explicit.
   const files = (

@@ -2,12 +2,62 @@ import { projectPublishingDefaults } from '../../../packages/publish/src/config'
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { requireGit } from './prerequisites';
+import { AccountError } from '../../../packages/identity/src/signer';
 import { examples, exampleHtml } from '../../../packages/examples/artifact';
 import { boilerplateFiles, installCreatorSkills, upstream } from './creator-kit';
 
 export class ScaffoldInputError extends Error {}
 
 export async function scaffold(parent: string, name: string, template: string) {
+  try {
+    return await scaffoldProject(parent, name, template);
+  } catch (error) {
+    if (error instanceof AccountError || error instanceof ScaffoldInputError) throw error;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (['EACCES', 'EPERM', 'EROFS'].includes(code ?? ''))
+      throw new AccountError(
+        'PROJECT_PERMISSION',
+        'Cannot write the project files. Choose a folder owned by your current user and check its permissions. Running soyLI with sudo is not required.',
+      );
+    if (code === 'ENOSPC')
+      throw new AccountError(
+        'PROJECT_DISK_FULL',
+        'Not enough disk space to create the project. Free space before retrying; partially created files may remain.',
+      );
+    throw error;
+  }
+}
+async function createDestination(target: string) {
+  try {
+    await mkdir(target);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST')
+      throw new AccountError(
+        'DESTINATION_EXISTS',
+        `The destination already exists: ${target}. No files were overwritten. Inspect it before retrying; choose another folder name for a fresh project. If it is already a project, use soyli setup --project <folder>.`,
+      );
+    throw error;
+  }
+}
+async function initializeGit(target: string) {
+  // Avoid --initial-branch: older Apple Git accepts init + symbolic-ref too.
+  for (const args of [
+    ['init', target],
+    ['-C', target, 'symbolic-ref', 'HEAD', 'refs/heads/main'],
+  ]) {
+    const child = Bun.spawn(['git', ...args], {
+      stdin: 'ignore',
+      stdout: 'ignore',
+      stderr: 'ignore',
+    });
+    if (await child.exited)
+      throw new AccountError(
+        'GIT_INIT_FAILED',
+        `Project files were created at ${target}, but Git initialization failed. Check git --version and this folder's permissions, then initialize Git in the existing folder before running soyli setup --project <folder>.`,
+      );
+  }
+}
+async function scaffoldProject(parent: string, name: string, template: string) {
   if (template !== 'boilerplate') {
     const target = await scaffoldLegacy(parent, name, template);
     await installCreatorSkills(target);
@@ -19,7 +69,7 @@ export async function scaffold(parent: string, name: string, template: string) {
     );
   await requireGit();
   const target = resolve(parent, name);
-  await mkdir(target);
+  await createDestination(target);
   for (const [path, text] of Object.entries(boilerplateFiles(name))) {
     await mkdir(dirname(resolve(target, path)), { recursive: true });
     await writeFile(resolve(target, path), text, { flag: 'wx' });
@@ -52,12 +102,7 @@ export async function scaffold(parent: string, name: string, template: string) {
     JSON.stringify(upstream, null, 2) + '\n',
   );
   await installCreatorSkills(target);
-  const git = Bun.spawn(['git', 'init', '--initial-branch=main', target], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-  if (await git.exited)
-    throw new Error(`Files created at ${target}, but Git initialization failed.`);
+  await initializeGit(target);
   return target;
 }
 
@@ -73,7 +118,7 @@ async function scaffoldLegacy(parent: string, name: string, template: string) {
   await requireGit();
   const target = resolve(parent, name);
   // Fail atomically if anything already occupies the destination; never overwrite a project.
-  await mkdir(target);
+  await createDestination(target);
   await writeFile(resolve(target, 'index.html'), exampleHtml(template));
   const previewId = crypto.randomUUID();
   await writeFile(
@@ -132,13 +177,6 @@ async function scaffoldLegacy(parent: string, name: string, template: string) {
     resolve(target, 'README.md'),
     `# ${name}\n\nA local napplet based on ${template}, from the Space lab starter collection.\n\nRun \`soyli dev\`, open http://localhost:4173, and edit \`index.html\` with your favorite coding agent. The preview reloads when the artifact changes. No dependency install or separate Bun/Node runtime is required. Install the CLI from https://napplet.soy/create if needed. Git and an unlocked OS credential store are used for publishing; soyli doctor checks prerequisites.\n\nThe preview uses the same hash verification, srcdoc sandbox, pinned shim, and host services as the website. Use the injected domains; optional domains may be absent. \`requires\` declares mandatory domains; \`relays\` configures fallback relay reads and \`servers\` supplies Blossom resource hints. Empty lists work for self-contained experiments. You can connect your browser extension to test identity changes; the preview never signs or publishes events.\n\nThe local \`previewId\` scopes your saves and is not a Nostr identity. Local bytes are trusted as your editable source and verified by hash in the browser; signature verification applies once a manifest is published. Files offered by napplet.fs stay in the preview session until you download them.\n\nEdit the optional lowercase topic labels in \`napplet.json\` as your idea evolves. They describe the creation, for example \`visual\`, \`generative\`, or \`game\`; they are not exclusive categories.\n\nThe HTML is both the source and playable artifact. Keep it self-contained. Creator identities are managed by the platform CLI account commands. The selected creator and publication targets are in ignored .napplet-space/project.json as public configuration; keys and remote-signer credentials stay in your OS credential store. This public reference never authorizes a clone or remix to use another creator’s signer. Use \`soyli publish --dry-run\` to inspect the source and destinations, then make a reviewed Git checkpoint with soyli checkpoint before publishing. Code and pushed Git history are public by default. Git-backed remixes can use soyli propose to send changes upstream, and maintainers use soyli review to inspect and play them. Add --network local to use the dev services. The publisher keeps frozen source and retry state in .napplet-space; keep that directory when moving the project. Publication returns a portable Nostr address and reports when the website has indexed it. Friendly named links are optional and do not affect public interoperability.\n`,
   );
-  const git = Bun.spawn(['git', 'init', '--initial-branch=main', target], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-  if ((await git.exited) !== 0)
-    throw new Error(
-      `Files created at ${target}, but Git initialization failed. Run git init in that folder.`,
-    );
+  await initializeGit(target);
   return target;
 }

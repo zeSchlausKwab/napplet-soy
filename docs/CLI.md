@@ -197,7 +197,7 @@ requirements; `account check` verifies the selected signer.
 - Project recovery state: `.napplet-space`, ignored by Git and excluded from
   published source. Preserve this directory for interrupted-publication recovery.
 
-The private Node 24.21.0 and pnpm 10.8.0 toolchain is verified against pinned release
+The private Node 24.21.0 (Node 22.23.2 on macOS 11–13.4) and pnpm 10.8.0 toolchain is verified against pinned release
 checksums and reused across projects. Its cache is
 `~/Library/Caches/napplet-space/toolchains` (macOS) or
 `~/.cache/napplet-space/toolchains` (Linux); `SPACE_TOOLCHAIN_CACHE` overrides it.
@@ -389,3 +389,17 @@ The [0.10.0 release record](../apps/cli/distribution/release-0.10.0.json) record
 locally built archives and native execution coverage. This release has not been
 uploaded or deployed. Upload its immutable downloads before activating the updated
 installer; the public site continues to serve the previous version until then.
+
+## Older Macs and unavailable credential stores
+
+Bootstrap supports older Git versions such as 2.23 without requiring the newer
+`git init --initial-branch` option. Existing destinations and filesystem permission
+failures now have specific errors. Installation does not require administrator
+rights. A partial project should be inspected and resumed with `soyli setup`, not
+overwritten by rerunning `new`.
+
+For an unavailable OS vault, `SOYLI_DANGEROUS_PLAINTEXT_KEYS=1` explicitly selects a
+separate unencrypted, owner-only account store outside Git. See
+[the development file vault instructions](IDENTITY.md#explicit-dangerous-development-file-vault)
+for setup, restoring an existing identity and returning to Keychain. This requires
+a CLI release containing the option; 0.12.0 does not support it.

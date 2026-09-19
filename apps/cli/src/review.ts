@@ -108,7 +108,7 @@ export async function review(
       base = tag(r, 'merge-base');
     const folder = join(temp, revision, 'git');
     await mkdir(folder, { recursive: true });
-    await sourceGit(folder, ['init', '--initial-branch=main']);
+    await sourceGit(folder, ['init']);
     const clones = r.tags.filter((t) => t[0] === 'clone').flatMap((t) => t.slice(1));
     await fetchCommit(folder, clones, head, options.network === 'local');
     if (!base || !/^[a-f0-9]{40}$/.test(base))

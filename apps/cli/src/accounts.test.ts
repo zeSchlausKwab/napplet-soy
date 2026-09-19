@@ -3,6 +3,45 @@ import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+test('plaintext opt-in survives CLI restarts and keeps native account selection separate', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'soyli-plaintext-cli-'));
+  async function invoke(args: string[], enabled: boolean) {
+    const child = Bun.spawn(
+      [process.execPath, new URL('./index.ts', import.meta.url).pathname, ...args, '--json'],
+      {
+        cwd: home,
+        env: {
+          PATH: process.env.PATH,
+          SPACE_ACCOUNT_HOME: home,
+          ...(enabled ? { SOYLI_DANGEROUS_PLAINTEXT_KEYS: '1' } : {}),
+        },
+        stdin: 'ignore',
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+    const [code, output, warning] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+    ]);
+    expect(code).toBe(0);
+    expect(warning.includes('NOT encrypted')).toBe(enabled);
+    return JSON.parse(output);
+  }
+  try {
+    await invoke(['account', 'create'], true);
+    await invoke(['account', 'check'], true);
+    const selected = await invoke(['account', 'show'], true);
+    expect(selected.account).not.toBeNull();
+    expect(await invoke(['account', 'show'], false)).toEqual({ account: null });
+    expect(await invoke(['account', 'show'], true)).toEqual(selected);
+    expect(await Bun.file(join(home, 'accounts/public/accounts.json')).exists()).toBe(false);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+}, 15000);
+
 async function run(args: string[], input = '') {
   const directory = await mkdtemp(join(tmpdir(), 'napplet-account-command-'));
   try {

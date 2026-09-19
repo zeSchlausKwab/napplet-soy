@@ -37,7 +37,7 @@ The implementation uses [Bun's native Secrets API](https://bun.sh/docs/runtime/s
 | Process ownership | SQLite lock beside the account JSON; automatically released after process exit |
 | Project creator reference | Public key and network only |
 
-Missing, locked or unavailable native storage produces an actionable error. Signing has no file/env fallback: restoring a backup is an explicit import into the credential store. Linux needs a running, unlocked Secret Service such as GNOME Keyring or KWallet; headless Linux without one cannot persist creator credentials through this implementation. The VPS services have separate service identities and do not need a creator account. Native macOS behavior is tested; Linux and Windows credential stores are not yet validated here.
+Missing, locked or unavailable native storage produces an actionable error. There is no automatic fallback. The explicit development option below uses a separate plaintext vault. Linux needs a running, unlocked Secret Service such as GNOME Keyring or KWallet; headless Linux without one must explicitly opt into the development file vault to persist creator credentials. The VPS services have separate service identities and do not need a creator account. Native macOS behavior is tested; Linux and Windows credential stores are not yet validated here.
 
 A public pending reservation is flushed before storing a credential. Activation happens only after reading that credential back. If the process dies between those steps, `account create` without `--new` recovers the reserved identity instead of silently generating a replacement. A pending reservation with no stored credential can be discarded safely because it was never activated or published. Missing keys for an already selected account never trigger key rotation. Damaged metadata is reported and preserved. Previously selected identities remain available when creating/importing/connecting fails before activation.
 
@@ -269,3 +269,36 @@ IndexedDB, key generation/recovery, onboarding and social behavior. A separate
 running-frame check confirms account changes retire pending prompts and isolate
 storage/files without restarting the napplet. No production events or payments
 were sent, and this revision has not been deployed.
+
+## Explicit dangerous development file vault
+
+When the OS credential store is unavailable, opt in for the current terminal:
+
+```sh
+export SOYLI_DANGEROUS_PLAINTEXT_KEYS=1
+soyli account create
+soyli account check
+```
+
+This stores **unencrypted** local keys (or NIP-46 client credentials) in
+`~/.config/napplet-space/plaintext-accounts/<network>/credentials/`, with files
+restricted to 0600 and the directory to 0700. `SPACE_ACCOUNT_HOME` and
+`XDG_CONFIG_HOME` still apply. Every invocation warns on stderr; JSON stdout
+remains machine-readable. Git trees, symlink credential files, hard links and
+credentials accessible to other users are rejected. Filesystem permissions do
+not protect against software running as your user or someone with disk access.
+
+This vault has a separate account index and selection. It never copies, replaces
+or silently recovers Keychain accounts. To retain an existing identity, explicitly
+import its private backup instead of creating a new identity:
+
+```sh
+soyli account import --stdin < /absolute/private/path/to/backup.nsec
+```
+
+Do not paste keys into command arguments or project files. Normal commands such
+as `soyli publish` use the file vault while the environment variable is set.
+`unset SOYLI_DANGEROUS_PLAINTEXT_KEYS` returns to the native vault's selection;
+it does not delete the plaintext files. The opt-in is not passed into the private
+Node/pnpm build environment. This is an explicit development escape hatch, not
+an encrypted replacement for the OS keychain.

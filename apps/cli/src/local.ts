@@ -1,3 +1,4 @@
+import { dangerousFileKeystore } from '../../../packages/identity/src/accounts';
 import { realpath } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { AccountError, type Network } from '../../../packages/identity/src/signer';
@@ -145,8 +146,9 @@ export async function doctor() {
     platform: `${process.platform}-${process.arch}`,
     git: git ? 'ready' : 'missing; install Git with your OS package manager',
     browser,
-    credentials:
-      process.platform === 'darwin'
+    credentials: dangerousFileKeystore()
+      ? 'DANGEROUS: unencrypted owner-only files outside Git; separate account selection. Unset SOYLI_DANGEROUS_PLAINTEXT_KEYS to use the OS vault.'
+      : process.platform === 'darwin'
         ? 'Uses your login Keychain; account check verifies the selected signer.'
         : 'Requires an unlocked desktop Secret Service (e.g. GNOME Keyring) and D-Bus session; account check verifies the selected signer.',
   };

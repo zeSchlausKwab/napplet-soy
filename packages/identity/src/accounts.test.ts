@@ -13,7 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getPublicKey, generateSecretKey, nip19 } from 'nostr-tools';
-import { Accounts, type Vault } from './accounts';
+import { Accounts, PlaintextVault, type Vault } from './accounts';
 import { AccountError } from './signer';
 
 const root = await mkdtemp(join(tmpdir(), 'napplet-identity-'));
@@ -34,6 +34,35 @@ function fixture(name: string) {
   const vault = new MemoryVault();
   return { vault, accounts: new Accounts('public', join(root, name), vault) };
 }
+test('explicit plaintext vault persists signers and rejects unsafe permissions, symlinks and Git trees', async () => {
+  const directory = join(root, 'plaintext');
+  const vault = new PlaintextVault(join(directory, 'credentials'));
+  const accounts = new Accounts('public', directory, vault);
+  const account = await accounts.create();
+  const reopened = new Accounts('public', directory, new PlaintextVault(vault.directory));
+  const signer = await reopened.signer();
+  try {
+    expect(
+      (await signer.signEvent({ kind: 35129, tags: [], content: '', created_at: 1 })).pubkey,
+    ).toBe(account.pubkey);
+  } finally {
+    await signer.close();
+  }
+  const file = join(vault.directory, `${account.id}.json`);
+  expect((await stat(file)).mode & 0o777).toBe(0o600);
+  expect((await stat(vault.directory)).mode & 0o777).toBe(0o700);
+  await chmod(file, 0o644);
+  await expect(vault.get(account.id)).rejects.toMatchObject({ code: 'KEYSTORE_FILE' });
+  await expect(vault.set(account.id, 'replacement')).rejects.toMatchObject({
+    code: 'KEYSTORE_FILE',
+  });
+  await chmod(file, 0o600);
+  await rm(file);
+  await symlink(join(directory, `${account.pubkey}.nsec`), file);
+  await expect(vault.get(account.id)).rejects.toMatchObject({ code: 'KEYSTORE_FILE' });
+  await mkdir(join(directory, '.git'));
+  await expect(vault.get(account.id)).rejects.toMatchObject({ code: 'ACCOUNT_PATH' });
+});
 test('creator persists outside projects; reopened instances and every publication kind share its identity', async () => {
   const { accounts, vault } = fixture('reuse');
   const account = await accounts.create();

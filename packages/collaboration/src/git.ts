@@ -58,7 +58,7 @@ export async function cloneRevision(
   commit: string,
   local = false,
 ) {
-  await sourceGit(directory, ['init', '--initial-branch=main']);
+  await sourceGit(directory, ['init']);
   const clone = await fetchCommit(directory, repo.clones, commit, local);
   if (repo.euc) await sourceGit(directory, ['merge-base', '--is-ancestor', repo.euc, commit]);
   await inspectHistory(directory, commit);

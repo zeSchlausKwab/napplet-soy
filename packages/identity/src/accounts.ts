@@ -31,7 +31,7 @@ export class NativeVault implements Vault {
     } catch {
       throw new AccountError(
         'KEYSTORE_UNAVAILABLE',
-        'Unlock your OS credential store and retry. Linux needs a running Secret Service/keyring. No plaintext fallback is used.',
+        'Unlock your OS credential store and retry. Linux needs a running Secret Service/keyring. No automatic plaintext fallback is used. For development only, see SOYLI_DANGEROUS_PLAINTEXT_KEYS in soyli --help.',
       );
     }
   }
@@ -104,14 +104,95 @@ export function defaultAccountDirectory(network: Network) {
   const base =
     process.env.SPACE_ACCOUNT_HOME ||
     join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'napplet-space');
-  return resolve(base, 'accounts', network);
+  return dangerousFileKeystore()
+    ? resolve(base, 'plaintext-accounts', network)
+    : resolve(base, 'accounts', network);
+}
+export function dangerousFileKeystore() {
+  const value = process.env.SOYLI_DANGEROUS_PLAINTEXT_KEYS;
+  if (value && value !== '1')
+    throw new AccountError(
+      'KEYSTORE_OPTION',
+      'Set SOYLI_DANGEROUS_PLAINTEXT_KEYS=1 to explicitly opt in, or unset it to use the OS vault.',
+    );
+  return value === '1';
+}
+
+/** Explicit development storage. Separate account index prevents silent identity replacement. */
+export class PlaintextVault implements Vault {
+  constructor(readonly directory: string) {}
+  private async path(id: string) {
+    if (!/^[a-f0-9-]{36}$/.test(id))
+      throw new AccountError('KEYSTORE_FILE', 'Invalid credential ID.');
+    await outsideRepository(this.directory);
+    await mkdir(this.directory, { recursive: true, mode: 0o700 });
+    const info = await lstat(this.directory);
+    if (
+      !info.isDirectory() ||
+      info.isSymbolicLink() ||
+      info.mode & 0o077 ||
+      (process.getuid && info.uid !== process.getuid())
+    )
+      throw new AccountError(
+        'KEYSTORE_FILE',
+        'Plaintext credential directory must be owner-only (0700), owned by you, and not a symlink.',
+      );
+    return join(this.directory, `${id}.json`);
+  }
+  async get(id: string) {
+    const path = await this.path(id);
+    let file;
+    try {
+      file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+      const info = await file.stat();
+      if (
+        !info.isFile() ||
+        info.nlink !== 1 ||
+        info.size > 4096 ||
+        info.mode & 0o077 ||
+        (process.getuid && info.uid !== process.getuid())
+      )
+        throw new Error();
+      return await file.readFile('utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw new AccountError(
+        'KEYSTORE_FILE',
+        'Plaintext credential is unsafe or unreadable. Require an owner-only (0600) regular file; nothing was overwritten.',
+      );
+    } finally {
+      await file?.close();
+    }
+  }
+  async set(id: string, value: string) {
+    const path = await this.path(id);
+    await this.get(id); // Reject unsafe existing destinations before replacing.
+    const temporary = `${path}.${crypto.randomUUID()}.tmp`;
+    const file = await open(temporary, 'wx', 0o600);
+    try {
+      await file.writeFile(value);
+      await file.sync();
+      await file.close();
+      await rename(temporary, path);
+    } finally {
+      await file.close();
+      await rm(temporary, { force: true });
+    }
+  }
+  async delete(id: string) {
+    const path = await this.path(id);
+    await this.get(id);
+    await rm(path, { force: true });
+  }
 }
 export class Accounts {
   readonly directory: string;
   constructor(
     readonly network: Network = 'public',
     directory = defaultAccountDirectory(network),
-    readonly vault: Vault = new NativeVault(`space.napplet.creator.${network}`),
+    readonly vault: Vault = dangerousFileKeystore()
+      ? new PlaintextVault(join(directory, 'credentials'))
+      : new NativeVault(`space.napplet.creator.${network}`),
   ) {
     this.directory = resolve(directory);
   }

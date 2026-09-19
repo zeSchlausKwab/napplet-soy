@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import pins from '../vendor/toolchain.json';
 import { AccountError } from '../../../packages/identity/src/signer';
 import { backendProject } from './backend';
+import { selectNodeToolchain } from './toolchain-platform';
 
 export const toolchainCache = () =>
   resolve(
@@ -130,8 +131,21 @@ async function download(url: string, target: string, digest: string, signal?: Ab
 
 let preparing: Promise<Awaited<ReturnType<typeof prepare>>> | undefined;
 async function prepare(signal?: AbortSignal) {
-  const platform = `${process.platform}-${process.arch}` as keyof typeof pins.node.platforms;
-  const node = pins.node.platforms[platform];
+  const platform = `${process.platform}-${process.arch}`;
+  const macVersion =
+    process.platform === 'darwin'
+      ? (
+          await command(
+            ['/usr/bin/sw_vers', '-productVersion'],
+            process.cwd(),
+            environment(),
+            signal,
+            true,
+          )
+        ).trim()
+      : undefined;
+  const selected = selectNodeToolchain(process.platform, process.arch, macVersion);
+  const node = selected.archive;
   if (!node)
     throw new AccountError(
       'TOOLCHAIN_PLATFORM',
@@ -197,7 +211,7 @@ async function prepare(signal?: AbortSignal) {
   }
   await ensure(nodeRoot, nodeBin, node.url, node.sha256, node.directory);
   await ensure(pnpmRoot, pnpm, pins.pnpm.url, pins.pnpm.integrity, 'package');
-  const bin = join(root, `bin-${pins.node.version}-${pins.pnpm.version}-${platform}`);
+  const bin = join(root, `bin-${selected.version}-${pins.pnpm.version}-${platform}`);
   await mkdir(bin, { recursive: true });
   const pnpmLink = join(bin, 'pnpm');
   if (!(await lstat(pnpmLink).catch(() => null))) await symlink(pnpm, pnpmLink);
@@ -211,7 +225,7 @@ async function prepare(signal?: AbortSignal) {
   };
   if (
     (await command([nodeBin, '--version'], root, env, signal, true)).trim() !==
-    `v${pins.node.version}`
+    `v${selected.version}`
   )
     throw new AccountError('TOOLCHAIN_VERSION', 'Unexpected cached Node version.');
   return { nodeBin, pnpm, env };
