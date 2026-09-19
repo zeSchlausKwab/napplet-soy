@@ -6,7 +6,7 @@ import { finalizeEvent, getPublicKey } from 'nostr-tools';
 import { verifiedEvent, type SignedEvent } from '../../packages/protocol/src';
 
 /** Test-only signed invoice. No real wallet/provider is contacted. */
-function invoice(msats: number, description: string) {
+export function invoice(msats: number, description: string) {
   const encoder = new TextEncoder(),
     key = new Uint8Array(32).fill(3);
   const words = (n: number) => {

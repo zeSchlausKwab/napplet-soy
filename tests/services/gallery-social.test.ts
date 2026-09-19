@@ -114,6 +114,7 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
     }
     browser = await chromium.launch();
     const page = await browser.newPage({ viewport: { width: 1365, height: 1000 } });
+    page.setDefaultTimeout(10000);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     let accountSignatures = 0;
@@ -217,7 +218,9 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
     await page.goBack();
     await card.getByRole('link', { name: /^Comment on .*2 comments/ }).waitFor();
     // Rails and the main grid own one active player, even for repeated cards.
-    const likedCard = page.locator('.social-rail-liked .napplet-card').first();
+    const likedCard = page.locator('.social-rail-liked .napplet-card').filter({
+      has: page.getByRole('link', { name: fixture.title, exact: true }),
+    });
     await likedCard.locator('.card-preview').click();
     await likedCard.locator('iframe').waitFor();
     expect(await page.locator('iframe').count()).toBe(1);

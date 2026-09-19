@@ -3,14 +3,11 @@ import type { SignedEvent, GallerySearch } from '../../../../packages/protocol/s
 import { validateManifest } from '../../../../packages/protocol/src/manifest';
 import { socialScope, socialView, rootComment } from '../../../../packages/protocol/src/social';
 import { latestProfile, profileView } from '../../../../packages/protocol/src/profile';
-import { resolveZapEndpoint, zapTotals } from '../../../../packages/client/src/zaps';
+import { GallerySocialReader } from '../../../../packages/client/src/gallery-social';
 import { protocolClient, network, manifestAllowed } from './network';
 import { queryCatalog, availableCatalog, featured } from './protocol-catalog';
 import { matchesGallery } from '../../../../packages/protocol/src/topics';
-import type {
-  GallerySocialData,
-  SocialCounts,
-} from '../../../../packages/backend/src/gallery-social';
+import type { GallerySocialData } from '../../../../packages/backend/src/gallery-social';
 
 const history = new Map<string, SignedEvent[]>();
 const chunks = <T>(items: T[], size = 64) =>
@@ -118,12 +115,12 @@ export async function publishSocial(event: SignedEvent, relays: string[]) {
   }
   return accepted;
 }
-const counts = new Map<string, Omit<SocialCounts, 'liked'> & { likes: string[] }>();
-let cursor = 0;
+let galleryReader: GallerySocialReader | undefined;
 export async function gallerySocial(
   search: GallerySearch,
   viewer?: string,
   signal?: AbortSignal,
+  onUpdate?: (data: GallerySocialData) => void,
 ): Promise<GallerySocialData> {
   const entries = (availableCatalog().length ? availableCatalog() : await queryCatalog()).filter(
     (n) =>
@@ -131,62 +128,6 @@ export async function gallerySocial(
       (search.sort !== 'featured' || featured(n)) &&
       (search.unavailable || n.availability === 'ready'),
   );
-  const batch = Array.from(
-    { length: Math.min(12, entries.length) },
-    (_, i) => entries[(cursor + i) % entries.length],
-  );
-  cursor += batch.length;
-  let index = 0;
-  await Promise.all(
-    Array.from({ length: 3 }, async () => {
-      while (index < batch.length) {
-        const n = batch[index++];
-        try {
-          const data = await readSocial(n.manifest, n.relays, signal);
-          let total: { zapCount: number; msats: number } | null = null;
-          try {
-            if (!n.manifest.tags.some((t) => t[0] === 'zap'))
-              total = await zapTotals(data, data, await resolveZapEndpoint(n.pubkey, data.events));
-          } catch {}
-          counts.set(n.revisionId, {
-            likeCount: data.likeCount,
-            likes: data.likes.map((e) => e.pubkey),
-            commentCount: data.comments.filter((e) => !e.deleted).length,
-            zapCount: total?.zapCount ?? null,
-            msats: total?.msats ?? null,
-          });
-        } catch {
-          signal?.throwIfAborted();
-        }
-      }
-    }),
-  );
-  while (counts.size > 1000) counts.delete(counts.keys().next().value!);
-  const rank = (field: 'likeCount' | 'commentCount' | 'msats') =>
-    entries
-      .filter((n) => (counts.get(n.revisionId)?.[field] ?? 0) > 0)
-      .sort(
-        (a, b) =>
-          (counts.get(b.revisionId)?.[field] ?? 0) - (counts.get(a.revisionId)?.[field] ?? 0),
-      )
-      .slice(0, 12);
-  return {
-    counts: Object.fromEntries(
-      entries.flatMap((n) =>
-        counts.has(n.revisionId)
-          ? [
-              [
-                n.revisionId,
-                {
-                  ...counts.get(n.revisionId)!,
-                  liked: !!viewer && counts.get(n.revisionId)!.likes.includes(viewer),
-                },
-              ],
-            ]
-          : [],
-      ),
-    ),
-    rankings: { liked: rank('likeCount'), commented: rank('commentCount'), zapped: rank('msats') },
-    refreshing: entries.some((n) => !counts.has(n.revisionId)),
-  };
+  galleryReader ??= new GallerySocialReader(protocolClient());
+  return galleryReader.read(entries, viewer, signal, onUpdate);
 }

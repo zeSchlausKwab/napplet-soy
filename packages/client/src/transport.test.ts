@@ -28,7 +28,7 @@ test('direct queries reject invalid signatures, mismatched filters and future ev
       message(socket, raw) {
         const m = JSON.parse(String(raw));
         if (m[0] === 'REQ') {
-          for (const e of [good, unrelated, future, { ...good, content: 'tampered' }])
+          for (const e of [good, good, unrelated, future, { ...good, content: 'tampered' }])
             socket.send(JSON.stringify(['EVENT', m[1], e]));
           socket.send(JSON.stringify(['EOSE', m[1]]));
         } else if (m[0] === 'EVENT') {
@@ -40,7 +40,13 @@ test('direct queries reject invalid signatures, mismatched filters and future ev
   });
   const client = new ProtocolClient(() => [`ws://127.0.0.1:${relay.port}`]);
   try {
-    expect((await client.query([{ kinds: [1] }])).map((e) => e.id)).toEqual([good.id]);
+    const streamed: string[] = [];
+    expect(
+      (await client.query([{ kinds: [1] }], [], undefined, (e) => streamed.push(e.id))).map(
+        (e) => e.id,
+      ),
+    ).toEqual([good.id]);
+    expect(streamed).toEqual([good.id]);
     expect((await client.query([{ ids: [good.id], kinds: [1] }])).map((e) => e.id)).toEqual([
       good.id,
     ]);

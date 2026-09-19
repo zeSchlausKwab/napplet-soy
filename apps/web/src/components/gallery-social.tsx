@@ -82,7 +82,16 @@ export function GallerySocialProvider({
       let delay = 30000;
       try {
         if (document.visibilityState === 'hidden') return;
-        const value = await gallerySocial(search, pubkey ?? undefined, controller.signal);
+        const value = await gallerySocial(
+          search,
+          pubkey ?? undefined,
+          controller.signal,
+          (value) => {
+            if (controller.signal.aborted) return;
+            setData(value);
+            setError('');
+          },
+        );
         if (controller.signal.aborted) return;
         setData(value);
         setError('');

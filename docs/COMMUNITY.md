@@ -215,18 +215,34 @@ napplets** for the unfiltered Featured view, and shows the matching count. The g
 pagination and empty results belong to this named section. This presentation change
 is verified locally at 320–1920px; it has not been deployed.
 
-The browser queries counts directly over Nostr, processing up to 12 threads per
-sweep with three concurrent readers. It refreshes every thirty seconds (five while
-filling the cache), pauses while hidden and refreshes after acknowledged actions.
-The local cache is bounded and counts are tied to the selected identity. No gallery
-or social REST endpoint participates. Rankings describe the discovered matching
-collection, capped by bounded relay queries; they are not global exhaustive totals.
+The browser queries counts directly over Nostr, processing up to 64 napplets per
+sweep. Compatible relay sets share batches of up to 32 napplets, with at most three
+concurrent readers. Publication relay hints retain the same per-query bounds;
+batches split when combining hints would discard a publication's relay choices.
+Verified events update counts and rankings as they arrive, coalesced over 40ms,
+without waiting for slow relays to finish. Cached counts appear immediately on
+returning to the gallery or changing filters/accounts in the same browser session;
+the current viewer's liked state is recomputed. A reload still starts a fresh read.
+
+Gallery summaries fetch referenced releases/reply parents and author deletions in
+a shared follow-up query. They omit comment-reaction and general profile hydration,
+which remain part of opening a conversation. Partial counts can change as those
+dependencies or slower relays arrive. Each main filter is limited to 500 events;
+the existing transport also caps each query at 1,000 distinct events. The client
+refreshes every thirty seconds (five while filling the cache), pauses while hidden
+and refreshes after acknowledged actions. The bounded cache and queries describe
+the discovered matching collection; these are not global exhaustive totals. No
+gallery or social REST endpoint participates.
 
 Zap receipts use the same validator as details, including provider signatures,
 invoice description/amount and payment-hash deduplication. LNURL JSON and invoices
 come directly from the author's provider, which must allow browser CORS. Anonymous
 receipts follow the same checks. Invoice creation and WebLN success never increment
-a verified total. See [direct protocol access](PROTOCOL-ACCESS.md).
+a verified total. Threads without receipts skip Lightning-provider lookups entirely;
+receipt verification updates the zap rail independently of likes and comments.
+Provider lookups share a bounded, one-minute cache keyed by author and profile
+revision. Unverifiable receipts leave totals unknown. See
+[direct protocol access](PROTOCOL-ACCESS.md).
 
 Gallery signing verifies the selected identity and payload, keeps a failed signed
 like for an exact-event retry, and gates retry on the matching account. Counts and
@@ -237,3 +253,13 @@ Verification: `bun test packages/community/src`; `bun run build` followed by
 `bun test tests/services/community.test.ts tests/services/gallery-social.test.ts`.
 These use temporary databases/local relay events and simulated invoices/wallets;
 no production Nostr events or Lightning payments are sent.
+
+The progressive aggregation update is verified locally and not yet deployed.
+`bun test packages/client/src/gallery-social.test.ts` covers batching a 48-napplet
+collection, release references, deletions, moderation, account changes, cancellation
+and delayed provider verification. After building, run
+`bun test tests/services/gallery-social-latency.test.ts` for the production-browser
+regression with one fast relay and one stalled fallback. In that fixture, six
+napplets' rankings changed from 21.5 seconds to approximately 85ms after the fast
+relay delivered events. This measures rendering latency after event delivery,
+not a guarantee about public relay or Lightning-provider response times.

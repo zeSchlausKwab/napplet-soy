@@ -74,7 +74,12 @@ export class ProtocolClient {
         this.remember(event);
       } catch {}
   }
-  async query(filters: Filter[], hints: string[] = [], signal = AbortSignal.timeout(10000)) {
+  async query(
+    filters: Filter[],
+    hints: string[] = [],
+    signal = AbortSignal.timeout(10000),
+    onEvent?: (event: SignedEvent) => void,
+  ) {
     const relays = [...new Set([...hints, ...this.relays()])]
       .flatMap((value) => {
         try {
@@ -115,8 +120,10 @@ export class ProtocolClient {
                       event.created_at <= Date.now() / 1000 + 60 &&
                       matchFilters(filters, event)
                     ) {
+                      const fresh = !found.has(event.id);
                       found.set(event.id, event);
                       this.remember(event);
+                      if (fresh) onEvent?.(event);
                     }
                   } catch {}
                 },
