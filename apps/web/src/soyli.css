@@ -369,8 +369,9 @@
   }
 }
 @media (max-width: 760px) and (max-height: 700px) {
-  .hero .hero-main > h1 {
-    margin-bottom: 16px;
+  .hero .hero-heading {
+    gap: 0;
+    margin-bottom: 12px;
   }
   .hero .soyli-identity-compact {
     margin: 6px 0;

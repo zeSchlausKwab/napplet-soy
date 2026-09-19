@@ -96,6 +96,15 @@ The sheet is served unchanged. Build, typecheck and local browser checks passed
 for all nine frames, pause/keyboard/touch controls, reduced motion and responsive
 layouts on all three pages. Screenshots: `.local/soybert-sprite-check/`. Not deployed.
 
+The landing hero now places its introductory copy beside the headline when the
+main column has room, using an italic marginal-note treatment and a short coral
+aside. Narrow columns stack the copy beneath the headline; compact phones keep
+the existing first-screen priority for the installer. Hero padding is tighter.
+Build/typecheck and the existing 48-assertion onboarding check passed. Additional
+local layout checks cover 320/390/768/1024/1365/1600px with the empty-state column
+and a featured-column fixture, including heading fit and phone command visibility.
+Screenshots: `.local/compact-hero-check/`. Implemented locally, not deployed.
+
 ### Shared source and walkthrough generation
 
 - `apps/web/src/lib/creator-commands.ts` owns copyable install/create/remix commands.

@@ -73,22 +73,25 @@ function Gallery() {
           <div className="eyebrow">
             <span className="status-dot" /> A PLAYGROUND FOR THE INTERNET
           </div>
-          <h1>
-            Small code.
-            <br />
-            Big{' '}
-            <span className="weird-word">
-              weird
-              <svg viewBox="0 0 320 22" aria-hidden="true">
-                <path d="M4 13Q110 -2 208 12T316 8M19 19Q166 5 289 18" />
-              </svg>
-            </span>
-            <span className="coral">.</span>
-          </h1>
-          <p className="hero-intro">
-            Tiny games. Happy accidents. Wonderfully unnecessary things.
-            <br className="desktop-break" /> Made by people with an idea and an afternoon.
-          </p>
+          <div className="hero-heading">
+            <h1>
+              Small code.
+              <br />
+              Big{' '}
+              <span className="weird-word">
+                weird
+                <svg viewBox="0 0 320 22" aria-hidden="true">
+                  <path d="M4 13Q110 -2 208 12T316 8M19 19Q166 5 289 18" />
+                </svg>
+              </span>
+              <span className="coral">.</span>
+            </h1>
+            <div className="hero-intro">
+              <p>Tiny games. Happy accidents. Wonderfully unnecessary things.</p>
+              <p>Made by people with an idea and an afternoon.</p>
+              <p className="hero-aside">A little place for devs to live out their AI psychosis.</p>
+            </div>
+          </div>
           <SoyliIdentity compact />
           <p className="account-free-note">Create, remix and publish. No website account needed.</p>
           <StarterCommand />

@@ -156,7 +156,7 @@ pre:focus-visible {
   border-radius: 5px;
 }
 .hero {
-  padding: 63px 0 56px;
+  padding: 44px 0 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -165,7 +165,68 @@ pre:focus-visible {
 .hero-main {
   flex: 1;
   min-width: 0;
+  width: 100%;
   max-width: 740px;
+  container-type: inline-size;
+  container-name: hero-copy;
+}
+.hero-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+.hero .hero-heading h1 {
+  margin: 0 0 10px;
+  font-size: clamp(48px, 11.5cqi, 88px);
+  letter-spacing: -0.06em;
+  white-space: nowrap;
+}
+.hero .hero-intro {
+  position: relative;
+  padding-left: 17px;
+}
+.hero-intro::before {
+  content: '*';
+  position: absolute;
+  left: 0;
+  top: -4px;
+  font: 26px Georgia, serif;
+  color: var(--coral);
+}
+.hero .hero-intro p {
+  margin: 0 0 10px;
+  font: italic 16px/1.4 Georgia, 'Times New Roman', serif;
+  color: #686e5c;
+  text-wrap: pretty;
+}
+.hero .hero-intro .hero-aside {
+  margin: 0;
+  font: 10px/1.6 var(--mono);
+  color: #a0523b;
+}
+@container hero-copy (max-width: 600px) {
+  .hero-heading {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .hero .hero-heading h1 {
+    font-size: clamp(52px, 15cqi, 80px);
+  }
+  .hero .hero-intro p {
+    display: inline;
+    font-size: 14px;
+  }
+  .hero .hero-intro p + p::before {
+    content: ' ';
+  }
+  .hero .hero-intro .hero-aside {
+    display: block;
+    margin-top: 7px;
+    font-size: 10px;
+  }
 }
 .eyebrow {
   font-family: var(--mono);
@@ -1232,8 +1293,8 @@ pre:focus-visible {
 }
 @media (min-width: 1500px) {
   .hero {
-    padding-top: 76px;
-    padding-bottom: 67px;
+    padding-top: 50px;
+    padding-bottom: 44px;
   }
   .hero h1 {
     font-size: 92px;
