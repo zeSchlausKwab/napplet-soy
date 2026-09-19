@@ -103,6 +103,8 @@ test('CLI rejects sensitive arguments and invalid stdin with structured errors t
   }
 });
 
+// Twelve real CLI startups plus scaffolding/Git exceed Bun's 5s default on the VPS.
+// Keep a separate deadline on each child so a hang cannot consume the whole budget.
 test('boilerplate onboarding reports a reusable backup outside Git and the CLI can restore it', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'napplet-onboarding-backup-'));
   // Exercise the real CLI with an isolated credential-store adapter; never touch OS accounts.
@@ -145,15 +147,25 @@ test('boilerplate onboarding reports a reusable backup outside Git and the CLI c
         stderr: 'pipe',
       },
     );
-    const [code, stdout, stderr] = await Promise.all([
-      child.exited,
-      new Response(child.stdout).text(),
-      new Response(child.stderr).text(),
-    ]);
-    expect(code).toBe(0);
-    expect(stderr).toBe('');
-    expect(stdout.includes('nsec1')).toBe(false);
-    return JSON.parse(stdout);
+    let timedOut = false;
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, 10000);
+    try {
+      const [code, stdout, stderr] = await Promise.all([
+        child.exited,
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+      ]);
+      if (timedOut) throw new Error(`CLI ${args.slice(0, 2).join(' ')} timed out after 10 seconds`);
+      expect(code).toBe(0);
+      expect(stderr).toBe('');
+      expect(stdout.includes('nsec1')).toBe(false);
+      return JSON.parse(stdout);
+    } finally {
+      clearTimeout(deadline);
+    }
   }
   try {
     const created = await cli(['new', 'my-boilerplate', '--identity', 'create', '--no-install']);
@@ -207,4 +219,4 @@ test('boilerplate onboarding reports a reusable backup outside Git and the CLI c
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
-});
+}, 30000);
