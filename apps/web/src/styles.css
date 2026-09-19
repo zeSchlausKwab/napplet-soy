@@ -2,6 +2,7 @@
 @import 'tailwindcss' source('./');
 @import 'tw-animate-css';
 @import './documentation.css';
+@import './soyli.css';
 @import '@fontsource/dm-sans/400.css';
 @import '@fontsource/dm-sans/500.css';
 @import '@fontsource/dm-sans/600.css';

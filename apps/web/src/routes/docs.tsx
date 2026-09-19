@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { ArrowUpRight, BookOpen } from 'lucide-react';
 import { DocCommand } from '@/components/doc-command';
 import { createCommand } from '@/lib/creator-commands';
+import { SoyliBenefits, SoyliIdentity } from '@/components/soyli-intro';
 
 const description =
   'The napplet soyLI field guide: create, preview, publish and collaborate. Manage identities, preserve keys and choose where your work goes.';
@@ -33,13 +34,16 @@ function Documentation() {
     <article className="docs-page">
       <header className="docs-intro">
         <span className="eyebrow">NAPPLET SOYLI / DOCUMENTATION</span>
+        <SoyliIdentity />
         <h1>
-          A little command line.
-          <br />A lot of possibility<span className="coral">.</span>
+          Your idea. Your agent.
+          <br />
+          The rest comes ready<span className="coral">.</span>
         </h1>
         <p>
-          Your field guide to making, sharing and building on napplets. Bring an idea and the editor
-          or coding agent you already use.
+          Give your coding agent the context and tools to finish the job. soyLI prepares the
+          project, supplies Napplet skills, captures covers and preview videos, and checks your
+          creation before publishing. A few simple commands, from first idea to shared napplet.
         </p>
         <div className="docs-intro-links">
           <span>
@@ -49,6 +53,7 @@ function Documentation() {
             Start with the FAQ <ArrowUpRight size={15} />
           </Link>
         </div>
+        <SoyliBenefits />
       </header>
       <div className="docs-layout">
         <nav className="docs-contents" aria-label="Documentation sections">
@@ -109,6 +114,11 @@ function Documentation() {
               <code>verify</code> runs the starter’s checks. <code>check</code> inspects the built
               napplet in our host; it cannot test every interaction. Play it yourself and inspect
               the Listing preview too.
+            </p>
+            <p>
+              Run <code>soyli run test:conformance</code> for the starter’s upstream protocol
+              checks. These checks complement publication validation; they do not guarantee that
+              every interaction works on every client.
             </p>
             <DocCommand label="Save and publish">
               {

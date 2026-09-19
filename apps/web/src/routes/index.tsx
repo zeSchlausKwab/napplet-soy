@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { publicLink } from '../../../../packages/backend/src/public-model';
 import { FeaturedHero } from '@/components/featured-hero';
 import { StarterCommand } from '@/components/starter-command';
+import { SoyliBenefits, SoyliIdentity } from '@/components/soyli-intro';
 
 export const Route = createFileRoute('/')({
   validateSearch: (input: SearchSchemaInput & Partial<GallerySearch>) =>
@@ -88,6 +89,7 @@ function Gallery() {
             Tiny games. Happy accidents. Wonderfully unnecessary things.
             <br className="desktop-break" /> Made by people with an idea and an afternoon.
           </p>
+          <SoyliIdentity compact />
           <p className="account-free-note">Create, remix and publish. No website account needed.</p>
           <StarterCommand />
           <p className="hero-command-note">
@@ -96,7 +98,11 @@ function Gallery() {
               Setup help ↗
             </Link>
           </p>
+          <SoyliBenefits />
           <div className="hero-links">
+            <Link className="browse-link" to="/docs">
+              Meet soyLI. Read the docs <ArrowUpRight size={16} />
+            </Link>
             <a className="browse-link" href="#explore">
               Explore first <ArrowDown size={16} />
             </a>

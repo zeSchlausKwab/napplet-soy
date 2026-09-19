@@ -60,6 +60,28 @@ publication. See [About and documentation](ABOUT.md#soyli-field-guide-and-faq--2
 
 ## Maintaining the guide
 
+### soyLI introduction and mascot — 2026-09-19
+
+The landing and documentation intros present soyLI as a command line for the
+agentic age: bundled project/skill/protocol context, cover and preview-clip capture,
+and publication validation. `SoyliIdentity` shares the spelling and dictionary-style
+pronunciation, **soy–el–eye**, IPA **/ˌsɔɪ.ɛlˈaɪ/**, a play on C-L-I. The supplied
+mascot is served unchanged from `/brand/soy-mascot.png` and also appears on `/create`.
+`SoyliBenefits` shares the three capability summaries on the landing and docs pages.
+
+Copy distinguishes startup/publication checks from upstream conformance checks
+(`soyli run test:conformance`) and manual playtesting. It does not claim automatic
+image synthesis or exhaustive certification across clients. The complete installer
+command remains visible at 320×568; the existing expandable video flow is preserved.
+This presentation revision is implemented locally, not deployed.
+
+Verification: production build and typecheck, the existing onboarding browser
+check (48 assertions), and isolated SSR/no-JavaScript checks across `/`, `/docs`
+and `/create` at 320/390/768/1365px. The public mascot bytes match the supplied file;
+desktop/mobile screenshots were inspected in `.local/soyli-intro-check/`.
+
+### Shared source and walkthrough generation
+
 - `apps/web/src/lib/creator-commands.ts` owns copyable install/create/remix commands.
   `StarterCommand` is shared by the landing hero, combined creator guide; the
   remix dialog uses the same builder with its exact source URL and local-network rule.

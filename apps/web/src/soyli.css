@@ -1,0 +1,279 @@
+/* A dictionary entry with a companion: the soyLI name, its pun, and the supplied mascot. */
+.soyli-identity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.soyli-mascot {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.soyli-dictionary {
+  min-width: 0;
+}
+.soyli-name-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+.soyli-wordmark {
+  color: var(--foreground);
+  font-size: 52px;
+  line-height: 1;
+  letter-spacing: -0.055em;
+  font-weight: 700;
+}
+.soyli-wordmark > span {
+  color: #ac583f;
+  font-weight: 500;
+}
+.soyli-ipa {
+  font:
+    18px/1.4 Georgia,
+    'Times New Roman',
+    serif;
+  letter-spacing: 0.025em;
+  color: #76786b;
+}
+.soyli-say {
+  display: block;
+  margin-top: 10px;
+  font: 11px/1.6 var(--mono);
+  color: #676b5f;
+}
+.soyli-say > span {
+  color: #797b6d;
+}
+.soyli-definition {
+  display: block;
+  margin-top: 9px;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: #4c6d47;
+}
+.soyli-identity-compact {
+  gap: 12px;
+  margin: 22px 0 12px;
+}
+.soyli-identity-compact .soyli-mascot {
+  width: 86px;
+  height: 86px;
+}
+.soyli-identity-compact .soyli-wordmark {
+  font-size: 34px;
+}
+.soyli-identity-compact .soyli-ipa {
+  font-size: 16px;
+}
+.soyli-identity-compact .soyli-say {
+  margin-top: 5px;
+  font-size: 10px;
+}
+.soyli-identity-compact .soyli-definition {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.soyli-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px;
+  list-style: none;
+  padding: 0;
+  margin: 30px 0;
+}
+.soyli-benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.soyli-benefits li > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #547050;
+}
+.soyli-benefits h3 {
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.soyli-benefits p,
+.hero .soyli-benefits p {
+  font-size: 12px;
+  line-height: 1.75;
+  color: #686d5f;
+  margin: 0;
+}
+.hero .soyli-benefits {
+  gap: 18px;
+  margin: 26px 0;
+}
+.hero .soyli-benefits li {
+  flex-direction: column;
+  gap: 8px;
+}
+.hero .soyli-benefits h3 {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.hero .soyli-benefits p {
+  font-size: 11px;
+}
+.docs-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 0 40px;
+  max-width: none;
+}
+.docs-intro > .eyebrow,
+.docs-intro > h1,
+.docs-intro > p,
+.docs-intro > .docs-intro-links {
+  grid-column: 1;
+}
+.docs-intro > .eyebrow {
+  grid-row: 1;
+}
+.docs-intro > h1 {
+  font-size: clamp(40px, 4.6vw, 65px);
+}
+.docs-intro > .soyli-identity {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  text-align: center;
+}
+.docs-intro .soyli-mascot {
+  width: 250px;
+  height: 250px;
+  transform: rotate(4deg);
+}
+.docs-intro .soyli-name-line {
+  justify-content: center;
+  gap: 12px;
+}
+.docs-intro .soyli-definition {
+  max-width: 220px;
+  margin-inline: auto;
+}
+.docs-intro > .soyli-benefits {
+  grid-column: 1 / -1;
+  margin: 40px 0 0;
+  padding-top: 26px;
+}
+.docs-intro .soyli-benefits h3 {
+  font-size: 16px;
+}
+.docs-intro .soyli-benefits p {
+  font-size: 13px;
+}
+@media (max-width: 1050px) and (min-width: 761px) {
+  .hero .soyli-benefits {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .hero .soyli-benefits li {
+    flex-direction: row;
+    gap: 10px;
+  }
+}
+@media (max-width: 760px) {
+  .soyli-identity-compact {
+    margin: 16px 0 10px;
+    gap: 10px;
+  }
+  .soyli-identity-compact .soyli-mascot {
+    width: 64px;
+    height: 64px;
+  }
+  .soyli-identity-compact .soyli-wordmark {
+    font-size: 30px;
+  }
+  .soyli-identity-compact .soyli-name-line {
+    gap: 6px 12px;
+  }
+  .soyli-identity-compact .soyli-ipa {
+    font-size: 15px;
+  }
+  .hero .account-free-note {
+    margin-top: 16px;
+  }
+  .soyli-benefits {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .hero .soyli-benefits li {
+    flex-direction: row;
+    gap: 12px;
+  }
+  .hero .soyli-benefits h3 {
+    font-size: 13px;
+  }
+  .hero .soyli-benefits p {
+    font-size: 12px;
+  }
+  .docs-intro {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .docs-intro > .soyli-identity {
+    grid-column: 1;
+    grid-row: auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 10px;
+    margin: 8px 0 14px;
+  }
+  .docs-intro .soyli-mascot {
+    width: 90px;
+    height: 90px;
+  }
+  .docs-intro .soyli-name-line {
+    justify-content: flex-start;
+    gap: 6px 12px;
+  }
+  .docs-intro .soyli-wordmark {
+    font-size: 40px;
+  }
+  .docs-intro .soyli-definition {
+    margin-inline: 0;
+  }
+  .docs-intro .soyli-ipa {
+    font-size: 16px;
+  }
+  .docs-intro .soyli-say {
+    font-size: 10px;
+  }
+  .docs-intro > .soyli-benefits {
+    padding-top: 0;
+    margin-top: 30px;
+  }
+}
+@media (max-width: 360px) {
+  .docs-intro .soyli-mascot {
+    width: 68px;
+    height: 68px;
+  }
+  .docs-intro .soyli-wordmark {
+    font-size: 34px;
+  }
+}
+@media (max-width: 760px) and (max-height: 700px) {
+  .hero .hero-main > h1 {
+    margin-bottom: 16px;
+  }
+  .hero .soyli-identity-compact {
+    margin: 6px 0;
+  }
+  .hero .hero-main > .account-free-note {
+    margin: 8px 0;
+  }
+}
