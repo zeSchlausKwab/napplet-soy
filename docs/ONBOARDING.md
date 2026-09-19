@@ -105,6 +105,14 @@ local layout checks cover 320/390/768/1024/1365/1600px with the empty-state colu
 and a featured-column fixture, including heading fit and phone command visibility.
 Screenshots: `.local/compact-hero-check/`. Implemented locally, not deployed.
 
+The shared header uses a full-width sage background without a bottom separator.
+On the landing page, the cream hero transitions into a pale sage browsing area,
+marked by the dark overlapping “The playground” tab. Content stays aligned to the
+same grid; the color bands do not clip focus rings or menus. Build/typecheck and
+the 48-assertion onboarding check passed, plus local layout checks at five widths
+from 320 to 1920px, gallery visual fixtures, the Explore anchor, docs header and
+mobile identity popup. Screenshots: `.local/landing-bands-check/`. Not deployed.
+
 ### Shared source and walkthrough generation
 
 - `apps/web/src/lib/creator-commands.ts` owns copyable install/create/remix commands.
