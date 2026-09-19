@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, Asterisk, Check, CircleAlert, CircleHelp, Plus, Radio } from 'lucide-react';
+import { ArrowUpRight, Check, CircleAlert, CircleHelp, Plus, Radio } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNostr } from './nostr-provider';
@@ -14,9 +14,13 @@ export function Shell({ children }: { children: ReactNode }) {
       </a>
       <header className="site-header">
         <Link to="/" className="brand" aria-label="napplet.soy home">
-          <span className="brand-mark">
-            <Asterisk size={26} strokeWidth={3} />
-          </span>
+          <img
+            className="brand-mark"
+            src="/brand/soy-mascot.png"
+            width={1254}
+            height={1254}
+            alt=""
+          />
           napplet<span className="brand-dot">.soy</span>
         </Link>
         <nav aria-label="Main navigation">
@@ -70,7 +74,14 @@ export function Shell({ children }: { children: ReactNode }) {
       <main id="main">{children}</main>
       <footer className="site-footer">
         <span>
-          <Asterisk size={16} /> Small creations. Wide-open possibilities.
+          <img
+            className="footer-brand-mark"
+            src="/brand/soy-mascot.png"
+            width={1254}
+            height={1254}
+            alt=""
+          />{' '}
+          Small creations. Wide-open possibilities.
         </span>
         <div>
           <Link to="/network" className="network-label">

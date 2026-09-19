@@ -80,6 +80,12 @@ check (48 assertions), and isolated SSR/no-JavaScript checks across `/`, `/docs`
 and `/create` at 320/390/768/1365px. The public mascot bytes match the supplied file;
 desktop/mobile screenshots were inspected in `.local/soyli-intro-check/`.
 
+The subsequent main-logo revision uses the same mascot for the header's home link,
+footer brand mark and browser favicon, retaining the napplet.soy wordmark. Desktop
+and phone sizes keep the home link and identity controls usable. Build, typecheck
+and local browser checks verify the image paths, favicon, home navigation and
+320/390/768/1365px layouts. Evidence: `.local/soyli-main-logo-check/`. Not deployed.
+
 ### Shared source and walkthrough generation
 
 - `apps/web/src/lib/creator-commands.ts` owns copyable install/create/remix commands.

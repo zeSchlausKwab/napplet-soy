@@ -29,7 +29,7 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: 'stylesheet', href: styles },
-      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+      { rel: 'icon', href: '/brand/soy-mascot.png', type: 'image/png' },
     ],
   }),
   component: Root,
