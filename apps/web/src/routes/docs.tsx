@@ -26,6 +26,7 @@ const sections = [
   ['destinations', 'Where your work goes'],
   ['collaboration', 'Remix & contribute'],
   ['backend', 'Scores & multiplayer'],
+  ['controllers', 'Game controllers'],
   ['help', 'Updates & troubleshooting'],
 ] as const;
 
@@ -382,8 +383,31 @@ function Documentation() {
               connection success.
             </p>
           </section>
+          <section id="controllers" aria-labelledby="docs-controllers">
+            <span className="eyebrow">08 / PLUG IN & PLAY</span>
+            <h2 id="docs-controllers">Bring your controller.</h2>
+            <p>
+              soyLI 0.16.0 adds a Controller tester to the workshop. Pair a USB or Bluetooth
+              controller, open the tester, click inside it and press a controller button. Inspect
+              buttons and sticks, adjust dead zones and try a mapping in the napplet sandbox.
+            </p>
+            <p>
+              Ask your agent to add controller support using{' '}
+              <code>docs/napplet-controllers.md</code> and the bundled input helper. Existing
+              projects receive them through <code>soyli skills update</code>. Your game connects the
+              controls to its actions and keeps keyboard and touch alternatives. No account or
+              backend is needed for input.
+            </p>
+            <p>
+              Check your intended controllers and browsers before sharing. See the{' '}
+              <a href="https://github.com/zeSchlausKwab/napplet-soy/blob/main/docs/CONTROLLERS.md">
+                controller guide
+              </a>{' '}
+              for mappings and supported behavior.
+            </p>
+          </section>
           <section id="help" aria-labelledby="docs-help">
-            <span className="eyebrow">08 / PICK UP WHERE YOU LEFT OFF</span>
+            <span className="eyebrow">09 / PICK UP WHERE YOU LEFT OFF</span>
             <h2 id="docs-help">Update, diagnose, carry on.</h2>
             <DocCommand label="Update soyLI">
               {'curl -fsSL https://napplet.soy/install.sh | sh'}

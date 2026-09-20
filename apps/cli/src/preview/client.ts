@@ -9,6 +9,7 @@ import type { ExportFile } from '../../../../packages/runtime/src/filesystem';
 import type { PreviewRevision } from './server';
 import { setupListing } from './listing-client';
 import { setupDiagnostics } from './diagnostics';
+import { setupControllers } from './controllers';
 import { createRoot } from 'react-dom/client';
 import { createElement } from 'react';
 import { SettingsControl } from '../../../../packages/runtime/src/settings-panel';
@@ -46,6 +47,7 @@ setupListing(lifetime.signal);
 setupManager(lifetime.signal);
 const diagnostics = () => host?.diagnostics() ?? Promise.resolve([]);
 setupDiagnostics(diagnostics, lifetime.signal);
+setupControllers(lifetime.signal);
 // Only the trusted local preview/scenario runner can access this opaque-frame parent.
 Object.assign(window, { soyliPreview: { diagnostics } });
 

@@ -9,6 +9,16 @@ The 0.14.1 starter interoperability fix was published on 2026-09-20;
 
 ## Authority and pins
 
+Controller tooling in **0.16.0 source** uses native browser Gamepad input; it is
+not an advertised NAP domain and changes no pins or iframe grants. Seven helper
+tests cover edges, dead zones, mapping, multiple slots and lifecycle/error states.
+Two Chromium browser tests cover the actual preview sandbox, the workshop tester,
+focus changes, synthetic inputs, mobile width, explicit mapping and real
+Permissions-Policy denial. These do not certify physical controllers or other
+browsers/operating systems. The final ARM64 executable passed its preview/capture
+smoke test and includes the guide/helper; other platform archives are build-only.
+See [controller behavior and remaining checks](CONTROLLERS.md). Not deployed.
+
 A13/A21 local update (2026-09-15): profile metadata and ancestry were checked against
 NIP-01, NIP-24 and NIP-5A at
 [`a2494f4f81d46684e5814a9bf35e2b1df978f955`](https://github.com/nostr-protocol/nips/tree/a2494f4f81d46684e5814a9bf35e2b1df978f955).

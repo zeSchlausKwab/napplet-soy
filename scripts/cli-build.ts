@@ -50,6 +50,23 @@ for (const platform of selected) {
     target: 'bun',
     minify: true,
     define: definitions,
+    plugins: [
+      {
+        name: 'raw-creator-source',
+        setup(build) {
+          // Source Bun supports ?raw module identities; the standalone bundler needs
+          // an explicit loader so the shipped helper stays text, not executed code.
+          build.onResolve({ filter: /\/gamepad\.ts\?raw$/ }, () => ({
+            path: join(root, 'packages/input/src/gamepad.ts'),
+            namespace: 'creator-source',
+          }));
+          build.onLoad({ filter: /.*/, namespace: 'creator-source' }, async ({ path }) => ({
+            contents: await Bun.file(path).text(),
+            loader: 'text',
+          }));
+        },
+      },
+    ],
     compile: {
       target: targets[platform as keyof typeof targets] as Bun.Build.CompileTarget,
       outfile: join(directory, 'soyli'),

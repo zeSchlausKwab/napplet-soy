@@ -49,6 +49,12 @@ test.skipIf(!process.env.SPACE_TEST_CLI)(
         'Inspect the image',
       );
       const capture = await run('screenshot', '--project', project);
+      expect(await Bun.file(join(project, 'docs/napplet-controllers.md')).text()).toContain(
+        'Controller tester',
+      );
+      expect(await Bun.file(join(project, 'docs/examples/gamepad.ts')).text()).toContain(
+        'export function createGamepadInput',
+      );
       const metadata = await sharp(await Bun.file(capture.image).bytes()).metadata();
       expect([metadata.width, metadata.height]).toEqual([1200, 750]);
       expect((await run('config', '--project', project)).preview.image).toBe('preview.png');
@@ -92,6 +98,9 @@ test.skipIf(!process.env.SPACE_TEST_CLI)(
         expect(listing.captureAvailable).toBe(true);
         const host = await (await fetch(url)).text();
         expect(host).toContain('id="view-listing"');
+        expect(host).toContain('id="controller-details"');
+        const runtime = await (await fetch(new URL('runtime.js', url))).text();
+        expect(runtime).toContain('Controller bench.');
         expect(host).toContain('name="soyli-workshop" content="true"');
         const token = host.match(/name="soyli-token" content="([^"]+)"/)![1];
         const headers = {

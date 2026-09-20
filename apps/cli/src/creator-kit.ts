@@ -5,6 +5,9 @@ import skills from '../vendor/skills.json';
 import settingsSchema from '../templates/config.schema.json';
 import settingsExample from '../templates/napplet-settings.ts.txt' with { type: 'text' };
 import actionsGuide from '../../../docs/RUNTIME-ACTIONS.md' with { type: 'text' };
+import controllersGuide from '../../../docs/CONTROLLERS.md' with { type: 'text' };
+// Distinct module identity keeps Bun's raw-source cache separate from executable imports.
+import gamepadHelper from '../../../packages/input/src/gamepad.ts?raw' with { type: 'text' };
 import backendGuide from '../../../docs/BACKEND-CREATOR.md' with { type: 'text' };
 import multiplayerSync from '../templates/multiplayer-sync.ts.txt' with { type: 'text' };
 import multiplayerScenario from '../templates/multiplayer-scenario.mjs.txt' with { type: 'text' };
@@ -58,6 +61,12 @@ this note maps its local tooling commands to the installed napplet soyLI.
   Keep your own game/topology/scenario tests in the project's verification workflow;
   the upstream verify command and soyli check do not certify multiplayer responsiveness.
 - soyli check checks the existing built artifact in our host.
+- For USB/Bluetooth game controllers, read docs/napplet-controllers.md and use
+  docs/examples/gamepad.ts. The Controller tester in soyli dev checks buttons,
+  axes, dead zones and test mappings inside the real sandbox. Wire named actions
+  into your game; retain keyboard/touch input and handle disconnect/focus/pause.
+  Use the native Gamepad API, not SERIAL or an invented gamepad NAP requirement.
+  Test actual controllers as well as synthetic input; soyli check is not a hardware test.
 - soyli screenshot saves preview.png and selects it in napplet.json.
   Inspect the image: it should show a representative app state, not a blank canvas
   or loading screen. Use screenshot preview-2.png for another capture, or supply
@@ -336,6 +345,8 @@ export function creatorSkills() {
     'docs/napplet-space.md': profile,
     'docs/napplet-backend.md': backendGuide,
     'docs/napplet-actions.md': actionsGuide,
+    'docs/napplet-controllers.md': controllersGuide,
+    'docs/examples/gamepad.ts': gamepadHelper,
     'docs/examples/multiplayer-sync.ts': multiplayerSync,
     'docs/examples/multiplayer-scenario.mjs': multiplayerScenario,
     'docs/napplet-skills-LICENSE.txt': skills.files.LICENSE,

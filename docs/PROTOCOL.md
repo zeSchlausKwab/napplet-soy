@@ -140,6 +140,12 @@ Validate zap receipts against NIP-57, including provider identity, request, invo
 4. Scope each inbound message to the registered iframe `Window`, full app address, release, and current session. Reject malformed/oversized payloads and unknown senders; silently ignore unknown message types as the pinned protocol requires. Bound pending operations and message rates.
 5. Remove bindings, subscriptions, object URLs, audio, and pending work when the player closes or navigates. A changed document must not inherit an old session's privileges.
 
+Browser-native input is distinct from host-mediated NAP domains. The existing
+sandbox permits Gamepad API reads on tested Chromium, subject to browser exposure
+and Permissions-Policy. soyLI's optional [controller helper and tester](CONTROLLERS.md)
+use this directly; they add no SERIAL/device grant, signing authority or new NAP
+requirement. Games must handle input focus and retain usable fallback controls.
+
 Sandboxing alone does not block network requests. Use the pinned proposal's restrictive CSP, including `connect-src 'none'`, no external scripts, no child frames, and no workers initially. For media creations allow only embedded `data:`/`blob:` audio/image sources; permit WebAssembly byte compilation only if the chosen profile needs it. Do not enable JavaScript `unsafe-eval` as a shortcut. Host-page response headers must enforce controls such as `frame-ancestors` that a CSP meta element cannot enforce. See [CSP Level 3](https://www.w3.org/TR/CSP3/).
 
 Test self-navigation as well as fetch, WebSocket, image beacons, popups, workers, message spoofing, and stale iframe references. CSP and a sandbox do not guarantee absence of every exfiltration channel or hard per-iframe CPU limits. Do not send secrets or signing credentials into the iframe. Infinite loops can still harm a browser tab; posters, one running player, and process isolation where available reduce exposure without guaranteeing a CPU quota.

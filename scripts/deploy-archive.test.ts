@@ -59,6 +59,12 @@ test('uploaded source starts the CLI and scaffolds its bundled creator guides', 
     expect(await Bun.file(join(directory, 'example/docs/napplet-backend.md')).text()).toBe(
       await Bun.file(join(root, 'docs/BACKEND-CREATOR.md')).text(),
     );
+    expect(await Bun.file(join(directory, 'example/docs/napplet-controllers.md')).text()).toBe(
+      await Bun.file(join(root, 'docs/CONTROLLERS.md')).text(),
+    );
+    expect(await Bun.file(join(directory, 'example/docs/examples/gamepad.ts')).text()).toBe(
+      await Bun.file(join(root, 'packages/input/src/gamepad.ts')).text(),
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

@@ -79,6 +79,7 @@ export async function createDeploymentArchive(archive: string) {
     'tsconfig.json',
     'docs/BACKEND-CREATOR.md',
     'docs/RUNTIME-ACTIONS.md',
+    'docs/CONTROLLERS.md',
     'apps',
     'packages',
     'scripts',

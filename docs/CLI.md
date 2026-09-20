@@ -12,6 +12,14 @@ project lists and saved publication jobs keep their configured destinations.
 
 ## Local workshop — 0.14.0
 
+Source **0.16.0** adds a **Controller tester** in the workshop header. It runs in
+the napplet sandbox and shows connected controllers, buttons, axes, dead zones
+and temporary mappings with a small playable input test. New projects and
+`skills update` receive the [controller guide](CONTROLLERS.md) and a native
+Gamepad input helper. Games must connect their actions to the helper; no new
+NAP domain, server or account is required. Physical device support needs testing
+on the intended browsers. This release is not yet published or deployed.
+
 `soyli dev` opens Play, Listing and **Manage project**. Starting with **0.15.0
 (not yet published)**, it prefers port 4173 and automatically chooses a free port
 when that port is occupied. An explicit `--port 4173` keeps that port fixed and

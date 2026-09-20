@@ -8,6 +8,13 @@ launch. The user's decision that the NIP-5D proposal has authority still applies
 
 ## Sources and revision boundaries
 
+2026-09-20 controller slice (0.16.0 source): native browser Gamepad input is
+available inside the existing sandbox on tested Chromium. The workshop tester
+and bundled creator helper add no NAP domain, shim/SDK change, new device grant
+or NIP-5D requirement. NAP-SERIAL concerns serial sessions, not ordinary gamepad
+buttons/axes. See [controllers](CONTROLLERS.md) for fallback behavior and the
+remaining physical-device/browser acceptance work.
+
 | Source inspected                                                                                                   | Revision / role                                                                                    |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
 | [NAP registry README](https://github.com/napplet/naps/blob/a040914b4bbd3a5cd8a14b0f316a723c968ebfb2/README.md)     | `a040914b4bbd3a5cd8a14b0f316a723c968ebfb2`, master at review                                       |
