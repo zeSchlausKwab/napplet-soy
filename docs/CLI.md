@@ -5,6 +5,10 @@ standalone `soyli` executable, with its pinned Playwright support files. A separ
 Bun, Node, npm, or platform checkout is not required. The executable embeds Bun;
 this is not an alternative runtime implementation for users who reject Bun itself.
 
+Source **0.16.1** fixes public remix relay discovery on the bundled runtime and
+reports specific lookup/download/folder errors. See [remix troubleshooting and
+verification](REMIXING.md). This patch is not yet published or deployed.
+
 Pending 0.15.0 adds [runtime file imports, uploads, social actions and public lists](RUNTIME-ACTIONS.md)
 to both preview and the shared website host. It also expands new-project publication defaults to **six relays**:
 Soy as primary plus five [shared public mirrors](RELAY-DEFAULTS.md). Existing

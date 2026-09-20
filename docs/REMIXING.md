@@ -11,6 +11,31 @@ soyli dev
 
 Use `--network local` with a local portable or pinned URL when developing. The CLI also accepts naddr, nevent, note and hexadecimal event identifiers. The website is an optional accelerator: relay lookup uses Applesauce, verifies signatures and matches the exact requested identity.
 
+Source **0.16.1** fixes public remix discovery on the bundled Bun runtime. It
+uses the existing DNS-pinned native WebSocket transport, connecting directly to
+the relays with TLS verification and bounded reads. No website API or hosted relay proxy
+is required. Each relay has a five-second lookup budget including connection
+setup, and cancellation closes pending connections. An available signed matching
+event can be used even when another relay fails.
+
+`REMIX_RELAYS_UNAVAILABLE` means no relay completed the lookup;
+`REMIX_NOT_FOUND` means responding relays did not return the requested release.
+An old pinned event may no longer be retained: a portable naddr selects the latest
+release, while an nevent can supply a relay hint for the exact version.
+Malformed links, failed verified downloads and unavailable destination folders
+also receive specific errors. Existing directories are never overwritten.
+
+Read-only public acceptance (no signing, setup scripts or publication):
+
+```sh
+SPACE_TEST_REMIX_REFERENCE=https://napplet.soy/r/EVENT_ID \
+  SPACE_TEST_CLI=/absolute/path/to/built/soyli \
+  bun test tests/services/remix-public.test.ts
+```
+
+This opt-in test exercises public TLS and the complete temporary checkout;
+local relay fixtures cover filtering, signatures, absence/failure and cancellation.
+
 When a signed manifest supplies a NIP-34 source and exact `source-commit`, soyLI
 fetches that real Git commit, verifies its relationship to the announced repository,
 and starts a work branch while preserving authorship and ancestry. The original
@@ -27,7 +52,9 @@ reviewing the source. Missing licensing information remains `UNLICENSED`.
 
 Publication emits [NIP-5A ancestry](https://github.com/nostr-protocol/nips/blob/master/5A.md): a current remix's `a` is its immediate parent and `A` its original ancestor. A snapshot's `a` remains its own napplet address, with `A` inherited. The optional `remix-version` tag records the exact selected event; other clients can ignore it and still discover and run the remix normally.
 
-Remix has shipped since CLI 0.3.0; the deployed CLI baseline is now soyLI 0.7.0. See the [release record](DEPLOYMENT.md#rich-comments-and-soyli-070-release--2026-09-15).
+Remix has shipped since CLI 0.3.0. Historical releases are recorded in
+[deployment notes](DEPLOYMENT.md#rich-comments-and-soyli-070-release--2026-09-15);
+the source version above does not imply a deployment.
 
 ## Genealogy on napplet pages
 

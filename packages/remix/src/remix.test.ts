@@ -91,7 +91,12 @@ test('remix downloads exact signed archive and makes a fresh project with source
     );
     expect(await Bun.file(join(result.directory, 'README.md')).text()).toContain(manifest.id);
     expect(await Bun.file(join(result.directory, 'dist/index.html')).bytes()).toEqual(artifact);
-    await expect(createRemix(root, 'my-remix', loaded)).rejects.toThrow();
+    await expect(createRemix(root, 'my-remix', loaded)).rejects.toMatchObject({
+      code: 'REMIX_DESTINATION',
+    });
+    expect(await Bun.file(join(result.directory, 'src/main.ts')).text()).toBe(
+      'export const original = true;',
+    );
     const malformed = { ...loaded, artifact: new TextEncoder().encode('different version') };
     await expect(createRemix(root, 'wrong-source', malformed)).rejects.toThrow('artifact');
     expect((await remixLineage(manifest)).origin).toBe(`35129:${manifest.pubkey}:original`);
@@ -106,6 +111,21 @@ test('remix downloads exact signed archive and makes a fresh project with source
   } finally {
     server.stop(true);
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('invalid remix references report an actionable error without reflecting pasted input', async () => {
+  for (const reference of [
+    'not-an-event',
+    'naddr1broken',
+    'https://secret@napplet.soy/r/' + 'a'.repeat(64),
+    '[https://napplet.soy](https://napplet.soy)',
+  ]) {
+    await expect(loadRemix(reference, 'public', AbortSignal.timeout(100))).rejects.toMatchObject({
+      code: 'REMIX_REFERENCE',
+      message:
+        'Use a plain napplet /n/naddr or /r/event link, naddr, nevent, note or hexadecimal event ID.',
+    });
   }
 });
 

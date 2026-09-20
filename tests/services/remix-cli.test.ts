@@ -15,21 +15,7 @@ test('compiled standalone CLI remixes a pinned manifest through its installed sy
     // Compile in a fresh runtime, matching the release build isolation. Bun's in-process
     // test bundler can reuse stale resolver state for JSON dependencies.
     const build = Bun.spawn(
-      [
-        process.execPath,
-        'build',
-        join(root, 'apps/cli/src/index.ts'),
-        '--compile',
-        '--minify',
-        '--define',
-        'NAPPLET_STANDALONE=true',
-        '--define',
-        'NAPPLET_CLI_VERSION="test"',
-        '--no-compile-autoload-dotenv',
-        '--no-compile-autoload-bunfig',
-        '--outfile',
-        binary,
-      ],
+      [process.execPath, join(root, 'scripts/cli-compile.ts'), binary, 'test'],
       { cwd: root, stdout: 'pipe', stderr: 'pipe' },
     );
     const [buildCode, buildOut, buildError] = await Promise.all([

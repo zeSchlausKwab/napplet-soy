@@ -1,6 +1,7 @@
 import { chmod, cp, mkdir, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { compileCli } from './cli-compile';
 import { previewAssets } from '../apps/cli/src/preview/assets';
 import boilerplate from '../apps/cli/vendor/boilerplate.json';
 import skills from '../apps/cli/vendor/skills.json';
@@ -35,46 +36,15 @@ if (selected.some((t) => !(t in targets)))
 const output = join(root, '.local/cli', version);
 await mkdir(output, { recursive: true });
 const assets = await previewAssets();
-const definitions = {
-  NAPPLET_STANDALONE: 'true',
-  NAPPLET_CLI_VERSION: JSON.stringify(version),
-  NAPPLET_PREVIEW_ASSETS: JSON.stringify(assets),
-};
 for (const platform of selected) {
   const name = `soyli-${platform}`;
   const directory = join(output, name);
   await rm(directory, { recursive: true, force: true });
   await mkdir(join(directory, 'lib'), { recursive: true });
-  const build = await Bun.build({
-    entrypoints: [join(root, 'apps/cli/src/index.ts')],
-    target: 'bun',
-    minify: true,
-    define: definitions,
-    plugins: [
-      {
-        name: 'raw-creator-source',
-        setup(build) {
-          // Source Bun supports ?raw module identities; the standalone bundler needs
-          // an explicit loader so the shipped helper stays text, not executed code.
-          build.onResolve({ filter: /\/gamepad\.ts\?raw$/ }, () => ({
-            path: join(root, 'packages/input/src/gamepad.ts'),
-            namespace: 'creator-source',
-          }));
-          build.onLoad({ filter: /.*/, namespace: 'creator-source' }, async ({ path }) => ({
-            contents: await Bun.file(path).text(),
-            loader: 'text',
-          }));
-        },
-      },
-    ],
-    compile: {
-      target: targets[platform as keyof typeof targets] as Bun.Build.CompileTarget,
-      outfile: join(directory, 'soyli'),
-      autoloadDotenv: false,
-      autoloadBunfig: false,
-    },
+  await compileCli(join(directory, 'soyli'), version, {
+    target: targets[platform as keyof typeof targets] as Bun.Build.CompileTarget,
+    previewAssets: assets,
   });
-  if (!build.success) throw new Error(build.logs.join('\n'));
   await chmod(join(directory, 'soyli'), 0o755);
   // Older generated projects can keep using their original command.
   await symlink('soyli', join(directory, 'napplet-space'));
