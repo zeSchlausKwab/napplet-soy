@@ -42,6 +42,7 @@ export type PreviewRevision = {
   id: string;
   artifactHash: string;
   servers: string[];
+  uploadServers: string[];
   hostIdentity: string;
   requires: string[];
   relays: string[];
@@ -90,6 +91,7 @@ export function startPreviewServer(
         ]),
       ],
       relays: [...new Set([...(listing.backend?.relays ?? []), ...config.relays])],
+      uploadServers: config.servers,
       servers: managed.assets.length ? [server.url.origin, ...config.servers] : config.servers,
     };
     return { info, bytes, servers: config.servers };

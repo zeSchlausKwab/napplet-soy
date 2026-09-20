@@ -24,11 +24,13 @@ References: [NAP registry and web projection](https://github.com/napplet/naps), 
 | `theme`    | Space's current light theme                                                                      | Fixed theme; no user theme settings yet                                                                                                                             |
 | `relay`    | Filtered query and live subscribe/close                                                          | Guarded public WSS reads; signatures checked, duplicates removed, filters reapplied; publishing/encryption denied                                                   |
 | `outbox`   | Query, getEvent, subscriptions, close, resolveRelays                                             | NIP-65 selection and public relay hints under the shared read policy, fallback when needed, partial results marked; publishing denied                               |
-| `common`   | Public NIP-19 encoding/decoding and profile/follows reads                                        | Secret identifiers, nrelay encoding, follow/unfollow/react/report writes denied                                                                                     |
+| `common` | Public NIP-19 helpers including nrelay, profile/follows, follow/unfollow/react/report | Viewer signer and host approval for writes; signed native event targets only; no secret identifiers |
 | `resource` | HTTPS and hash-verified Blossom bytes, ordered bulk responses, cancellation, scheme discovery    | `data:` handled locally by upstream shim; no htree/nostr resolver; raw SVG/HTML/XML denied                                                                          |
 | `link`     | HTTPS links presented in a host-owned confirmation                                               | User clicks to open; no automatic navigation                                                                                                                        |
 | `config`   | Static/runtime schemas, validated settings UI, snapshots/subscriptions, focused settings opening | Browser-local values scoped to author/address/build/account; session-only secrets; see [configuration limits](CONFIGURATION.md). Deployed 2026-09-14                |
-| `fs`       | Session virtual files: metadata/list/read/write/mkdir/remove/move/watch, save destination picker | 10 MiB aggregate, 256 KiB chunks, 128 entries, 16 watches; device file/directory pickers unsupported                                                                |
+| `fs` | Session files, native file/folder import copies, chunked reads/writes, metadata, move/remove/watch and export picker | 10 MiB aggregate, 256 KiB chunks, 128 entries, 16 watches; no live device paths |
+| `upload` | Asynchronous direct Blossom upload, info/status notifications and verified URLs/NIP-94 tags | 10 MiB/file; viewer approval/signature; two active jobs, 32 jobs/32 MiB submitted per session |
+| `lists` | Introspection and public item add/remove for supported NIP-51/NIP-65 lists | 64 items per request; no private item decryption/mutation; incomplete list reads cannot overwrite |
 
 `fs.pickSaveFile()` opens a host prompt. After writes complete, files appear below the player with download links. This does not write into the user's filesystem without a download action. Download session files before stopping the player. Virtual paths are restricted to `/files`; they never map to server or device paths.
 
@@ -37,7 +39,7 @@ including live streams and play/pause/stop/volume. It is deployed and available 
 unsupported ownership/source modes, limits and evidence. The runtime profile changes
 to `space-playback-2` so the index retries formerly unsupported media creations.
 
-Required unsupported domains still gate launch: for example `inc`, `intent`, `keys`, `upload`, and `connect`. Composability, napplet signing grants, extended identity lists, filesystem imports and arbitrary backend execution remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
+Required unsupported domains still gate launch: for example `inc`, `intent`, `keys`, and `connect`. Composability, napplet signing grants, extended identity projections and arbitrary backend execution remain separate additions. Older artifacts that omit required domains may still depend on unavailable APIs.
 
 The 2026-09-17 local source update adds NAP-CVM and NAP-WEBRTC under
 `space-playback-3`. Direct encrypted CVM requests/discovery/registry calls and
@@ -46,6 +48,14 @@ rooms and queues are separate provider contracts; see [ContextVM](CONTEXTVM.md)
 and the [creator guide](BACKEND-CREATOR.md). This source update is not deployed.
 Provider/peer permission, actor scoping, connection budgets and teardown apply
 to every publisher equally. No game traffic is proxied through the website API.
+
+## Interactive actions — 0.15.0 source
+
+FS imports, UPLOAD, COMMON writes and LISTS now share `space-playback-4` in soyLI
+preview and the website. [Runtime actions](RUNTIME-ACTIONS.md) documents exact
+contracts, public-list policy, viewer consent, transport/configuration, limits and
+browser verification. This update is implemented locally, not deployed. Creator
+publishing credentials remain separate; proposal playback stays guest-scoped.
 
 ## Resource and lifecycle boundaries
 

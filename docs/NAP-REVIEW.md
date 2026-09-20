@@ -284,3 +284,36 @@ required presentation metadata or production capability grant was introduced.
 These are bounded interoperability checks, not a completed audit of all NAPs.
 Paja consent policy, full upstream publishing/review UI, CONFIG edge semantics,
 other providers and real-network multiplayer remain separately qualified work.
+
+## Interactive NAP review — 2026-09-20
+
+Selected proposal revisions for soyLI 0.15.0/shared `space-playback-4`:
+
+| Proposal | Exact selected head |
+| --- | --- |
+| [FS #88](https://github.com/napplet/naps/pull/88) | `b640cf337c0481f0f9a0216c00843f797a5c6df6` |
+| [UPLOAD #33](https://github.com/napplet/naps/pull/33) | `a7cc17463cbf5d9cb87884b31071bc4fc826034c` |
+| [COMMON #67](https://github.com/napplet/naps/pull/67) | `de603e205a9b498f252be9a5e8e6825c4648df39` |
+| [LISTS #68](https://github.com/napplet/naps/pull/68) | `72fddac5def8f9bcbedd01dd942c530d89e335e0` |
+
+The pinned shim 0.30.0 already includes these envelopes and SDK bindings; no
+upstream dependency or authoritative NIP-5D revision change was needed. NIP-02,
+25, 30, 51, 56, 65 and Blossom authorization inform the event constructors.
+NAP-LISTS permits policy-selected kinds/item types. The implementation advertises
+public items on thirteen list kinds and preserves existing encrypted content;
+private item mutation remains explicitly unsupported. Omitted remove visibility
+must not silently remove only public items from a list with opaque content.
+
+FS pickers copy into the bounded virtual session filesystem; they grant no live
+OS paths. UPLOAD uses direct CORS requests and independent hash verification;
+the initial correlated reply precedes asynchronous approval/transfer. COMMON
+constructs constrained follow/reaction/report events through the viewer signer.
+Generic relay/outbox writes and arbitrary key operations remain denied. Browser
+Network settings select action relays/upload storage; signed napplet hints do
+not silently override those write destinations. Proposal previews remain guests.
+
+[Runtime actions](RUNTIME-ACTIONS.md) records limits, examples, lifecycle and
+verification. Both production web player and soyLI preview were exercised with
+the real pinned shim against isolated signed relay and Blossom fixtures, including
+mobile approval controls. This is not independent-client acceptance or full
+NAP conformance. No production deployment is part of this change.

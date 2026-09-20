@@ -1,3 +1,4 @@
+import type { ExtensionSigner } from 'applesauce-signers';
 import { setupManager } from './manager-client';
 import shim from '@napplet/shim/prelude.global?raw';
 import { loadArtifact, PLAYER_SANDBOX } from '../../../../packages/runtime/src';
@@ -39,6 +40,7 @@ let choice: HostPrompt | null = null;
 let urls: string[] = [];
 let loaded = '';
 let pubkey: string | null = null;
+let viewerSigner: ExtensionSigner | undefined;
 const lifetime = new AbortController();
 setupListing(lifetime.signal);
 setupManager(lifetime.signal);
@@ -47,8 +49,24 @@ setupDiagnostics(diagnostics, lifetime.signal);
 // Only the trusted local preview/scenario runner can access this opaque-frame parent.
 Object.assign(window, { soyliPreview: { diagnostics } });
 
+const filePicker = document.createElement('input');
+filePicker.type = 'file';
+filePicker.setAttribute('aria-label', 'Choose files for napplet');
+filePicker.hidden = true;
+detail.after(filePicker);
+detail.style.whiteSpace = 'pre-wrap';
+detail.style.overflowWrap = 'anywhere';
+detail.style.maxHeight = '50vh';
+detail.style.overflowY = 'auto';
+filePicker.onchange = () => choice?.selectFiles?.(Array.from(filePicker.files ?? []));
 function showPrompt(prompt: HostPrompt | null) {
   choice = prompt;
+  filePicker.value = '';
+  filePicker.hidden = !prompt?.picker;
+  filePicker.accept = prompt?.picker?.accept ?? '';
+  filePicker.multiple = prompt?.picker?.multiple ?? false;
+  if (prompt?.picker?.directory) filePicker.setAttribute('webkitdirectory', '');
+  else filePicker.removeAttribute('webkitdirectory');
   if (frame) frame.inert = prompt !== null || settingsOpen;
   if (!prompt) {
     dialog.close();
@@ -58,15 +76,19 @@ function showPrompt(prompt: HostPrompt | null) {
     prompt.kind === 'save'
       ? `Save ${prompt.value}? It will appear below for download.`
       : prompt.value;
-  confirm.hidden = prompt.kind === 'link';
+  confirm.hidden = prompt.kind === 'link' || prompt.kind === 'files';
   confirm.textContent =
-    prompt.kind === 'media'
-      ? 'Play audio'
-      : prompt.kind === 'multiplayer'
-        ? 'Allow'
-        : prompt.kind === 'network'
-          ? 'Connect'
-          : 'Save file';
+    prompt.kind === 'action'
+      ? 'Approve & publish'
+      : prompt.kind === 'upload'
+        ? 'Approve upload'
+        : prompt.kind === 'media'
+          ? 'Play audio'
+          : prompt.kind === 'multiplayer'
+            ? 'Allow'
+            : prompt.kind === 'network'
+              ? 'Connect'
+              : 'Save file';
   cancel.textContent = prompt.kind === 'multiplayer' ? 'Block' : 'Cancel';
   later.hidden = prompt.kind !== 'multiplayer';
   link.hidden = prompt.kind !== 'link';
@@ -101,13 +123,17 @@ const connect = document.querySelector<HTMLButtonElement>('#connect')!;
 connect.onclick = async () => {
   connect.disabled = true;
   try {
-    if (pubkey) pubkey = null;
-    else {
+    if (pubkey) {
+      pubkey = null;
+      viewerSigner = undefined;
+    } else {
       const { ExtensionSigner } = await import('applesauce-signers');
-      const key = await new ExtensionSigner().getPublicKey();
+      const signer = new ExtensionSigner();
+      const key = await signer.getPublicKey();
       if (!/^[a-f0-9]{64}$/.test(key))
         throw new Error('The extension returned an invalid public key.');
       pubkey = key;
+      viewerSigner = signer;
     }
     host?.updateIdentity(pubkey);
     connect.textContent = pubkey ? 'Disconnect' : 'Connect browser extension';
@@ -163,6 +189,15 @@ async function refresh() {
       manifestId: info.id,
       relays: info.relays,
       servers: info.servers,
+      uploadServers: info.uploadServers,
+      title: 'Local preview',
+      sign: async (key, template) => {
+        const signer = viewerSigner;
+        if (!signer || pubkey !== key) throw new Error('Identity changed');
+        const event = await signer.signEvent(template);
+        if (signer !== viewerSigner || pubkey !== key) throw new Error('Identity changed');
+        return event;
+      },
       localServers: info.servers,
       pubkey,
       prompt: showPrompt,

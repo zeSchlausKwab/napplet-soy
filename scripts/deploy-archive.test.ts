@@ -53,6 +53,9 @@ test('uploaded source starts the CLI and scaffolds its bundled creator guides', 
       'later',
       '--no-install',
     ]);
+    expect(await Bun.file(join(directory, 'example/docs/napplet-actions.md')).text()).toBe(
+      await Bun.file(join(root, 'docs/RUNTIME-ACTIONS.md')).text(),
+    );
     expect(await Bun.file(join(directory, 'example/docs/napplet-backend.md')).text()).toBe(
       await Bun.file(join(root, 'docs/BACKEND-CREATOR.md')).text(),
     );

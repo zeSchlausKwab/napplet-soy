@@ -4,6 +4,7 @@ import boilerplate from '../vendor/boilerplate.json';
 import skills from '../vendor/skills.json';
 import settingsSchema from '../templates/config.schema.json';
 import settingsExample from '../templates/napplet-settings.ts.txt' with { type: 'text' };
+import actionsGuide from '../../../docs/RUNTIME-ACTIONS.md' with { type: 'text' };
 import backendGuide from '../../../docs/BACKEND-CREATOR.md' with { type: 'text' };
 import multiplayerSync from '../templates/multiplayer-sync.ts.txt' with { type: 'text' };
 import multiplayerScenario from '../templates/multiplayer-scenario.mjs.txt' with { type: 'text' };
@@ -238,8 +239,16 @@ degrade gracefully, following upstream guidance. Use the injected namespace and
 SDK; do not add a bootstrap or a private protocol extension to app code.
 
 This host provides configuration, identity, storage, theme, resource, relay/outbox reads,
-common reads, user-confirmed links, session files, media, ContextVM and WebRTC.
-Social writes, signer operations and cross-napplet operations are not currently granted.
+common reads/writes, user-confirmed links, file imports/session exports, Blossom uploads,
+public list edits, media, ContextVM and WebRTC. See docs/napplet-actions.md for exact
+APIs, examples and limits (soyLI 0.15.0; remote websites need the matching deployment).
+Use fs pickers for user-selected copies; they never edit original device files.
+Uploads and follow/react/report/list changes require the connected viewer's signer
+and host approval; never borrow the creator publishing key. In local preview connect
+a browser extension. The website uses its selected Applesauce account.
+Use upload.info and lists.supported; handle denial, missing identity and asynchronous
+upload status, and never assume private list support. Generic signer operations,
+relay/outbox publishing and cross-napplet operations are not granted.
 A domain's presence does not promise that every operation will be permitted.
 Our host check complements upstream conformance; report each result separately.
 
@@ -326,6 +335,7 @@ export function creatorSkills() {
   const files: Record<string, string> = {
     'docs/napplet-space.md': profile,
     'docs/napplet-backend.md': backendGuide,
+    'docs/napplet-actions.md': actionsGuide,
     'docs/examples/multiplayer-sync.ts': multiplayerSync,
     'docs/examples/multiplayer-scenario.mjs': multiplayerScenario,
     'docs/napplet-skills-LICENSE.txt': skills.files.LICENSE,

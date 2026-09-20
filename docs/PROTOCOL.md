@@ -188,3 +188,13 @@ NIP-34 discovery or NIP-5D playback; attachments are not gallery publications.
 See [the complete attachment and review contract](COLLABORATION.md). The selected
 NIP-5D authority and all NAP pins remain unchanged. This is local implementation,
 not a claim of production rollout or source-to-build reproducibility.
+
+## Interactive host actions — 0.15.0 source
+
+The shared profile now includes user-selected FS import copies, Blossom UPLOAD,
+COMMON social writes and public LISTS mutation. All publishers use the same host
+policy. These use existing pinned shim envelopes and standard Nostr events;
+no manifest identity, required presentation/source metadata or NIP-5D pin changes.
+[Runtime actions](RUNTIME-ACTIONS.md) specifies viewer-owned signing/consent,
+configured direct transports, supported subsets and lifecycle limits. Arbitrary
+signing and relay/outbox publishing remain unavailable to frames.

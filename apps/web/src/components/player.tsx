@@ -3,6 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { Check, Copy, Expand, Minimize, Play, RotateCcw, Square } from 'lucide-react';
 import { playback } from '@/lib/playback-coordinator';
 import { usePlayerPresentation } from '@/lib/use-player-presentation';
+import { browserIdentity } from '@/lib/browser-identity';
+import { FilePicker } from '../../../../packages/runtime/src/file-picker';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
 import { PlayerChrome } from './player-chrome';
@@ -167,6 +169,10 @@ export function Player({
         servers: [...release.servers, ...network().blossom],
         localServers: network().blossom,
         relays: release.relays,
+        actionRelays: network().relays,
+        uploadServers: network().blossom,
+        title: napplet.title,
+        sign: reviewScope ? undefined : (key, event) => browserIdentity().sign(key, event),
         pubkey: reviewScope ? null : currentPubkey.current,
         prompt: setPrompt,
         files: setExports,
@@ -175,7 +181,7 @@ export function Player({
         media: setMedia,
       });
     },
-    [release, reviewScope],
+    [release, reviewScope, napplet.title],
   );
   useEffect(() => {
     setExports([]);
@@ -275,15 +281,21 @@ export function Player({
               role="dialog"
               aria-modal="true"
               aria-label={
-                prompt.kind === 'media'
-                  ? 'Allow audio playback'
-                  : prompt.kind === 'save'
-                    ? 'Save napplet file'
-                    : prompt.kind === 'multiplayer'
-                      ? 'Allow multiplayer connections'
-                      : prompt.kind === 'network'
-                        ? 'Allow network connection'
-                        : 'Open external link'
+                prompt.kind === 'files'
+                  ? 'Choose files'
+                  : prompt.kind === 'action'
+                    ? 'Approve public action'
+                    : prompt.kind === 'upload'
+                      ? 'Approve public upload'
+                      : prompt.kind === 'media'
+                        ? 'Allow audio playback'
+                        : prompt.kind === 'save'
+                          ? 'Save napplet file'
+                          : prompt.kind === 'multiplayer'
+                            ? 'Allow multiplayer connections'
+                            : prompt.kind === 'network'
+                              ? 'Allow network connection'
+                              : 'Open external link'
               }
               ref={focusPrompt}
               onKeyDown={(event) => {
@@ -293,7 +305,7 @@ export function Player({
                 }
                 if (event.key === 'Tab') {
                   const controls = [
-                    ...event.currentTarget.querySelectorAll<HTMLElement>('button, a[href]'),
+                    ...event.currentTarget.querySelectorAll<HTMLElement>('button, a[href], input'),
                   ];
                   const index = controls.indexOf(document.activeElement as HTMLElement);
                   event.preventDefault();
@@ -304,17 +316,33 @@ export function Player({
               }}
             >
               <strong>
-                {prompt.kind === 'media'
-                  ? 'Ready to listen?'
-                  : prompt.kind === 'save'
-                    ? 'Save a file from this napplet?'
-                    : prompt.kind === 'multiplayer'
-                      ? 'Allow multiplayer connections?'
-                      : prompt.kind === 'network'
-                        ? 'Connect this napplet?'
-                        : 'Open this link?'}
+                {prompt.kind === 'files'
+                  ? 'Choose files'
+                  : prompt.kind === 'action'
+                    ? 'Approve public action'
+                    : prompt.kind === 'upload'
+                      ? 'Approve public upload'
+                      : prompt.kind === 'media'
+                        ? 'Ready to listen?'
+                        : prompt.kind === 'save'
+                          ? 'Save a file from this napplet?'
+                          : prompt.kind === 'multiplayer'
+                            ? 'Allow multiplayer connections?'
+                            : prompt.kind === 'network'
+                              ? 'Connect this napplet?'
+                              : 'Open this link?'}
               </strong>
-              <p>{prompt.value}</p>
+              <p
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  overflowWrap: 'anywhere',
+                  maxHeight: '35vh',
+                  overflowY: 'auto',
+                }}
+              >
+                {prompt.value}
+              </p>
+              <FilePicker prompt={prompt} />
               {prompt.kind === 'save' && (
                 <p>The file will appear below the player for you to download.</p>
               )}
@@ -327,15 +355,19 @@ export function Player({
                     Not now
                   </Button>
                 )}
-                {prompt.kind !== 'link' ? (
+                {prompt.kind === 'files' ? null : prompt.kind !== 'link' ? (
                   <Button onClick={() => prompt.answer(true)}>
-                    {prompt.kind === 'media'
-                      ? 'Play audio'
-                      : prompt.kind === 'multiplayer'
-                        ? 'Allow'
-                        : prompt.kind === 'network'
-                          ? 'Connect'
-                          : 'Save file'}
+                    {prompt.kind === 'action'
+                      ? 'Approve & publish'
+                      : prompt.kind === 'upload'
+                        ? 'Approve upload'
+                        : prompt.kind === 'media'
+                          ? 'Play audio'
+                          : prompt.kind === 'multiplayer'
+                            ? 'Allow'
+                            : prompt.kind === 'network'
+                              ? 'Connect'
+                              : 'Save file'}
                   </Button>
                 ) : (
                   <Button asChild>

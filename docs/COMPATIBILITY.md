@@ -48,8 +48,8 @@ absence cannot block another publisher's otherwise compatible artifact.
 Public namespaces below are installed by the pinned shim. Request names come from
 `packages/runtime/src/capabilities.ts`; shim-only helpers wrap these operations.
 Evidence names are repository tests, not a substitute for an exact-proposal audit.
-Only CONFIG's full proposal was reconciled in this milestone; mapping the remaining
-domains to individual NAP revisions/dependencies is still open before wider launch.
+CONFIG plus the FS/UPLOAD/COMMON/LISTS contracts were reconciled against selected
+proposal revisions; mapping the remaining domains to individual NAP revisions/dependencies is still open before wider launch.
 
 | Domain | Supported surface / explicit policy | Implementation and evidence |
 | --- | --- | --- |
@@ -60,9 +60,11 @@ domains to individual NAP revisions/dependencies is still open before wider laun
 | `resource` | info, bytes, bytesMany, cancel; shim data URL/object URL helpers; HTTPS/Blossom mediation; unsupported schemes and unsafe destinations/formats rejected | `runtime/host.ts`, backend resource responder; resource tests, queued cancellation, public packaged-loader historical check |
 | `relay` | query/subscribe/close on allowed relays; publish/publishEncrypted denied | `nostr/playback.ts`; actual WebSocket fixtures, signature/filter/dedup tests; denied publish browser test |
 | `outbox` | getEvent/query/subscribe/close/resolveRelays; bounded NIP-65 planning, incomplete results; publish denied | Same Applesauce implementation; playback tests. No signer is installed in the iframe |
-| `common` | public encodeNip19/decodeNip19, getProfile, follows; follow/unfollow/react/report denied; secret identifiers and nrelay encoding denied | `nostr/playback.ts` and tests; complete per-operation upstream acceptance still open |
+| `common` | Public NIP-19 helpers including nrelay, profile/follows and approved follow/unfollow/react/report | Shared action session; signed event targets; action/unit and real-shim browser tests |
 | `link` | open an HTTPS link through a host-owned user choice; other schemes/credentials denied | `runtime/host.ts`; CLI browser prompt policy checks |
-| `fs` | info, stat/list/read/write/mkdir/remove/move/watch/unwatch, pickSaveFile; pickFile/pickFiles/pickDirectory explicitly unsupported; paths confined to session /files | `runtime/filesystem.ts` and tests; browser user choice/download/cleanup; no native filesystem grant |
+| `fs` | Session operations plus file/multiple-file/directory import copies and export picker | Atomic virtual copies only; filesystem/unit and real-shim browser tests |
+| `upload` | info/upload/status, Blossom rail, asynchronous verified URLs and status changes | Connected viewer, approved destination, bounded bytes; no NIP-96/transforms |
+| `lists` | supported/add/remove; public items on 13 advertised list kinds | Opaque encrypted content preserved; no private mutation; strict relay read and conflict checks |
 | `config` | registerSchema/get/subscribe/unsubscribe/openSettings; schema snapshot and schemaError notifications; validated host-owned edits | `runtime/config-*`, shared settings panel; configuration unit/service/browser tests; [precise limits](CONFIGURATION.md) |
 
 MEDIA update, 2026-09-15: the shared source host advertises `media`, using the pinned
@@ -73,7 +75,7 @@ explicitly unsupported. Artwork/context do not cause fetching. Session/transport
 unit tests, the real-shim CLI browser test, the Drone Zone live stream and the VPS
 Node fallback were exercised. See [MEDIA.md](MEDIA.md) for limits and release status.
 
-No `inc`, `intent`, `keys`, `notify`, `upload`, payment, raw-device
+No `inc`, `intent`, `keys`, `notify`, payment, raw-device
 or unrestricted signing capability is advertised. Required unavailable domains
 gate playback uniformly for every publisher. Website social signing is separate
 from a napplet's grants.
@@ -129,3 +131,7 @@ persistence, secrets, account changes and rebuilds.
    after an explicitly requested release. Keep the current release pins truthful.
 5. Retain the A15/A16 boundaries for alternate CVM providers, multiplayer contracts
    and shell flavors. Neither composition nor Space metadata becomes mandatory.
+
+The 0.15.0 source profile is `space-playback-4`; FS #88, UPLOAD #33, COMMON #67
+and LISTS #68 are pinned in [NAP-REVIEW](NAP-REVIEW.md). [Runtime actions](RUNTIME-ACTIONS.md)
+records the supported subset and verification; full NAP conformance is not claimed.

@@ -48,7 +48,7 @@ See [collaboration](COLLABORATION.md) for proposals, built review and maintainer
 | public  | `wss://relay.napplet.soy`    | `https://blossom.napplet.soy` | `https://git.napplet.soy` | `https://napplet.soy`   |
 
 The managed public services are deployed at napplet.soy. Starting with the pending
-soyLI 0.14.2 release, new public projects additionally mirror manifests to the five
+soyLI 0.15.0 release, new public projects additionally mirror manifests to the five
 external [shared relay defaults](RELAY-DEFAULTS.md): Damus, nos.lol, Primal,
 nostr.mom and Pocketstr. Existing explicit project settings are preserved. Local
 mode has no public mirrors or fallback. Automated publication tests use isolated

@@ -162,7 +162,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
           {discussion}
           <div className="collection-note">
             {napplet.availability === 'ready' &&
-              'Playback supports local saves, resource loading, and Nostr reads. Publishing and account changes are disabled. '}
+              'Playback supports session files, resources and Nostr reads. Uploads and supported social/list changes require your connected identity and approval. '}
             Discovered on Nostr. The author’s signature and artifact hashes are checked
             independently of the relay and Blossom server.
           </div>
