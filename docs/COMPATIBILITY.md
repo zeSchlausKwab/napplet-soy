@@ -4,7 +4,7 @@ Updated **2026-09-20**. This records the current implementation and
 evidence, not a declaration that every NAP is fully implemented. Configuration is
 verified in source/local production builds and public browser checks. CLI 0.5.0
 and website release `20260914142718446-76864` include the configuration host.
-The 0.14.1 starter interoperability fix is locally verified and not yet deployed;
+The 0.14.1 starter interoperability fix was published on 2026-09-20;
 [independent-client acceptance](INTEROPERABILITY.md) records its narrower coverage.
 
 ## Authority and pins

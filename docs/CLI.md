@@ -50,14 +50,14 @@ processes are not locked: finish an agent's edits before committing or sharing.
 Checks cover host startup and posting validity, not full gameplay or multiplayer.
 
 Existing projects gain these panels by updating soyLI and restarting `soyli dev`.
-Run `soyli skills update` separately to update the agent's local guidance. Release
-0.14.0 is prepared locally; installation from the live website requires its release
-archives to be uploaded and the installer deployed by the operator.
+Run `soyli skills update` separately to update the agent's local guidance. The
+workshop is available from the live installer in **0.14.1**, published 2026-09-20;
+that patch also adds the [cross-client settings fallback](CONFIGURATION.md).
 
 Loopback editing checks Host, Origin and a per-session token. No new public REST
 proxy or remote shell endpoint is added. Private keys never enter manager payloads.
 
-## Collaboration — local 0.12.0
+## Collaboration — since 0.12.0
 
 One remix supports both your own publication and upstream proposals. Code and pushed
 Git history are public by default. Save changes with `soyli checkpoint "Description"`,

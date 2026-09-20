@@ -1,8 +1,10 @@
 # Cross-client and standalone release checks
 
-Verified locally on **2026-09-20** for soyLI **0.14.1**. No production upload or
-deployment is implied. These checks exercise real implementations, with disposable
-identities and loopback Khatru, Blossom and GRASP services.
+Verified locally on **2026-09-20** for soyLI **0.14.1**, then published with website
+release `20260920084527457-12824`. The cross-client checks below use disposable
+identities and loopback Khatru, Blossom and GRASP services. Separate
+[deployment evidence](DEPLOYMENT.md#soyli-0141-and-workshop-release--2026-09-20)
+records the public installer, downloads, website and protocol health checks.
 
 ## Independent host and publisher
 

@@ -1,7 +1,8 @@
 # Assets in a napplet
 
-The managed workflow is included in **soyLI 0.13.0 source**. Runtime resources and
-presentation covers/clips remain separate. Release preparation is not deployment.
+The managed workflow was introduced in **soyLI 0.13.0** and is available in the
+published **0.14.1** release (2026-09-20), including the integrated local workshop.
+Runtime resources and presentation covers/clips remain separate.
 
 ## Managed assets: CLI and local workshop
 

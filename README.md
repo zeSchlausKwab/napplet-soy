@@ -59,16 +59,16 @@ The platform dev stack starts it automatically. The server keeps a persistent
 private service key and SQLite board data outside release directories. Creators use
 `soyli backend init`, an isolated `soyli dev` backend, and ordinary publishing to
 register declared boards. Read the bundled [creator guide](docs/BACKEND-CREATOR.md)
-and [service contract, signaling and limits](docs/CONTEXTVM.md). This source slice is
-verified locally; production connectivity and independent creator demos remain
-separate acceptance checks.
+and [service contract, signaling and limits](docs/CONTEXTVM.md). Local engineering
+checks and a public encrypted CVM health round trip pass; real-network gameplay,
+TURN packet delivery and independent creator demos remain separate acceptance checks.
 
 ## Make a local napplet
 
 No platform checkout, Bun or Node installation is needed.
 
-Creator CLI: **napplet soyLI**, command `soyli`. Local **0.12.0** adds public Git
-collaboration; deployment and archive upload are separate from local verification.
+Creator CLI: **napplet soyLI**, command `soyli`. Published **0.14.1** includes public
+Git collaboration, the project/asset workshop and a cross-client settings fallback.
 See [upgrading and compatibility](docs/CLI.md#rename-and-upgrade--2026-09-15).
 
 ```sh

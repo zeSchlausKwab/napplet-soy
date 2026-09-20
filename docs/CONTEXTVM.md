@@ -207,8 +207,13 @@ coturn relay selection, peer payloads, 650 gameplay updates, over-limit rejectio
 and departure. Service tests cover durable scores/ownership, room leases/capacity,
 and the CLI's signed provisioning/remix isolation. Direct ICE on the development
 machine's VPN interface did not connect. Separate-network direct and TURN tests,
-long-session recovery, deployment and independent creator acceptance remain
+long-session recovery and independent creator acceptance remain
 unverified; the fixtures are not claims of those results.
+
+Production service health was verified on 2026-09-20: the managed CVM and coturn
+were running, and a fresh anonymous client completed an encrypted `soy_session`
+round trip through `wss://relay.napplet.soy`. This does not qualify real-network
+gameplay or TURN packet delivery. See the [deployment record](DEPLOYMENT.md#soyli-0141-and-workshop-release--2026-09-20).
 
 Reproduce service/relay checks with `bun run test:backend`. For the browser fixture,
 run `SPACE_TEST_TURN_BINARY=/path/to/turnserver bun run test:backend:browser`;

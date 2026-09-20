@@ -1025,9 +1025,10 @@ No test events, payments or creator assets were published during live verificati
 
 ## CVM and TURN deployment
 
-Prepared in source on 2026-09-17; **not deployed or tested on the VPS yet**.
-The next operator-run deployment adds a sixth PM2 process, `napplet-cvm`, and a
-separate `napplet-turn` systemd service. Caddy and the other site's configuration
+Prepared in source on 2026-09-17; **production service health verified 2026-09-20**.
+The deployment manages a sixth PM2 process, `napplet-cvm`, and a
+separate `napplet-turn` systemd service. The public encrypted CVM health round trip
+passes; real-network TURN/gameplay qualification remains separate. Caddy and the other site's configuration
 retain their existing ownership. No new REST gameplay endpoints are introduced.
 
 The CVM identity, SQLite/WAL boards and TURN shared secret live under
@@ -1091,3 +1092,59 @@ leaves that service/configuration in place and restores previous PM2 processes
 where present. Test across two real networks, both direct and forced TURN, after
 deployment. Engineering coverage so far is described in [ContextVM](CONTEXTVM.md);
 long sessions and cross-network reachability are still unverified.
+
+## soyLI 0.14.1 and workshop release — 2026-09-20
+
+The user authorized finalization and deployment. Source `58c7ccb` (including the
+`10a475f` starter fix and independent-client acceptance) is running as website
+release **`20260920084527457-12824`**. Previous release
+`20260920070006760-46483` remains available for rollback. The existing shared-Caddy,
+port 3040 and legacy-CPU profile were retained.
+
+All four immutable **soyLI 0.14.1** archives were uploaded and hash-verified before
+the installer changed. The CLI includes the project/asset manager, Git checkpoints,
+playable proposal review and explicit publication/recovery from 0.14.0, plus the
+cross-client CONFIG registration fallback. [Release evidence](../apps/cli/distribution/release-0.14.1.json)
+records exact hashes and qualified platform coverage.
+
+The standard deployment passed typechecking and **292 repository tests** on both
+the workstation and VPS Bun 1.3.8, plus the Go relay tests and the Bun relay,
+Blossom and GRASP service suites (4, 18 and 8 tests respectively). This includes
+the progressing 11 MiB upload regression. Candidate origin/admin checks and the
+encrypted CVM activation check passed before completion.
+
+Post-deployment verification:
+
+- Public health reports the new release and a fresh, error-free Nostr index.
+  All six Napplet PM2 services are online; Caddy, coturn and the backup timer are active.
+- Every CLI download returns the recorded size/checksum. A fresh temporary macOS
+  ARM64 installation from the public installer runs 0.14.1, reports ready Git,
+  scaffolds the maintained starter with skills and the new schema fallback, and
+  leaves the user's existing installed CLI and identities unchanged.
+- Chromium opens the gallery, docs, create/about pages and a real Impact Yard
+  detail route, fetches its OG image, and runs its fullscreen sandbox. No page
+  errors were observed. A separate readiness check confirms landing hydration
+  and loaded mascot/featured imagery; screenshots were inspected.
+- Public relay/Git NIP-11 and a WebSocket manifest query pass. A fresh anonymous
+  client completes an encrypted `soy_session` round trip over the public relay.
+  The client logged two publish-retry messages during shutdown after that response;
+  this check does not certify gameplay, long sessions or TURN packet delivery.
+- `schlaustronics.com` still returns HTTPS 200. Shared proxy files retain their
+  exact pre-deployment hashes:
+  `/etc/caddy/Caddyfile` = `be5d9515021819dcfab9e4dd4dc1e08ceacdcbdc1d620d5ee4b0c97682b7699f`;
+  `/etc/napplet-space/Caddyfile` = `ef99cf551dca7c36d7ab82b6075c36bd537034f19e402d63648784b9d65e3c5e`.
+
+Local logs and screenshots are retained in `.local/release-0.14.1/`. Native older
+Intel Mac/Keychain acceptance, a nontechnical workshop walkthrough and broader NAP
+conformance remain separate from this completed release. No billing functionality
+was introduced.
+
+Existing users can update with:
+
+```sh
+curl -fsSL https://napplet.soy/install.sh | sh
+```
+
+Restart `soyli dev` for the workshop. Run `soyli skills update` in an existing
+project to refresh guidance; project source is preserved, so adopting the settings
+fallback in an existing napplet requires editing its settings module.
