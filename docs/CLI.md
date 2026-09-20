@@ -236,12 +236,35 @@ check/publication downloads a pinned Chromium headless shell. `browser install`
 prepares it in advance. `doctor` reports Git/browser readiness and credential-store
 requirements; `account check` verifies the selected signer.
 
+From **0.15.1**, macOS 12 (Monterey) and 13 (Ventura) automatically use a separate,
+pinned Playwright 1.61.1 / Chromium 149 compatibility pair. Installation, readiness,
+screenshots, interactive capture, WebM recording and the multiplayer lab all select
+the same pair. macOS 14+ and Linux keep Playwright 1.63.0. No system Chrome or
+global Node installation is needed, and existing accounts/projects are preserved.
+`soyli browser install` prepares the headless browser; interactive capture downloads
+the matching full browser when needed. `soyli doctor` identifies compatibility mode.
+
+This is a **frozen development browser**, not an ongoing security-support promise.
+[Chrome ended macOS 12 updates after version 150](https://support.google.com/chrome/thread/404150391).
+Our current Playwright registry also omits macOS 13. Upgrading to macOS 14+ selects
+the current bundled browser automatically. OSes without a supported download get
+`BROWSER_OS` with an OS explanation instead of a network-retry message. Browser
+checks/captures require macOS 12+ even though project editing can use the older
+Node toolchain. Upstream `test:conformance` retains its own pinned Playwright 1.61.0.
+
+Regression checks exercise the real registries for Intel/ARM Monterey and Ventura,
+plus modern Mac/Linux selection. `SPACE_TEST_MAC_BROWSER_COMPAT=1 bun test
+tests/services/browser-compat.test.ts` downloads a fresh compatibility browser and
+tests PNG capture, WebM recording/decoding, doctor and a headed window on a Mac.
+Running that on a newer Mac does not qualify native Monterey hardware.
+
 ## Requirements and storage
 
 - macOS: Apple Silicon or modern Intel with AVX2; Git/Apple Command Line Tools;
   login Keychain. The installer selects native ARM64 even in a Rosetta terminal.
   Keychain access belongs to the executable; macOS may request authorization when
-  changing executables. Signing has no file fallback; the nsec file is for recovery.
+  changing executables. The explicit dangerous plaintext development fallback is
+  described in the identity section above; normal signing uses the OS vault.
 - Linux: glibc, ARM64 or x86-64 with SSE4.2; Git; an unlocked Secret Service keyring
   and D-Bus session for identity. Ubuntu 24.04 is the tested desktop baseline.
   Chromium system libraries are listed at `/create#platforms` (`/cli` redirects to the same guide). The CLI never installs OS

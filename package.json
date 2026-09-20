@@ -95,6 +95,7 @@
     "@vitejs/plugin-react": "6.1.1",
     "node-addon-api": "8.9.2",
     "node-gyp": "12.4.0",
+    "playwright-core-mac-compat": "npm:playwright-core@1.61.1",
     "pm2": "7.0.4",
     "prettier": "3.9.6",
     "remotion": "4.0.524",

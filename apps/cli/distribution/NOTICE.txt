@@ -8,6 +8,8 @@ see https://github.com/oven-sh/bun/tree/bun-v1.3.11 for their source and notices
 Playwright 1.63.0 is distributed in lib/playwright-core, including its LICENSE,
 NOTICE and ThirdPartyNotices.txt. Chromium is downloaded separately on request
 or on the first publication check and is subject to its own license terms.
+macOS archives also include Playwright 1.61.1 in lib/playwright-core-mac-compat
+for macOS 12–13, with its own LICENSE, NOTICE and ThirdPartyNotices.txt.
 
 The executable also bundles JavaScript dependencies. Their license and notice
 files are included in licenses. This directory may include notices for platform

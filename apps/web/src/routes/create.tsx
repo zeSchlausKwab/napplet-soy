@@ -145,6 +145,12 @@ function Create() {
               run <code>xcode-select --install</code> if it is missing. Creator credentials use your
               login Keychain.
             </p>
+            <p>
+              Checks and captures require macOS 12 or newer. soyLI automatically uses a frozen
+              compatibility browser on macOS 12–13; macOS 14+ gets the current browser. Run{' '}
+              <code>soyli doctor</code> to see which is selected. Upgrade macOS for current browser
+              security updates.
+            </p>
           </article>
           <article>
             <h2>Linux</h2>

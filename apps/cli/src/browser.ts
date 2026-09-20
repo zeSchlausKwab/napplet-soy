@@ -4,10 +4,14 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { AccountError } from '../../../packages/identity/src/signer';
-import { playwrightDirectory, standalone } from './distribution';
+import { browserProfile, playwrightDirectory, standalone } from './distribution';
 
 type Playwright = Pick<typeof import('@playwright/test'), 'chromium'>;
 let engine: Playwright | undefined;
+export const browserCompatibilityNote = () =>
+  browserProfile() === 'mac-compat'
+    ? 'macOS compatibility browser (Playwright 1.61.1 / Chromium 149). This frozen version no longer receives browser security updates; upgrade macOS for the current browser.'
+    : undefined;
 
 export function browserCache() {
   if (process.env.PLAYWRIGHT_BROWSERS_PATH === '0')
@@ -31,13 +35,9 @@ export async function browserEngine(): Promise<Playwright> {
 }
 export async function browserInstalled(video = false, interactive = false) {
   await browserEngine();
-  // The pinned Playwright registry knows each platform's headless-shell path.
-  const require = createRequire(pathToFileURL(join(playwrightDirectory(), 'index.js')));
-  const registry = require('./lib/coreBundle.js').registry.registry;
-  const executables = [
-    interactive ? 'chromium' : 'chromium-headless-shell',
-    ...(video ? ['ffmpeg'] : []),
-  ].map((name) => registry.findExecutable(name)?.executablePath());
+  const executables = browserExecutables(video, interactive).map((executable) =>
+    executable?.executablePath(),
+  );
   return (
     await Promise.all(
       executables.map((executable) =>
@@ -51,12 +51,38 @@ export async function browserInstalled(video = false, interactive = false) {
     )
   ).every(Boolean);
 }
+
+function browserExecutables(
+  video: boolean,
+  interactive: boolean,
+): Array<
+  | {
+      name: string;
+      downloadURLs: string[];
+      executablePath(): string | undefined;
+    }
+  | undefined
+> {
+  // Use the same registry for installation, availability and actual execution.
+  const require = createRequire(pathToFileURL(join(playwrightDirectory(), 'index.js')));
+  const registry = require('./lib/coreBundle.js').registry.registry;
+  return [interactive ? 'chromium' : 'chromium-headless-shell', ...(video ? ['ffmpeg'] : [])].map(
+    (name) => registry.findExecutable(name),
+  );
+}
 export async function installBrowser(
   progress = (message: string) => process.stderr.write(message + '\n'),
   video = false,
   interactive = false,
 ) {
+  const note = browserCompatibilityNote();
+  if (note) progress(note);
   if (await browserInstalled(video, interactive)) return;
+  if (browserExecutables(video, interactive).some((executable) => !executable?.downloadURLs.length))
+    throw new AccountError(
+      'BROWSER_OS',
+      'The bundled Playwright has no browser download for this operating system. Run soyli doctor and use a supported OS; retrying the network will not resolve this.',
+    );
   const cwd = browserCache();
   await mkdir(cwd, { recursive: true, mode: 0o700 });
   progress('Downloading the pinned Chromium check browser. It is cached for future publications.');

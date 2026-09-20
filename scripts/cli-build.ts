@@ -61,10 +61,15 @@ for (const platform of selected) {
   await chmod(join(directory, 'soyli'), 0o755);
   // Older generated projects can keep using their original command.
   await symlink('soyli', join(directory, 'napplet-space'));
-  await cp(playwrightDirectory(), join(directory, 'lib/playwright-core'), {
+  await cp(playwrightDirectory('current'), join(directory, 'lib/playwright-core'), {
     recursive: true,
     dereference: true,
   });
+  if (platform.startsWith('darwin'))
+    await cp(playwrightDirectory('mac-compat'), join(directory, 'lib/playwright-core-mac-compat'), {
+      recursive: true,
+      dereference: true,
+    });
   await cp(dirname(Bun.resolveSync('ws/package.json', root)), join(directory, 'lib/ws'), {
     recursive: true,
     dereference: true,
@@ -108,6 +113,7 @@ for (const platform of selected) {
         platform,
         bun: Bun.version,
         playwright: '1.63.0',
+        ...(platform.startsWith('darwin') ? { playwrightMacCompatibility: '1.61.1' } : {}),
         upstream: { boilerplate: boilerplate.revision, skills: skills.revision },
         toolchain: { node: toolchain.node.version, pnpm: toolchain.pnpm.version },
       },

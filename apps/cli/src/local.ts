@@ -3,7 +3,7 @@ import { realpath } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { AccountError, type Network } from '../../../packages/identity/src/signer';
 import { inspectProject, regularFile } from '../../../packages/publish/src/project';
-import { browserEngine, browserInstalled } from './browser';
+import { browserCompatibilityNote, browserEngine, browserInstalled } from './browser';
 import { checkPublication } from './publish-check';
 import { previewAssets } from './preview/assets';
 import { startPreviewServer } from './preview/server';
@@ -177,17 +177,28 @@ export async function checkProject(directory: string, network: Network) {
 export async function doctor() {
   const git = await gitAvailable();
   let browser = 'not installed (downloaded on first check/publish, or run browser install)';
-  if (await browserInstalled()) {
-    try {
-      const instance = await (
-        await browserEngine()
-      ).chromium.launch({ headless: true, timeout: 10000 });
-      await instance.close();
-      browser = 'ready';
-    } catch {
-      browser =
-        'installed but cannot start; Linux needs Chromium system libraries (see https://napplet.soy/cli)';
+  try {
+    if (await browserInstalled()) {
+      try {
+        const instance = await (
+          await browserEngine()
+        ).chromium.launch({ headless: true, timeout: 10000 });
+        await instance.close();
+        browser = 'ready';
+      } catch {
+        browser =
+          process.platform === 'linux'
+            ? 'installed but cannot start; Linux needs Chromium system libraries (see https://napplet.soy/create#platforms)'
+            : 'installed but cannot start; run soyli browser install and check macOS application permissions (see https://napplet.soy/create#platforms)';
+      }
     }
+    const note = browserCompatibilityNote();
+    if (note) browser += `; ${note}`;
+  } catch (error) {
+    browser =
+      error instanceof AccountError
+        ? error.message
+        : 'browser diagnostics unavailable; run soyli browser install';
   }
   return {
     version,
