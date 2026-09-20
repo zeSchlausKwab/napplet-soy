@@ -200,19 +200,27 @@ export function setupWorkshop(
             run({ action: 'propose', description: description.value }, button),
           ),
         );
-        if (state.job?.action === 'propose' && state.job.state === 'failed')
-          create.append(
-            action('Resume saved proposal', (button) =>
-              run(
-                {
-                  action: 'propose',
-                  description: description.value || 'Resume saved proposal',
-                  resume: true,
-                },
-                button,
-              ),
+        const recovery = el('details');
+        recovery.open = state.job?.action === 'propose' && state.job.state === 'failed';
+        recovery.append(el('summary', 'Recover an interrupted proposal'));
+        recovery.append(
+          el(
+            'p',
+            'Resume the saved submission for this branch and creator, including after restarting soyLI. Its original files and destinations are retained.',
+            'muted',
+          ),
+          action('Resume saved proposal', (button) =>
+            run(
+              {
+                action: 'propose',
+                description: description.value || 'Resume saved proposal',
+                resume: true,
+              },
+              button,
             ),
-          );
+          ),
+        );
+        create.append(recovery);
       } else
         create.append(
           el(
