@@ -98,3 +98,56 @@ test('file picker cancellation creates nothing and quotas fail before writes', a
   ).toEqual([]);
   expect(missingDomains(['shell', 'storage', 'resource', 'fs', 'cvm', 'inc'])).toEqual(['inc']);
 });
+
+test('native picks import atomic copies with virtual paths, directory structure and cancellation', async () => {
+  let exports: ExportFile[] = [];
+  const files = new NappletFiles(
+    () => {},
+    (value) => {
+      exports = value;
+    },
+  );
+  const call = (type: string, values = {}) => files.handle({ type, ...values }, async () => true);
+  const selected = new File(['sample'], 'sound.wav');
+  const result = await files.handle(
+    { type: 'fs.pickFile' },
+    async () => true,
+    async () => [selected],
+  );
+  const path = result.result!.entries![0].path;
+  expect(path).toMatch(/^\/files\/import-[^/]+\/sound.wav$/);
+  expect((await call('fs.read', { path })).result!.data).toBe(btoa('sample'));
+  await call('fs.write', { path, data: btoa('edited') });
+  expect(await selected.text()).toBe('sample');
+  const nested = new File(['nested'], 'logo.png');
+  Object.defineProperty(nested, 'webkitRelativePath', { value: 'folder/images/logo.png' });
+  const folder = await files.handle(
+    { type: 'fs.pickDirectory' },
+    async () => true,
+    async () => [nested],
+  );
+  expect(folder.result!.entries![0].name).toBe('folder');
+  expect(folder.result!.entries![0].kind).toBe('directory');
+  const before = exports.length;
+  await expect(
+    files.handle(
+      { type: 'fs.pickFiles' },
+      async () => true,
+      async () => [selected, new File(['bad'], '../escape')],
+    ),
+  ).rejects.toThrow();
+  expect(exports.length).toBe(before);
+  const abort = new AbortController();
+  await expect(
+    files.handle(
+      { type: 'fs.pickFile' },
+      async () => true,
+      async () => {
+        abort.abort();
+        return [selected];
+      },
+      abort.signal,
+    ),
+  ).rejects.toThrow();
+  expect(exports.length).toBe(before);
+});

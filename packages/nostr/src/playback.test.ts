@@ -165,3 +165,32 @@ test('identity relay preferences use the latest verified NIP-65 record and route
     relay.stop(true);
   }
 });
+
+test('COMMON nrelay encodes and decodes a public TLV identifier without exposing secrets', async () => {
+  const client = new PlaybackNostr(
+    [],
+    () => {},
+    () => null,
+  );
+  try {
+    const encoded = await client.common({
+      type: 'common.encodeNip19',
+      input: { type: 'nrelay', relay: 'wss://relay.example/' },
+    });
+    expect(encoded).toMatchObject({ ok: true, nip19Type: 'nrelay' });
+    expect(
+      await client.common({
+        type: 'common.decodeNip19',
+        value: 'value' in encoded ? encoded.value : undefined,
+      }),
+    ).toEqual({ ok: true, nip19Type: 'nrelay', relay: 'wss://relay.example/' });
+    await expect(
+      client.common({
+        type: 'common.encodeNip19',
+        input: { type: 'nrelay', relay: 'https://not-a-relay.example/' },
+      }),
+    ).rejects.toThrow();
+  } finally {
+    client.close();
+  }
+});

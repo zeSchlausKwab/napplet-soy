@@ -1,3 +1,4 @@
+import { bech32 } from '@scure/base';
 import { RelayPool } from 'applesauce-relay';
 import { matchFilters, nip19, type Filter } from 'nostr-tools';
 import { Subscription, take, takeUntil, timer, type Observable } from 'rxjs';
@@ -381,7 +382,30 @@ export class PlaybackNostr {
     if (message.type === 'common.follows')
       return { ok: true, pubkeys: this.pubkey() ? await this.tags(this.pubkey()!, 3) : [] };
     if (message.type === 'common.decodeNip19') {
-      const decoded = nip19.decode(z.string().max(4096).parse(message.value));
+      const value = z.string().max(4096).parse(message.value);
+      if (value.toLowerCase().startsWith('nrelay1')) {
+        const decoded = bech32.decode(value as `nrelay1${string}`, 4096);
+        const bytes = bech32.fromWords(decoded.words);
+        let relay: string | undefined;
+        for (let offset = 0; offset < bytes.length;) {
+          if (offset + 2 > bytes.length || offset + 2 + bytes[offset + 1] > bytes.length)
+            throw new Error('invalid-nip19');
+          const type = bytes[offset],
+            length = bytes[offset + 1];
+          if (type === 0) {
+            if (relay !== undefined) throw new Error('invalid-nip19');
+            relay = new TextDecoder('utf-8', { fatal: true }).decode(
+              bytes.slice(offset + 2, offset + 2 + length),
+            );
+          }
+          offset += length + 2;
+        }
+        if (!relay || !/^wss?:\/\//.test(relay)) throw new Error('invalid-nip19');
+        const url = new URL(relay);
+        if (url.username || url.password || url.hash) throw new Error('invalid-nip19');
+        return { ok: true, nip19Type: 'nrelay', relay };
+      }
+      const decoded = nip19.decode(value);
       if (decoded.type === 'nsec') throw new Error('Secret identifiers are not supported');
       if (decoded.type === 'note' || decoded.type === 'npub')
         return { ok: true, nip19Type: decoded.type, hex: decoded.data };
@@ -394,7 +418,8 @@ export class PlaybackNostr {
     if (message.type === 'common.encodeNip19') {
       const input = z
         .object({
-          type: z.enum(['npub', 'note', 'nprofile', 'nevent', 'naddr']),
+          type: z.enum(['npub', 'note', 'nprofile', 'nevent', 'naddr', 'nrelay']),
+          relay: z.string().max(255).optional(),
           hex: hex.optional(),
           pubkey: hex.optional(),
           eventId: hex.optional(),
@@ -406,6 +431,25 @@ export class PlaybackNostr {
         .parse(message.input);
       let value: string;
       switch (input.type) {
+        case 'nrelay': {
+          const relay = z.string().min(1).parse(input.relay),
+            url = new URL(relay);
+          const bytes = new TextEncoder().encode(relay);
+          if (
+            !['ws:', 'wss:'].includes(url.protocol) ||
+            url.username ||
+            url.password ||
+            url.hash ||
+            bytes.length > 255
+          )
+            throw new Error('invalid-nip19');
+          value = bech32.encode(
+            'nrelay',
+            bech32.toWords(new Uint8Array([0, bytes.length, ...bytes])),
+            4096,
+          );
+          break;
+        }
         case 'npub':
           value = nip19.npubEncode(hex.parse(input.hex));
           break;

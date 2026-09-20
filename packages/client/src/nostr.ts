@@ -79,6 +79,7 @@ export class ProtocolClient {
     hints: string[] = [],
     signal = AbortSignal.timeout(10000),
     onEvent?: (event: SignedEvent) => void,
+    requireComplete = false,
   ) {
     const relays = [...new Set([...hints, ...this.relays()])]
       .flatMap((value) => {
@@ -143,11 +144,14 @@ export class ProtocolClient {
       }),
     );
     signal.throwIfAborted();
+    if (requireComplete && (!relays.length || completed !== relays.length))
+      throw new Error('list-unavailable');
     if (!completed && !found.size)
       throw new Error('No relay completed the query. Check your relay settings or retry.');
     return [...found.values()];
   }
-  async publish(input: SignedEvent, hints: string[] = []) {
+  async publish(input: SignedEvent, hints: string[] = [], signal?: AbortSignal) {
+    signal?.throwIfAborted();
     const event = verifiedEvent(input);
     if (!this.allowed(event)) throw new Error('This action is unavailable here.');
     const relays = [...new Set([...this.relays(), ...hints])]
@@ -162,6 +166,7 @@ export class ProtocolClient {
     const results = (
       await Promise.all(
         relays.map(async (relay) => {
+          signal?.throwIfAborted();
           const connection = this.connection(relay);
           try {
             return await connection.pool.publish([relay], event, { timeout: 6000, retries: false });

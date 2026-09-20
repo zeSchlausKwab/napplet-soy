@@ -133,3 +133,32 @@ test('streaming download limits apply even without Content-Length', async () => 
   );
   await expect(readBytes(response, 10)).rejects.toThrow('too-large');
 });
+
+test('mutation reads refuse a partial relay view even when one relay supplies events', async () => {
+  const good = sign(3);
+  const relays = [true, false].map((complete) =>
+    Bun.serve({
+      hostname: '127.0.0.1',
+      port: 0,
+      fetch: (r, s) => (s.upgrade(r) ? undefined : new Response()),
+      websocket: {
+        message(ws, raw) {
+          const m = JSON.parse(String(raw));
+          if (m[0] !== 'REQ') return;
+          ws.send(JSON.stringify(['EVENT', m[1], good]));
+          ws.send(JSON.stringify([complete ? 'EOSE' : 'CLOSED', m[1], 'read refused']));
+        },
+      },
+    }),
+  );
+  const client = new ProtocolClient(() => relays.map((r) => `ws://127.0.0.1:${r.port}`));
+  try {
+    expect(await client.query([{ kinds: [3] }])).toHaveLength(1);
+    await expect(client.query([{ kinds: [3] }], [], undefined, undefined, true)).rejects.toThrow(
+      'list-unavailable',
+    );
+  } finally {
+    client.close();
+    relays.forEach((r) => r.stop(true));
+  }
+});

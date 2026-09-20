@@ -5,7 +5,8 @@ const MAX_CHUNK = 256 * 1024,
   MAX_TOTAL = 10 * 1024 * 1024;
 const pathSchema = z
   .string()
-  .max(256)
+  .max(512)
+  .refine((path) => path === path.normalize('NFC'), 'invalid-path')
   .refine(
     (path) =>
       path === '/files' ||
@@ -14,7 +15,11 @@ const pathSchema = z
           .split('/')
           .slice(2)
           .every(
-            (part) => part && part !== '.' && part !== '..' && !/[\\\u0000-\u001f]/.test(part),
+            (part) =>
+              part &&
+              part !== '.' &&
+              part !== '..' &&
+              !/[\\\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(part),
           )),
     'invalid-path',
   );
@@ -34,6 +39,47 @@ type Entry = {
   modifiedAt: number;
 };
 export type ExportFile = { name: string; blob: Blob };
+export const pickOptionsSchema = z
+  .object({
+    permissions: z
+      .array(z.enum(['read', 'write', 'create', 'delete', 'list', 'watch']))
+      .max(6)
+      .optional(),
+    accept: z
+      .array(
+        z
+          .object({
+            mime: z.string().max(128).optional(),
+            extension: z.string().max(32).optional(),
+          })
+          .strict(),
+      )
+      .max(16)
+      .optional(),
+    suggestedName: z.string().max(120).optional(),
+    description: z.string().max(300).optional(),
+  })
+  .strict();
+export type FilePick = {
+  directory: boolean;
+  multiple: boolean;
+  accept: string;
+  description?: string;
+};
+export function filePick(type: string, options: z.infer<typeof pickOptionsSchema>): FilePick {
+  return {
+    directory: type === 'fs.pickDirectory',
+    multiple: type !== 'fs.pickFile',
+    description: options.description,
+    accept: (options.accept ?? [])
+      .flatMap((rule) => [rule.mime, rule.extension])
+      .filter(
+        (value): value is string =>
+          !!value && /^(?:[a-zA-Z0-9.+-]+\/(?:[a-zA-Z0-9.+-]+|\*)|\.[a-zA-Z0-9]+)$/.test(value),
+      )
+      .join(','),
+  };
+}
 
 /** A frame-owned virtual filesystem. Pickers never grant host paths or OS access. */
 export class NappletFiles {
@@ -79,7 +125,12 @@ export class NappletFiles {
         })),
     );
   }
-  async handle(message: Record<string, unknown>, chooseSave: (name: string) => Promise<boolean>) {
+  async handle(
+    message: Record<string, unknown>,
+    chooseSave: (name: string) => Promise<boolean>,
+    chooseFiles?: (pick: FilePick) => Promise<File[]>,
+    signal?: AbortSignal,
+  ) {
     if (message.type === 'fs.info')
       return {
         info: {
@@ -107,8 +158,50 @@ export class NappletFiles {
         result: { entries: [this.metadata(this.entries.get(path) ?? this.entry(path, 'file'))] },
       };
     }
-    if (['fs.pickFile', 'fs.pickFiles', 'fs.pickDirectory'].includes(String(message.type)))
-      throw new Error('unsupported');
+    if (['fs.pickFile', 'fs.pickFiles', 'fs.pickDirectory'].includes(String(message.type))) {
+      if (!chooseFiles) throw new Error('unsupported');
+      const pick = filePick(String(message.type), pickOptionsSchema.parse(message.options ?? {}));
+      const selected = await chooseFiles(pick);
+      signal?.throwIfAborted();
+      if (!selected.length) throw new Error('cancelled');
+      if (
+        (!pick.multiple && selected.length !== 1) ||
+        selected.length > 127 ||
+        selected.reduce((n, file) => n + file.size, 0) > MAX_TOTAL
+      )
+        throw new Error('quota-exceeded');
+      const base = '/files/import-' + crypto.randomUUID();
+      const staged = new Map<string, Entry>([[base, this.entry(base, 'directory')]]);
+      for (const file of selected) {
+        const relative = (pick.directory ? file.webkitRelativePath : file.name).normalize('NFC');
+        if (!relative || relative.startsWith('/')) throw new Error('invalid-path');
+        const path = pathSchema.parse(base + '/' + relative);
+        const parts = path.split('/');
+        for (let i = 3; i < parts.length; i++) {
+          const parent = parts.slice(0, i).join('/');
+          if (staged.get(parent)?.kind === 'file') throw new Error('conflict');
+          if (!staged.has(parent)) staged.set(parent, this.entry(parent, 'directory'));
+        }
+        if (staged.has(path)) throw new Error('conflict');
+        staged.set(path, this.entry(path, 'file', new Uint8Array(await file.arrayBuffer())));
+        signal?.throwIfAborted();
+      }
+      // Recheck after asynchronous reads: another request may have filled this scope.
+      if (
+        this.entries.size + staged.size > 128 ||
+        [...this.entries.values(), ...staged.values()].reduce((n, e) => n + e.data.length, 0) >
+          MAX_TOTAL
+      )
+        throw new Error('quota-exceeded');
+      for (const [path, entry] of staged) this.entries.set(path, entry);
+      this.update(base, 'created');
+      const entries = pick.directory
+        ? [...staged.values()].filter(
+            (e) => e.path.startsWith(base + '/') && !e.path.slice(base.length + 1).includes('/'),
+          )
+        : [...staged.values()].filter((e) => e.kind === 'file');
+      return { result: { entries: entries.map((entry) => this.metadata(entry)) } };
+    }
     if (message.type === 'fs.unwatch') {
       this.watches.delete(z.string().parse(message.watchId));
       return {};

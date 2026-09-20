@@ -3,7 +3,10 @@ import { resourceMime } from '../../client/src/resource-mime';
 import { z } from 'zod';
 import { HOST_REQUESTS, RUNTIME_DOMAINS } from './capabilities';
 import { scopedStorage } from './storage';
-import { NappletFiles, type ExportFile } from './filesystem';
+import { NappletFiles, type ExportFile, type FilePick } from './filesystem';
+import { NappletActions } from './action-session';
+import { NappletUploads } from './upload-session';
+import type { HostSign } from './action-contracts';
 import { PlaybackNostr } from '../../nostr/src/playback';
 import { WorkQueue } from './work-queue';
 import { NappletConfig } from './config-session';
@@ -18,7 +21,9 @@ import {
 } from './multiplayer-permission';
 
 export type HostPrompt = {
-  kind: 'link' | 'save' | 'media' | 'network' | 'multiplayer';
+  kind: 'link' | 'save' | 'media' | 'network' | 'multiplayer' | 'files' | 'action' | 'upload';
+  picker?: FilePick;
+  selectFiles?: (files: File[]) => void;
   value: string;
   answer: (accepted: boolean) => void;
   dismiss: () => void;
@@ -28,7 +33,11 @@ export type HostOptions = {
   identity: string;
   manifestId: string;
   relays: string[];
+  actionRelays?: string[];
   servers?: string[];
+  uploadServers?: string[];
+  sign?: HostSign;
+  title?: string;
   localServers?: string[];
   pubkey: string | null;
   prompt: (prompt: HostPrompt | null) => void;
@@ -88,10 +97,16 @@ export function attachNappletHost(options: HostOptions) {
     const choose = (
       kind: HostPrompt['kind'],
       value: string,
-      actions: { accept?: () => void; decide?: (accepted: boolean) => void } = {},
+      actions: {
+        accept?: () => void;
+        decide?: (accepted: boolean) => void;
+        signal?: AbortSignal;
+        picker?: FilePick;
+        selectFiles?: (files: File[]) => void;
+      } = {},
     ) =>
       new Promise<boolean>((resolve) => {
-        if (answer || !alive || !active) {
+        if (answer || !alive || !active || actions.signal?.aborted) {
           resolve(false);
           return;
         }
@@ -99,6 +114,7 @@ export function attachNappletHost(options: HostOptions) {
         const complete = (accepted: boolean, explicit = false) => {
           if (answer !== complete) return;
           clearTimeout(timer);
+          actions.signal?.removeEventListener('abort', abort);
           answer = undefined;
           promptKind = undefined;
           options.prompt(null);
@@ -108,15 +124,58 @@ export function attachNappletHost(options: HostOptions) {
           }
           resolve(alive && active && accepted);
         };
+        const abort = () => complete(false);
+        actions.signal?.addEventListener('abort', abort, { once: true });
         answer = complete;
         promptKind = kind;
         options.prompt({
           kind,
           value,
+          picker: actions.picker,
+          selectFiles: actions.selectFiles
+            ? (files) => {
+                if (answer !== complete || !alive || !active || actions.signal?.aborted) return;
+                actions.selectFiles!(files);
+                complete(true);
+              }
+            : undefined,
           answer: (accepted) => complete(accepted, true),
           dismiss: () => complete(false),
         });
       });
+    const consent = (kind: 'action' | 'upload', value: string, signal: AbortSignal) =>
+      choose(kind, `${options.title ?? 'This napplet'} requests:\n${value}`, { signal });
+    const actions = new NappletActions({
+      pubkey,
+      sign: options.sign,
+      relays: options.actionRelays ?? options.relays,
+      signal: lifetime.signal,
+      consent: (value, signal) => consent('action', value, signal),
+    });
+    const uploads = new NappletUploads({
+      pubkey,
+      sign: options.sign,
+      servers: options.uploadServers ?? [],
+      localServers: options.localServers,
+      signal: lifetime.signal,
+      send: sendScoped,
+      consent: (value, signal) => consent('upload', value, signal),
+    });
+    const chooseFiles = async (picker: FilePick) => {
+      let selected: File[] = [];
+      await choose(
+        'files',
+        `${options.title ?? 'This napplet'} wants a ${picker.directory ? 'folder' : 'file'} copy. Only what you select will be shared. Originals stay unchanged.\n${picker.description ?? ''}`,
+        {
+          picker,
+          selectFiles: (files) => {
+            selected = files;
+          },
+          signal: lifetime.signal,
+        },
+      );
+      return selected;
+    };
     const media = new NappletMedia({
       manifest: options.manifestId,
       send: sendScoped,
@@ -199,9 +258,16 @@ export function attachNappletHost(options: HostOptions) {
         return webrtc.handle(message);
       }
       if (domain === 'storage') return store(message);
-      if (domain === 'fs') return files.handle(message, (name) => choose('save', name));
+      if (domain === 'fs')
+        return files.handle(message, (name) => choose('save', name), chooseFiles, lifetime.signal);
       if (domain === 'identity') return nostr.identity(action);
       if (domain === 'relay' || domain === 'outbox') return nostr.handle(message);
+      if (domain === 'upload') return uploads.handle(message);
+      if (
+        domain === 'lists' ||
+        ['common.follow', 'common.unfollow', 'common.react', 'common.report'].includes(type)
+      )
+        return actions.handle(message);
       if (domain === 'common') return nostr.common(message);
       if (type === 'theme.get')
         return {
@@ -297,6 +363,7 @@ export function attachNappletHost(options: HostOptions) {
         // close() synchronously notifies live subscriptions; late query completions
         // are suppressed once this scope becomes inactive below.
         nostr.close();
+        actions.close();
         active = false;
         lifetime.abort();
         resources.clear();
