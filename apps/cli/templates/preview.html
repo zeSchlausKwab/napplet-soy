@@ -2,7 +2,7 @@
 <html lang="en">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Local napplet preview</title>
+  <title>soyLI · Your workshop</title>
   <style>
     body {
       margin: 0;
@@ -218,12 +218,188 @@
         padding: 0 16px 32px;
       }
     }
+    #manager {
+      max-width: 1240px;
+      margin: 32px auto;
+      padding: 0 24px 64px;
+    }
+    .manager-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 24px;
+    }
+    .manager-heading h1 {
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1.02;
+      letter-spacing: -2px;
+      margin: 14px 0 24px;
+    }
+    .manager-eyebrow {
+      font: 11px monospace;
+      letter-spacing: 2px;
+      color: #57744c;
+    }
+    .manager-status {
+      padding: 14px 18px;
+      background: #e7ecd9;
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+    .manager-content {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+    .manager-section {
+      padding: 26px;
+      border: 1px solid #d6d9cb;
+      border-radius: 14px;
+      background: #fffdf5;
+      min-width: 0;
+    }
+    .manager-section:nth-child(2) {
+      grid-column: 1 / -1;
+      order: 2;
+    }
+    .manager-section:nth-child(3) {
+      order: 1;
+    }
+    .manager-section:nth-child(4),
+    .manager-section:nth-child(5) {
+      order: 3;
+    }
+    .manager-section h2 {
+      font-size: 25px;
+      letter-spacing: -0.8px;
+      margin: 0 0 12px;
+    }
+    .manager-section p {
+      line-height: 1.6;
+    }
+    .manager-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-items: end;
+    }
+    .manager-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      font-size: 12px;
+      color: #57614e;
+    }
+    .manager-form input,
+    .manager-form textarea,
+    .manager-form select {
+      width: 100%;
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid #c8cbbf;
+      border-radius: 6px;
+      background: #fffef9;
+      color: #292d23;
+      font: 14px/1.5 system-ui;
+    }
+    .manager-form textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+    .manager-form button {
+      background: #33402c;
+      color: #fffdf5;
+      padding: 11px 16px;
+    }
+    .manager-form input:focus-visible,
+    .manager-form textarea:focus-visible,
+    .manager-form select:focus-visible {
+      outline: 2px solid #57744c;
+      outline-offset: 2px;
+    }
+    .asset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .asset-card {
+      padding: 14px;
+      border-radius: 10px;
+      background: #eeefe4;
+      overflow: hidden;
+    }
+    .asset-card img,
+    .asset-card video {
+      width: 100%;
+      height: 140px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #e0e3d3;
+    }
+    .asset-card audio {
+      width: 100%;
+    }
+    .asset-card button {
+      margin: 8px 6px 0 0;
+    }
+    .asset-card code,
+    .asset-destination {
+      display: block;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+    .asset-placeholder {
+      height: 110px;
+      display: grid;
+      place-items: center;
+      font:
+        bold 56px Georgia,
+        serif;
+      color: #728067;
+    }
+    .manager-recipe,
+    .manager-section pre {
+      padding: 16px;
+      background: #293124;
+      color: #edf0e0;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font: 12px/1.7 monospace;
+    }
+    .manager-budget {
+      font: 12px/1.6 monospace;
+      color: #57744c;
+    }
+    header {
+      background: #e7ecd9;
+      border-radius: 0 0 12px 12px;
+    }
+    @media (max-width: 760px) {
+      .manager-content,
+      .manager-form {
+        grid-template-columns: 1fr;
+      }
+      .manager-heading {
+        align-items: start;
+        flex-direction: column;
+      }
+      #manager {
+        padding: 0 16px 32px;
+      }
+      .manager-section {
+        padding: 20px;
+      }
+    }
   </style>
   <header>
-    <strong>✳ Your little experiment</strong>
+    <strong>✳ soyLI <span style="font-weight: 400; opacity: 0.6">/ your workshop</span></strong>
     <div role="group" aria-label="Preview view">
       <button id="view-play" aria-pressed="true">Play</button>
       <button id="view-listing" aria-pressed="false">Listing</button>
+      <button id="view-manager" aria-pressed="false">Manage project</button>
     </div>
     <div id="settings"></div>
     <button id="reload">Reload preview</button
@@ -245,6 +421,9 @@ No peer connections yet.</pre>
   <section id="listing" hidden aria-label="Listing preview">
     <div class="listing-heading">
       <h2>Your next little release.</h2>
+      <label style="font-size: 13px"
+        ><input id="capture-live" type="checkbox" /> Play in a capture window first</label
+      >
       <button id="capture" hidden>Capture screenshot</button>
     </div>
     <fieldset
@@ -285,6 +464,15 @@ No peer connections yet.</pre>
       Local draft · changes to napplet.json appear here automatically.
     </p>
     <div id="listing-content"></div>
+  </section>
+  <section id="manager" hidden aria-label="Project manager">
+    <div class="manager-heading">
+      <div>
+        <p class="manager-eyebrow">YOUR LOCAL WORKSHOP</p>
+        <h1>A little polish.<br />A lot more yours.</h1>
+      </div>
+      <button id="manager-refresh">Reload from files</button>
+    </div>
   </section>
   <div id="files" aria-label="Session file downloads"></div>
   <dialog id="prompt" aria-label="Napplet permission" aria-describedby="prompt-detail">

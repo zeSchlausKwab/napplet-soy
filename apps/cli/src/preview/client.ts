@@ -1,3 +1,4 @@
+import { setupManager } from './manager-client';
 import shim from '@napplet/shim/prelude.global?raw';
 import { loadArtifact, PLAYER_SANDBOX } from '../../../../packages/runtime/src';
 import { nappletPrelude } from '../../../../packages/runtime/src/prelude';
@@ -40,6 +41,7 @@ let loaded = '';
 let pubkey: string | null = null;
 const lifetime = new AbortController();
 setupListing(lifetime.signal);
+setupManager(lifetime.signal);
 const diagnostics = () => host?.diagnostics() ?? Promise.resolve([]);
 setupDiagnostics(diagnostics, lifetime.signal);
 // Only the trusted local preview/scenario runner can access this opaque-frame parent.

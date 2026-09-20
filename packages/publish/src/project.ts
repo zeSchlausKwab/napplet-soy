@@ -1,3 +1,4 @@
+import { validateAssets, ASSET_LOCK, ASSET_MODULE, ASSET_TYPES } from '../../assets/src';
 import { constants } from 'node:fs';
 import { lstat, mkdir, open, realpath, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -109,6 +110,7 @@ export async function inspectProject(
       'The project belongs to a different creator or network. Select its saved account, or explicitly change the project creator and identifier for a remix.',
     );
   const targets = resolveTargets(project, network, overrides);
+  const managed = await validateAssets(root);
   const built = project.entry === 'dist/index.html';
   const defaults = !frozenCommit
     ? (
@@ -129,6 +131,9 @@ export async function inspectProject(
     ...new Set([
       ...(frozenFiles ?? [...defaults, ...(project.publish?.files ?? [])]),
       ...(built ? [project.entry] : []),
+      ...(managed.assets.length
+        ? [ASSET_LOCK, ASSET_MODULE, ASSET_TYPES, ...managed.assets.map((a) => a.path)]
+        : []),
       ...(project.preview?.image ? [project.preview.image] : []),
       ...(project.preview?.video ? [project.preview.video.file] : []),
     ]),
@@ -189,7 +194,11 @@ export async function inspectProject(
     throw new PublishError('ARTIFACT_INVALID', 'index.html must be nonempty UTF-8 HTML.');
   }
   const requires = [
-    ...new Set([...project.requires, ...(built ? await builtRequirements(html) : [])]),
+    ...new Set([
+      ...project.requires,
+      ...(managed.assets.some((a) => a.storage === 'external') ? ['resource'] : []),
+      ...(built ? await builtRequirements(html) : []),
+    ]),
   ];
   const missing = missingDomains(requires);
   if (missing.length)

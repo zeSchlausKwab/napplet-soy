@@ -21,6 +21,17 @@ are separate versioned MCP contracts; `soy-rtc/1` is documented host signaling,
 not an additional NAP or a NIP-100 conformance claim. No custom manifest metadata
 or Soy publisher provenance is required. [Implementation, limits and verification](CONTEXTVM.md).
 
+## Managed runtime assets — soyLI 0.13.0 source
+
+The local asset inventory is an authoring convention, not a manifest extension.
+External assets use ordinary `resource` capability requirements,
+`blossom:sha256:<hash>` references and signed Blossom server hints. Source archives
+retain the lock/helper/originals for remixes; removing that optional source metadata
+does not affect playback of the published HTML on compatible hosts. All publishers
+use the same byte/hash/MIME admission. No new website resource proxy is introduced.
+WebM classification and Blob fonts are now supported by the shared host; limits and
+remaining gaps are in [ASSETS.md](ASSETS.md) and [PUBLIC-RUNTIME.md](PUBLIC-RUNTIME.md).
+
 ## 1. Compatibility baseline
 
 The current [NIP-5D proposal at commit 24711d9](https://github.com/dskvr/nips/blob/24711d9c47bbdd07908bf1d52bf677d9cbc530f0/5D.md) defines named napplets as kind `35129`, root napplets as `15129`, and immutable snapshots as `5129`. It adopts the file-manifest tag schema and aggregate-hash algorithm from [NIP-5A](https://github.com/nostr-protocol/nips/blob/master/5A.md). Generic nsites use different kinds; they must not be silently treated as sandboxed napplets.

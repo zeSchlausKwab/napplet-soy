@@ -32,18 +32,22 @@ export async function preview(
     server = startPreviewServer(pathToFileURL(root + '/'), port, false, await previewAssets(), {
       network,
       backend: backend?.provider,
-      record: (settings) =>
+      record: (settings, interactive) =>
         recordProject(
           root,
           network,
           `preview-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.webm`,
           settings,
+          interactive,
+          signal,
         ),
-      capture: () =>
+      capture: (interactive) =>
         screenshotProject(
           root,
           network,
           `preview-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`,
+          interactive,
+          signal,
         ),
     });
     signal.addEventListener('abort', stop, { once: true });

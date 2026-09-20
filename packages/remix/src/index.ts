@@ -1,3 +1,4 @@
+import { validateAssets } from '../../assets/src';
 import { ProtocolClient } from '../../client/src/nostr';
 import { readRepository, repositoryRef } from '../../collaboration/src/protocol';
 import { cloneRevision } from '../../collaboration/src/git';
@@ -255,6 +256,7 @@ export async function createRemix(
           manifest: input.manifest,
         },
       });
+      await validateAssets(target);
       return {
         directory: target,
         lineage,
@@ -340,6 +342,7 @@ export async function createRemix(
       (files.has('.gitignore') ? decode('.gitignore') : '') +
         '\n.napplet-space/\nnode_modules/\n.env\n.env.*\n*.nsec\n',
     );
+    await validateAssets(target);
     await sourceGit(target, ['init']);
     await sourceGit(target, ['symbolic-ref', 'HEAD', 'refs/heads/main']);
     return {

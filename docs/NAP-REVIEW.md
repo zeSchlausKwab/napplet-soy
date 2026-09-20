@@ -240,3 +240,21 @@ No NAP or authoritative NIP-5D pin changes. Built review reuses normal sandbox
 playback with separate state and guest identity. Optional `soy-preview` is a Soy
 attachment convention, explicitly documented in [COLLABORATION.md](COLLABORATION.md),
 not claimed as a standardized NAP or prerequisite for external proposals.
+
+
+## Managed resource authoring review — 2026-09-20
+
+Reviewed [NAP-RESOURCE proposal 13 at `8c0645d`](https://github.com/napplet/naps/blob/8c0645d32ceb159bc3e8bcec1107a92862b7e86a/naps/NAP-RESOURCE.md),
+including complete Blob results, canonical `blossom:sha256:<hex>` references, hash
+verification and host MIME/policy ownership. The existing shim 0.30.0, starter SDK
+0.24.4 and maintained boilerplate pin are unchanged; the NIP-5D authority/pin stands.
+
+The new inventory/helper uses that existing resource surface. Local original serving
+is an explicit loopback development adapter; publication uploads immutable bytes to
+the chosen Blossom and emits ordinary server/requirement tags. The inventory does
+not need an independent-client adapter for playback. The browser test decodes real
+PNG/WAV/WOFF2/WebM using local and separate Blossom fixtures; the compiled upstream
+Vite test rebuilds embedded/external assets in a fresh Git checkout. This does not
+claim full NAP-RESOURCE conformance, arbitrary codec support, Hashtree resolution,
+SVG rasterization or an independent-client acceptance test. Existing unsupported
+operations remain unsupported. No protocol identity or discovery changes.

@@ -1,3 +1,5 @@
+import { manageProject, editProject } from './manager';
+import { MAX_ASSET_BYTES } from '../../../packages/assets/src';
 import { checkpoint, committedSource } from '../../../packages/publish/src/git-source';
 import { propose, proposalAction, pushSource } from '../../../packages/collaboration/src/service';
 import { proposalList, review } from './review';
@@ -44,6 +46,9 @@ Usage:
   bun run soyli setup|build [--project <folder>]
   bun run soyli run <package-script> [arguments...]
   bun run soyli exec <project-tool> [arguments...]
+  bun run soyli assets list|sync|remove <id> [--project <folder>]
+  bun run soyli assets add <file> <id> [--storage embedded|external] [--license <license>]
+  bun run soyli project show|set <json-file> [--project <folder>]
   bun run soyli config [init] [--project <folder>]
   bun run soyli backend init|sync|status [--project <folder>]
   bun run soyli multiplayer <scenario.mjs> [--players 2] [--latency 50] [--jitter 15] [--seed 1]
@@ -129,6 +134,8 @@ try {
         revision: { type: 'string' },
         target: { type: 'string' },
         rebuild: { type: 'boolean' },
+        storage: { type: 'string' },
+        license: { type: 'string' },
         template: { type: 'string' },
         'no-install': { type: 'boolean' },
         identity: { type: 'string' },
@@ -214,6 +221,10 @@ try {
     if (!json && backupFile) console.log(backupNotice(backupFile));
   };
   const [command, action, argument, ...extra] = positionals;
+  if ((values.storage || values.license) && !(command === 'assets' && action === 'add'))
+    throw new AccountError('USAGE', 'Use --storage and --license with assets add.');
+  if (values.storage && !['embedded', 'external'].includes(values.storage))
+    throw new AccountError('USAGE', 'Choose --storage embedded or external.');
   if (values.new && !(command === 'account' && action === 'create'))
     throw new AccountError('USAGE', 'Use --new only with account create.');
   if (
@@ -264,6 +275,8 @@ try {
         'check',
         'setup',
         'build',
+        'assets',
+        'project',
         'skills',
         'config',
         'screenshot',
@@ -473,6 +486,55 @@ try {
           ? await syncBackend(directory, network, accounts, { signal: controller.signal, onAuth })
           : await backendStatus(directory, network);
     console.log(JSON.stringify(result, null, 2));
+  } else if (command === 'assets' || command === 'project') {
+    const root = values.project ?? process.cwd();
+    const current = await manageProject(root, network);
+    let result: unknown = current;
+    if (command === 'project' && action === 'set' && argument && !extra.length) {
+      const file = Bun.file(argument);
+      if (file.size > 8192) throw new AccountError('PROJECT_EDIT', 'Metadata file is too large.');
+      result = await editProject(root, network, {
+        action: 'project',
+        revision: current.revision,
+        changes: await file.json(),
+      });
+    } else if (command === 'assets' && action === 'add' && argument && extra.length === 1) {
+      const file = Bun.file(argument);
+      if (file.size > MAX_ASSET_BYTES)
+        throw new AccountError(
+          'ASSET_LIMIT',
+          'The current runtime asset limit is 10 MiB per file.',
+        );
+      result = await editProject(root, network, {
+        action: 'asset',
+        revision: current.revision,
+        id: extra[0],
+        storage: values.storage ?? 'external',
+        license: values.license ?? current.project.license,
+        data: Buffer.from(await file.arrayBuffer()).toString('base64'),
+      });
+    } else if (command === 'assets' && action === 'remove' && argument && !extra.length)
+      result = await editProject(root, network, {
+        action: 'asset-remove',
+        revision: current.revision,
+        id: argument,
+      });
+    else if (command === 'assets' && action === 'sync' && !argument)
+      result = await editProject(root, network, {
+        action: 'asset-sync',
+        revision: current.revision,
+      });
+    else if (
+      (command === 'assets' && action !== 'list') ||
+      (command === 'project' && action !== 'show') ||
+      argument ||
+      extra.length
+    )
+      throw new AccountError(
+        'USAGE',
+        'Use assets list|add <file> <id>|remove <id>|sync or project show|set <json-file>.',
+      );
+    console.log(JSON.stringify(result, null, json ? 0 : 2));
   } else if (command === 'skills') {
     if (
       action !== 'update' ||

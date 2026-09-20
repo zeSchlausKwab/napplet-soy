@@ -5,6 +5,29 @@ standalone `soyli` executable, with its pinned Playwright support files. A separ
 Bun, Node, npm, or platform checkout is not required. The executable embeds Bun;
 this is not an alternative runtime implementation for users who reject Bun itself.
 
+## Local workshop and managed assets — 0.13.0
+
+`soyli dev` opens Play, Listing and **Manage project**. The manager edits portable
+name/title, description, tags and license in `napplet.json`; destinations go into
+the existing ignored `.napplet-space/project.json` binding. Identity and upstream
+association are preserved. Reload before saving if an agent edited the files.
+
+Import and preview assets, edit attribution, choose embedded or external storage,
+select earlier covers/clips and inspect Git status. Saves do not commit or publish.
+The agent uses the same services with `soyli assets list|add|remove|sync` and
+`soyli project show|set <json-file>`; the latter accepts all five editable metadata
+fields (`name`, `title`, `description`, `topics`, `license`). See [assets](ASSETS.md).
+
+Listing's **Play in a capture window first** opens a fresh interactive Chromium
+session of the current build. Play until a useful moment, then capture or record.
+Closing that window cancels. The required browser/encoder is cached automatically;
+there is no separate recorder to install. This does not record the original preview
+tab. Timed agent recipes remain supported; GIF export and the full Git/proposal
+management UI are not part of this increment. `soyli review` remains the proposal UI.
+
+Loopback editing checks Host, Origin and a per-session token. No new public REST
+proxy or remote shell endpoint is added. Private keys never enter manager payloads.
+
 ## Collaboration — local 0.12.0
 
 One remix supports both your own publication and upstream proposals. Code and pushed

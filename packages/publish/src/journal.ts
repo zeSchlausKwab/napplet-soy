@@ -90,6 +90,7 @@ export const jobSchema = z
       .optional(),
     receipts: z
       .object({
+        assets: z.record(hash, z.boolean()).optional(),
         preview: z.boolean().optional(),
         video: z.boolean().optional(),
         descriptor: z.boolean().optional(),

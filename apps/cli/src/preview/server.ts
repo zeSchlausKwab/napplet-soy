@@ -1,3 +1,6 @@
+import { manageProject, editProject } from '../manager';
+import { readBytes } from '../../../../packages/client/src/bytes';
+import { readAssets, assetBytes, assetMime } from '../../../../packages/assets/src';
 import { readBinding } from '../../../../packages/publish/src/binding';
 import { recordingSchema, type Recording } from '../../../../packages/publish/src/config';
 import { videoBytesResponse } from '../../../../packages/backend/src/preview-videos';
@@ -52,11 +55,12 @@ export function startPreviewServer(
   listing: {
     network: Network;
     backend?: BackendProvider;
-    capture?: () => Promise<unknown>;
-    record?: (settings: Recording) => Promise<unknown>;
+    capture?: (interactive?: boolean) => Promise<unknown>;
+    record?: (settings: Recording, interactive?: boolean) => Promise<unknown>;
   } = { network: 'public' },
 ) {
   let capturing = false;
+  const managerToken = crypto.randomUUID();
   async function revision() {
     // BunFile caches stat/size: create fresh handles after every editor save.
     const configFile = Bun.file(new URL('napplet.json', root));
@@ -68,21 +72,23 @@ export function startPreviewServer(
     const bytes = await regularFile(fileURLToPath(root), config.entry, MAX_ARTIFACT_BYTES);
     if (bytes.length > MAX_ARTIFACT_BYTES || configText.length > 16384)
       throw new Error('Project exceeds preview limits.');
+    const managed = await readAssets(fileURLToPath(root));
     const artifactHash = await sha256(bytes);
     const info: PreviewRevision = {
       backend: listing.backend,
       backendAliases: listing.backend && config.backend?.provider ? [config.backend.provider] : [],
-      id: await sha256(`${artifactHash}:${configText}`),
+      id: await sha256(`${artifactHash}:${configText}:${JSON.stringify(managed)}`),
       artifactHash,
       hostIdentity: `local-preview:${config.previewId}:${artifactHash}`,
       requires: [
         ...new Set([
           ...config.requires,
+          ...(managed.assets.some((a) => a.storage === 'external') ? ['resource'] : []),
           ...(config.entry === 'dist/index.html' ? await builtRequirements(bytes) : []),
         ]),
       ],
       relays: [...new Set([...(listing.backend?.relays ?? []), ...config.relays])],
-      servers: config.servers,
+      servers: managed.assets.length ? [server.url.origin, ...config.servers] : config.servers,
     };
     return { info, bytes, servers: config.servers };
   }
@@ -96,34 +102,104 @@ export function startPreviewServer(
       // Restrict local build files and capture actions to this preview origin.
       if (
         !['127.0.0.1', 'localhost'].includes(url.hostname) ||
+        url.port !== server.url.port ||
         (request.headers.has('Origin') && request.headers.get('Origin') !== url.origin)
       )
         return new Response('Forbidden', { status: 403, headers: noStore });
       try {
+        if (url.pathname.startsWith('/manager')) {
+          if (
+            request.headers.get('X-Soyli-Token') !== managerToken &&
+            !url.pathname.startsWith('/manager/asset/') &&
+            url.pathname !== '/manager/presentation'
+          )
+            return new Response('Forbidden', { status: 403, headers: noStore });
+          if (url.pathname === '/manager' && request.method === 'GET')
+            return Response.json(await manageProject(fileURLToPath(root), listing.network), {
+              headers: noStore,
+            });
+          if (url.pathname === '/manager' && request.method === 'POST') {
+            if (request.headers.get('Origin') !== url.origin)
+              return new Response('Forbidden', { status: 403 });
+            if (capturing) return new Response('Capture already running', { status: 409 });
+            const body = await readBytes(new Response(request.body), 14 * 1024 * 1024 + 8192);
+            return Response.json(
+              await editProject(
+                fileURLToPath(root),
+                listing.network,
+                JSON.parse(new TextDecoder().decode(body)),
+              ),
+              { headers: noStore },
+            );
+          }
+          if (url.pathname === '/manager/presentation' && request.method === 'GET') {
+            const file = url.searchParams.get('file') ?? '';
+            // Only root capture names are exposed; regularFile rejects links and traversal.
+            if (!/^(?:preview|presentation)[a-zA-Z0-9._-]*\.(png|webm)$/.test(file))
+              return new Response('Not found', { status: 404 });
+            const bytes = await regularFile(fileURLToPath(root), file, 5 * 1024 * 1024);
+            const mime = assetMime(bytes);
+            if (mime !== 'image/png' && mime !== 'video/webm')
+              return new Response('Invalid capture', { status: 400 });
+            return new Response(bytes, {
+              headers: {
+                ...noStore,
+                'Content-Type': mime,
+                'Content-Security-Policy': "default-src 'none'; sandbox",
+              },
+            });
+          }
+          if (/^\/manager\/asset\/[a-f0-9]{64}$/.test(url.pathname) && request.method === 'GET') {
+            const asset = (await readAssets(fileURLToPath(root))).assets.find(
+              (a) => a.hash === url.pathname.split('/').pop(),
+            );
+            if (!asset) return new Response('Not found', { status: 404 });
+            return new Response(await assetBytes(fileURLToPath(root), asset), {
+              headers: {
+                ...noStore,
+                'Content-Type': asset.mime,
+                'Content-Security-Policy': "default-src 'none'; sandbox",
+              },
+            });
+          }
+          return new Response('Not found', { status: 404 });
+        }
         if (
-          ['/listing/capture', '/listing/record'].includes(url.pathname) &&
+          [
+            '/listing/capture',
+            '/listing/record',
+            '/listing/capture-live',
+            '/listing/record-live',
+          ].includes(url.pathname) &&
           request.method === 'POST'
         ) {
           // Only an explicit action in this host can write a selected screenshot.
           if (request.headers.get('Origin') !== url.origin)
             return new Response('Forbidden', { status: 403, headers: noStore });
-          const record = url.pathname === '/listing/record';
+          const record = url.pathname.startsWith('/listing/record');
+          const interactive = url.pathname.endsWith('-live');
           if (record ? !listing.record : !listing.capture)
             return new Response('Capture unavailable', { status: 404, headers: noStore });
           if (capturing)
             return new Response('Capture already running', { status: 409, headers: noStore });
+          server.timeout(request, 0); // The interactive capture has its own five-minute deadline.
           capturing = true;
           try {
             if (record) {
               if (Number(request.headers.get('Content-Length') ?? 0) > 8192)
                 throw new Error('Recording recipe too large.');
-              const body = await request.text();
+              const body = new TextDecoder().decode(
+                await readBytes(new Response(request.body), 8192),
+              );
               if (body.length > 8192) throw new Error('Recording recipe too large.');
-              return Response.json(await listing.record!(recordingSchema.parse(JSON.parse(body))), {
-                headers: noStore,
-              });
+              return Response.json(
+                await listing.record!(recordingSchema.parse(JSON.parse(body)), interactive),
+                {
+                  headers: noStore,
+                },
+              );
             }
-            return Response.json(await listing.capture!(), { headers: noStore });
+            return Response.json(await listing.capture!(interactive), { headers: noStore });
           } finally {
             capturing = false;
           }
@@ -150,6 +226,19 @@ export function startPreviewServer(
               'Content-Security-Policy': "default-src 'none'; sandbox",
             },
           });
+        if (/^\/[a-f0-9]{64}$/.test(url.pathname)) {
+          const asset = (await readAssets(fileURLToPath(root))).assets.find(
+            (a) => a.hash === url.pathname.slice(1),
+          );
+          if (!asset) return new Response('Not found', { status: 404 });
+          return new Response(await assetBytes(fileURLToPath(root), asset), {
+            headers: {
+              ...noStore,
+              'Content-Type': asset.mime,
+              'Content-Security-Policy': "default-src 'none'; sandbox",
+            },
+          });
+        }
         if (url.pathname === '/revision')
           return Response.json((await revision()).info, { headers: noStore });
         if (/^\/artifacts\/[a-f0-9]{64}$/.test(url.pathname)) {
@@ -168,16 +257,24 @@ export function startPreviewServer(
             headers: { ...noStore, 'Content-Type': 'text/javascript; charset=utf-8' },
           });
         if (url.pathname === '/')
-          return new Response(assets?.html ?? Bun.file(new URL('.napplet/preview.html', root)), {
-            headers: {
-              ...noStore,
-              'Content-Type': 'text/html; charset=utf-8',
-              'Content-Security-Policy':
-                // srcdoc inherits this policy too; its own stricter CSP removes
-                // 'self' and all network access while allowing embedded code.
-                "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'",
+          return new Response(
+            (
+              assets?.html ?? (await Bun.file(new URL('.napplet/preview.html', root)).text())
+            ).replace(
+              '<html lang="en">',
+              `<html lang="en"><meta name="soyli-token" content="${managerToken}">`,
+            ),
+            {
+              headers: {
+                ...noStore,
+                'Content-Type': 'text/html; charset=utf-8',
+                'Content-Security-Policy':
+                  // srcdoc inherits this policy too; its own stricter CSP removes
+                  // 'self' and all network access while allowing embedded code.
+                  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'",
+              },
             },
-          });
+          );
         return new Response('Not found', { status: 404, headers: noStore });
       } catch (error) {
         return Response.json(

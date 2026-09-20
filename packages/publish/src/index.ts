@@ -1,3 +1,4 @@
+import { parseAssets, ASSET_LOCK } from '../../assets/src';
 import { inspectPreviewVideo, MAX_VIDEO_BYTES } from '../../protocol/src/preview-video';
 import { join } from 'node:path';
 import { realpath, rm } from 'node:fs/promises';
@@ -702,6 +703,30 @@ export async function publishProject(options: PublishOptions) {
               signal: options.signal,
             });
           job.receipts[kind] = true;
+          await save();
+        }
+        for (const asset of parseAssets(frozen.contents.get(ASSET_LOCK)).assets.filter(
+          (a) => a.storage === 'external',
+        )) {
+          const bytes = frozen.contents.get(asset.path)!;
+          if (
+            !owned.has(asset.hash) ||
+            !(await (deps.verified ?? verifiedBlob)(
+              job.plan.targets.blossom,
+              asset.hash,
+              bytes.length,
+              options.signal,
+            ))
+          )
+            await (deps.upload ?? uploadBlob)({
+              origin: job.plan.targets.blossom,
+              bytes,
+              type: asset.mime,
+              signer: signer!,
+              local: options.network === 'local',
+              signal: options.signal,
+            });
+          job.receipts.assets = { ...job.receipts.assets, [asset.hash]: true };
           await save();
         }
         await guard();

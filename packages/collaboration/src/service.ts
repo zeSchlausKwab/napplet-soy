@@ -1,3 +1,4 @@
+import { ASSET_LOCK, parseAssets } from '../../assets/src';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ProtocolClient } from '../../client/src/nostr';
@@ -169,6 +170,10 @@ export async function propose(
             });
             return `${targets.blossom}/${await sha256(bytes)}`;
           };
+          for (const asset of parseAssets(inspected.contents.get(ASSET_LOCK)).assets.filter(
+            (a) => a.storage === 'external',
+          ))
+            await put(inspected.contents.get(asset.path)!, asset.mime);
           await put(bytes, 'text/html');
           const image = checked.preview ? await put(checked.preview, 'image/png') : undefined;
           const now = Math.max(Math.floor(Date.now() / 1000), (saved?.event.created_at ?? 0) + 1);

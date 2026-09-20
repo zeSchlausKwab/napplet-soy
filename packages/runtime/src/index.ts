@@ -3,7 +3,7 @@ import { MAX_ARTIFACT_BYTES, sha256 } from '../../protocol/src/artifact';
 
 export const PLAYER_SANDBOX = 'allow-scripts';
 export const PLAYER_CSP =
-  "default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; worker-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+  "default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; media-src data: blob:; connect-src 'none'; worker-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
 
 export async function verifiedDocument(
   bytes: Uint8Array,

@@ -1,3 +1,4 @@
+import { validateAssets } from '../../../packages/assets/src';
 import { chmod, lstat, mkdir, mkdtemp, rename, rm, symlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -254,6 +255,7 @@ export async function setupProject(directory: string, signal?: AbortSignal) {
 }
 
 export async function buildProject(directory: string, signal?: AbortSignal) {
+  await validateAssets(directory);
   await backendProject(directory);
   if (!(await Bun.file(join(directory, 'node_modules/.modules.yaml')).exists()))
     await setupProject(directory, signal);

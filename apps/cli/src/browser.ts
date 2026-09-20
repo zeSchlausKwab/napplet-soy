@@ -29,14 +29,15 @@ export async function browserEngine(): Promise<Playwright> {
     pathToFileURL(join(playwrightDirectory(), 'index.mjs')).href
   )) as Playwright);
 }
-export async function browserInstalled(video = false) {
+export async function browserInstalled(video = false, interactive = false) {
   await browserEngine();
   // The pinned Playwright registry knows each platform's headless-shell path.
   const require = createRequire(pathToFileURL(join(playwrightDirectory(), 'index.js')));
   const registry = require('./lib/coreBundle.js').registry.registry;
-  const executables = ['chromium-headless-shell', ...(video ? ['ffmpeg'] : [])].map((name) =>
-    registry.findExecutable(name)?.executablePath(),
-  );
+  const executables = [
+    interactive ? 'chromium' : 'chromium-headless-shell',
+    ...(video ? ['ffmpeg'] : []),
+  ].map((name) => registry.findExecutable(name)?.executablePath());
   return (
     await Promise.all(
       executables.map((executable) =>
@@ -53,8 +54,9 @@ export async function browserInstalled(video = false) {
 export async function installBrowser(
   progress = (message: string) => process.stderr.write(message + '\n'),
   video = false,
+  interactive = false,
 ) {
-  if (await browserInstalled(video)) return;
+  if (await browserInstalled(video, interactive)) return;
   const cwd = browserCache();
   await mkdir(cwd, { recursive: true, mode: 0o700 });
   progress('Downloading the pinned Chromium check browser. It is cached for future publications.');
@@ -81,7 +83,7 @@ export async function installBrowser(
       '--no-env-file',
       join(playwrightDirectory(), 'cli.js'),
       'install',
-      '--only-shell',
+      ...(interactive ? [] : ['--only-shell']),
       'chromium',
     ],
     {
@@ -101,7 +103,7 @@ export async function installBrowser(
   process.once('SIGTERM', stop);
   try {
     const [code] = await Promise.all([child.exited, drain(child.stdout), drain(child.stderr)]);
-    if (code !== 0 || !(await browserInstalled(video))) throw new Error();
+    if (code !== 0 || !(await browserInstalled(video, interactive))) throw new Error();
   } catch {
     throw new AccountError(
       'BROWSER_INSTALL',

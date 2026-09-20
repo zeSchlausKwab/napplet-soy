@@ -1,3 +1,5 @@
+import { waitForCapture } from './interactive-capture';
+import { ASSET_LOCK, parseAssets } from '../../../packages/assets/src';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -24,12 +26,15 @@ export async function checkPublication(
   contents: Map<string, Uint8Array>,
   forceScreenshot = false,
   recording?: Recording,
+  interactive = false,
+  signal?: AbortSignal,
 ) {
   const directory = await mkdtemp(join(tmpdir(), 'napplet-publish-check-'));
   let browser: import('@playwright/test').Browser | undefined;
   let server: ReturnType<typeof startPreviewServer> | undefined;
   let backend: Awaited<ReturnType<typeof localBackend>>;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const abort = () => void browser?.close();
   try {
     await builtConfiguration(executableBytes(contents));
     const config = JSON.parse(new TextDecoder().decode(contents.get('napplet.json')));
@@ -45,23 +50,31 @@ export async function checkPublication(
       );
     await mkdir(join(directory, '.napplet'));
     await mkdir(join(directory, 'dist'));
-    for (const path of [executableEntry(contents), 'napplet.json'])
+    for (const path of [
+      executableEntry(contents),
+      'napplet.json',
+      ...(contents.has(ASSET_LOCK)
+        ? [ASSET_LOCK, ...parseAssets(contents.get(ASSET_LOCK)).assets.map((a) => a.path)]
+        : []),
+    ])
       await Bun.write(join(directory, path), contents.get(path)!);
     backend = await localBackend(directory);
     server = startPreviewServer(pathToFileURL(directory + '/'), 0, false, await previewAssets(), {
       network: 'local',
       backend: backend?.provider,
     });
-    await installBrowser(undefined, !!recording);
+    await installBrowser(undefined, !!recording, interactive);
+    signal?.throwIfAborted();
     try {
       const { chromium } = await browserEngine();
-      browser = await chromium.launch({ headless: true });
+      browser = await chromium.launch({ headless: !interactive });
     } catch {
       throw new PublishError(
         'BROWSER_REQUIRED',
         'The check browser could not start. Run soyli doctor; Linux needs the Chromium system libraries. Browser setup is available with soyli browser install.',
       );
     }
+    signal?.addEventListener('abort', abort, { once: true });
     const delayMs = config.preview?.delayMs ?? 1500;
     if (!Number.isInteger(delayMs) || delayMs < 250 || delayMs > 10000)
       throw new PublishError('PREVIEW_CONFIG', 'preview.delayMs must be between 250 and 10000.');
@@ -116,6 +129,7 @@ export async function checkPublication(
     await page.waitForTimeout(delayMs);
     if (errors.length || (await frame.evaluate(() => (window as any).__publishViolations?.length)))
       throw new Error();
+    if (interactive) await waitForCapture(page, recording);
     let preview: Uint8Array;
     if (config.preview?.image && !forceScreenshot) {
       const selected = contents.get(config.preview.image);
@@ -180,12 +194,14 @@ export async function checkPublication(
         node.style.height = '600px';
         node.style.zIndex = '2147483647';
       });
-      await page.waitForTimeout(recording.startMs + 100);
+      await page.waitForTimeout((interactive ? 0 : recording.startMs) + 100);
       const path = join(directory, 'preview.webm');
       await page.screencast.start({ path, size: { width: 960, height: 600 } });
       try {
         const start = Date.now();
-        for (const action of [...recording.actions].sort((a, b) => a.atMs - b.atMs)) {
+        for (const action of [...(interactive ? [] : recording.actions)].sort(
+          (a, b) => a.atMs - b.atMs,
+        )) {
           await page.waitForTimeout(Math.max(0, start + action.atMs - Date.now()));
           if (action.type === 'click') await page.mouse.click(action.x, action.y);
           else await page.keyboard[action.type === 'keyDown' ? 'down' : 'up'](action.key);
@@ -250,6 +266,7 @@ export async function checkPublication(
       'The frozen creation failed the shared sandbox startup check. Run the local preview and fix script or handshake errors before publishing.',
     );
   } finally {
+    signal?.removeEventListener('abort', abort);
     clearTimeout(timer);
     await browser?.close();
     server?.stop(true);

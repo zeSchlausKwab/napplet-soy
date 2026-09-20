@@ -171,13 +171,19 @@ export function setupListing(signal: AbortSignal) {
   };
   play.onclick = () => select(false);
   listing.onclick = () => select(true);
+  const live = document.querySelector<HTMLInputElement>('#capture-live')!;
   capture.onclick = async () => {
     record.disabled = true;
     capture.disabled = true;
     running = true;
-    status.textContent = 'Capturing the built app… Chromium is downloaded on first use if needed.';
+    status.textContent = live.checked
+      ? 'Opening a capture window. Play, then choose Capture this moment. Close that window to cancel.'
+      : 'Capturing the built app… Chromium is downloaded on first use if needed.';
     try {
-      const response = await fetch('/listing/capture', { method: 'POST', signal });
+      const response = await fetch(live.checked ? '/listing/capture-live' : '/listing/capture', {
+        method: 'POST',
+        signal,
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? 'Capture failed.');
       status.textContent = 'Screenshot saved and selected. Inspect it below before publishing.';
@@ -197,10 +203,11 @@ export function setupListing(signal: AbortSignal) {
     capture.disabled = true;
     running = true;
     record.textContent = 'Recording…';
-    status.textContent =
-      'Recording a fresh run of the built app. Timed clicks and keys can be set in preview.recording.actions in napplet.json.';
+    status.textContent = live.checked
+      ? 'Opening a capture window. Play, then start recording when ready. Close that window to cancel.'
+      : 'Recording a fresh run of the built app. Timed clicks and keys can be set in preview.recording.actions in napplet.json.';
     try {
-      const response = await fetch('/listing/record', {
+      const response = await fetch(live.checked ? '/listing/record-live' : '/listing/record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

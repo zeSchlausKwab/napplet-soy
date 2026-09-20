@@ -28,10 +28,15 @@ this note maps its local tooling commands to the installed napplet soyLI.
   Its pinned test browser is downloaded and cached on first use.
 - soyli dev watches the Vite build inside the napplet.soy sandbox.
   Use its URL for preview. The upstream pnpm dev URL serves source without a host.
+  Manage project edits name/title, description, tags/license, destinations and assets.
+  Edits use project files; reload if another editor/agent changed them. No silent publish.
   Switch from Play to Listing to inspect the title, description, tags, creator,
   screenshot, optional video clip, license and publishing destinations. Use Capture screenshot after
   the final build; inspect the saved image in Listing before publishing. Captures
   select a new PNG in napplet.json and preserve previous images.
+  Enable "Play in a capture window first" to open a fresh interactive capture window.
+  Play until a useful moment, then capture or record; close the window to cancel.
+  Interactive recording ignores scripted actions/start-delay. The duration still applies.
   The Settings button opens the same live configuration form as the website.
 - soyli build makes dist/index.html. Edit index.html, src/main.ts and
   src/styles.css; keep the upstream Vite configuration and dependency lockfile.
@@ -66,6 +71,30 @@ this note maps its local tooling commands to the installed napplet soyLI.
   then checks the artifact and publishes. Preview/review opening never runs build scripts.
 - For older single-file projects whose napplet.json entry is index.html, edit
   that file directly and use dev/check/publish; no build toolchain is required.
+
+## Runtime assets
+
+Use soyli assets add <file> <id> --storage external --license <license> or Manage
+project. It writes tracked assets/<hash>.<ext>, napplet.assets.json, soy-assets.js
+and soy-assets.d.ts. From src/main.ts import { assetUrl } from '../soy-assets.js';
+then await assetUrl('jump-sound') for an image/audio/video URL, or a FontFace URL.
+Embedded mode uses the upstream Vite import; external uses the standard host resource
+capability and a verified Blossom hash. Never use raw remote fetch or public/ paths.
+soyli assets list shows credits/bytes/destinations; assets sync regenerates the helper
+after a deliberate inventory edit. Unlist preserves originals; update source calls.
+Keep lock/helper/originals in Git so another creator can rebuild. Publish/propose
+uploads external resources before announcing the playable version; remix verifies
+originals. Local preview uses the same sandbox with registered local bytes.
+
+Use PNG/JPEG/WebP/GIF, WAV/Ogg/MP3, WOFF/WOFF2 or short MP4/WebM. Decode/play the
+actual files during preview: format recognition is not codec/playback proof.
+Current budget: 32 assets, 10 MiB each, 32 MiB managed total, within 40 MiB/128 source
+files. Embedded bytes also consume the 10 MiB HTML budget. These are tooling limits,
+not hosting plans. Destination Blossom is configurable; provider quotas are unknown.
+There is no streaming/transcoding or out-of-Git large-original workflow yet.
+Use soyli project show or project set <json-file> for the manager metadata service.
+The JSON has name, title, description, topics and license. Git/proposal controls
+remain soyli checkpoint/propose/review/merge; the manager currently shows Git status.
 
 ## Make the preview worth opening
 

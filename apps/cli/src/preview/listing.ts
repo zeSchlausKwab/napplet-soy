@@ -1,3 +1,5 @@
+import { readAssets } from '../../../../packages/assets/src';
+import { effectiveProject } from '../../../../packages/publish/src/binding';
 import {
   inspectPreviewVideo,
   MAX_VIDEO_BYTES,
@@ -58,11 +60,17 @@ export async function listingPreview(
   captureAvailable: boolean,
   recordingAvailable = false,
 ) {
-  const project = await projectAt(root);
+  const project = await effectiveProject(root, await projectAt(root));
   const targets = resolveTargets(project, network);
   const warnings: string[] = [];
   let artifact: { bytes: number; hash: string } | null = null;
-  let requires = project.requires;
+  let requires = [...project.requires];
+  try {
+    if ((await readAssets(root)).assets.some((asset) => asset.storage === 'external'))
+      requires.push('resource');
+  } catch {
+    warnings.push('Managed asset inventory is invalid. Run soyli assets list and repair it.');
+  }
   let configuration: { properties: number; version: number | null } | null = null;
   try {
     const bytes = await regularFile(root, project.entry, MAX_ARTIFACT_BYTES);

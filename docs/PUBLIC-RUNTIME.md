@@ -59,6 +59,12 @@ Only explicitly configured loopback storage is permitted for local development.
 Browser CORS and private-network policies apply; a provider without compatible
 CORS fails visibly rather than triggering a proxy fallback.
 
+The 0.13.0 source classifies WebM from its EBML signature/document type and allows
+font Blob URLs within the opaque frame. Other network/CSP permissions stay bounded.
+The managed creator workflow uses these same resource operations; see [ASSETS.md](ASSETS.md).
+Codec support depends on the browser. Content recognition is not a guarantee of
+successful decoding, and no external URL is granted directly to iframe CSS/media.
+
 Each resource is capped at 10 MiB. The host queues bursts with four simultaneous
 fetches, at most 16 outstanding envelopes, 60 operations/minute and 128 MiB per play
 session. Executable HTML is downloaded from Blossom and verified before launch.

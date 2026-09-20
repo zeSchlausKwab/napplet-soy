@@ -1,4 +1,7 @@
 import { descriptorVideos } from '../../protocol/src/preview-video';
+import { importAsset, readAssets, validateAssets } from '../../assets/src';
+import { createRemix } from '../../remix/src';
+import { sourceArchive } from '../../remix/src/archive';
 import { expect, test } from 'bun:test';
 import { mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -157,6 +160,45 @@ async function fixture() {
     close: () => rm(root, { recursive: true, force: true }),
   };
 }
+test('managed external assets are uploaded before announcement, resume unchanged and restore from source on remix', async () => {
+  const f = await fixture();
+  try {
+    const asset = await importAsset(f.project, {
+      id: 'sprite',
+      bytes: previewPng,
+      storage: 'external',
+      license: 'CC0',
+    });
+    let interrupted = false;
+    f.deps.checkpoint = async (job) => {
+      if (job.receipts.assets?.[asset.hash] && !interrupted) {
+        interrupted = true;
+        throw new Error('Interrupted after asset upload');
+      }
+    };
+    await expect(publishProject(f.options)).rejects.toMatchObject({ code: 'PUBLISH_FAILED' });
+    const pending = await f.load();
+    expect(pending.receipts.assets?.[asset.hash]).toBe(true);
+    expect(pending.receipts.current).toBe(false);
+    const result = await publishProject({ ...f.options, resume: true });
+    const job = await f.load();
+    expect('snapshotId' in result && result.snapshotId).toBe(job.snapshot!.id);
+    expect(f.writes.filter((w) => w === asset.hash)).toHaveLength(1);
+    const remix = await createRemix(f.root, 'remixed-assets', {
+      manifest: job.snapshot!,
+      artifact: f.blobs.get(job.plan.artifactHash)!,
+      files: sourceArchive(f.blobs.get(job.archiveHash)!),
+    });
+    expect((await readAssets(remix.directory)).assets[0].hash).toBe(asset.hash);
+    await validateAssets(remix.directory);
+    expect(await Bun.file(join(remix.directory, asset.path)).bytes()).toEqual(previewPng);
+    const current = job.current!;
+    expect(current.tags).toContainEqual(['requires', 'resource']);
+    expect(current.tags.filter((t) => t[0] === 'path')).toHaveLength(1);
+  } finally {
+    await f.close();
+  }
+});
 test('preview upload and linked descriptor survive interruption with identical signatures and image bytes', async () => {
   const f = await fixture();
   try {

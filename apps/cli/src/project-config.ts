@@ -1,3 +1,4 @@
+import { sha256 } from '../../../packages/protocol/src';
 import { effectiveProject, readBinding, writeBinding } from '../../../packages/publish/src/binding';
 import { rename, rm, writeFile, lstat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -77,7 +78,13 @@ export async function projectConfiguration(
 }
 
 /** Save a reviewable project image without overwriting an existing asset or publishing anything. */
-export async function screenshotProject(directory: string, network: Network, name = 'preview.png') {
+export async function screenshotProject(
+  directory: string,
+  network: Network,
+  name = 'preview.png',
+  interactive = false,
+  signal?: AbortSignal,
+) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,120}\.png$/.test(name))
     throw new PublishError(
       'PREVIEW_PATH',
@@ -89,7 +96,7 @@ export async function screenshotProject(directory: string, network: Network, nam
     network,
     (await effectiveProject(root, project)).creator?.pubkey ?? '0'.repeat(64),
   );
-  const checked = await checkPublication(contents, true);
+  const checked = await checkPublication(contents, true, undefined, interactive, signal);
   if ((await inspectProject(root, network, plan.pubkey)).fingerprint !== fingerprint)
     throw new PublishError(
       'PROJECT_CHANGED',
@@ -127,11 +134,16 @@ export async function recordProject(
   network: Network,
   name = 'preview.webm',
   settings?: Recording,
+  interactive = false,
+  signal?: AbortSignal,
 ) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,120}\.webm$/.test(name))
     throw new PublishError('PREVIEW_PATH', 'Choose a WebM filename in the project root.');
   const { root, bytes, project } = await readProject(directory);
-  if (await lstat(join(root, name)).catch(() => null))
+  if (
+    (await lstat(join(root, name)).catch(() => null)) ||
+    (await lstat(join(root, name + '.json')).catch(() => null))
+  )
     throw new PublishError(
       'PREVIEW_EXISTS',
       'This clip already exists. Use record preview-2.webm to preserve it.',
@@ -142,7 +154,7 @@ export async function recordProject(
     (await effectiveProject(root, project)).creator?.pubkey ?? '0'.repeat(64),
   );
   const recording = recordingSchema.parse(settings ?? project.preview?.recording ?? {});
-  const checked = await checkPublication(contents, false, recording);
+  const checked = await checkPublication(contents, false, recording, interactive, signal);
   if (!checked.video) throw new PublishError('PREVIEW_VIDEO', 'No clip was recorded.');
   if ((await inspectProject(root, network, plan.pubkey)).fingerprint !== fingerprint)
     throw new PublishError(
@@ -160,15 +172,26 @@ export async function recordProject(
       );
     throw error;
   }
+  let sidecarCreated = false;
   try {
     project.preview = {
       ...project.preview,
       video: { file: name, artifactHash: plan.artifactHash },
       recording,
     };
+    await writeFile(
+      path + '.json',
+      JSON.stringify({
+        hash: await sha256(checked.video),
+        artifactHash: plan.artifactHash,
+      }) + '\n',
+      { flag: 'wx' },
+    );
+    sidecarCreated = true;
     await saveProject(root, bytes, project);
   } catch (error) {
     await rm(path, { force: true });
+    if (sidecarCreated) await rm(path + '.json', { force: true });
     throw error;
   }
   return {

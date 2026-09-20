@@ -6,6 +6,28 @@ before installer activation. See the [release evidence](DEPLOYMENT.md#rich-comme
 
 The browser follows standard manifest `app` references through Applesauce and displays the published image/video URLs. Server indexing may also cache a normalized image for SSR/OG generation; that cache is optional for browser presentation. No catalog executes downloaded napplets to generate previews. See [direct protocol access](PROTOCOL-ACCESS.md) for the current transport, implemented locally on 2026-09-15 and awaiting deployment.
 
+## Workshop capture — soyLI 0.13.0
+
+Run `soyli dev`, open Listing and enable **Play in a capture window first**.
+Capture screenshot / Record clip opens a fresh interactive Chromium window showing
+the frozen current build. Play, then choose **Capture this moment** or **Record the
+next N seconds**. Closing the window cancels; an idle session expires after five
+minutes. The host controls are excluded. Interactive recording starts immediately
+and ignores scripted actions/start-delay; the selected 2–8 second duration applies.
+
+The cached browser/encoder is installed automatically. Interactive capture requires
+a graphical desktop (a headless SSH server can still run scripted captures). Saving
+checks that project source did not change during capture and preserves earlier
+files. Clips get a small hash/build sidecar for later selection without falsifying
+their build association. Do not manually edit that provenance to bypass stale checks.
+The manager shows earlier root `preview*.png/webm` and `presentation*.png/webm`
+captures, supports playback and cover/clip selection, and edits project metadata.
+
+Choose a moment that shows the core interaction, rather than automatically accepting
+a splash screen. Review the saved frame and clip for meaningful action, legibility,
+cropping and errors. Agent recipes remain useful for reproducible captures.
+The manager does not record the existing Play tab or export GIFs.
+
 ## Supported metadata
 
 The manifest link uses [NIP-5A's optional app descriptor reference](https://github.com/nostr-protocol/nips/blob/master/5A.md#upstream-app-descriptors), adopted with the manifest schema by the NIP-5D draft:

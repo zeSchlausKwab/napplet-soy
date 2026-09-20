@@ -1,9 +1,66 @@
 # Assets in a napplet
 
-Audited **2026-09-14** against the vendored upstream boilerplate and its pinned
-`@napplet/vite-plugin` **0.11.2**. This is the supported small-asset workflow today.
-The complete large-media workflow described below is still missing. Runtime assets and gallery previews
-are separate things.
+The managed workflow is included in **soyLI 0.13.0 source**. Runtime resources and
+presentation covers/clips remain separate. Release preparation is not deployment.
+
+## Managed assets: CLI and local workshop
+
+Run `soyli dev` and choose **Manage project** to import an image, sound, font or
+short video. Supply its name and license/credit, choose **embedded** or **Blossom**,
+and inspect its preview, hash, size and destination. The same operations are available
+to an agent:
+
+```sh
+soyli assets add ./jump.ogg jump-sound --storage external --license CC0
+soyli assets list
+soyli assets remove jump-sound
+soyli assets sync
+```
+
+Import creates a content-addressed original under `assets/`, a tracked
+`napplet.assets.json` inventory and generated `soy-assets.js` / `soy-assets.d.ts`.
+Use the generated helper from `src/main.ts`:
+
+```ts
+import { assetUrl } from '../soy-assets.js';
+const jump = new Audio(await assetUrl('jump-sound'));
+// Call jump.play() from a user gesture.
+```
+
+`assetUrl` resolves to an embedded data URL or a Blob URL returned through the
+standard `napplet.resource.bytes('blossom:sha256:…')` capability. External references
+contain hashes, not a Soy API URL. The host uses manifest Blossom hints, validates
+bytes, and applies ordinary resource policy. External resources declare `resource`
+as a required capability. The inventory/helper are authoring conventions; playback
+on another host does not require parsing our lockfile or contacting napplet.soy.
+Use `releaseAssetUrls()` when a long-lived app no longer needs cached Blob URLs.
+
+The upstream Vite single-file build handles embedded imports. Rebuild after inventory
+changes. Local preview serves only registered, hash-verified originals through the
+same resource host. Publish freezes, uploads and verifies external files at the
+configured Blossom target before announcing the manifest. Retry retains saved targets
+and verifies existing uploads. Playable proposal previews upload their external
+resources too. Git/source archives retain originals; fresh remixes validate them
+without relying on the creator's asset cache. Removing an inventory entry preserves
+original files and previously published blobs; update source calls explicitly.
+
+Current admission: PNG, JPEG, WebP, GIF, WAV, Ogg, MP3, WOFF/WOFF2, MP4 and WebM.
+Signatures identify types; codec support still depends on the browser. Exercise actual
+image decoding, sound playback, font loading and video playback in the host. Asset
+registration does not convert formats, stream indefinitely or certify every scene.
+
+Limits: **32 assets, 10 MiB per file, 32 MiB total managed bytes**. Originals still
+count towards the **40 MiB / 128-file source budget**. Embedded bytes additionally
+count towards the **10 MiB HTML limit**, including encoding overhead. These are
+client/tooling constraints, not a purchased or free hosting allowance. Third-party
+provider quotas are unknown; provider rejection is authoritative. Choose a custom
+Blossom in Manage project or the local publishing binding. Changing providers does
+not relax runtime validation or source limits. No billing or new server caps are
+introduced by this workflow.
+
+Larger original libraries, original files stored outside Git, general transcoding,
+streaming and provider quota discovery are not implemented. Keep those limits in
+mind when choosing which assets to embed. Ordinary imported small assets remain valid:
 
 ## Small assets: keep them in the project and import them
 
@@ -99,33 +156,20 @@ Refreshing skills or reinstalling the same old CLI does not update runtime suppo
 - **Gallery cover:** `napplet.json` preview settings and the screenshot workflow
   produce a separate image, referenced by the signed listing metadata. A runtime
   image or video does not automatically become a cover. See [previews](PREVIEWS.md).
-- **Destinations:** `napplet.json`'s publishing configuration chooses relay, Blossom,
-  Git/GRASP and site; CLI target flags override it. Runtime Blossom `servers` hints
+- **Destinations:** The local `.napplet-space/project.json` binding chooses relay, Blossom,
+  Git/GRASP and site, with `napplet.json` as the portable fallback. CLI target flags override it. Runtime Blossom `servers` hints
   are a separate configuration, not the upload target. See [publishing](PUBLISHING.md).
 
-## Larger assets: the gap
+## Verification
 
-The host supports verified resource loading through the upstream `napplet.resource`
-domain, including content-addressed `blossom:sha256:…` references and signed server
-hints. That is a runtime capability, **not yet an asset manager**. There is no complete
-creator workflow that discovers large local assets, uploads them, writes a hash/URL
-lockfile, updates hints, verifies every reference, restores assets during remix and
-previews everything with production-equivalent behavior.
+`tests/services/asset-manager.test.ts` decodes real image/audio/font/video resources
+through the shared sandbox against local originals and a separate Blossom fixture;
+it also checks manager saves and hostile-origin/token rejection. Publisher tests
+cover interrupted uploads, verified resume and a fresh source-archive remix.
+The standalone managed-asset test exercises the upstream Vite build and a new Git
+checkout with both embedded and external resources. No public event or upload is
+needed for these checks.
 
-Direct HTTP fetching from the sandbox is disabled; use the host resource capability
-when developing a manual external-resource integration. Host requests currently have
-a 10 MiB per-resource limit and bounded time/concurrency. Font and common image/audio/
-MP4 MIME signatures are recognized. WebM is not yet explicitly identified by the
-external-resource MIME policy; do not promise a universal managed WebM path from the
-current implementation. Embedded WebM and external resource loading are distinct.
-
-A19 will define automatic embedding versus separate immutable resource uploads,
-visible destinations, resumable publication, local/prod parity, licensing, source
-retention, format support and failure diagnostics. A09 remains responsible for
-creating short listing-preview videos. Neither pipeline is declared complete today.
-
-Implementation evidence: [upstream pin](../apps/cli/vendor/boilerplate.json),
-[source selection](../packages/publish/src/project.ts),
-[publisher](../packages/publish/src/index.ts),
-[resource policy](../packages/backend/src/resource-response.ts),
-[runtime limits](PUBLIC-RUNTIME.md).
+Implementation: [inventory/helper](../packages/assets/src/index.ts),
+[project manager](../apps/cli/src/manager.ts), [publisher](../packages/publish/src/index.ts),
+[resource policy](../packages/client/src/resource-mime.ts), [previews](PREVIEWS.md).

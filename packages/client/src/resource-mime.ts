@@ -9,6 +9,8 @@ export function resourceMime(bytes: Uint8Array, verifiedBinary = false): string 
   if (ascii.startsWith('RIFF') && ascii.slice(8, 12) === 'WAVE') return 'audio/wav';
   if (ascii.startsWith('OggS')) return 'audio/ogg';
   if (ascii.startsWith('ID3') || (head[0] === 255 && (head[1] & 224) === 224)) return 'audio/mpeg';
+  if (head.slice(0, 4).join() === '26,69,223,163' && ascii.slice(0, 256).includes('webm'))
+    return 'video/webm';
   if (ascii.slice(4, 8) === 'ftyp') return 'video/mp4';
   if (ascii.startsWith('wOF2')) return 'font/woff2';
   if (ascii.startsWith('wOFF')) return 'font/woff';
