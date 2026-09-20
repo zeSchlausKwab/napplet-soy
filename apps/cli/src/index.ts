@@ -73,6 +73,7 @@ Usage:
   bun run soyli --version
 
 All commands accept --network public|local and --json.
+Dev prefers port 4173 and chooses a free port if busy. --port fixes a port; --port 0 chooses any free port.
 Development fallback: SOYLI_DANGEROUS_PLAINTEXT_KEYS=1 enables separate, unencrypted
 owner-only account files outside Git. Unset it to return to OS-vault accounts.
 Create reuses your selected account; account create --new creates and selects another.
@@ -576,7 +577,7 @@ try {
         throw new AccountError('USAGE', 'Choose a port from 0 to 65535.');
       await preview(
         values.project ?? process.cwd(),
-        port,
+        values.port === undefined ? undefined : port,
         !values['no-open'],
         json,
         controller.signal,

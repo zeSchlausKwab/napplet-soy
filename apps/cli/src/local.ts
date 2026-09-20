@@ -16,7 +16,7 @@ import { createWorkshop } from './workshop';
 
 export async function preview(
   directory: string,
-  port: number,
+  port: number | undefined,
   open: boolean,
   json: boolean,
   signal: AbortSignal,
@@ -67,28 +67,42 @@ export async function preview(
   const stop = () => server?.stop(true);
   try {
     backend = await localBackend(root);
-    server = startPreviewServer(pathToFileURL(root + '/'), port, false, await previewAssets(), {
-      network,
-      workshop,
-      backend: backend?.provider,
-      record: (settings, interactive) =>
-        recordProject(
-          root,
-          network,
-          `preview-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.webm`,
-          settings,
-          interactive,
-          signal,
-        ),
-      capture: (interactive) =>
-        screenshotProject(
-          root,
-          network,
-          `preview-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`,
-          interactive,
-          signal,
-        ),
-    });
+    const assets = await previewAssets();
+    const start = (listenPort: number) =>
+      startPreviewServer(pathToFileURL(root + '/'), listenPort, false, assets, {
+        network,
+        workshop,
+        backend: backend?.provider,
+        record: (settings, interactive) =>
+          recordProject(
+            root,
+            network,
+            `preview-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.webm`,
+            settings,
+            interactive,
+            signal,
+          ),
+        capture: (interactive) =>
+          screenshotProject(
+            root,
+            network,
+            `preview-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.png`,
+            interactive,
+            signal,
+          ),
+      });
+    try {
+      server = start(port ?? 4173);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw error;
+      if (port !== undefined)
+        throw new AccountError(
+          'PREVIEW_PORT_IN_USE',
+          `Port ${port} is already in use. Stop the other preview or run soyli dev --port 0 to choose a free port.`,
+        );
+      server = start(0);
+      if (!json) console.log('Port 4173 is already in use; using a free preview port.');
+    }
     signal.addEventListener('abort', stop, { once: true });
     const response = await fetch(new URL('revision', server.url));
     if (!response.ok)

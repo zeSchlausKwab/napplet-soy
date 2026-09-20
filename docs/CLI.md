@@ -7,7 +7,13 @@ this is not an alternative runtime implementation for users who reject Bun itsel
 
 ## Local workshop — 0.14.0
 
-`soyli dev` opens Play, Listing and **Manage project**. The manager edits portable
+`soyli dev` opens Play, Listing and **Manage project**. Starting with **0.14.2
+(not yet published)**, it prefers port 4173 and automatically chooses a free port
+when that port is occupied. An explicit `--port 4173` keeps that port fixed and
+reports an actionable conflict. `soyli dev --port 0` asks the OS for a free port;
+this also works in 0.14.1. Existing previews are not stopped or replaced.
+
+The manager edits portable
 name/title, description, tags and license in `napplet.json`; destinations go into
 the existing ignored `.napplet-space/project.json` binding. Identity and upstream
 association are preserved. Reload before saving if an agent edited the files.
