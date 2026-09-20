@@ -1,11 +1,12 @@
 import { network, backendProvider } from '@/lib/network';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Check, Copy, Expand, Minimize, LoaderCircle, Play, RotateCcw, Square } from 'lucide-react';
+import { Check, Copy, Expand, Minimize, Play, RotateCcw, Square } from 'lucide-react';
 import { playback } from '@/lib/playback-coordinator';
 import { usePlayerPresentation } from '@/lib/use-player-presentation';
 import { useNostr } from './nostr-provider';
 import { Button } from './ui/button';
 import { PlayerChrome } from './player-chrome';
+import { SoybertWalk } from './soybert-walk';
 import { loadArtifact, PLAYER_SANDBOX } from '../../../../packages/runtime/src';
 import { preparePlayback } from '../../../../packages/runtime/src/playback';
 import type { Napplet } from '../../../../packages/backend/src/catalog';
@@ -263,9 +264,9 @@ export function Player({
               referrerPolicy="no-referrer"
             />
           ) : (
-            <div className="player-message" role="status">
-              <LoaderCircle className="animate-spin" />
-              Verifying creation…
+            <div className="player-message player-loading" role="status">
+              <SoybertWalk />
+              <span>Verifying creation…</span>
             </div>
           )}
           {prompt && (

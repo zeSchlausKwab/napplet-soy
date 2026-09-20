@@ -1,0 +1,113 @@
+/* Nine aligned frames, in row-major order; no interpolation between cells. */
+.soybert-walk {
+  position: relative;
+  display: block;
+  width: 112px;
+  height: 112px;
+  flex-shrink: 0;
+}
+.soybert-walk-frames {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: url('/brand/soybert-walking-aligned.png') 0 0 / 300% 300% no-repeat;
+  animation: soybert-walking 1.2s step-end infinite;
+}
+@keyframes soybert-walking {
+  0%,
+  100% {
+    background-position: 0 0;
+  }
+  11.111111% {
+    background-position: 50% 0;
+  }
+  22.222222% {
+    background-position: 100% 0;
+  }
+  33.333333% {
+    background-position: 0 50%;
+  }
+  44.444444% {
+    background-position: 50% 50%;
+  }
+  55.555556% {
+    background-position: 100% 50%;
+  }
+  66.666667% {
+    background-position: 0 100%;
+  }
+  77.777778% {
+    background-position: 50% 100%;
+  }
+  88.888889% {
+    background-position: 100% 100%;
+  }
+}
+.soybert-walk-toggle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  z-index: 1;
+  cursor: pointer;
+}
+.soybert-walk-toggle:checked ~ .soybert-walk-frames {
+  animation-play-state: paused;
+}
+.soybert-walk:has(.soybert-walk-toggle:focus-visible) {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.soybert-walk-hint {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--background);
+  color: #547050;
+  opacity: 0;
+}
+.soybert-walk-play {
+  display: none;
+}
+.soybert-walk-toggle:checked ~ .soybert-walk-hint .soybert-walk-pause {
+  display: none;
+}
+.soybert-walk-toggle:checked ~ .soybert-walk-hint .soybert-walk-play {
+  display: block;
+}
+.soybert-walk:hover .soybert-walk-hint,
+.soybert-walk-toggle:focus-visible ~ .soybert-walk-hint,
+.soybert-walk-toggle:checked ~ .soybert-walk-hint {
+  opacity: 1;
+}
+.player-message.player-loading {
+  gap: 6px;
+  padding: 12px;
+}
+.player-loading .soybert-walk {
+  width: clamp(56px, 8vw, 104px);
+  height: clamp(56px, 8vw, 104px);
+}
+@media (hover: none) {
+  .soybert-walk-hint {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .soybert-walk-frames {
+    animation: none;
+  }
+  .soybert-walk-toggle,
+  .soybert-walk-hint {
+    display: none;
+  }
+}

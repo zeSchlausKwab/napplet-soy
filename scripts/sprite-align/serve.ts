@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { spriteLibrary } from './library';
 
 export function startAlignmentServer(port = 4318) {
   const root = import.meta.dir;
@@ -9,17 +10,32 @@ export function startAlignmentServer(port = 4318) {
     ['/style.css', resolve(root, 'style.css')],
     ['/soybert-laptop.png', resolve(root, '../../apps/web/public/brand/soybert-laptop.png')],
   ]);
+  for (const sheet of spriteLibrary)
+    routes.set(`/sprites/${sheet.id}.png`, resolve(root, '../..', sheet.file));
   return Bun.serve({
     hostname: '127.0.0.1',
     port,
-    fetch(request) {
+    async fetch(request) {
       if (request.method !== 'GET' && request.method !== 'HEAD')
         return new Response('Method not allowed', { status: 405 });
       const url = new URL(request.url);
       if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost')
         return new Response('Invalid host', { status: 403 });
+      if (url.pathname === '/library.json') {
+        const available = await Promise.all(
+          spriteLibrary.map(async ({ file, ...sheet }) =>
+            (await Bun.file(resolve(root, '../..', file)).exists())
+              ? { ...sheet, url: `/sprites/${sheet.id}.png`, name: file.split('/').at(-1)! }
+              : null,
+          ),
+        );
+        return Response.json(available.filter(Boolean), {
+          headers: { 'Cache-Control': 'no-store' },
+        });
+      }
       const path = routes.get(url.pathname);
       if (!path) return new Response('Not found', { status: 404 });
+      if (!(await Bun.file(path).exists())) return new Response('Not found', { status: 404 });
       return new Response(Bun.file(path), {
         headers: {
           'Cache-Control': 'no-store',

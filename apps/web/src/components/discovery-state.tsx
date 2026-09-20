@@ -1,6 +1,6 @@
 import { Link, useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { LoaderCircle } from 'lucide-react';
+import { SoybertWalk } from './soybert-walk';
 import { Button } from './ui/button';
 import { usePlayRoute } from '@/lib/use-play-route';
 
@@ -45,7 +45,7 @@ export function DiscoveryState({
             : 'The relay or download may be temporarily unavailable. You can try this link again.')}
       </p>
       {pending ? (
-        <LoaderCircle className="animate-spin" aria-label="Searching" />
+        <SoybertWalk />
       ) : (
         <Button
           variant="outline"

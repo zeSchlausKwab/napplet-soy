@@ -24,6 +24,13 @@
           ><span>03 &nbsp; Export the sheet</span>
         </div>
       </div>
+      <section class="library-panel" aria-label="Sprite library">
+        <div class="library-heading">
+          <span class="eyebrow">CHOOSE A SPRITE SHEET</span
+          ><span class="hint">Your reference points stay with each sheet.</span>
+        </div>
+        <div id="sprite-library" class="sprite-library" aria-label="Available sprite sheets"></div>
+      </section>
       <div class="sourcebar">
         <div><strong id="source-name">Loading Soybert…</strong><span id="source-info"></span></div>
         <div class="source-actions">
@@ -47,8 +54,8 @@
             <span id="progress" class="pill">0 / 9 set</span>
           </div>
           <p class="hint">
-            For this cycle, use a sharp corner of the laptop. Avoid a hand, eye, or anything meant
-            to move. Frame 1 sets the destination for every other frame.
+            <span id="landmark-hint">Choose a stable landmark rather than a moving limb.</span>
+            Frame 1 sets the destination for every other frame.
           </p>
           <div id="filmstrip" class="filmstrip" aria-label="Choose a frame"></div>
           <div class="editor-toolbar">
@@ -120,7 +127,7 @@
                 value="0"
                 aria-label="Inspect animation frame"
             /></label>
-            <p id="geometry" class="hint">Set all nine points to prepare the final sheet.</p>
+            <p id="geometry" class="hint">Set every reference point to prepare the final sheet.</p>
           </section>
           <section class="export-panel">
             <span class="eyebrow">03 / READY FOR ITS CLOSE-UP</span>

@@ -1,0 +1,16 @@
+Generated using the built-in image_gen tool. Reference: soy-mascot.png.
+
+Use case: illustration-story. Create a new NINE-FRAME walk-cycle sprite sheet of Soybert, using the attached logo as character and rendering reference. Soybert is the adorable cream tofu cube with thick dark brown outlines, rosy cheeks, stubby cream legs, and a compact wooden-stock cartoon shotgun held steadily across its front, muzzle angled down. Keep the recognizable identity, colors, proportions and shotgun. Mild determined eyebrows and a tiny confident smile, same face every frame. No firing, no action effects, no words or logos.
+EXACT LAYOUT: square PNG canvas, precisely THREE columns by THREE rows of equal square cells. Exactly one complete character per cell, nine characters total. Row-major chronological order. Genuine transparent alpha background, no solid backdrop, no checkerboard drawn in, no glow, no ground, no shadows around character, no grid lines or labels. All artwork stays within central 75% of its cell; ample equal margins.
+ANIMATION: a smooth determined WALK IN PLACE, consistently facing slightly right in the same three-quarter front view as the reference. FIXED camera, FIXED scale, FIXED torso and head position relative to cell, no body rotation, no body morphing. Keep tofu outline, facial features, speckles, arms and shotgun almost identical and registered across all nine frames. The little legs do the motion beneath the stable torso. No random changes in gun geometry or illustration style. This is nine consecutive in-between drawings of one periodic movement, not a contact sheet of different character poses.
+Use nine evenly spaced phases around one full walking stride, 0,40,80,120,160,200,240,280,320 degrees. Two short legs alternating opposite directions:
+1 left foot extends forward to right, right foot behind to left;
+2 left foot planted traveling toward middle, right heel lifts behind;
+3 left planted, right knee begins passing under body;
+4 right foot swings forward, left leg extends behind;
+5 right foot reaches forward contact, left heel lifts;
+6 right planted traveling toward middle, left foot lifts behind;
+7 right planted, left knee passes beneath body;
+8 left foot swings forward, right extends behind;
+9 left foot almost reaches starting forward contact, right foot nearly starting rear position.
+Frame 9 flows to frame 1 without duplicating it. Clearly distinguish the alternating legs. No extra limbs. Prioritize smooth small differences and identical registration. Crisp cute cartoon linework matching the supplied mascot.

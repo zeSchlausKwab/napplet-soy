@@ -16,6 +16,8 @@ let plan,
   lastTick = 0,
   loadGeneration = 0;
 let paused = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let library = [],
+  activeSheet = null;
 const cacheKey = () => `soybert-align/v1/${source.sha256}/${columns}x${rows}`;
 const say = (text, error = false) => {
   $('#notice').textContent = text;
@@ -35,10 +37,10 @@ function persist() {
   }
 }
 
-async function loadImage(blob, name) {
-  const generation = ++loadGeneration;
+async function loadImage(blob, name, sheet = null, generation = ++loadGeneration) {
   let next;
   try {
+    if (generation !== loadGeneration) return;
     if (blob.size > 24 * 1024 * 1024) throw new Error('Choose a PNG smaller than 24 MB.');
     const bytes = await blob.arrayBuffer();
     const signature = [...new Uint8Array(bytes, 0, Math.min(bytes.byteLength, 8))].join(',');
@@ -53,15 +55,84 @@ async function loadImage(blob, name) {
       next.close();
       return;
     }
+    const grid = sheet ?? { columns: 3, rows: 3 };
+    splitGrid(next.width, next.height, grid.columns, grid.rows);
     bitmap?.close();
     bitmap = next;
     source = { name, width: next.width, height: next.height, sha256: hash };
     $('#source-name').textContent = name;
-    setupGrid(3, 3);
-    say('Choose a stable corner in frame 1, then mark that same corner in every frame.');
+    setupGrid(grid.columns, grid.rows);
+    activeSheet = sheet?.id ?? null;
+    $('#landmark-hint').textContent =
+      sheet?.hint ?? 'Choose a stable body or object landmark. Avoid anything intended to move.';
+    syncLibrary();
+    say('Choose a stable landmark in frame 1, then mark that same landmark in every frame.');
   } catch (error) {
     if (next !== bitmap) next?.close();
     if (generation === loadGeneration) say(error.message, true);
+  }
+}
+
+function syncLibrary() {
+  document
+    .querySelectorAll('.sheet-button')
+    .forEach((button) =>
+      button.setAttribute('aria-pressed', String(button.dataset.sheet === activeSheet)),
+    );
+  const url = new URL(location.href);
+  if (activeSheet) url.searchParams.set('sprite', activeSheet);
+  else url.searchParams.delete('sprite');
+  history.replaceState(null, '', url);
+  try {
+    if (activeSheet) localStorage.setItem('soybert-align/last-sheet', activeSheet);
+    else localStorage.removeItem('soybert-align/last-sheet');
+  } catch {
+    /* Point saving reports storage limitations separately. */
+  }
+}
+
+async function pickSheet(sheet) {
+  // Reserve the generation before fetching, so a slow previous request cannot win.
+  const generation = ++loadGeneration;
+  say(`Loading ${sheet.label}…`);
+  try {
+    const response = await fetch(sheet.url);
+    if (!response.ok) throw new Error('This sheet is unavailable. Choose another or open a PNG.');
+    await loadImage(await response.blob(), sheet.name, sheet, generation);
+  } catch (error) {
+    if (generation === loadGeneration) say(error.message, true);
+  }
+}
+
+function buildLibrary() {
+  $('#sprite-library').replaceChildren();
+  for (const sheet of library) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'sheet-button';
+    button.dataset.sheet = sheet.id;
+    button.setAttribute('aria-pressed', 'false');
+    button.setAttribute(
+      'aria-label',
+      `${sheet.label}, ${sheet.columns} by ${sheet.rows} sprite sheet`,
+    );
+    const thumb = document.createElement('span');
+    thumb.className = 'library-thumb checker';
+    thumb.setAttribute('aria-hidden', 'true');
+    const art = document.createElement('span');
+    art.style.backgroundImage = `url("${sheet.url}")`;
+    art.style.backgroundSize = `${sheet.columns * 100}% ${sheet.rows * 100}%`;
+    thumb.append(art);
+    const caption = document.createElement('span');
+    caption.className = 'sheet-caption';
+    const title = document.createElement('strong');
+    title.textContent = sheet.label;
+    const grid = document.createElement('span');
+    grid.textContent = `${sheet.columns} × ${sheet.rows} · ${sheet.detail}`;
+    caption.append(title, grid);
+    button.append(thumb, caption);
+    button.onclick = () => pickSheet(sheet);
+    $('#sprite-library').append(button);
   }
 }
 
@@ -400,9 +471,23 @@ $('#recipe-file').onchange = async (event) => {
 };
 requestAnimationFrame(tick);
 try {
-  const response = await fetch('/soybert-laptop.png');
-  if (!response.ok) throw new Error('Open a PNG to begin. The bundled source was not found.');
-  await loadImage(await response.blob(), 'soybert-laptop.png');
+  const response = await fetch('/library.json');
+  if (!response.ok) throw new Error('The sprite library is unavailable. Open a PNG to begin.');
+  library = await response.json();
+  buildLibrary();
+  let remembered;
+  try {
+    remembered = localStorage.getItem('soybert-align/last-sheet');
+  } catch {
+    /* Optional. */
+  }
+  const requested = new URL(location.href).searchParams.get('sprite');
+  const initial =
+    library.find((sheet) => sheet.id === requested) ??
+    library.find((sheet) => sheet.id === remembered) ??
+    library[0];
+  if (initial) await pickSheet(initial);
+  else say('Open a PNG to begin. No bundled sprite sheets are available.');
 } catch (error) {
   say(error.message, true);
 }

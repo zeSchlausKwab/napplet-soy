@@ -69,7 +69,12 @@ test('immersive routes preserve the verified frame and host session across nativ
   const unsupported = finalizeEvent(
     {
       ...current,
-      tags: [...tags.filter((t) => t[0] !== 'd'), ['d', 'unsupported'], ['requires', 'cvm']],
+      // CVM is supported now; keep this rejection fixture explicitly unknown.
+      tags: [
+        ...tags.filter((t) => t[0] !== 'd'),
+        ['d', 'unsupported'],
+        ['requires', 'unknown-host'],
+      ],
     },
     key,
   );

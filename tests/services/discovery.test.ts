@@ -20,17 +20,23 @@ test('cold portable links discover signed manifests, provide SSR OG and play inl
   const hash = await sha256(bytes);
   const slowBytes = new TextEncoder().encode('<!doctype html><button>Slow arrival works</button>');
   const slowHash = await sha256(slowBytes);
+  let releaseSlowArtifact!: () => void;
+  const slowArtifactGate = new Promise<void>((resolve) => {
+    releaseSlowArtifact = resolve;
+  });
   const blob = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
     fetch: async (request) => {
+      // The browser downloads directly from the declared Blossom origin.
+      const headers = { 'access-control-allow-origin': '*', 'content-type': 'text/html' };
       if (new URL(request.url).pathname === `/${slowHash}`) {
-        await Bun.sleep(3200);
-        return new Response(slowBytes);
+        await slowArtifactGate;
+        return new Response(slowBytes, { headers });
       }
       return new URL(request.url).pathname === `/${hash}`
-        ? new Response(bytes)
-        : new Response(null, { status: 404 });
+        ? new Response(bytes, { headers })
+        : new Response(null, { status: 404, headers });
     },
   });
   const origin = `http://127.0.0.1:${blob.port}`;
@@ -148,8 +154,81 @@ test('cold portable links discover signed manifests, provide SSR OG and play inl
     page.on('pageerror', (error) => errors.push(error.message));
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(site);
+    // Keep artifact delivery pending to inspect the real player loading state.
+    let releaseArtifact!: () => void;
+    const artifactGate = new Promise<void>((resolve) => {
+      releaseArtifact = resolve;
+    });
+    await page.route(`${origin}/${hash}`, async (route) => {
+      await artifactGate;
+      await route.fulfill({
+        status: 200,
+        body: Buffer.from(bytes),
+        headers: { 'access-control-allow-origin': '*' },
+      });
+    });
     await page.locator('.napplet-card').first().locator('.card-preview').click();
+    const loading = page.locator('.player-loading');
+    await loading.getByText('Verifying creation…', { exact: true }).waitFor();
+    const walk = loading.locator('.soybert-walk-frames');
+    expect(await walk.evaluate((el) => getComputedStyle(el).backgroundImage)).toContain(
+      '/brand/soybert-walking-aligned.png',
+    );
+    expect(await walk.evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+    const walkResponse = await page.request.get(`${site}/brand/soybert-walking-aligned.png`);
+    expect(walkResponse.status()).toBe(200);
+    expect(await walkResponse.body()).toEqual(
+      Buffer.from(
+        await Bun.file('apps/web/public/brand/soybert-walking-aligned.png').arrayBuffer(),
+      ),
+    );
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    const positions = await walk.evaluate((el) => {
+      const animation = el.getAnimations()[0];
+      animation.pause();
+      return Array.from({ length: 9 }, (_, i) => {
+        animation.currentTime = ((i + 0.5) * 1200) / 9;
+        return getComputedStyle(el).backgroundPosition.split(' ').map(parseFloat);
+      });
+    });
+    expect(positions).toEqual([
+      [0, 0],
+      [50, 0],
+      [100, 0],
+      [0, 50],
+      [50, 50],
+      [100, 50],
+      [0, 100],
+      [50, 100],
+      [100, 100],
+    ]);
+    await walk.evaluate((el) => el.getAnimations()[0].play());
+    const pause = loading.getByLabel('Pause Soybert loading animation');
+    await pause.check();
+    expect(await walk.evaluate((el) => getComputedStyle(el).animationPlayState)).toBe('paused');
+    await pause.press('Space');
+    expect(await walk.evaluate((el) => getComputedStyle(el).animationPlayState)).toBe('running');
+    await mkdir('.local/walking-loading-check', { recursive: true });
+    for (const width of [1365, 390, 320]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await loading.scrollIntoViewIfNeeded();
+      const bounds = await loading.boundingBox(),
+        mascot = await walk.boundingBox();
+      expect(mascot!.y).toBeGreaterThanOrEqual(bounds!.y);
+      expect(mascot!.y + mascot!.height).toBeLessThanOrEqual(bounds!.y + bounds!.height);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await page
+        .locator('.player-wrap')
+        .screenshot({ path: `.local/walking-loading-check/player-${width}.png` });
+    }
+    await page.setViewportSize({ width: 1365, height: 1000 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    releaseArtifact();
     await page.frameLocator('iframe').locator('button').click();
+    expect(await page.locator('.soybert-walk').count()).toBe(0);
+    await page.unroute(`${origin}/${hash}`);
     expect(await page.locator('iframe').count()).toBe(1);
     const frame = page.frames().find((f) => f !== page.mainFrame())!;
     expect(await frame.locator('button').textContent()).toBe('1');
@@ -216,10 +295,17 @@ test('cold portable links discover signed manifests, provide SSR OG and play inl
     await page.getByLabel('Search napplets').fill(slowAddress);
     await page.getByLabel('Search napplets').press('Enter');
     await page.getByRole('heading', { name: 'Finding your napplet…', exact: true }).waitFor();
+    expect(await page.locator('.discovery-state .soybert-walk').count()).toBe(1);
+    await page
+      .locator('.discovery-state')
+      .screenshot({ path: '.local/walking-loading-check/discovery.png' });
+    releaseSlowArtifact();
     await page
       .getByRole('button', { name: 'Start Slow arrival', exact: true })
       .waitFor({ timeout: 15000 });
-    expect(queries.filter((q) => q['#d']?.includes('cold-slow'))).toHaveLength(1);
+    expect(await page.locator('.discovery-state .soybert-walk').count()).toBe(0);
+    // Direct browser reads may repeat the indexer's exact lookup when the detail page mounts.
+    expect(queries.some((q) => q['#d']?.includes('cold-slow'))).toBe(true);
     expect(errors).toEqual([]);
   } finally {
     await browser?.close();

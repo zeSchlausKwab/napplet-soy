@@ -23,11 +23,82 @@ try {
   );
   expect(await page.locator('.frame-button').count()).toBe(9);
   expect(await page.locator('#export-png').isDisabled()).toBe(true);
+  const catalog = await (await page.request.get(new URL('/library.json', server.url).href)).json();
+  expect(catalog.some((sheet: { id: string }) => sheet.id === 'walking')).toBe(true);
+  expect(catalog.some((sheet: { id: string }) => sheet.id === 'laptop')).toBe(true);
+  const choose = async (id: string, name: string) => {
+    await page.locator(`[data-sheet="${id}"]`).click();
+    await page.waitForFunction(
+      (name) => document.querySelector('#source-name')?.textContent === name,
+      name,
+    );
+  };
+  const mark = async (x: number, y: number) => {
+    await page.locator('#anchor-x').fill(String(x));
+    await page.locator('#anchor-y').fill(String(y));
+    await page.locator('#anchor-y').press('Tab');
+  };
+  await mark(125, 126);
+  await choose('walking', 'soybert-walking.png');
+  expect(await page.locator('.frame-button').count()).toBe(9);
+  expect(await page.locator('#anchor-x').inputValue()).toBe('');
+  expect(await page.locator('#landmark-hint').textContent()).toContain('moving feet');
+  await mark(201, 202);
+  await page.reload();
+  await page.waitForFunction(
+    () => document.querySelector('#source-name')?.textContent === 'soybert-walking.png',
+  );
+  expect(await page.locator('#anchor-x').inputValue()).toBe('201');
+  await choose('laptop', 'soybert-laptop.png');
+  expect(await page.locator('#anchor-x').inputValue()).toBe('125');
+  expect(await page.locator('#anchor-y').inputValue()).toBe('126');
+  const legacy = catalog.find((sheet: { rows: number }) => sheet.rows === 2);
+  if (legacy) {
+    await choose(legacy.id, legacy.name);
+    expect(await page.locator('.frame-button').count()).toBe(6);
+    expect(await page.locator('#rows').inputValue()).toBe('2');
+    expect(await page.locator('#anchor-x').inputValue()).toBe('');
+  }
+  await choose('walking', 'soybert-walking.png');
+  expect(await page.locator('#rows').inputValue()).toBe('3');
+  expect(await page.locator('#anchor-y').inputValue()).toBe('202');
+
+  // A slower previous selection must not overwrite the most recent choice.
+  let release!: () => void;
+  const delayed = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/sprites/laptop.png', async (route) => {
+    if (route.request().resourceType() === 'fetch') await delayed;
+    await route.continue();
+  });
+  const request = page.waitForRequest(
+    (request) =>
+      request.url().endsWith('/sprites/laptop.png') && request.resourceType() === 'fetch',
+  );
+  await page.locator('[data-sheet="laptop"]').click();
+  await request;
+  await choose('walking', 'soybert-walking.png');
+  const staleResponse = page.waitForResponse((response) =>
+    response.url().endsWith('/sprites/laptop.png'),
+  );
+  release();
+  await (await staleResponse).finished();
+  await page.unroute('**/sprites/laptop.png');
+  expect(await page.locator('#source-name').textContent()).toBe('soybert-walking.png');
+  expect(await page.locator('[data-sheet="walking"]').getAttribute('aria-pressed')).toBe('true');
   await page.screenshot({ path: resolve(directory, 'desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: resolve(directory, 'mobile.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.setViewportSize({ width: 1440, height: 1080 });
+  const linked = await browser.newPage();
+  await linked.goto(new URL('/?sprite=walking', server.url).href);
+  await linked.waitForFunction(
+    () => document.querySelector('#source-name')?.textContent === 'soybert-walking.png',
+  );
+  expect(await linked.locator('.frame-button').count()).toBe(9);
+  await linked.close();
 
   // A known landmark shifts independently in every frame. Export must hold it still.
   const points = Array.from({ length: 9 }, (_, i) => ({
@@ -49,6 +120,7 @@ try {
   await page.waitForFunction(
     () => document.querySelector('#source-name')?.textContent === 'fixture.png',
   );
+  expect(await page.locator('.sheet-button[aria-pressed="true"]').count()).toBe(0);
   for (let i = 0; i < 9; i++) {
     await page.locator('.frame-button').nth(i).click();
     await page.locator('#anchor-x').fill(String(points[i].x));
@@ -105,15 +177,13 @@ try {
     document.querySelector('#notice')?.textContent?.includes('Recipe restored'),
   );
   expect(await page.locator('#export-png').isEnabled()).toBe(true);
-  await page
-    .locator('#recipe-file')
-    .setInputFiles({
-      name: 'wrong.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(
-        JSON.stringify({ ...recipe, source: { ...recipe.source, sha256: 'wrong' } }),
-      ),
-    });
+  await page.locator('#recipe-file').setInputFiles({
+    name: 'wrong.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({ ...recipe, source: { ...recipe.source, sha256: 'wrong' } }),
+    ),
+  });
   await page.waitForFunction(() =>
     document.querySelector('#notice')?.textContent?.includes('different source'),
   );
@@ -131,7 +201,7 @@ try {
   expect(await page.locator('#anchor-x').inputValue()).toBe('3');
   expect(errors).toEqual([]);
   console.log(
-    'Browser verification passed: landmarks, click/zoom/nudge, synchronized preview, PNG + JSON, CLI parity, restore, mismatch rejection, desktop/mobile, no page errors.',
+    'Browser verification passed: library selection/grid, per-sheet drafts, reload/deep link, stale-load protection, local uploads, landmarks, click/zoom/nudge, PNG + JSON, CLI parity, restore, desktop/mobile, no page errors.',
   );
 } finally {
   await browser.close();

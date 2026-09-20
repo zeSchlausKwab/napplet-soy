@@ -16,6 +16,16 @@ the player out of view, switching pages/filters, or leaving the route disposes i
 On narrow screens the active card spans the grid so its controls remain usable.
 Without JavaScript covers remain ordinary links and pagination remains navigable.
 
+Creation verification in the player and the pending relay-discovery screen use
+the aligned nine-frame Soybert walking animation. The loading text remains visible;
+the mascot can be paused with click/tap or keyboard Space, and reduced-motion
+preferences show a still frame. It is removed when the pending state ends. Small
+action-button indicators retain their existing behavior. This presentation does
+not change discovery retries, artifact verification or playback admission.
+Verified locally with the exported image bytes, all nine frame positions,
+pause/keyboard/reduced-motion behavior, 320/390/1365px loading views, completion
+of pending states and the immersive playback regression. Deployment is separate.
+
 ## On-demand Nostr discovery
 
 The search field accepts an naddr, nostr:naddr, note/nevent, or a portable `/n/` or
