@@ -5,6 +5,10 @@ standalone `soyli` executable, with its pinned Playwright support files. A separ
 Bun, Node, npm, or platform checkout is not required. The executable embeds Bun;
 this is not an alternative runtime implementation for users who reject Bun itself.
 
+Pending 0.14.2 also expands new-project publication defaults to **six relays**:
+Soy as primary plus five [shared public mirrors](RELAY-DEFAULTS.md). Existing
+project lists and saved publication jobs keep their configured destinations.
+
 ## Local workshop — 0.14.0
 
 `soyli dev` opens Play, Listing and **Manage project**. Starting with **0.14.2

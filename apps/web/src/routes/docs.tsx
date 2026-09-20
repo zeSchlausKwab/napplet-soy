@@ -291,10 +291,11 @@ function Documentation() {
               </div>
             </dl>
             <p>
-              These are defaults. The optional <code>mirrors</code> list adds relay copies after the
-              primary publication succeeds. You can use other compatible providers; changing an
-              existing relay or Git repository needs an explicit migration, not just a retry with
-              new settings.
+              These are defaults. New projects include five additional relays: Damus, nos.lol,
+              Primal, nostr.mom and Pocketstr. The optional <code>mirrors</code> list adds copies
+              after the primary publication succeeds; existing project lists stay as configured. You
+              can use other compatible providers; changing an existing relay or Git repository needs
+              an explicit migration, not just a retry with new settings.
             </p>
             <p>
               Publication returns a portable Nostr address and a release link. To claim a readable{' '}

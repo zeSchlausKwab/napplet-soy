@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { projectConfiguration } from './project-config';
+import discoveryRelays from '../../../packages/nostr/discovery-relays.json';
 import {
   defaultTargets,
   projectPublishingDefaults,
@@ -32,6 +33,11 @@ test('effective targets are readable before setup and editable per network witho
     const binding = await Bun.file(join(root, '.napplet-space/project.json')).json();
     const configured = binding.project;
     expect(configured.publish.networks.public.relay).toBe('wss://relay.napplet.soy/');
+    expect(configured.publish.networks.public.mirrors).toEqual(
+      discoveryRelays.map((url) => new URL(url).href),
+    );
+    expect(configured.publish.networks.public.mirrors.length + 1).toBeGreaterThanOrEqual(5);
+    expect(configured.publish.networks.public.mirrors.length + 1).toBeLessThanOrEqual(8);
     configured.publish.networks.public.blossom = 'https://assets.example.com';
     configured.publish.networks.public.mirrors = [];
     await Bun.write(join(root, '.napplet-space/project.json'), JSON.stringify(binding));
@@ -51,6 +57,11 @@ test('effective targets are readable before setup and editable per network witho
     expect(
       resolveTargets(scaffolded, 'public', { blossom: 'https://override.example.com' }).blossom,
     ).toBe('https://override.example.com');
+    const mirrors = Array.from({ length: 7 }, (_, i) => `wss://mirror-${i}.example`);
+    expect(resolveTargets(scaffolded, 'public', { mirrors }).mirrors).toHaveLength(7);
+    expect(() =>
+      resolveTargets(scaffolded, 'public', { mirrors: [...mirrors, 'wss://extra.example'] }),
+    ).toThrow();
   } finally {
     await rm(root, { recursive: true, force: true });
   }

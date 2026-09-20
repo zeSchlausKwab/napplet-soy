@@ -16,7 +16,17 @@ The worker and web server share **SQLite in WAL mode**, using the same schema lo
 | `SPACE_INDEX_LOCAL_BLOSSOM` | Dev-only exact numeric loopback HTTP origin for retrieving `/hash`              |
 | `SPACE_RELEASE_ID`          | Worker heartbeat release, checked during activation                             |
 
-Production queries its managed relay internally **and** `wss://relay.damus.io`, `wss://nos.lol`, and `wss://relay.primal.net` by default. This list is shared with publicdev in `packages/nostr/discovery-relays.json`. Portable links replace the internal managed URL with `wss://relay.<domain>` and retain the external relay hints. Operators can override `SPACE_INDEX_RELAYS` and optionally `SPACE_INDEX_HINTS` in `shared/server.env`; an explicit relay list replaces the defaults (include the managed relay if desired). Ordinary local development still reads only its isolated relay. Publicdev remains an optional read-only development cache; production discovery uses the persistent worker with `SPACE_PUBLICDEV=0`. No fixture key or signing credentials enter the worker.
+Production queries its managed relay internally **and** the five external
+[shared relay defaults](RELAY-DEFAULTS.md): Damus, nos.lol, Primal, nostr.mom and
+Pocketstr. This list is shared with publicdev in `packages/nostr/discovery-relays.json`.
+The expansion is a source update awaiting deployment. Portable links replace the
+internal managed URL with `wss://relay.<domain>` and retain the external relay hints.
+Operators can override `SPACE_INDEX_RELAYS` and optionally `SPACE_INDEX_HINTS` in
+`shared/server.env`; an explicit relay list replaces the defaults (include the managed
+relay if desired). Ordinary local development still reads only its isolated relay.
+Publicdev remains an optional read-only development cache; production discovery uses
+the persistent worker with `SPACE_PUBLICDEV=0`. No fixture key or signing credentials
+enter the worker.
 
 ## Admission, catch-up and storage
 

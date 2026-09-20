@@ -4,6 +4,7 @@ import { normalizeTopic } from '../../protocol/src/topics';
 import ipaddr from 'ipaddr.js';
 import { remixSchema } from '../../protocol/src/remix';
 import { backendConfig } from '../../multiplayer/src/contracts';
+import discoveryRelays from '../../nostr/discovery-relays.json';
 
 export class PublishError extends AccountError {
   constructor(
@@ -37,7 +38,7 @@ export const targetsSchema = z
     blossom: z.string().max(256),
     grasp: z.string().max(256),
     site: z.string().max(256),
-    mirrors: z.array(z.string().max(256)).max(3),
+    mirrors: z.array(z.string().max(256)).max(7),
   })
   .strict();
 export type Targets = z.infer<typeof targetsSchema>;
@@ -145,7 +146,7 @@ export function defaultTargets(network: Network): Targets {
         blossom: 'https://blossom.napplet.soy',
         grasp: 'https://git.napplet.soy',
         site: 'https://napplet.soy',
-        mirrors: ['wss://relay.damus.io', 'wss://nos.lol'],
+        mirrors: [...discoveryRelays],
       };
 }
 export const projectPublishingDefaults = () => ({

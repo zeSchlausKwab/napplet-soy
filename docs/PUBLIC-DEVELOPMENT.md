@@ -14,7 +14,9 @@ Every dev and dev:prod launch checks the six original examples, restores missing
 
 ## Public discovery
 
-Public dev reads signed Nostr manifests through Applesauce from `wss://relay.damus.io`, `wss://nos.lol`, and `wss://relay.primal.net` by default. These are configurable bootstrap choices, not an authoritative napplet directory:
+Public dev reads signed Nostr manifests through Applesauce from the five external
+[shared relay defaults](RELAY-DEFAULTS.md): Damus, nos.lol, Primal, nostr.mom and
+Pocketstr. These are configurable bootstrap choices, not an authoritative napplet directory:
 
 ```sh
 SPACE_PUBLIC_RELAYS=wss://your-relay.example bun run dev publicdev --refresh

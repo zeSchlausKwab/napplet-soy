@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { browserRelayDefaults } from './client-network';
+import discoveryRelays from '../../nostr/discovery-relays.json';
 
 test('browser defaults use public relay hints rather than the indexer loopback address', () => {
   expect(
@@ -17,5 +18,6 @@ test('development can keep its configured local relay and an unconfigured client
   expect(browserRelayDefaults(['ws://127.0.0.1:19347/relay'])).toEqual([
     'ws://127.0.0.1:19347/relay',
   ]);
-  expect(browserRelayDefaults([])[0]).toBe('wss://relay.napplet.soy');
+  expect(browserRelayDefaults([])).toEqual(['wss://relay.napplet.soy', ...discoveryRelays]);
+  expect(new Set(browserRelayDefaults([])).size).toBe(browserRelayDefaults([]).length);
 });

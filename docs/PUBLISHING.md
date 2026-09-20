@@ -47,7 +47,13 @@ See [collaboration](COLLABORATION.md) for proposals, built review and maintainer
 | local   | `ws://127.0.0.1:19347/relay` | `http://127.0.0.1:8081`       | `http://127.0.0.1:8082`   | `http://localhost:8080` |
 | public  | `wss://relay.napplet.soy`    | `https://blossom.napplet.soy` | `https://git.napplet.soy` | `https://napplet.soy`   |
 
-The managed public defaults are deployed at napplet.soy. Public mode additionally mirrors manifests to `wss://relay.damus.io` and `wss://nos.lol`. Local mode has no public mirrors or fallback. Automated publication tests use isolated services; public deployment checks verify existing content without writing test publications. See the dated verification records in [deployment](DEPLOYMENT.md).
+The managed public services are deployed at napplet.soy. Starting with the pending
+soyLI 0.14.2 release, new public projects additionally mirror manifests to the five
+external [shared relay defaults](RELAY-DEFAULTS.md): Damus, nos.lol, Primal,
+nostr.mom and Pocketstr. Existing explicit project settings are preserved. Local
+mode has no public mirrors or fallback. Automated publication tests use isolated
+services; public deployment checks verify existing content without writing test
+publications. See the dated verification records in [deployment](DEPLOYMENT.md).
 
 Override destinations with `--relay`, `--blossom`, `--grasp`, `--site` and repeated `--mirror`. Alternatively put `relay`, `blossom`, `grasp`, `site` and `mirrors` in `.napplet-space/project.json` under `project.publish`; an empty `mirrors` array disables mirrors. Flags take precedence over project settings and defaults. Persist custom defaults in the project if subsequent ordinary publishes should use them without flags. `--resume` uses the journal's original destinations; conflicting overrides are rejected.
 
@@ -141,7 +147,13 @@ include explicit public and local profiles:
         "blossom": "https://blossom.napplet.soy",
         "grasp": "https://git.napplet.soy",
         "site": "https://napplet.soy",
-        "mirrors": ["wss://relay.damus.io", "wss://nos.lol"]
+        "mirrors": [
+          "wss://relay.damus.io",
+          "wss://nos.lol",
+          "wss://relay.primal.net",
+          "wss://nostr.mom",
+          "wss://relay.pocketstr.com"
+        ]
       },
       "local": {
         "relay": "ws://127.0.0.1:19347/relay",
