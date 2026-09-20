@@ -12,6 +12,7 @@ import { version } from './distribution';
 import { watchProject } from './toolchain';
 import { screenshotProject, recordProject } from './project-config';
 import { localBackend } from './backend';
+import { createWorkshop } from './workshop';
 
 export async function preview(
   directory: string,
@@ -23,7 +24,44 @@ export async function preview(
 ) {
   const root = await realpath(directory);
   const config = await Bun.file(new URL('napplet.json', pathToFileURL(root + '/'))).json();
-  const watcher = config.entry === 'dist/index.html' ? await watchProject(root, signal) : undefined;
+  let watcher: Awaited<ReturnType<typeof watchProject>> | undefined;
+  let failWatch: (error: Error) => void = () => {};
+  const watcherFailure = new Promise<never>((_, reject) => {
+    failWatch = reject;
+  });
+  // Install the rejection handler before a watcher can exit during startup.
+  void watcherFailure.catch(() => {});
+  async function startWatcher() {
+    if (signal.aborted || config.entry !== 'dist/index.html') return;
+    const active = await watchProject(root, signal);
+    watcher = active;
+    void active.exited
+      .then(() => {
+        if (watcher === active && !signal.aborted)
+          failWatch(
+            new AccountError(
+              'BUILD_WATCH',
+              'The Vite build watcher stopped. See its output above.',
+            ),
+          );
+      })
+      .catch(failWatch);
+  }
+  await startWatcher();
+  const workshop = createWorkshop({
+    directory: root,
+    network,
+    signal,
+    onAuth: async (url) => {
+      console.log(`Approve this action with your signer: ${url}`);
+    },
+    pauseBuilds: async () => {
+      const active = watcher;
+      watcher = undefined;
+      await active?.stop();
+      return startWatcher;
+    },
+  });
   let server: ReturnType<typeof startPreviewServer> | undefined;
   let backend: Awaited<ReturnType<typeof localBackend>>;
   const stop = () => server?.stop(true);
@@ -31,6 +69,7 @@ export async function preview(
     backend = await localBackend(root);
     server = startPreviewServer(pathToFileURL(root + '/'), port, false, await previewAssets(), {
       network,
+      workshop,
       backend: backend?.provider,
       record: (settings, interactive) =>
         recordProject(
@@ -78,21 +117,12 @@ export async function preview(
         new Promise<void>((resolve) =>
           signal.addEventListener('abort', () => resolve(), { once: true }),
         ),
-        ...(watcher
-          ? [
-              watcher.exited.then(() => {
-                if (!signal.aborted)
-                  throw new AccountError(
-                    'BUILD_WATCH',
-                    'The Vite build watcher stopped. See its output above.',
-                  );
-              }),
-            ]
-          : []),
+        watcherFailure,
       ]);
   } finally {
     signal.removeEventListener('abort', stop);
     stop();
+    await workshop.close();
     await watcher?.stop();
     await backend?.close();
   }

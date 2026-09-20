@@ -29,6 +29,9 @@ this note maps its local tooling commands to the installed napplet soyLI.
 - soyli dev watches the Vite build inside the napplet.soy sandbox.
   Use its URL for preview. The upstream pnpm dev URL serves source without a host.
   Manage project edits name/title, description, tags/license, destinations and assets.
+  Its Changes tab reviews files and saves explicit local Git checkpoints; Proposals
+  publishes/reviews playable contributions and merges locally. Publish reviews the
+  creator, destinations and checked cover/clip before an explicit release.
   Edits use project files; reload if another editor/agent changed them. No silent publish.
   Switch from Play to Listing to inspect the title, description, tags, creator,
   screenshot, optional video clip, license and publishing destinations. Use Capture screenshot after
@@ -93,8 +96,9 @@ files. Embedded bytes also consume the 10 MiB HTML budget. These are tooling lim
 not hosting plans. Destination Blossom is configurable; provider quotas are unknown.
 There is no streaming/transcoding or out-of-Git large-original workflow yet.
 Use soyli project show or project set <json-file> for the manager metadata service.
-The JSON has name, title, description, topics and license. Git/proposal controls
-remain soyli checkpoint/propose/review/merge; the manager currently shows Git status.
+The JSON has name, title, description, topics and license. The manager's Changes,
+Proposals and Publish tabs use the same checkpoint/propose/review/merge/publish
+services. Keep changes committed before sharing; GUI saves do not auto-commit.
 
 ## Make the preview worth opening
 

@@ -57,6 +57,14 @@ contributor repository, not optional GRASP-06 transient PR hosting.
 
 ## Reviewing and accepting
 
+In soyLI 0.14.0, `soyli dev` → **Manage project → Proposals** embeds this same
+review interface. Changes/checkpoints and publishing have their own workshop
+sections. Opening review runs the supplied checked HTML, not contributor build
+scripts. Merging remains a local Git operation; the GUI does not silently push,
+publish, install dependencies or solve conflicts. The reviewed revision remains
+pinned, and a changed maintainer identity or target requires a refreshed review.
+See [workshop controls and limits](CLI.md#local-workshop--0140).
+
 ```sh
 soyli review                         # proposal inbox for this project's upstream
 soyli review <proposal-event-id>      # open one proposal

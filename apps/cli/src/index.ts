@@ -1,7 +1,8 @@
+import { publishFromProject, proposeFromProject } from './share-project';
 import { manageProject, editProject } from './manager';
 import { MAX_ASSET_BYTES } from '../../../packages/assets/src';
-import { checkpoint, committedSource } from '../../../packages/publish/src/git-source';
-import { propose, proposalAction, pushSource } from '../../../packages/collaboration/src/service';
+import { checkpoint } from '../../../packages/publish/src/git-source';
+import { proposalAction, pushSource } from '../../../packages/collaboration/src/service';
 import { proposalList, review } from './review';
 import { readBinding, writeBinding } from '../../../packages/publish/src/binding';
 import { projectConfiguration, screenshotProject, recordProject } from './project-config';
@@ -20,7 +21,7 @@ import {
   type Network,
 } from '../../../packages/identity/src/signer';
 import { ask, hiddenInput as readHiddenInput, secretStdin } from './input';
-import { publishProject, publicationStatus, PublishError } from '../../../packages/publish/src';
+import { publicationStatus, PublishError } from '../../../packages/publish/src';
 import { initBackend, syncBackend, backendStatus } from './backend';
 import { checkPublication } from './publish-check';
 import { preview, checkProject, doctor } from './local';
@@ -327,19 +328,10 @@ try {
     } else if (command === 'propose') {
       if ((!action && !values.resume) || argument)
         throw new Error('Use propose "Description" or propose --resume.');
-      if (!values.resume) {
-        await committedSource(collaboration.directory);
-        if (
-          (await Bun.file(join(collaboration.directory, 'napplet.json')).json()).entry ===
-          'dist/index.html'
-        )
-          await buildProject(collaboration.directory, controller.signal);
-      }
-      result = await propose({
+      result = await proposeFromProject({
         ...collaboration,
         description: action ?? '',
         resume: values.resume,
-        check: checkPublication,
       });
     } else if (command === 'proposals')
       result = await proposalList({ ...collaboration, reference: action });
@@ -661,23 +653,7 @@ try {
             signal: controller.signal,
           })
         : await (async () => {
-            if (!values['dry-run'] && !values.resume)
-              await syncBackend(
-                values.project ?? process.cwd(),
-                network,
-                accounts,
-                { signal: controller.signal, onAuth },
-                false,
-              );
-            if (!values['dry-run'] && !values.resume) {
-              await committedSource(collaboration.directory);
-              if (
-                (await Bun.file(join(collaboration.directory, 'napplet.json')).json()).entry ===
-                'dist/index.html'
-              )
-                await buildProject(collaboration.directory, controller.signal);
-            }
-            return publishProject({
+            return publishFromProject({
               directory: values.project ?? process.cwd(),
               network,
               targets,

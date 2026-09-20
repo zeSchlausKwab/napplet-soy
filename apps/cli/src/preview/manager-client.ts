@@ -1,4 +1,5 @@
 import type { manageProject } from '../manager';
+import { setupWorkshop } from './workshop-client';
 type State = Awaited<ReturnType<typeof manageProject>>;
 const el = <K extends keyof HTMLElementTagNameMap>(name: K, text = '', className = '') => {
   const node = document.createElement(name);
@@ -334,16 +335,7 @@ export function setupManager(signal: AbortSignal) {
         'muted',
       ),
     );
-    const changes = section(
-      'Your changes.',
-      'Files saved here are visible to your agent and ordinary Git. Review before making a checkpoint.',
-    );
-    changes.append(
-      el('pre', data.git || 'Working tree clean'),
-      el('code', 'soyli checkpoint "Describe your changes"'),
-      el('p', 'Use soyli review to browse proposals, compare playable versions and review diffs.'),
-    );
-    content.replaceChildren(project, assets, presentation, destinations, changes);
+    content.replaceChildren(project, assets, presentation, destinations);
   }
   const reload = document.querySelector<HTMLButtonElement>('#manager-refresh')!;
   async function refresh() {
@@ -378,4 +370,5 @@ export function setupManager(signal: AbortSignal) {
       },
       { signal },
     );
+  setupWorkshop(root, content, status, signal);
 }

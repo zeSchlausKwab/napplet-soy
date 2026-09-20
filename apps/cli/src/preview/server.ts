@@ -1,4 +1,5 @@
 import { manageProject, editProject } from '../manager';
+import type { Workshop } from '../workshop';
 import { readBytes } from '../../../../packages/client/src/bytes';
 import { readAssets, assetBytes, assetMime } from '../../../../packages/assets/src';
 import { readBinding } from '../../../../packages/publish/src/binding';
@@ -57,6 +58,7 @@ export function startPreviewServer(
     backend?: BackendProvider;
     capture?: (interactive?: boolean) => Promise<unknown>;
     record?: (settings: Recording, interactive?: boolean) => Promise<unknown>;
+    workshop?: Workshop;
   } = { network: 'public' },
 ) {
   let capturing = false;
@@ -97,7 +99,7 @@ export function startPreviewServer(
     idleTimeout: 60,
     hostname: '127.0.0.1',
     port,
-    async fetch(request) {
+    async fetch(request): Promise<Response> {
       const url = new URL(request.url);
       // Restrict local build files and capture actions to this preview origin.
       if (
@@ -107,6 +109,45 @@ export function startPreviewServer(
       )
         return new Response('Forbidden', { status: 403, headers: noStore });
       try {
+        if (url.pathname.startsWith('/workshop')) {
+          if (!listing.workshop) return new Response('Not found', { status: 404 });
+          if (request.headers.get('X-Soyli-Token') !== managerToken)
+            return new Response('Forbidden', { status: 403, headers: noStore });
+          if (request.method === 'GET') {
+            if (url.pathname === '/workshop')
+              return Response.json(await listing.workshop.snapshot(), { headers: noStore });
+            if (url.pathname === '/workshop/diff')
+              return Response.json(
+                await listing.workshop.diff(
+                  url.searchParams.get('revision') ?? '',
+                  url.searchParams.get('path') ?? '',
+                ),
+                { headers: noStore },
+              );
+            if (url.pathname === '/workshop/cover' || url.pathname === '/workshop/video') {
+              const video = url.pathname.endsWith('/video');
+              const bytes = listing.workshop.media(video ? 'video' : 'preview');
+              return new Response(bytes ? new Uint8Array(bytes) : null, {
+                status: bytes ? 200 : 404,
+                headers: { ...noStore, 'Content-Type': video ? 'video/webm' : 'image/png' },
+              });
+            }
+          }
+          if (request.method === 'POST' && url.pathname === '/workshop') {
+            if (request.headers.get('Origin') !== url.origin)
+              return new Response('Forbidden', { status: 403 });
+            if (capturing) return new Response('Capture running', { status: 409 });
+            const bytes = await readBytes(new Response(request.body), 8192);
+            return Response.json(
+              await listing.workshop.start(
+                JSON.parse(new TextDecoder().decode(bytes)),
+                server.url.origin,
+              ),
+              { status: 202, headers: noStore },
+            );
+          }
+          return new Response('Not found', { status: 404 });
+        }
         if (url.pathname.startsWith('/manager')) {
           if (
             request.headers.get('X-Soyli-Token') !== managerToken &&
@@ -124,10 +165,16 @@ export function startPreviewServer(
             if (capturing) return new Response('Capture already running', { status: 409 });
             const body = await readBytes(new Response(request.body), 14 * 1024 * 1024 + 8192);
             return Response.json(
-              await editProject(
-                fileURLToPath(root),
-                listing.network,
-                JSON.parse(new TextDecoder().decode(body)),
+              await (
+                listing.workshop
+                  ? listing.workshop.edit.bind(listing.workshop)
+                  : async (fn: () => Promise<unknown>) => fn()
+              )(() =>
+                editProject(
+                  fileURLToPath(root),
+                  listing.network,
+                  JSON.parse(new TextDecoder().decode(body)),
+                ),
               ),
               { headers: noStore },
             );
@@ -180,10 +227,12 @@ export function startPreviewServer(
           const interactive = url.pathname.endsWith('-live');
           if (record ? !listing.record : !listing.capture)
             return new Response('Capture unavailable', { status: 404, headers: noStore });
-          if (capturing)
+          if (capturing || listing.workshop?.busy)
             return new Response('Capture already running', { status: 409, headers: noStore });
           server.timeout(request, 0); // The interactive capture has its own five-minute deadline.
           capturing = true;
+          const capture = <T>(fn: () => Promise<T>) =>
+            listing.workshop ? listing.workshop.edit(fn) : fn();
           try {
             if (record) {
               if (Number(request.headers.get('Content-Length') ?? 0) > 8192)
@@ -193,13 +242,17 @@ export function startPreviewServer(
               );
               if (body.length > 8192) throw new Error('Recording recipe too large.');
               return Response.json(
-                await listing.record!(recordingSchema.parse(JSON.parse(body)), interactive),
+                await capture(() =>
+                  listing.record!(recordingSchema.parse(JSON.parse(body)), interactive),
+                ),
                 {
                   headers: noStore,
                 },
               );
             }
-            return Response.json(await listing.capture!(interactive), { headers: noStore });
+            return Response.json(await capture(() => listing.capture!(interactive)), {
+              headers: noStore,
+            });
           } finally {
             capturing = false;
           }
@@ -258,12 +311,15 @@ export function startPreviewServer(
           });
         if (url.pathname === '/')
           return new Response(
-            (
-              assets?.html ?? (await Bun.file(new URL('.napplet/preview.html', root)).text())
-            ).replace(
-              '<html lang="en">',
-              `<html lang="en"><meta name="soyli-token" content="${managerToken}">`,
-            ),
+            (assets?.html ?? (await Bun.file(new URL('.napplet/preview.html', root)).text()))
+              .replace(
+                '<html lang="en">',
+                `<html lang="en"><meta name="soyli-token" content="${managerToken}">`,
+              )
+              .replace(
+                '<meta name="viewport"',
+                `<meta name="soyli-workshop" content="${!!listing.workshop}"><meta name="viewport"`,
+              ),
             {
               headers: {
                 ...noStore,
@@ -271,7 +327,7 @@ export function startPreviewServer(
                 'Content-Security-Policy':
                   // srcdoc inherits this policy too; its own stricter CSP removes
                   // 'self' and all network access while allowing embedded code.
-                  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'",
+                  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; frame-src 'self'${listing.workshop ? ' http://127.0.0.1:*' : ''}; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors ${listing.workshop ? "'none'" : "'self' http://127.0.0.1:*"}`,
               },
             },
           );

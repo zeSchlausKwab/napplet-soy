@@ -5,7 +5,7 @@ standalone `soyli` executable, with its pinned Playwright support files. A separ
 Bun, Node, npm, or platform checkout is not required. The executable embeds Bun;
 this is not an alternative runtime implementation for users who reject Bun itself.
 
-## Local workshop and managed assets — 0.13.0
+## Local workshop — 0.14.0
 
 `soyli dev` opens Play, Listing and **Manage project**. The manager edits portable
 name/title, description, tags and license in `napplet.json`; destinations go into
@@ -13,7 +13,7 @@ the existing ignored `.napplet-space/project.json` binding. Identity and upstrea
 association are preserved. Reload before saving if an agent edited the files.
 
 Import and preview assets, edit attribution, choose embedded or external storage,
-select earlier covers/clips and inspect Git status. Saves do not commit or publish.
+select earlier covers/clips and inspect Git changes. Project saves do not commit or publish.
 The agent uses the same services with `soyli assets list|add|remove|sync` and
 `soyli project show|set <json-file>`; the latter accepts all five editable metadata
 fields (`name`, `title`, `description`, `topics`, `license`). See [assets](ASSETS.md).
@@ -22,8 +22,37 @@ Listing's **Play in a capture window first** opens a fresh interactive Chromium
 session of the current build. Play until a useful moment, then capture or record.
 Closing that window cancels. The required browser/encoder is cached automatically;
 there is no separate recorder to install. This does not record the original preview
-tab. Timed agent recipes remain supported; GIF export and the full Git/proposal
-management UI are not part of this increment. `soyli review` remains the proposal UI.
+tab. Timed agent recipes remain supported; GIF export remains unsupported.
+
+The workshop now has **Project / Changes / Proposals / Publish** sections:
+
+- **Changes:** inspect changed file names, staged/unstaged state and bounded text
+  diffs; explicitly save all listed changes as a local Git checkpoint. Binary/large
+  files remain available in the asset view or your editor. Use ordinary Git for
+  selective staging, conflict resolution, rebases and branch management.
+- **Proposals:** publish a playable contribution from a remixed checkout, resume
+  a saved proposal, or open the same revision-pinned inbox as `soyli review`.
+  Compare Original/Proposed, inspect the diff, discuss, close/reopen and merge locally.
+  **Push committed Git history** is explicit and separate from a napplet release.
+- **Publish:** inspect creator, source checkpoint and destinations; **Build & check**
+  tests startup and produces the cover/clip for review. **Publish this revision**
+  verifies the source still matches and uses those checked presentation bytes.
+  Failed releases can resume their frozen source and original destinations, which
+  are displayed separately from the current project settings.
+
+All files and commands use the CLI services and ordinary Git. Choose/change the
+creator through `soyli account` in the terminal; NIP-46 authorization remains in
+the signer, with any authentication link printed in that terminal. Keys never
+enter browser payloads. Shared source/identity changes invalidate a reviewed action;
+overlapping workshop edits/capture/review/share actions are rejected. The Vite
+watcher pauses around actions and restarts afterwards. Independent editor and Git
+processes are not locked: finish an agent's edits before committing or sharing.
+Checks cover host startup and posting validity, not full gameplay or multiplayer.
+
+Existing projects gain these panels by updating soyLI and restarting `soyli dev`.
+Run `soyli skills update` separately to update the agent's local guidance. Release
+0.14.0 is prepared locally; installation from the live website requires its release
+archives to be uploaded and the installer deployed by the operator.
 
 Loopback editing checks Host, Origin and a per-session token. No new public REST
 proxy or remote shell endpoint is added. Private keys never enter manager payloads.

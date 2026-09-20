@@ -223,6 +223,191 @@
       margin: 32px auto;
       padding: 0 24px 64px;
     }
+    .workshop-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 0 24px;
+    }
+    .workshop-tabs button[aria-pressed='true'] {
+      background: #303c28;
+      color: #fffbed;
+    }
+    .workshop-panel {
+      display: grid;
+      gap: 24px;
+    }
+    .workshop-card {
+      min-width: 0;
+      padding: clamp(18px, 3vw, 32px);
+      border: 1px solid #d6d9cb;
+      border-radius: 14px;
+      background: #fffdf5;
+    }
+    .workshop-card h2 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -0.8px;
+    }
+    .workshop-card p {
+      line-height: 1.6;
+    }
+    .workshop-card button {
+      margin: 8px 8px 8px 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .workshop-card a {
+      display: inline-block;
+      margin: 14px;
+      color: #48683b;
+    }
+    .workshop-summary {
+      font: 13px monospace;
+      color: #576c49;
+      overflow-wrap: anywhere;
+    }
+    .workshop-diff-layout {
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr);
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .workshop-files {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+      max-height: 420px;
+      overflow: auto;
+    }
+    .workshop-files button {
+      text-align: left;
+      font: 12px monospace;
+      margin: 0;
+    }
+    .workshop-files small {
+      display: block;
+      color: #758166;
+      margin-top: 6px;
+      font: 11px sans-serif;
+    }
+    .workshop-diff {
+      margin: 0;
+      min-height: 200px;
+      max-height: 480px;
+      overflow: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #293126;
+      color: #edf0e0;
+      padding: 22px;
+      border-radius: 10px;
+      font: 12px/1.7 monospace;
+    }
+    .workshop-field {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      margin: 20px 0 8px;
+      color: #536548;
+    }
+    .workshop-field input,
+    .workshop-field textarea {
+      font: inherit;
+      padding: 12px;
+      border: 1px solid #ccd1c1;
+      border-radius: 8px;
+      background: #faf9f2;
+      color: inherit;
+      min-width: 0;
+    }
+    .workshop-field textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    .workshop-facts {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 12px 20px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .workshop-facts dt {
+      color: #747b68;
+    }
+    .workshop-facts dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+    .workshop-check {
+      color: #436239;
+      padding: 14px 18px;
+      background: #e7ecd9;
+      border-radius: 8px;
+    }
+    .workshop-media {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    .workshop-media img,
+    .workshop-media video {
+      width: min(100%, 420px);
+      max-height: 280px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: #edf0e2;
+    }
+    .workshop-review {
+      width: 100%;
+      height: 850px;
+      border: 1px solid #d6d9cb;
+      border-radius: 12px;
+      margin: 20px 0;
+    }
+    button.workshop-error {
+      color: #9b412e;
+      border-color: #d29680;
+      text-align: left;
+    }
+    button[aria-busy='true']::before {
+      content: '';
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 8px;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: workshop-spin 1s linear infinite;
+    }
+    @keyframes workshop-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button[aria-busy='true']::before {
+        animation: none;
+      }
+    }
+    @media (max-width: 700px) {
+      .workshop-diff-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .workshop-files {
+        max-height: 150px;
+      }
+      .workshop-facts {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+      }
+      .workshop-facts dd {
+        margin-bottom: 10px;
+      }
+    }
     .manager-heading {
       display: flex;
       justify-content: space-between;

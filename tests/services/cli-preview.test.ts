@@ -90,7 +90,36 @@ test.skipIf(!process.env.SPACE_TEST_CLI)(
         expect(listing.network).toBe('local');
         expect(listing.image.width).toBe(1200);
         expect(listing.captureAvailable).toBe(true);
-        expect(await (await fetch(url)).text()).toContain('id="view-listing"');
+        const host = await (await fetch(url)).text();
+        expect(host).toContain('id="view-listing"');
+        expect(host).toContain('name="soyli-workshop" content="true"');
+        const token = host.match(/name="soyli-token" content="([^"]+)"/)![1];
+        const headers = {
+          'X-Soyli-Token': token,
+          Origin: new URL(url).origin,
+          'Content-Type': 'application/json',
+        };
+        const state = await (await fetch(new URL('workshop', url), { headers })).json();
+        expect(state.tree.changed).toContain('napplet.json');
+        const started = await fetch(new URL('workshop', url), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            action: 'checkpoint',
+            revision: state.revision,
+            message: 'A reviewed capture',
+          }),
+        });
+        expect(started.status).toBe(202);
+        let result;
+        for (let i = 0; i < 100; i++) {
+          result = await (await fetch(new URL('workshop', url), { headers })).json();
+          if (!result.busy) break;
+          await Bun.sleep(50);
+        }
+        expect(result.job.error).toBeUndefined();
+        expect(result.job.state).toBe('done');
+        expect(result.tree.changed).toEqual([]);
       } finally {
         clearTimeout(timeout);
         dev.kill();

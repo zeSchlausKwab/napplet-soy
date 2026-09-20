@@ -82,6 +82,63 @@ Promise.all(['embedded','external'].map(async id => { const image = new Image();
       expect(inspected.plan.requires).toContain('resource');
       expect(inspected.contents.has('soy-assets.d.ts')).toBe(true);
       expect((await checkPublication(inspected.contents)).preview.length).toBeGreaterThan(0);
+      // The compiled workshop pauses Vite for writes and resumes watching afterwards.
+      const dev = Bun.spawn([binary, 'dev', '--no-open', '--port', '0', '--json'], {
+        cwd: fresh,
+        env: { ...process.env, PATH: '/usr/bin:/bin', SPACE_ACCOUNT_HOME: join(root, 'accounts') },
+        stdin: 'ignore',
+        stdout: 'pipe',
+        stderr: 'pipe',
+      });
+      const devTimer = setTimeout(() => dev.kill('SIGKILL'), 60000);
+      const errors = new Response(dev.stderr).text();
+      try {
+        const reader = dev.stdout.getReader();
+        let output = '';
+        while (!output.includes('\n')) {
+          const next = await reader.read();
+          if (next.done) throw new Error('Watcher exited: ' + (await errors));
+          output += new TextDecoder().decode(next.value);
+        }
+        reader.releaseLock();
+        const { url } = JSON.parse(output.split('\n')[0]);
+        const html = await (await fetch(url)).text();
+        const token = html.match(/name="soyli-token" content="([^"]+)"/)![1];
+        const headers = {
+          'X-Soyli-Token': token,
+          Origin: new URL(url).origin,
+          'Content-Type': 'application/json',
+        };
+        const manager = await (await fetch(new URL('manager', url), { headers })).json();
+        const saved = await fetch(new URL('manager', url), {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            action: 'project',
+            revision: manager.revision,
+            changes: { ...manager.project, title: 'Watched workshop' },
+          }),
+        });
+        expect(saved.status, await saved.text()).toBe(200);
+        expect(dev.exitCode).toBeNull();
+        const before = await (await fetch(new URL('revision', url))).json();
+        await Bun.write(
+          join(fresh, 'src/main.ts'),
+          'document.body.textContent = "The watcher restarted";',
+        );
+        let after = before;
+        for (let i = 0; i < 100 && after.artifactHash === before.artifactHash; i++) {
+          await Bun.sleep(100);
+          after = await (await fetch(new URL('revision', url))).json();
+        }
+        expect(after.artifactHash).not.toBe(before.artifactHash);
+        expect(dev.exitCode).toBeNull();
+      } finally {
+        clearTimeout(devTimer);
+        dev.kill();
+        await dev.exited;
+        await errors;
+      }
     } finally {
       await rm(root, { recursive: true, force: true });
     }

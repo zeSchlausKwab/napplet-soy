@@ -84,9 +84,13 @@ export async function review(
     noOpen?: boolean;
     json?: boolean;
     rebuild?: boolean;
+    embedOrigin?: string;
+    beforeAction?: () => Promise<() => Promise<void>>;
     ready?: (info: { url: string }) => Promise<void>;
   },
 ) {
+  if (options.embedOrigin && !/^http:\/\/127\.0\.0\.1:\d+$/.test(options.embedOrigin))
+    throw new Error('Review can only be embedded by a local workshop.');
   let state = await proposalList(options);
   const temp = await mkdtemp(join(tmpdir(), 'soyli-review-'));
   const token = crypto.randomUUID(),
@@ -199,7 +203,7 @@ export async function review(
     previews.set(key, server);
     return server.url.href;
   }
-  const account = await (options.accounts ?? new Accounts(options.network)).current();
+  let account = await (options.accounts ?? new Accounts(options.network)).current();
   let mutating = false;
   const server = Bun.serve({
     hostname: '127.0.0.1',
@@ -212,8 +216,7 @@ export async function review(
           headers: {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-store',
-            'Content-Security-Policy':
-              "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src http://127.0.0.1:*; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+            'Content-Security-Policy': `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src http://127.0.0.1:*; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors ${options.embedOrigin ?? "'none'"}`,
           },
         });
       if (
@@ -222,7 +225,8 @@ export async function review(
       )
         return new Response('Invalid review session', { status: 403 });
       try {
-        if (url.pathname === '/state' && request.method === 'GET')
+        if (url.pathname === '/state' && request.method === 'GET') {
+          account = await (options.accounts ?? new Accounts(options.network)).current();
           return Response.json({
             repository: state.repository.address,
             proposals: state.proposals,
@@ -231,6 +235,7 @@ export async function review(
             account: account?.pubkey,
             maintainer: !!account && state.repository.maintainers.includes(account.pubkey),
           });
+        }
         if (request.method !== 'POST') return new Response('Not found', { status: 404 });
         if (Number(request.headers.get('content-length') ?? 0) > 8192)
           throw new Error('Request too large.');
@@ -254,7 +259,14 @@ export async function review(
             throw new Error('Target changed. Refresh before merging.');
           if (mutating) throw new Error('Another review action is still running.');
           mutating = true;
+          let release: (() => Promise<void>) | undefined;
           try {
+            release = await options.beforeAction?.();
+            if (
+              (await (options.accounts ?? new Accounts(options.network)).current())?.pubkey !==
+              account?.pubkey
+            )
+              throw new Error('Creator changed. Refresh the review before acting.');
             const result = await proposalAction({
               ...options,
               proposal: p.root.id,
@@ -267,6 +279,7 @@ export async function review(
             return Response.json(result);
           } finally {
             mutating = false;
+            await release?.();
           }
         }
         throw new Error('Unknown review action.');
@@ -300,16 +313,17 @@ export async function review(
       previews.set(p.revision.id, built);
       closeBackend = backend?.close;
     }
-    console.log(
-      options.json
-        ? JSON.stringify({
-            url,
-            target,
-            repository: state.repository.address,
-            proposals: state.proposals.map(compact),
-          })
-        : `Review changes: ${url}\nOpening a preview runs only its checked HTML in the sandbox. Build scripts run only with --rebuild.\nCtrl+C stops the review.`,
-    );
+    if (!options.embedOrigin)
+      console.log(
+        options.json
+          ? JSON.stringify({
+              url,
+              target,
+              repository: state.repository.address,
+              proposals: state.proposals.map(compact),
+            })
+          : `Review changes: ${url}\nOpening a preview runs only its checked HTML in the sandbox. Build scripts run only with --rebuild.\nCtrl+C stops the review.`,
+      );
     if (!options.noOpen && !options.json)
       Bun.spawn([process.platform === 'darwin' ? 'open' : 'xdg-open', url], {
         stdout: 'ignore',
