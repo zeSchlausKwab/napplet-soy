@@ -1,3 +1,4 @@
+import { DiagnosticError, ToolOutput } from '../../../packages/diagnostics/src';
 import { validateAssets } from '../../../packages/assets/src';
 import { chmod, lstat, mkdir, mkdtemp, rename, rm, symlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -46,16 +47,27 @@ async function command(
   env: Record<string, string>,
   signal?: AbortSignal,
   capture = false,
+  operation = 'run project tool',
 ) {
   if (signal?.aborted) throw new AccountError('BUILD_CANCELLED', 'Project setup/build cancelled.');
-  const child = Bun.spawn(args, {
-    cwd,
-    env,
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe',
-    detached: true,
-  });
+  const tool = args[1]?.endsWith('/pnpm.cjs') ? 'pnpm' : args[0].split('/').pop() || 'project tool';
+  let child;
+  try {
+    child = Bun.spawn(args, {
+      cwd,
+      env,
+      stdin: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe',
+      detached: true,
+    });
+  } catch (cause) {
+    throw new DiagnosticError('PROJECT_TOOL_START', 'Could not start the project tool.', {
+      operation,
+      tool,
+      cause,
+    });
+  }
   const kill = (kind: NodeJS.Signals) => {
     try {
       process.kill(-child.pid, kind);
@@ -71,7 +83,13 @@ async function command(
     cancellationTimer ??= setTimeout(() => kill('SIGKILL'), 500);
   };
   signal?.addEventListener('abort', stop, { once: true });
-  const timeout = setTimeout(() => kill('SIGKILL'), 300000);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    kill('SIGKILL');
+  }, 300000);
+  const stdoutLog = new ToolOutput((text) => process.stderr.write(text));
+  const stderrLog = new ToolOutput((text) => process.stderr.write(text));
   let output = '';
   async function drain(stream: ReadableStream<Uint8Array>, stdout: boolean) {
     for await (const bytes of stream) {
@@ -79,10 +97,15 @@ async function command(
         output += new TextDecoder().decode(bytes);
         if (output.length > 2 * 1024 * 1024) {
           kill('SIGKILL');
-          throw new Error('Tool output exceeds limit');
+          throw new DiagnosticError(
+            'PROJECT_TOOL_OUTPUT',
+            'Tool output exceeds the 2 MiB capture limit.',
+            { operation, tool },
+          );
         }
-      } else process.stderr.write(bytes);
+      } else (stdout ? stdoutLog : stderrLog).push(bytes);
     }
+    (stdout ? stdoutLog : stderrLog).finish();
   }
   try {
     const [code] = await Promise.all([
@@ -91,10 +114,20 @@ async function command(
       drain(child.stderr, false),
     ]);
     if (cancelled) throw new AccountError('BUILD_CANCELLED', 'Project setup/build cancelled.');
-    if (code)
-      throw new AccountError(
-        'PROJECT_TOOL',
-        'The project tool reported a failure. See its output above; source and creator keys were not replaced.',
+    if (timedOut || code)
+      throw new DiagnosticError(
+        timedOut ? 'PROJECT_TOOL_TIMEOUT' : 'PROJECT_TOOL',
+        timedOut
+          ? 'Project tool exceeded its five-minute deadline.'
+          : 'The project tool reported a failure.',
+        {
+          operation,
+          tool,
+          exitCode: code,
+          detail: stderrLog.text || stdoutLog.text,
+          recovery:
+            'Fix the tool error shown above and retry setup/build or the requested project command.',
+        },
       );
     return output;
   } finally {
@@ -109,8 +142,22 @@ async function download(url: string, target: string, digest: string, signal?: Ab
   const response = await fetch(url, {
     redirect: 'error',
     signal: AbortSignal.any([AbortSignal.timeout(180000), ...(signal ? [signal] : [])]),
+  }).catch((cause) => {
+    throw new DiagnosticError('TOOLCHAIN_DOWNLOAD', 'Could not download the project toolchain.', {
+      operation: 'download project toolchain',
+      target: url,
+      cause,
+    });
   });
-  if (!response.ok || !response.body) throw new Error('Toolchain download failed');
+  if (!response.ok || !response.body) {
+    await response.body?.cancel();
+    throw new DiagnosticError('TOOLCHAIN_DOWNLOAD', 'Toolchain download failed.', {
+      operation: 'download project toolchain',
+      target: url,
+      status: response.status,
+      recovery: 'Check connectivity and the download service, then retry soyli setup.',
+    });
+  }
   const chunks: Uint8Array[] = [];
   let size = 0;
   for await (const bytes of response.body) {
@@ -241,7 +288,20 @@ function prepared(signal?: AbortSignal) {
 
 export async function projectTool(directory: string, args: string[], signal?: AbortSignal) {
   const tools = await prepared(signal);
-  return command([tools.nodeBin, tools.pnpm, ...args], resolve(directory), tools.env, signal);
+  const operation =
+    args[0] === 'install'
+      ? 'install project dependencies'
+      : args[0] === 'run' && args[1] === 'build'
+        ? 'build napplet'
+        : 'run project command';
+  return command(
+    [tools.nodeBin, tools.pnpm, ...args],
+    resolve(directory),
+    tools.env,
+    signal,
+    false,
+    operation,
+  );
 }
 
 export async function setupProject(directory: string, signal?: AbortSignal) {
@@ -307,32 +367,44 @@ export async function watchProject(directory: string, signal: AbortSignal) {
     ready = resolve;
   });
   let output = '';
-  const drain = async (stream: ReadableStream<Uint8Array>) => {
+  const stdoutLog = new ToolOutput((text) => process.stderr.write(text));
+  const stderrLog = new ToolOutput((text) => process.stderr.write(text));
+  const failure = (message: string) =>
+    new DiagnosticError('BUILD_WATCH', message, {
+      operation: 'watch project builds',
+      tool: 'Vite',
+      exitCode: child.exitCode ?? undefined,
+      detail: stderrLog.text || stdoutLog.text,
+      recovery: 'Fix the reported build error and restart soyli dev.',
+    });
+  const drain = async (stream: ReadableStream<Uint8Array>, log: ToolOutput) => {
     for await (const bytes of stream) {
-      process.stderr.write(bytes);
+      log.push(bytes);
       // Vite's pinned watch reporter emits this after the single-file plugin completes.
       output = (output + new TextDecoder().decode(bytes)).slice(-4096);
       if (/built in \d+ms/.test(output)) ready();
     }
+    log.finish();
   };
-  const finished = Promise.all([child.exited, drain(child.stdout), drain(child.stderr)]).finally(
-    () => {
-      signal.removeEventListener('abort', stop);
-      clearTimeout(forceTimer);
-    },
-  );
+  const finished = Promise.all([
+    child.exited,
+    drain(child.stdout, stdoutLog),
+    drain(child.stderr, stderrLog),
+  ]).finally(() => {
+    signal.removeEventListener('abort', stop);
+    clearTimeout(forceTimer);
+  });
   let startupTimer: ReturnType<typeof setTimeout> | undefined;
   try {
     if (signal.aborted) stop();
     await Promise.race([
       firstBuild,
       finished.then(() => {
-        throw new AccountError('BUILD_WATCH', 'The Vite watcher stopped before its first build.');
+        throw failure('The Vite watcher stopped before its first build.');
       }),
       new Promise<never>((_, reject) => {
         startupTimer = setTimeout(
-          () =>
-            reject(new AccountError('BUILD_WATCH', 'Timed out waiting for the first Vite build.')),
+          () => reject(failure('Timed out waiting for the first Vite build.')),
           60000,
         );
       }),
@@ -351,5 +423,6 @@ export async function watchProject(directory: string, signal: AbortSignal) {
       clearTimeout(forceTimer);
     },
     exited: finished,
+    failure: () => failure('The Vite build watcher stopped.'),
   };
 }

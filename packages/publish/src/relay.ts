@@ -1,3 +1,4 @@
+import { DiagnosticError } from '../../diagnostics/src';
 import { RelayPool } from 'applesauce-relay';
 import { matchFilter, type Filter } from 'nostr-tools';
 import type { Subscription } from 'rxjs';
@@ -22,7 +23,17 @@ export class PublicationRelays {
         clearTimeout(timer);
         this.signal?.removeEventListener('abort', aborted);
         subscription?.unsubscribe();
-        error ? reject(error) : resolve(events);
+        error
+          ? reject(
+              error instanceof PublishError
+                ? error
+                : new DiagnosticError('RELAY_READ', 'Publication relay query failed.', {
+                    operation: 'read publication relay',
+                    target: url,
+                    cause: error,
+                  }),
+            )
+          : resolve(events);
       };
       const aborted = () =>
         finish(new PublishError('PUBLISH_CANCELLED', 'Publication cancelled.', 'check', true));
@@ -45,7 +56,8 @@ export class PublicationRelays {
         .subscribe({
           next: (message) => {
             if (message.type === 'EOSE') finish();
-            else if (message.type === 'CLOSED') finish(new Error('Relay closed query'));
+            else if (message.type === 'CLOSED')
+              finish(new Error(`Relay closed query: ${message.reason}`));
             else if (message.type === 'EVENT') {
               try {
                 const event = verifiedEvent(message.event);
@@ -83,6 +95,10 @@ export class PublicationRelays {
         'The selected relay refused the publication. Check its event policy and retry.',
         'relay',
         true,
+        new DiagnosticError('RELAY_RESPONSE', 'Relay rejected the event.', {
+          target: url,
+          detail: result.message,
+        }),
       );
     if (!(await this.read(url, { ids: [event.id] })).some((e) => e.id === event.id))
       throw new PublishError(

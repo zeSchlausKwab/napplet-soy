@@ -18,3 +18,18 @@ Optional Space presentation and source metadata must not become playback require
 
 An agenda entry records future work; it is not an instruction to implement every
 item or deploy. Follow the current user request for scope and deployment authorization.
+
+## CLI error handling
+
+soyLI wraps tools and services: failures must preserve an actionable cause.
+Use `packages/diagnostics/src` at terminal/JSON/local-UI boundaries, and attach
+operation, tool exit status or service status, target and recovery context where
+available. Preserve causes when wrapping; do not replace them with a generic
+failure or silently ignore a required step. Successful optional fallbacks can be
+quiet, but exhausted alternatives must retain their failure reasons.
+
+Do not log raw argument, environment, request or credential dumps. Credential-store
+exceptions may contain secrets: expose the operation and safe OS codes only.
+Test wrapped failures through a real entrypoint/process, including the useful
+cause and redaction, rather than only asserting that an error occurred.
+See [docs/CLI-ERRORS.md](docs/CLI-ERRORS.md) for the implemented contract and bounds.

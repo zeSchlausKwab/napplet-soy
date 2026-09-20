@@ -1,3 +1,4 @@
+import { diagnose, formatDiagnostic } from '../../../packages/diagnostics/src';
 import { z } from 'zod';
 import { Accounts } from '../../../packages/identity/src/accounts';
 import { checkpoint } from '../../../packages/publish/src/git-source';
@@ -292,13 +293,18 @@ export function createWorkshop(options: WorkshopOptions) {
           selected.stage = 'Done';
         } catch (error) {
           selected.state = 'failed';
-          selected.error = error instanceof Error ? error.message : 'Action failed.';
+          selected.error = formatDiagnostic(diagnose(error, `workshop ${selected.action}`));
         } finally {
           try {
             await release();
           } catch (error) {
             selected.state = 'failed';
-            selected.error = `Build watcher could not restart: ${String(error)}`;
+            selected.error = [
+              selected.error,
+              formatDiagnostic(diagnose(error, 'restart build watcher')),
+            ]
+              .filter(Boolean)
+              .join('\n');
           }
         }
       })();

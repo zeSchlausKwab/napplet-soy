@@ -25,24 +25,37 @@ export type Vault = {
 };
 export class NativeVault implements Vault {
   constructor(private service: string) {}
-  private async operation<T>(fn: () => Promise<T>) {
+  private async operation<T>(operation: 'read' | 'write' | 'delete', fn: () => Promise<T>) {
     try {
       return await fn();
-    } catch {
+    } catch (error) {
+      // A vault exception may contain the value being stored. Keep only OS codes.
+      const failure = error as { code?: unknown; errno?: unknown } | null;
+      const code =
+        typeof failure?.code === 'string' && /^[A-Z_][A-Z0-9_]{0,49}$/.test(failure.code)
+          ? failure.code
+          : undefined;
+      const errno =
+        typeof failure?.errno === 'number' && Number.isSafeInteger(failure.errno)
+          ? failure.errno
+          : undefined;
+      const status = [code, errno].filter((value) => value !== undefined).join(', ');
       throw new AccountError(
         'KEYSTORE_UNAVAILABLE',
-        'Unlock your OS credential store and retry. Linux needs a running Secret Service/keyring. No automatic plaintext fallback is used. For development only, see SOYLI_DANGEROUS_PLAINTEXT_KEYS in soyli --help.',
+        `OS credential ${operation} failed${status ? ` (${status})` : ' (no OS error code supplied)'}. Check the credential store permissions and unlock status. Linux needs a running Secret Service/keyring. No automatic plaintext fallback is used. For development only, see SOYLI_DANGEROUS_PLAINTEXT_KEYS in soyli --help.`,
       );
     }
   }
   get(id: string) {
-    return this.operation(() => Bun.secrets.get({ service: this.service, name: id }));
+    return this.operation('read', () => Bun.secrets.get({ service: this.service, name: id }));
   }
   set(id: string, value: string) {
-    return this.operation(() => Bun.secrets.set({ service: this.service, name: id, value }));
+    return this.operation('write', () =>
+      Bun.secrets.set({ service: this.service, name: id, value }),
+    );
   }
   async delete(id: string) {
-    await this.operation(() => Bun.secrets.delete({ service: this.service, name: id }));
+    await this.operation('delete', () => Bun.secrets.delete({ service: this.service, name: id }));
   }
 }
 const accountSchema = z

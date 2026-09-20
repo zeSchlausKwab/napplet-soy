@@ -512,7 +512,7 @@ test('uncertain upload and relay acknowledgement resume the exact saved events w
     f.deps.upload = async (input) => {
       await upload(input);
       f.deps.upload = upload;
-      throw new Error('Connection lost after upload');
+      throw new Error('Connection lost after upload\nAuthorization: Bearer fixture-secret');
     };
     await expect(publishProject(f.options)).rejects.toMatchObject({
       code: 'PUBLISH_FAILED',
@@ -520,6 +520,8 @@ test('uncertain upload and relay acknowledgement resume the exact saved events w
       retryable: true,
     });
     const prepared = await f.load();
+    expect(prepared.error?.message).toContain('Connection lost after upload');
+    expect(prepared.error?.message).not.toContain('fixture-secret');
     const firstHash = [...f.blobs.keys()][0];
     const ensure = f.deps.relays!.ensure;
     f.deps.relays!.ensure = async (url, event) => {

@@ -1,3 +1,5 @@
+import { DiagnosticError } from '../../../packages/diagnostics/src';
+import { sourceGit } from '../../../packages/grasp/src/client';
 import { projectPublishingDefaults } from '../../../packages/publish/src/config';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -41,20 +43,20 @@ async function createDestination(target: string) {
 }
 async function initializeGit(target: string) {
   // Avoid --initial-branch: older Apple Git accepts init + symbolic-ref too.
-  for (const args of [
-    ['init', target],
-    ['-C', target, 'symbolic-ref', 'HEAD', 'refs/heads/main'],
-  ]) {
-    const child = Bun.spawn(['git', ...args], {
-      stdin: 'ignore',
-      stdout: 'ignore',
-      stderr: 'ignore',
-    });
-    if (await child.exited)
-      throw new AccountError(
-        'GIT_INIT_FAILED',
-        `Project files were created at ${target}, but Git initialization failed. Check git --version and this folder's permissions, then initialize Git in the existing folder before running soyli setup --project <folder>.`,
-      );
+  try {
+    await sourceGit(target, ['init']);
+    await sourceGit(target, ['symbolic-ref', 'HEAD', 'refs/heads/main']);
+  } catch (cause) {
+    throw new DiagnosticError(
+      'GIT_INIT_FAILED',
+      `Project files were created at ${target}, but Git initialization failed.`,
+      {
+        operation: 'initialize project Git repository',
+        cause,
+        recovery:
+          'Resolve the Git error, then initialize Git in the existing folder before running soyli setup --project <folder>.',
+      },
+    );
   }
 }
 async function scaffoldProject(parent: string, name: string, template: string) {

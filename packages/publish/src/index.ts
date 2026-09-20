@@ -1,14 +1,10 @@
+import { diagnose, redactDiagnostic } from '../../diagnostics/src';
 import { parseAssets, ASSET_LOCK } from '../../assets/src';
 import { inspectPreviewVideo, MAX_VIDEO_BYTES } from '../../protocol/src/preview-video';
 import { join } from 'node:path';
 import { realpath, rm } from 'node:fs/promises';
 import { Accounts } from '../../identity/src/accounts';
-import {
-  AccountError,
-  checkPubkey,
-  type CreatorSigner,
-  type Network,
-} from '../../identity/src/signer';
+import { checkPubkey, type CreatorSigner, type Network } from '../../identity/src/signer';
 import {
   aggregateHash,
   encodeAddress,
@@ -767,25 +763,41 @@ export async function publishProject(options: PublishOptions) {
         await save();
         return result(job, completed);
       } catch (error) {
+        const diagnostic = diagnose(error, `publish ${stage}`);
         const safe =
           error instanceof PublishError
             ? error
-            : error instanceof AccountError
-              ? new PublishError(error.code, error.message, stage, true)
-              : new PublishError(
-                  'PUBLISH_FAILED',
-                  `Publication stopped during ${stage}. Check the selected services and retry with publish --resume; saved source and signed events are retained.`,
-                  stage,
-                  true,
-                );
+            : new PublishError(
+                diagnostic.code === 'CLI_ERROR' ? 'PUBLISH_FAILED' : diagnostic.code,
+                diagnostic.message,
+                stage,
+                true,
+                error,
+              );
         if (job) {
           job.error = {
             code: safe.code,
             stage: safe.stage,
-            message: safe.message,
+            message: redactDiagnostic(
+              [safe.message, ...(diagnostic.details ?? [])].join('\n'),
+              1000,
+            ),
             retryable: safe.retryable,
           };
-          await journal.save(job).catch(() => {});
+          try {
+            await journal.save(job);
+          } catch (saveError) {
+            throw new PublishError(
+              safe.code,
+              safe.message,
+              safe.stage,
+              safe.retryable,
+              new AggregateError(
+                [error, saveError],
+                'Publication failed and its error could not be saved. Inspect soyli status before retrying.',
+              ),
+            );
+          }
         }
         throw safe;
       }

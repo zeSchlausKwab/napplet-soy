@@ -226,6 +226,14 @@ Keep using the existing creator identity. Do not scaffold a replacement project.
 soyli publish --resume resumes a saved PUBLICATION, not authoring: it uploads the
 old frozen bytes even if current files changed. Ordinary editing needs no resume flag.
 
+When a command fails, read its operation, cause, exit/status and recovery step.
+Use --json where supported to inspect the structured error; project run/exec
+arguments are passed to the underlying tool. Include soyli version/platform and
+the diagnostic when reporting a host/tool failure. Inspect soyli status before
+retrying publication. Do not replace identities, disable validation or change
+destinations just to bypass an error. Fix the cause and resume the saved job when
+appropriate. Never print credentials in scripts or paste them into bug reports.
+
 ## Creator backup
 
 Creating a local identity also saves its private key as an nsec file outside this

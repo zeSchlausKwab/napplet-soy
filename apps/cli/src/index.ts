@@ -1,3 +1,4 @@
+import { diagnose, formatDiagnostic } from '../../../packages/diagnostics/src';
 import { publishFromProject, proposeFromProject } from './share-project';
 import { manageProject, editProject } from './manager';
 import { MAX_ASSET_BYTES } from '../../../packages/assets/src';
@@ -21,7 +22,7 @@ import {
   type Network,
 } from '../../../packages/identity/src/signer';
 import { ask, hiddenInput as readHiddenInput, secretStdin } from './input';
-import { publicationStatus, PublishError } from '../../../packages/publish/src';
+import { publicationStatus } from '../../../packages/publish/src';
 import { initBackend, syncBackend, backendStatus } from './backend';
 import { checkPublication } from './publish-check';
 import { preview, checkProject, doctor } from './local';
@@ -94,6 +95,7 @@ browser when needed. Git and an unlocked OS credential store are needed to publi
 );
 let json = process.argv.slice(2).includes('--json');
 let createdProject: string | undefined;
+let operation = 'starting soyli';
 const controller = new AbortController();
 for (const [signal, code] of [
   ['SIGTERM', 143],
@@ -117,6 +119,41 @@ const publicAccount = (a: Account, network: Network) => ({
 });
 try {
   const raw = process.argv.slice(2);
+  // Only known command names, never arbitrary arguments or signing inputs.
+  if (
+    new Set([
+      'new',
+      'remix',
+      'setup',
+      'build',
+      'run',
+      'exec',
+      'skills',
+      'account',
+      'publish',
+      'status',
+      'dev',
+      'check',
+      'browser',
+      'doctor',
+      'backend',
+      'checkpoint',
+      'push',
+      'propose',
+      'review',
+      'merge',
+      'comment',
+      'close',
+      'reopen',
+      'config',
+      'screenshot',
+      'record',
+      'assets',
+      'project',
+      'multiplayer',
+    ]).has(raw[0])
+  )
+    operation = `soyli ${raw[0]}`;
   if (raw[0] === 'run' || raw[0] === 'exec') {
     if (!raw[1] || raw[1].startsWith('-'))
       throw new AccountError('USAGE', 'Use run <package-script> or exec <project-tool>.');
@@ -323,12 +360,13 @@ try {
   ) {
     let result: unknown;
     if (command === 'checkpoint') {
-      if (!action || argument) throw new Error('Use checkpoint "Describe your changes".');
+      if (!action || argument)
+        throw new AccountError('USAGE', 'Use checkpoint "Describe your changes".');
       const account = await accounts.current();
       result = await checkpoint(collaboration.directory, action, account?.pubkey);
     } else if (command === 'propose') {
       if ((!action && !values.resume) || argument)
-        throw new Error('Use propose "Description" or propose --resume.');
+        throw new AccountError('USAGE', 'Use propose "Description" or propose --resume.');
       result = await proposeFromProject({
         ...collaboration,
         description: action ?? '',
@@ -347,7 +385,7 @@ try {
       });
     } else if (command === 'push') result = await pushSource(collaboration);
     else {
-      if (!action) throw new Error('Supply a proposal event id.');
+      if (!action) throw new AccountError('USAGE', 'Supply a proposal event id.');
       result = await proposalAction({
         ...collaboration,
         proposal: action,
@@ -841,28 +879,22 @@ try {
     }
   } else throw new AccountError('USAGE', 'Unknown command. Use --help.');
 } catch (error) {
-  const safe =
-    error instanceof ScaffoldInputError
-      ? new AccountError('USAGE', error.message)
-      : error instanceof AccountError
-        ? error
-        : new AccountError(
-            'CLI_FAILED',
-            'Could not finish this operation. Check the destination, template, permissions and prerequisites. Existing keys were not replaced.',
-          );
+  const safe = diagnose(
+    error instanceof ScaffoldInputError ? new AccountError('USAGE', error.message) : error,
+    operation,
+  );
   if (json)
     console.log(
       JSON.stringify({
-        error: {
-          code: safe.code,
-          message: safe.message,
-          ...(safe instanceof PublishError ? { stage: safe.stage, retryable: safe.retryable } : {}),
-        },
+        error: safe,
+        version,
+        platform: `${process.platform}-${process.arch}`,
         ...(createdProject ? { directory: createdProject } : {}),
       }),
     );
   else {
-    console.error(`${safe.code}: ${safe.message}`);
+    console.error(formatDiagnostic(safe));
+    console.error(`soyLI ${version} · ${process.platform}-${process.arch}`);
     if (createdProject)
       console.error(
         `Preview project retained at ${createdProject}. Use setup/build for project tools or the account commands for creator setup.`,

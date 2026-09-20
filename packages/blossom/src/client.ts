@@ -1,3 +1,4 @@
+import { DiagnosticError, diagnose } from '../../diagnostics/src';
 import type { EventTemplate } from 'nostr-tools';
 import { CLIENT_TIMEOUTS, transferDeadline, type TransferDeadline } from './transfer';
 import { sha256, verifiedEvent, type SignedEvent } from '../../protocol/src';
@@ -72,9 +73,13 @@ export async function uploadBlob(input: {
       }),
     );
     if (![200, 201].includes(response.status))
-      throw new Error(
-        `Blossom upload refused (${response.status}): ${response.headers.get('x-reason') ?? 'See server response'}`,
-      );
+      throw new DiagnosticError('BLOSSOM_REFUSED', `Blossom upload refused (${response.status}).`, {
+        operation: 'upload Blossom blob',
+        target: origin,
+        status: response.status,
+        detail: response.headers.get('x-reason') ?? undefined,
+        recovery: 'Check the server upload policy, size limit and authorization before retrying.',
+      });
     if (Number(response.headers.get('content-length')) > 4096)
       throw new Error('Blossom descriptor exceeds limit');
     // Once upload headers arrive, the small descriptor gets its own bounded read.
@@ -110,8 +115,13 @@ export async function uploadBlob(input: {
     )
       throw new Error('Blossom returned an inconsistent descriptor');
   } catch (error) {
-    if (upload.signal.aborted) throw upload.signal.reason;
-    throw error;
+    const cause = upload.signal.aborted ? upload.signal.reason : error;
+    if (cause instanceof DiagnosticError) throw cause;
+    throw new DiagnosticError('BLOSSOM_UPLOAD', diagnose(cause).message, {
+      operation: 'upload Blossom blob',
+      target: origin,
+      cause,
+    });
   } finally {
     upload.close();
     await response?.body?.cancel().catch(() => {});

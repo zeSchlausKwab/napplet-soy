@@ -1,3 +1,4 @@
+import { diagnose, formatDiagnostic, redactDiagnostic } from '../../../packages/diagnostics/src';
 import { mkdtemp, mkdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
@@ -183,7 +184,9 @@ export async function testMultiplayer(
             localStorage.setItem('napplet:multiplayer-permission:v1', 'allow');
         });
         const page = await context.newPage();
-        page.on('pageerror', (error) => errors.push(`Player ${index + 1}: ${error.message}`));
+        page.on('pageerror', (error) =>
+          errors.push(redactDiagnostic(`Player ${index + 1}: ${error.message}`)),
+        );
         page.setDefaultTimeout(Math.min(15000, options.timeoutMs));
         await page.goto(url);
         await page.locator('#stage iframe').waitFor();
@@ -258,9 +261,7 @@ export async function testMultiplayer(
   } catch (error) {
     failure = combined.aborted
       ? 'Multiplayer scenario cancelled or timed out.'
-      : error instanceof Error
-        ? error.message
-        : String(error);
+      : formatDiagnostic(diagnose(error, 'multiplayer scenario'));
   } finally {
     clearTimeout(timer);
     // Capture observations on failure as well. Never include native candidates or credentials.
@@ -294,7 +295,7 @@ export async function testMultiplayer(
       server?.stop(true);
       await backend?.close();
     } catch (error) {
-      failure ??= `Could not close test services: ${String(error)}`;
+      failure ??= formatDiagnostic(diagnose(error, 'close multiplayer test services'));
     } finally {
       if (turn) {
         // coturn's graceful shutdown can wait on allocation timers; this instance is disposable.

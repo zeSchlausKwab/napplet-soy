@@ -1,3 +1,4 @@
+import { DiagnosticError } from '../../diagnostics/src';
 import { validateAssets } from '../../assets/src';
 import { ProtocolClient } from '../../client/src/nostr';
 import { readRepository, repositoryRef } from '../../collaboration/src/protocol';
@@ -122,6 +123,7 @@ export async function loadRemix(reference: string, network: Network, signal: Abo
   const manifest = await discoverRemix(filter, destinations, signal);
   const release = await validateManifest(manifest);
   let artifact: Uint8Array | undefined;
+  const downloadFailures: Error[] = [];
   for (const url of [
     ...release.servers.map((s) => `${s.replace(/\/$/, '')}/${release.artifactHash}`),
   ]) {
@@ -131,12 +133,24 @@ export async function loadRemix(reference: string, network: Network, signal: Abo
         artifact = bytes;
         break;
       }
-    } catch {}
+      throw new Error('Downloaded artifact hash differs from the signed manifest.');
+    } catch (cause) {
+      downloadFailures.push(
+        new DiagnosticError('BLOSSOM_DOWNLOAD', 'Artifact download failed.', {
+          target: url,
+          cause,
+        }),
+      );
+    }
   }
   if (!artifact)
-    throw new AccountError(
+    throw new DiagnosticError(
       'REMIX_DOWNLOAD',
       'No verified download is available for this version. Its declared Blossom servers may be unavailable; retry later.',
+      {
+        operation: 'download remix artifact',
+        cause: new AggregateError(downloadFailures, 'Declared artifact sources failed.'),
+      },
     );
   let files: Map<string, Uint8Array> | undefined;
   const archive = manifest.tags.find((t) => t[0] === 'source-archive')?.[1];
@@ -173,9 +187,10 @@ export async function loadRemix(reference: string, network: Network, signal: Abo
     }
   }
   if (archiveError && !repository)
-    throw new AccountError(
+    throw new DiagnosticError(
       'REMIX_SOURCE',
       'The published source archive could not be downloaded or verified. Retry later or ask the creator to check the release.',
+      { operation: 'download source archive', target: archive, cause: archiveError },
     );
   return { manifest, artifact, files, repository, network };
 }

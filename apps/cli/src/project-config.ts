@@ -25,8 +25,8 @@ async function readProject(directory: string) {
       bytes,
       project: projectSchema.parse(JSON.parse(new TextDecoder().decode(bytes))),
     };
-  } catch {
-    throw new PublishError('PROJECT_CONFIG', 'Invalid napplet.json.');
+  } catch (cause) {
+    throw new PublishError('PROJECT_CONFIG', 'Invalid napplet.json.', 'check', false, cause);
   }
 }
 async function saveProject(root: string, original: Uint8Array, project: Project) {

@@ -1,3 +1,4 @@
+import { redactDiagnostic } from '../../../packages/diagnostics/src';
 import { waitForCapture } from './interactive-capture';
 import { ASSET_LOCK, parseAssets } from '../../../packages/assets/src';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
@@ -84,7 +85,9 @@ export async function checkPublication(
     });
     page.setDefaultTimeout(5000);
     const errors: string[] = [];
-    page.on('pageerror', () => errors.push('script error'));
+    page.on('pageerror', (error) => {
+      if (errors.length < 8) errors.push(redactDiagnostic(error.message));
+    });
     await page.addInitScript(() => {
       (window as any).__publishViolations = [];
       document.addEventListener('securitypolicyviolation', (event) =>
@@ -107,9 +110,9 @@ export async function checkPublication(
       (await iframe.getAttribute('sandbox')) !== 'allow-scripts' ||
       (await iframe.getAttribute('src'))
     )
-      throw new Error();
+      throw new Error('The preview iframe did not have the required sandbox.');
     const frame = page.frames().find((frame) => frame.parentFrame());
-    if (!frame) throw new Error();
+    if (!frame) throw new Error('The preview iframe was not created.');
     await frame.waitForFunction(() => !!(window as any).napplet?.shell, undefined, {
       timeout: 5000,
     });
@@ -128,7 +131,11 @@ export async function checkPublication(
     });
     await page.waitForTimeout(delayMs);
     if (errors.length || (await frame.evaluate(() => (window as any).__publishViolations?.length)))
-      throw new Error();
+      throw new Error(
+        errors.length
+          ? errors.join('; ')
+          : 'A content security policy violation occurred in the sandbox.',
+      );
     if (interactive) await waitForCapture(page, recording);
     let preview: Uint8Array;
     if (config.preview?.image && !forceScreenshot) {
@@ -257,13 +264,20 @@ export async function checkPublication(
         );
     }
     if (errors.length || (await frame.evaluate(() => (window as any).__publishViolations?.length)))
-      throw new Error();
+      throw new Error(
+        errors.length
+          ? errors.join('; ')
+          : 'A content security policy violation occurred in the sandbox.',
+      );
     return { profile: RUNTIME_PROFILE, browser: browser.version(), preview, video };
   } catch (error) {
     if (error instanceof AccountError) throw error;
     throw new PublishError(
       'BROWSER_CHECK',
       'The frozen creation failed the shared sandbox startup check. Run the local preview and fix script or handshake errors before publishing.',
+      'check',
+      false,
+      error,
     );
   } finally {
     signal?.removeEventListener('abort', abort);

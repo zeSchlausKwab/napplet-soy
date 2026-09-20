@@ -1,4 +1,5 @@
 import { ASSET_LOCK, parseAssets } from '../../assets/src';
+import { DiagnosticError } from '../../diagnostics/src';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ProtocolClient } from '../../client/src/nostr';
@@ -289,6 +290,7 @@ export async function propose(
       await client.publish(verifiedEvent(saved.event), saved.relays);
       // GRASP-01 holds a PR in purgatory until its c commit is available in the
       // target repository. Push only the immutable event ref, never a maintainer branch.
+      const pushFailures: Error[] = [];
       for (const clone of repository.clones.slice(0, 4)) {
         try {
           await sourceGit(join(saved.folder, 'source'), [
@@ -298,7 +300,14 @@ export async function propose(
             `${saved.commit}:refs/nostr/${saved.event.id}`,
           ]);
           break;
-        } catch {}
+        } catch (cause) {
+          pushFailures.push(
+            new DiagnosticError('GIT_PROPOSAL_PUSH', 'Proposal ref push failed.', {
+              target: clone,
+              cause,
+            }),
+          );
+        }
       }
       const inbox = new ProtocolClient(() =>
         repository.relays.length ? repository.relays : client.relays(),
@@ -309,6 +318,17 @@ export async function propose(
           throw new Error(
             'The upstream relay has not made this proposal queryable. Retry with propose --resume.',
           );
+      } catch (cause) {
+        throw new DiagnosticError(
+          'PROPOSAL_UNCONFIRMED',
+          'Could not confirm the proposal in the upstream inbox.',
+          {
+            operation: 'publish proposal',
+            recovery:
+              'Address the relay or Git error, then run soyli propose --resume to resend the saved proposal.',
+            cause: new AggregateError([cause, ...pushFailures], 'Proposal confirmation failed.'),
+          },
+        );
       } finally {
         inbox.close();
       }
@@ -395,9 +415,14 @@ export async function proposalAction(
           '--is-ancestor',
           remoteHead,
           options.target,
-        ]).catch(() => {
-          throw new Error(
-            'The upstream branch advanced. Fetch and review the new target before merging.',
+        ]).catch((cause) => {
+          const advanced = cause instanceof DiagnosticError && cause.context.exitCode === 1;
+          throw new DiagnosticError(
+            advanced ? 'GIT_UPSTREAM_ADVANCED' : 'GIT_ANCESTRY_CHECK',
+            advanced
+              ? 'The upstream branch advanced. Fetch and review the new target before merging.'
+              : 'Could not check the upstream branch before merging.',
+            { operation: 'check proposal ancestry', cause },
           );
         });
       return mergeReviewed(options.directory, {

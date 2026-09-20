@@ -1,3 +1,4 @@
+import { DiagnosticError, ToolOutput } from '../../../packages/diagnostics/src';
 import { access, mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
@@ -120,21 +121,56 @@ export async function installBrowser(
       stderr: 'pipe',
     },
   );
-  const drain = async (stream: ReadableStream<Uint8Array>) => {
-    for await (const bytes of stream) process.stderr.write(bytes);
+  const stdout = new ToolOutput((text) => process.stderr.write(text));
+  const stderr = new ToolOutput((text) => process.stderr.write(text));
+  const drain = async (stream: ReadableStream<Uint8Array>, log: ToolOutput) => {
+    for await (const bytes of stream) log.push(bytes);
+    log.finish();
   };
-  const timeout = setTimeout(() => child.kill('SIGKILL'), 5 * 60_000);
-  const stop = () => child.kill('SIGTERM');
+  let timedOut = false,
+    cancelled = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    child.kill('SIGKILL');
+  }, 5 * 60_000);
+  const stop = () => {
+    cancelled = true;
+    child.kill('SIGTERM');
+  };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   try {
-    const [code] = await Promise.all([child.exited, drain(child.stdout), drain(child.stderr)]);
-    if (code !== 0 || !(await browserInstalled(video, interactive))) throw new Error();
-  } catch {
-    throw new AccountError(
-      'BROWSER_INSTALL',
-      'Browser setup failed. Check your network and retry soyli browser install. Linux may also need system browser libraries; doctor explains the supported environment.',
-    );
+    const [code] = await Promise.all([
+      child.exited,
+      drain(child.stdout, stdout),
+      drain(child.stderr, stderr),
+    ]);
+    if (cancelled || timedOut || code !== 0)
+      throw new DiagnosticError(
+        cancelled ? 'BROWSER_CANCELLED' : timedOut ? 'BROWSER_TIMEOUT' : 'BROWSER_INSTALL',
+        cancelled
+          ? 'Browser installation cancelled.'
+          : timedOut
+            ? 'Browser installation timed out after five minutes.'
+            : 'Browser installer failed.',
+        {
+          operation: 'install Chromium',
+          tool: 'Playwright',
+          exitCode: code,
+          detail: stderr.text || stdout.text,
+          recovery:
+            'Resolve the installer error, then retry soyli browser install. Run soyli doctor to check platform support.',
+        },
+      );
+    if (!(await browserInstalled(video, interactive)))
+      throw new DiagnosticError(
+        'BROWSER_INSTALL',
+        'The installer exited successfully but the required browser files are missing.',
+        {
+          operation: 'verify Chromium installation',
+          recovery: 'Run soyli doctor and retry soyli browser install.',
+        },
+      );
   } finally {
     clearTimeout(timeout);
     process.removeListener('SIGINT', stop);

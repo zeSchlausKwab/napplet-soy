@@ -1,3 +1,4 @@
+import { diagnose, DiagnosticError, formatDiagnostic } from '../../../packages/diagnostics/src';
 import { dangerousFileKeystore } from '../../../packages/identity/src/accounts';
 import { realpath } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -37,13 +38,7 @@ export async function preview(
     watcher = active;
     void active.exited
       .then(() => {
-        if (watcher === active && !signal.aborted)
-          failWatch(
-            new AccountError(
-              'BUILD_WATCH',
-              'The Vite build watcher stopped. See its output above.',
-            ),
-          );
+        if (watcher === active && !signal.aborted) failWatch(active.failure());
       })
       .catch(failWatch);
   }
@@ -105,11 +100,16 @@ export async function preview(
     }
     signal.addEventListener('abort', stop, { once: true });
     const response = await fetch(new URL('revision', server.url));
-    if (!response.ok)
-      throw new AccountError(
-        'PROJECT_CONFIG',
-        'Cannot preview this project. Check index.html and napplet.json.',
-      );
+    if (!response.ok) {
+      // This is our own loopback server's bounded, already-sanitized error response.
+      const detail = await response.json().catch(() => null);
+      throw new DiagnosticError('PROJECT_CONFIG', 'Cannot preview this project.', {
+        operation: 'start local preview',
+        status: response.status,
+        detail: typeof detail?.error === 'string' ? detail.error : undefined,
+        recovery: 'Correct the reported project error and restart soyli dev.',
+      });
+    }
     console.log(
       json
         ? JSON.stringify({ url: server.url.href })
@@ -185,11 +185,8 @@ export async function doctor() {
         ).chromium.launch({ headless: true, timeout: 10000 });
         await instance.close();
         browser = 'ready';
-      } catch {
-        browser =
-          process.platform === 'linux'
-            ? 'installed but cannot start; Linux needs Chromium system libraries (see https://napplet.soy/create#platforms)'
-            : 'installed but cannot start; run soyli browser install and check macOS application permissions (see https://napplet.soy/create#platforms)';
+      } catch (error) {
+        browser = formatDiagnostic(diagnose(error, 'start installed Chromium'));
       }
     }
     const note = browserCompatibilityNote();
@@ -198,7 +195,7 @@ export async function doctor() {
     browser =
       error instanceof AccountError
         ? error.message
-        : 'browser diagnostics unavailable; run soyli browser install';
+        : formatDiagnostic(diagnose(error, 'browser diagnostics'));
   }
   return {
     version,

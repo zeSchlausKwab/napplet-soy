@@ -1,3 +1,4 @@
+import { DiagnosticError } from '../../../../packages/diagnostics/src';
 export type PreviewAssets = { client: string; html: string };
 declare const NAPPLET_PREVIEW_ASSETS: PreviewAssets | undefined;
 let pending: Promise<PreviewAssets> | undefined;
@@ -16,12 +17,17 @@ export function previewAssets(): Promise<PreviewAssets> {
     });
     const timer = setTimeout(() => child.kill('SIGKILL'), 20_000);
     try {
-      const [code, output] = await Promise.all([
+      const [code, output, errors] = await Promise.all([
         child.exited,
         new Response(child.stdout).text(),
         new Response(child.stderr).text(),
       ]);
-      if (code !== 0) throw new Error('Could not prepare the trusted preview assets.');
+      if (code !== 0)
+        throw new DiagnosticError(
+          'PREVIEW_BUILD',
+          'Could not prepare the trusted preview assets.',
+          { operation: 'bundle local preview', tool: 'Bun', exitCode: code, detail: errors },
+        );
       return JSON.parse(output) as PreviewAssets;
     } finally {
       clearTimeout(timer);

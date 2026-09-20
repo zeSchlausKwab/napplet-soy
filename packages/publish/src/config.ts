@@ -12,8 +12,10 @@ export class PublishError extends AccountError {
     message: string,
     public stage = 'check',
     public retryable = false,
+    cause?: unknown,
   ) {
     super(code, message);
+    this.cause = cause;
   }
 }
 const identifier = z.string().regex(/^[a-z0-9][a-z0-9-]{0,11}[a-z0-9]$|^[a-z0-9]$/);

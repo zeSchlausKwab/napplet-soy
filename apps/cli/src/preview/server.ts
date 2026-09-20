@@ -1,3 +1,4 @@
+import { diagnose, formatDiagnostic } from '../../../../packages/diagnostics/src';
 import { manageProject, editProject } from '../manager';
 import type { Workshop } from '../workshop';
 import { readBytes } from '../../../../packages/client/src/bytes';
@@ -335,12 +336,11 @@ export function startPreviewServer(
           );
         return new Response('Not found', { status: 404, headers: noStore });
       } catch (error) {
+        const diagnostic = diagnose(error, 'local preview');
         return Response.json(
           {
-            error:
-              error instanceof z.ZodError
-                ? 'Invalid napplet.json preview configuration.'
-                : String(error),
+            error: formatDiagnostic(diagnostic),
+            diagnostic,
           },
           { status: 400, headers: noStore },
         );

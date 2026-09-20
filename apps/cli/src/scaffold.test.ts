@@ -41,13 +41,15 @@ test('bootstrap supports older Git and explains existing destinations and Git in
     `#!/bin/sh
 for argument in "$@"; do
   case "$argument" in --initial-branch*) exit 129;; esac
+  if [ "$argument" = init ]; then
+    case "$PWD" in */git-init-failure) printf 'fixture: repository initialization refused\n' >&2; exit 7;; esac
+  fi
 done
-if [ "$FAIL_INIT" = 1 ] && [ "$1" = init ]; then exit 1; fi
-exec "$REAL_GIT" "$@"
+exec '${Bun.which('git')!.replaceAll("'", "'\\''")}' "$@"
 `,
     { mode: 0o755 },
   );
-  const run = async (name: string, fail = false) => {
+  const run = async (name: string) => {
     const child = Bun.spawn(
       [
         process.execPath,
@@ -63,8 +65,6 @@ exec "$REAL_GIT" "$@"
         cwd: root,
         env: {
           PATH: `${tools}:${process.env.PATH}`,
-          REAL_GIT: Bun.which('git')!,
-          FAIL_INIT: fail ? '1' : '0',
           SPACE_ACCOUNT_HOME: join(root, 'isolated-accounts'),
         },
         stdout: 'pipe',
@@ -89,9 +89,11 @@ exec "$REAL_GIT" "$@"
   const repeated = await run('intel-boilerplate');
   expect(repeated.data.error.code).toBe('DESTINATION_EXISTS');
   expect(await Bun.file(join(root, 'intel-boilerplate/README.md')).text()).toBe('Keep my work');
-  const failed = await run('git-init-failure', true);
+  const failed = await run('git-init-failure');
   expect(failed.data.error.code).toBe('GIT_INIT_FAILED');
   expect(failed.data.error.message).toContain('git-init-failure');
+  expect(failed.data.error.details.join('\n')).toContain('repository initialization refused');
+  expect(failed.data.error.details.join('\n')).toContain('Exit status: 7');
 });
 test('scaffolds a standalone Git project with shared restricted preview', async () => {
   const path = await scaffold(root, 'little-orbit', 'soft-orbit');

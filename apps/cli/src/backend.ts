@@ -1,3 +1,4 @@
+import { DiagnosticError, diagnose, formatDiagnostic } from '../../../packages/diagnostics/src';
 import { effectiveProject, readBinding, writeBinding } from '../../../packages/publish/src/binding';
 import { join } from 'node:path';
 import { mkdir, writeFile, rename, rm } from 'node:fs/promises';
@@ -87,9 +88,27 @@ export async function resolveBackendProvider(directory: string, network: Network
   const response = await fetch(`${target.site}/.well-known/napplet.json`, {
     signal: AbortSignal.timeout(10000),
     redirect: 'error',
+  }).catch((cause) => {
+    throw new DiagnosticError('BACKEND_DISCOVERY', 'Default backend discovery failed.', {
+      operation: 'discover backend provider',
+      target: target.site,
+      cause,
+      recovery: 'Check the configured site, or set backend.provider in napplet.json.',
+    });
   });
-  if (!response.ok || Number(response.headers.get('Content-Length') ?? 0) > 16384)
-    throw new Error('Default backend unavailable; set backend.provider in napplet.json.');
+  if (!response.ok || Number(response.headers.get('Content-Length') ?? 0) > 16384) {
+    await response.body?.cancel();
+    throw new DiagnosticError(
+      'BACKEND_DISCOVERY',
+      'Default backend unavailable or discovery response too large.',
+      {
+        operation: 'discover backend provider',
+        target: target.site,
+        status: response.status,
+        recovery: 'Check the configured site, or set backend.provider in napplet.json.',
+      },
+    );
+  }
   const text = await response.text();
   if (text.length > 16384) throw new Error('Invalid backend discovery');
   return validateProvider(JSON.parse(text).backend, network === 'local' ? [target.relay] : []);
@@ -186,9 +205,10 @@ export async function initBackend(
     try {
       config.backend.provider = await resolveBackendProvider(directory, network);
       await saveLocalBackend(directory, config);
-    } catch {
+    } catch (cause) {
       warning =
-        'Default provider unavailable. Local preview works; run backend sync and rebuild when the provider is available.';
+        'Default provider unavailable. Local preview works; run backend sync and rebuild when the provider is available. ' +
+        formatDiagnostic(diagnose(cause, 'discover backend provider'));
     }
   }
   const result = await backendProject(directory);

@@ -1,3 +1,4 @@
+import { DiagnosticError } from '../../diagnostics/src';
 import { matchFilters, type Filter } from 'nostr-tools';
 import { fromEvent, take, takeUntil, takeWhile } from 'rxjs';
 import { openPlaybackRelay } from '../../backend/src/relay-tunnel';
@@ -8,6 +9,7 @@ import { verifiedEvent, type SignedEvent } from '../../protocol/src';
 export async function discoverRemix(filter: Filter, relays: string[], signal: AbortSignal) {
   const events = new Map<string, SignedEvent>();
   let completed = 0;
+  const failures: Error[] = [];
   const cancelled = () =>
     new AccountError(
       'REMIX_CANCELLED',
@@ -19,6 +21,8 @@ export async function discoverRemix(filter: Filter, relays: string[], signal: Ab
       const lifetime = new AbortController();
       const deadline = setTimeout(() => lifetime.abort(), 5000);
       const combined = AbortSignal.any([signal, lifetime.signal]);
+      let finished = false,
+        failure: unknown;
       let pool: Awaited<ReturnType<typeof openPlaybackRelay>> | undefined;
       try {
         // Canonical URL must also match the transport's pinned destination.
@@ -35,7 +39,12 @@ export async function discoverRemix(filter: Filter, relays: string[], signal: Ab
             )
             .subscribe({
               next: (message) => {
-                if (message.type === 'EOSE') completed++;
+                if (message.type === 'EOSE') {
+                  completed++;
+                  finished = true;
+                }
+                if (message.type === 'CLOSED')
+                  failure = new Error(`Relay closed query: ${message.reason}`);
                 if (message.type !== 'EVENT') return;
                 try {
                   const event = verifiedEvent(message.event);
@@ -45,13 +54,29 @@ export async function discoverRemix(filter: Filter, relays: string[], signal: Ab
                   /* Untrusted relay events must pass signature and size checks. */
                 }
               },
-              error: () => done(),
+              error: (cause) => {
+                failure = cause;
+                done();
+              },
               complete: done,
             });
         });
-      } catch {
-        /* One unavailable relay must not hide a valid result from another. */
+      } catch (cause) {
+        failure = cause;
       } finally {
+        if (!finished)
+          failures.push(
+            new DiagnosticError('RELAY_READ', 'Relay lookup did not complete.', {
+              target: value,
+              cause:
+                failure ??
+                new Error(
+                  combined.aborted
+                    ? 'Lookup deadline reached or cancelled.'
+                    : 'Relay ended without EOSE.',
+                ),
+            }),
+          );
         clearTimeout(deadline);
         lifetime.abort();
         pool?.close();
@@ -64,9 +89,13 @@ export async function discoverRemix(filter: Filter, relays: string[], signal: Ab
   )[0];
   if (manifest) return manifest;
   if (!completed)
-    throw new AccountError(
+    throw new DiagnosticError(
       'REMIX_RELAYS_UNAVAILABLE',
       'No relay completed the napplet lookup. Check your connection and retry; the release may still be available.',
+      {
+        operation: 'discover remix',
+        cause: new AggregateError(failures, 'Relay attempts failed.'),
+      },
     );
   throw new AccountError(
     'REMIX_NOT_FOUND',

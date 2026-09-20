@@ -1,3 +1,4 @@
+import { DiagnosticError } from '../../diagnostics/src';
 import { RelayPool } from 'applesauce-relay';
 import { lastValueFrom, toArray } from 'rxjs';
 import { nip19, type EventTemplate } from 'nostr-tools';
@@ -57,29 +58,40 @@ export async function sourceGit(
     GIT_COMMITTER_EMAIL: 'creator@napplet.invalid',
     ...extra,
   };
-  const child = Bun.spawn(
-    [
-      'git',
-      '-c',
-      'core.hooksPath=/dev/null',
-      '-c',
-      'credential.helper=',
-      '-c',
-      'http.extraHeader=',
-      '-c',
-      'http.followRedirects=false',
-      '-c',
-      'http.proxy=',
-      ...args,
-    ],
-    {
-      cwd: directory,
-      env,
-      stdout: 'pipe',
-      stderr: 'pipe',
-      stdin: 'ignore',
-    },
-  );
+  const operation = `Git ${args.find((arg) => ['init', 'fetch', 'push', 'status', 'commit', 'merge', 'rev-parse', 'rev-list', 'diff', 'show', 'checkout', 'symbolic-ref', 'merge-base', 'merge-tree', 'ls-remote', 'config', 'tag', 'ls-files', 'cat-file'].includes(arg)) ?? 'command'}`;
+  let child;
+  try {
+    child = Bun.spawn(
+      [
+        'git',
+        '-c',
+        'core.hooksPath=/dev/null',
+        '-c',
+        'credential.helper=',
+        '-c',
+        'http.extraHeader=',
+        '-c',
+        'http.followRedirects=false',
+        '-c',
+        'http.proxy=',
+        ...args,
+      ],
+      {
+        cwd: directory,
+        env,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        stdin: 'ignore',
+      },
+    );
+  } catch (cause) {
+    throw new DiagnosticError('GIT_START', 'Could not start Git.', {
+      operation,
+      tool: 'git',
+      cause,
+      recovery: 'Check git --version, the project directory and executable permissions.',
+    });
+  }
   let timeout = false;
   const timer = setTimeout(() => {
     timeout = true;
@@ -96,7 +108,10 @@ export async function sourceGit(
         size += next.value.byteLength;
         if (size > outputLimit) {
           child.kill('SIGKILL');
-          throw new Error('Git output exceeded its limit');
+          throw new DiagnosticError('GIT_OUTPUT_LIMIT', 'Git output exceeded its limit.', {
+            operation,
+            tool: 'git',
+          });
         }
         chunks.push(next.value);
       }
@@ -111,8 +126,21 @@ export async function sourceGit(
       read(child.stderr),
       child.exited,
     ]);
-    if (timeout) throw new Error('Git operation timed out');
-    if (code !== 0) throw new Error(`Git ${args[0]} failed: ${stderr.slice(0, 3000)}`);
+    if (timeout)
+      throw new DiagnosticError('GIT_TIMEOUT', 'Git operation timed out after 60 seconds.', {
+        operation,
+        tool: 'git',
+        recovery:
+          'Check the Git server and connection; inspect soyli status before retrying a push.',
+      });
+    if (code !== 0)
+      throw new DiagnosticError('GIT_COMMAND', `${operation} failed.`, {
+        operation,
+        tool: 'git',
+        exitCode: code,
+        detail: stderr,
+        recovery: 'Resolve the Git error shown here, then retry the operation.',
+      });
     return stdout;
   } finally {
     clearTimeout(timer);

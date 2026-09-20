@@ -1,3 +1,4 @@
+import { diagnose, formatDiagnostic } from '../../../packages/diagnostics/src';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -284,7 +285,8 @@ export async function review(
         }
         throw new Error('Unknown review action.');
       } catch (error) {
-        return Response.json({ error: (error as Error).message }, { status: 400 });
+        const diagnostic = diagnose(error, 'proposal review');
+        return Response.json({ error: formatDiagnostic(diagnostic), diagnostic }, { status: 400 });
       }
     },
   });

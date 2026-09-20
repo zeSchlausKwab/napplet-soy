@@ -1,3 +1,4 @@
+import { DiagnosticError } from '../../diagnostics/src';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import ipaddr from 'ipaddr.js';
@@ -31,6 +32,7 @@ export async function fetchCommit(
   local = false,
 ) {
   if (!commitPattern.test(commit)) throw new Error('Proposal needs an exact Git commit.');
+  const failures: Error[] = [];
   for (const input of clones.slice(0, 4)) {
     try {
       const url = cloneUrl(input, local);
@@ -48,9 +50,22 @@ export async function fetchCommit(
         throw new Error('Git tip mismatch.');
       await sourceGit(directory, ['cat-file', '-e', `${commit}^{commit}`]);
       return url;
-    } catch {}
+    } catch (cause) {
+      failures.push(
+        new DiagnosticError('GIT_SOURCE', 'Clone source failed.', { target: input, cause }),
+      );
+    }
   }
-  throw new Error('The exact proposed Git commit is unavailable from its clone servers.');
+  throw new DiagnosticError(
+    'GIT_UNAVAILABLE',
+    'The exact proposed Git commit is unavailable from its clone servers.',
+    {
+      operation: 'fetch source commit',
+      cause: new AggregateError(failures, 'All clone sources failed.'),
+      recovery:
+        'Check the source servers and Git errors below. The author may need to push this exact commit.',
+    },
+  );
 }
 export async function cloneRevision(
   directory: string,
@@ -89,8 +104,19 @@ export async function mergeReviewed(
   await fetchCommit(directory, input.clones, input.head, input.local);
   await inspectHistory(directory, input.head);
   // Preflight in the object database. A conflict never leaves the working tree half-merged.
-  await sourceGit(directory, ['merge-tree', '--write-tree', current, input.head]).catch(() => {
-    throw new Error('Merge conflicts need local resolution. Your working tree is unchanged.');
+  await sourceGit(directory, ['merge-tree', '--write-tree', current, input.head]).catch((cause) => {
+    const conflicts = cause instanceof DiagnosticError && cause.context.exitCode === 1;
+    throw new DiagnosticError(
+      conflicts ? 'GIT_MERGE_CONFLICT' : 'GIT_MERGE_CHECK',
+      conflicts
+        ? 'Merge conflicts need local resolution. Your working tree is unchanged.'
+        : 'Merge preflight failed. Your working tree is unchanged.',
+      {
+        cause,
+        recovery:
+          'Resolve reported conflicts locally, or address the Git error before retrying the merge.',
+      },
+    );
   });
   if ((await committedSource(directory)) !== current)
     throw new Error('The target changed during preparation.');
