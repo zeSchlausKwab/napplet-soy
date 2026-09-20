@@ -1,5 +1,6 @@
 import { dirname, join } from 'node:path';
 import { realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { release as kernelRelease } from 'node:os';
 import { AccountError } from '../../../packages/identity/src/signer';
 import release from '../distribution/version.json';
@@ -31,10 +32,14 @@ export function playwrightDirectory(profile: 'current' | 'mac-compat' = browserP
   if (standalone) return join(dirname(realpathSync(process.execPath)), 'lib', name);
   if (profile === 'mac-compat')
     return dirname(Bun.resolveSync(`${name}/package.json`, import.meta.dir));
-  return dirname(
-    Bun.resolveSync(
-      'playwright-core/package.json',
-      Bun.resolveSync('@playwright/test', import.meta.dir),
-    ),
+  // Follow direct dependencies: test -> playwright -> playwright-core. Resolving
+  // core from the test package can find a hoisted compatibility alias instead,
+  // as happens in Bun 1.3.8's installation layout on the deployment server.
+  const testRequire = createRequire(
+    Bun.resolveSync('@playwright/test/package.json', import.meta.dir),
   );
+  const playwrightRequire = createRequire(
+    realpathSync(testRequire.resolve('playwright/package.json')),
+  );
+  return dirname(playwrightRequire.resolve('playwright-core/package.json'));
 }

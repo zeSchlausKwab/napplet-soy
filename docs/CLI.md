@@ -258,6 +258,11 @@ tests/services/browser-compat.test.ts` downloads a fresh compatibility browser a
 tests PNG capture, WebM recording/decoding, doctor and a headed window on a Mac.
 Running that on a newer Mac does not qualify native Monterey hardware.
 
+**0.15.2** fixes browser-package resolution in Bun 1.3.8's Linux dependency layout.
+The current driver is resolved through `@playwright/test` → `playwright` →
+`playwright-core`, so a hoisted macOS compatibility package cannot replace it.
+The same real-registry tests run in deployment; no version assertion is relaxed.
+
 ## Requirements and storage
 
 - macOS: Apple Silicon or modern Intel with AVX2; Git/Apple Command Line Tools;
