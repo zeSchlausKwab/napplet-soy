@@ -86,15 +86,28 @@ and phone sizes keep the home link and identity controls usable. Build, typechec
 and local browser checks verify the image paths, favicon, home navigation and
 320/390/768/1365px layouts. Evidence: `.local/soyli-main-logo-check/`. Not deployed.
 
-The soyLI companion now uses the supplied `/brand/soybert-laptop.png` sprite sheet:
+The soyLI companion now uses `/brand/soybert-laptop-aligned.png`, corrected from
+the supplied original using the user's nine reference points:
 nine equal cells in a 3×3 grid, animated left to right and top to bottom over 1.8
 seconds using discrete CSS frames. Clicking or tapping the mascot pauses/resumes
 the animation; the control also supports keyboard focus and Space. It works without
 JavaScript. Reduced-motion preferences show the first frame with no animation.
 The header, footer and favicon retain the static `/brand/soy-mascot.png` artwork.
-The sheet is served unchanged. Build, typecheck and local browser checks passed
+The original sheet is retained at `/brand/soybert-laptop.png`, alongside its
+`soybert-laptop.alignment.json` recipe. The aligned sheet has 432×432px cells
+(1296×1296 total), including seven pixels of padding on every side to retain all
+translated source pixels. The initial animation's build, typecheck and browser checks passed
 for all nine frames, pause/keyboard/touch controls, reduced motion and responsive
 layouts on all three pages. Screenshots: `.local/soybert-sprite-check/`. Not deployed.
+
+A local [sprite alignment studio](SPRITE-ALIGNMENT.md) now supports manually marked
+reference points, before/after previews, and reproducible PNG/JSON exports to
+correct position drift in this sheet. The user's exported PNG is now the shared
+asset for the landing, docs and create pages. Exporting from the studio downloads
+a file; it does not automatically install the file into the app or deploy it.
+The aligned integration passed a production build and isolated browser checks for
+served export bytes, the shared URL on all three pages at 390/1365px, pause,
+reduced motion and horizontal fit. Verified locally; not deployed.
 
 The landing hero now places its introductory copy beside the headline when the
 main column has room, using an italic marginal-note treatment and a short coral

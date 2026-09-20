@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Soybert · Alignment studio</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">napplet.soy <span>/ little production tools</span></a
+      ><span class="local">LOCAL STUDIO</span>
+    </header>
+    <main>
+      <div class="intro">
+        <div>
+          <p class="eyebrow">SOYBERT / MOTION WORKSHOP</p>
+          <h1>A little less <em>wobble.</em></h1>
+          <p class="lede">Pick the same landmark in every frame. We’ll hold it still.</p>
+        </div>
+        <div class="steps">
+          <span>01 &nbsp; Pick a point</span><span>02 &nbsp; Check the loop</span
+          ><span>03 &nbsp; Export the sheet</span>
+        </div>
+      </div>
+      <div class="sourcebar">
+        <div><strong id="source-name">Loading Soybert…</strong><span id="source-info"></span></div>
+        <div class="source-actions">
+          <label class="button"
+            >Open PNG<input id="image-file" type="file" accept="image/png" /></label
+          ><label class="grid-field"
+            >Grid
+            <input id="columns" type="number" min="1" max="12" value="3" aria-label="Columns" /> ×
+            <input id="rows" type="number" min="1" max="12" value="3" aria-label="Rows" /></label
+          ><button id="apply-grid">Apply grid</button>
+        </div>
+      </div>
+      <p id="notice" role="status" aria-live="polite">Loading your sprite sheet.</p>
+      <div class="workspace">
+        <section class="editor-panel" aria-label="Set frame reference points">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">01 / REFERENCE POINTS</span>
+              <h2>One good corner.</h2>
+            </div>
+            <span id="progress" class="pill">0 / 9 set</span>
+          </div>
+          <p class="hint">
+            For this cycle, use a sharp corner of the laptop. Avoid a hand, eye, or anything meant
+            to move. Frame 1 sets the destination for every other frame.
+          </p>
+          <div id="filmstrip" class="filmstrip" aria-label="Choose a frame"></div>
+          <div class="editor-toolbar">
+            <strong id="frame-title">Frame 01</strong
+            ><label
+              >Zoom
+              <select id="zoom">
+                <option value="1" selected>1×</option>
+                <option value="2">2×</option>
+                <option value="3">3×</option>
+                <option value="4">4×</option>
+              </select></label
+            ><label class="check"><input type="checkbox" id="onion" /> Ghost frame 1</label>
+          </div>
+          <div id="viewport" class="viewport checker">
+            <canvas
+              id="editor"
+              tabindex="0"
+              role="img"
+              aria-label="Click to place this frame’s reference point. Arrow keys nudge it by one pixel; Shift moves ten."
+            ></canvas>
+          </div>
+          <div class="coordinate-bar">
+            <div class="coordinates">
+              <label>X <input id="anchor-x" type="number" min="0" aria-label="Reference X" /></label
+              ><label
+                >Y <input id="anchor-y" type="number" min="0" aria-label="Reference Y" /></label
+              ><button id="clear-point" class="quiet">Clear point</button>
+            </div>
+            <span id="offset" class="mono">No point yet</span>
+          </div>
+          <div class="editor-bottom">
+            <span class="hint">Click to place · arrows to nudge · Shift = 10px</span
+            ><button id="next-frame" class="primary">Next frame →</button>
+          </div>
+        </section>
+        <aside>
+          <section class="preview-panel">
+            <span class="eyebrow">02 / THE DIFFERENCE</span>
+            <h2>Same moves. Steadier feet.</h2>
+            <div class="comparison">
+              <div>
+                <div class="preview-label">Original</div>
+                <canvas id="before" class="checker" aria-label="Original animation"></canvas>
+              </div>
+              <div>
+                <div class="preview-label corrected-label">
+                  Corrected <span id="draft">/ draft</span>
+                </div>
+                <canvas id="after" class="checker" aria-label="Aligned animation"></canvas>
+              </div>
+            </div>
+            <div class="playback">
+              <button id="play">Pause</button><span id="preview-frame" class="mono">01 / 09</span
+              ><label
+                >FPS <input id="fps" type="range" min="1" max="15" value="5" /><output
+                  id="fps-value"
+                  >5</output
+                ></label
+              >
+            </div>
+            <label class="scrub-label"
+              >Inspect frame
+              <input
+                id="scrub"
+                type="range"
+                min="0"
+                max="8"
+                value="0"
+                aria-label="Inspect animation frame"
+            /></label>
+            <p id="geometry" class="hint">Set all nine points to prepare the final sheet.</p>
+          </section>
+          <section class="export-panel">
+            <span class="eyebrow">03 / READY FOR ITS CLOSE-UP</span>
+            <h2>Make it repeatable.</h2>
+            <p class="hint">
+              Export a corrected PNG and keep the JSON recipe with it. The original stays untouched.
+            </p>
+            <button id="export-png" class="primary full" disabled>Export corrected PNG ↗</button>
+            <div class="recipe-buttons">
+              <button id="export-json" disabled>Save recipe</button
+              ><label class="button"
+                >Load recipe<input id="recipe-file" type="file" accept="application/json,.json"
+              /></label>
+            </div>
+            <p id="save-state" class="hint">Points are saved in this browser as you work.</p>
+            <details>
+              <summary>What gets corrected?</summary>
+              <p>
+                Only X/Y position, in whole pixels. No scaling or redrawing. Transparent padding
+                protects the edges of every frame. Changes in size, perspective, or the artwork
+                itself will remain.
+              </p>
+            </details>
+          </section>
+        </aside>
+      </div>
+      <footer>
+        <span>Made for a very busy block of soy.</span
+        ><span>All image processing stays in your browser.</span>
+      </footer>
+    </main>
+  </body>
+</html>

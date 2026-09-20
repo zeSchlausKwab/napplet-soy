@@ -1,0 +1,103 @@
+{
+  "schema": "napplet-sprite-alignment/v1",
+  "source": {
+    "name": "soybert-laptop.png",
+    "width": 1254,
+    "height": 1254,
+    "sha256": "499ecb4879f3e1c1ed1e6aebc290688439a70a1e21fb4db47293c84f10a314e2"
+  },
+  "grid": {
+    "columns": 3,
+    "rows": 3
+  },
+  "anchors": [
+    {
+      "x": 348,
+      "y": 253
+    },
+    {
+      "x": 345,
+      "y": 254
+    },
+    {
+      "x": 343,
+      "y": 254
+    },
+    {
+      "x": 348,
+      "y": 250
+    },
+    {
+      "x": 346,
+      "y": 251
+    },
+    {
+      "x": 344,
+      "y": 250
+    },
+    {
+      "x": 348,
+      "y": 247
+    },
+    {
+      "x": 346,
+      "y": 247
+    },
+    {
+      "x": 343,
+      "y": 246
+    }
+  ],
+  "output": {
+    "cellWidth": 432,
+    "cellHeight": 432,
+    "width": 1296,
+    "height": 1296,
+    "paddingX": 7,
+    "paddingY": 7,
+    "offsets": [
+      {
+        "x": 0,
+        "y": 0
+      },
+      {
+        "x": 3,
+        "y": -1
+      },
+      {
+        "x": 5,
+        "y": -1
+      },
+      {
+        "x": 0,
+        "y": 3
+      },
+      {
+        "x": 2,
+        "y": 2
+      },
+      {
+        "x": 4,
+        "y": 3
+      },
+      {
+        "x": 0,
+        "y": 6
+      },
+      {
+        "x": 2,
+        "y": 6
+      },
+      {
+        "x": 5,
+        "y": 7
+      }
+    ],
+    "anchor": {
+      "x": 355,
+      "y": 260
+    },
+    "order": "row-major",
+    "transform": "integer-translation"
+  }
+}

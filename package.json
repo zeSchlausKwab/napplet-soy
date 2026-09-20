@@ -42,7 +42,8 @@
     "test:publish": "bun test packages/publish tests/services/publish*.test.ts",
     "test:publish:native": "SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/publish*.test.ts",
     "test:index": "bun run build && bun test tests/services/index.test.ts",
-    "walkthrough:render": "bun scripts/render-walkthrough.ts"
+    "walkthrough:render": "bun scripts/render-walkthrough.ts",
+    "mascot:align": "bun scripts/sprite-align/serve.ts"
   },
   "dependencies": {
     "@contextvm/sdk": "0.13.16",
