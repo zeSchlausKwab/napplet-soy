@@ -67,6 +67,28 @@ this note maps its local tooling commands to the installed napplet soyLI.
 - For older single-file projects whose napplet.json entry is index.html, edit
   that file directly and use dev/check/publish; no build toolchain is required.
 
+## Make the preview worth opening
+
+Before publishing, plan one frame and one short sequence that show why this
+napplet is interesting. Enter the game or main interaction first: a splash screen,
+menu or idle character rarely demonstrates the experience. Trigger the mechanic,
+show a useful result, or capture the distinctive visual moment. For ambient work,
+show its characteristic motion rather than inventing action that does not fit it.
+
+Use preview.recording.actions to reproduce the sequence with soyli record. These
+are real captures of the built napplet, not generated illustrations of features it
+does not have. Keep text readable at gallery size and exclude host controls. Watch
+the saved clip and inspect the PNG for blank/loading frames, cropped subjects,
+errors and a missing interaction. Retry when the result fails to tell the story.
+A successful capture command only proves a file was created, not that it is good.
+
+Keep the static cover alongside the optional clip. Rebuild after code changes,
+recapture as needed, and review both in Listing. Automatic startup capture is a
+fallback, not a substitute for choosing a useful frame. The recorder installs its
+own cached capture tooling; do not ask the user to install a separate recording
+application. Do not claim the current fresh-run recorder captures the visible
+interactive browser session, or that GIF export is supported.
+
 ## Metadata and host support
 
 napplet.json contains portable name, description, runtime requirements and settings.

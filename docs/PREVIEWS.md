@@ -76,6 +76,13 @@ soyli publish
 ```
 
 Choose a representative state, especially for scenes requiring a start click.
+Enter the core interaction and capture a legible moment that demonstrates it;
+a splash screen is rarely the best cover. For clips, use the supported timed
+inputs to show a short meaningful sequence, and watch the resulting file before
+selecting it. Ambient work should show its characteristic motion. Avoid blank,
+loading or error frames and screenshots that promise features absent from the
+app. Automated capture succeeds at creating files, not judging their usefulness.
+The generated soyLI integration guidance includes this review step.
 The automatic fallback captures startup; it cannot judge whether that frame tells
 the story of the app. The installed integration guidance requires visual inspection
 as the finishing step. A manually captured PNG may be selected instead. Remove
