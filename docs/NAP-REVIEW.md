@@ -258,3 +258,29 @@ Vite test rebuilds embedded/external assets in a fresh Git checkout. This does n
 claim full NAP-RESOURCE conformance, arbitrary codec support, Hashtree resolution,
 SVG rasterization or an independent-client acceptance test. Existing unsupported
 operations remain unsupported. No protocol identity or discovery changes.
+
+## Independent implementation review — 2026-09-20
+
+Rechecked the [NAPS registry](https://github.com/napplet/naps) and
+[open proposals](https://github.com/napplet/naps/pulls). The registry remains at
+`a040914b4bbd3a5cd8a14b0f316a723c968ebfb2`; the authoritative NIP-5D PR head remains
+`24711d9c47bbdd07908bf1d52bf677d9cbc530f0`. CONFIG, CVM and WEBRTC proposal pins are
+unchanged. Newly listed proposals do not automatically become advertised support.
+
+[RESOURCE PR 80](https://github.com/napplet/naps/pull/80), head
+`fa6bcc6935aa19e7b70ab2a2c721dafca77c78e1`, replaces PR 13 after its merge/revert.
+Compared with our selected `8c0645d`, its NAP-RESOURCE.md replaces CDDL shapes with
+equivalent field tables and adds a changelog. No wire-operation or resource-policy
+change was found. Retain the existing implementation pin and track PR 80 for review.
+
+[Independent-client acceptance](INTEROPERABILITY.md) now runs Soy publications in
+unmodified Paja 0.16.4 and imports independently authored fixtures with upstream
+manifest builders at `956135bfc41a2cff5e45d6c68d9f9a4d68c50531`. It also fetches Soy
+proposal history using ordinary Git/ngit 2.1.0. The observed `config.schemaError`
+(`no-schema`) justified the 0.14.1 starter fallback: register the same embedded
+schema only when the host has not supplied one. No new envelope, manifest identity,
+required presentation metadata or production capability grant was introduced.
+
+These are bounded interoperability checks, not a completed audit of all NAPs.
+Paja consent policy, full upstream publishing/review UI, CONFIG edge semantics,
+other providers and real-network multiplayer remain separately qualified work.

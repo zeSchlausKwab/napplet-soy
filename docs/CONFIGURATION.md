@@ -14,6 +14,12 @@ already discovers this filename and embeds JSON in a `napplet-config-schema` met
 element in the built HTML. No new Nostr event tag or Space descriptor is required.
 The schema is covered by the same artifact signature/hash as the app.
 
+From soyLI **0.14.1**, the example also checks `config.schema` before subscribing.
+If the host has not loaded the embedded declaration, it awaits the standard
+`config.registerSchema` call with that same JSON file. This covers hosts such as
+Paja 0.16.4, which require runtime registration for this path. An existing host
+schema is preserved. No second schema or private protocol message is introduced.
+
 The example changes text size, control height and text selection with the upstream
 SDK's `config.subscribe`. Its CSS defaults keep the app usable without the optional
 domain or when an optional operation fails. Replace these settings with properties
@@ -139,4 +145,7 @@ CLI tests with Bun/Node absent from PATH. The maintained starter passed
 guidance/type/build and the CLI frozen-artifact check.
 The unmodified upstream conformance runner passed five boot/degradation checks and
 skipped five manifest/wire/lifecycle checks; it does not validate configuration.
-Independent-client publication/discovery and a live deployment check remain on A12/A11.
+The [2026-09-20 independent-client check](INTEROPERABILITY.md) now covers starter
+registration/defaults in Paja and runtime registration through upstream-generated
+manifests in Soy. Required-but-unset and schema edge cases remain unqualified across
+hosts; this evidence does not establish full configuration conformance.

@@ -1,0 +1,11 @@
+{
+  "name": "independent-napplet-acceptance",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@kehto/paja": "0.16.4",
+    "@napplet/core": "0.32.0",
+    "@napplet/nap": "0.32.0",
+    "nostr-tools": "2.25.2"
+  }
+}

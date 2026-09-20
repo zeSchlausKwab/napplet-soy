@@ -291,7 +291,11 @@ Use the NAP-CONFIG Core Subset: typed properties, literal defaults, enum choices
 numeric/string/list bounds and nested objects (at most four levels). No refs,
 regex patterns, expressions or conditional schemas. x-napplet-section and
 x-napplet-order organize the form. config.openSettings can open it from an app
-control. For a static schema, do not also call config.registerSchema at startup.
+control. The starter uses the host's config.schema when available. If a compatible
+host has not loaded the build's schema, it registers the same config.schema.json
+through config.registerSchema before subscribing. Preserve that fallback when
+editing settings; do not replace a schema the host already supplied. Embedded
+build metadata alone is not consumed by every client.
 
 The host validates edits and pushes values; a napplet cannot write configuration.
 Space scopes values by verified creator/address/build and viewer. A new build

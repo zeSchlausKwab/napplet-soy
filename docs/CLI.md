@@ -395,6 +395,13 @@ not modified by updating skills. They can adopt the documented schema/SDK patter
 after updating to a CLI release that contains this host. The upstream conformance
 runner currently checks boot/degradation only; it does not exercise configuration.
 
+In 0.14.1, new projects register the same `config.schema.json` through
+`config.registerSchema` when `config.schema` is absent, before subscribing. This
+makes the optional example work in hosts that do not read the embedded declaration.
+For an existing project, update soyLI, run `soyli skills update`, and ask your agent
+to apply that fallback to your settings module; source files are not overwritten.
+See [cross-client evidence](INTEROPERABILITY.md) for the tested hosts and limits.
+
 ## Connect a remote creator (CLI 0.5.0)
 
 Use `soyli account pair` to display a connection link and QR for your

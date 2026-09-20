@@ -1,9 +1,11 @@
 # Compatibility evidence and remaining audit
 
-Updated **2026-09-14**, agenda A12. This records the current implementation and
+Updated **2026-09-20**. This records the current implementation and
 evidence, not a declaration that every NAP is fully implemented. Configuration is
 verified in source/local production builds and public browser checks. CLI 0.5.0
 and website release `20260914142718446-76864` include the configuration host.
+The 0.14.1 starter interoperability fix is locally verified and not yet deployed;
+[independent-client acceptance](INTEROPERABILITY.md) records its narrower coverage.
 
 ## Authority and pins
 
@@ -115,9 +117,12 @@ persistence, secrets, account changes and rebuilds.
 
 1. Pin and audit every remaining NAP's exact proposal/dependency/operation contract.
    Installed SDK methods and a green boot test alone do not prove conformance.
-2. Use an independent client to discover and run an actual CLI publication using
-   only its standard relay/Blossom bindings, then import an independent publication
-   back. Include a configurable artifact. Local reference boot is not this test.
+2. Expand the independent-client acceptance beyond the verified Paja 0.16.4 path:
+   Soy publications resolve and run through its standard relay/Blossom bindings;
+   independent fixture bytes in upstream-built root/named/snapshot manifests load
+   back into Soy. Configuration defaults and a Blossom image are covered. Full
+   upstream interactive publishing, more domains/clients and public-network behavior
+   remain outside this test; see [exact evidence](INTEROPERABILITY.md).
 3. Reconcile CONFIG's required-but-unset snapshot wording, depth interpretation and
    object-enum edge cases with other implementations; see CONFIGURATION.md.
 4. Verify the new configuration behavior on the deployed website and packaged CLI

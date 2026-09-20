@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>Independent publication fixture</title>
+  <h1>A small counter</h1>
+  <p id="result">Waiting for configuration</p>
+  <button type="button">Count</button>
+  <output id="count">0</output>
+  <script>
+    let count = 0;
+    document.querySelector('button').onclick = () => {
+      document.querySelector('#count').textContent = String(++count);
+    };
+    // Only standard host APIs: no Soy template, archive, descriptor or identifier.
+    (async () => {
+      await window.napplet.shell.ready();
+      await window.napplet.config.registerSchema({
+        type: 'object',
+        properties: { message: { type: 'string', default: 'Upstream manifest works' } },
+      });
+      window.napplet.config.subscribe((values) => {
+        document.querySelector('#result').textContent = values.message;
+      });
+    })().catch((error) => {
+      document.querySelector('#result').textContent = error.message;
+    });
+  </script>
+</html>
