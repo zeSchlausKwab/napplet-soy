@@ -67,6 +67,7 @@ the website flow; a private key alone cannot enumerate undiscoverable historical
 | Git repository | Keep it public | NIP-09 request to its GRASP relay; verify announcement and public Git download removal |
 | Same-author reused files/repositories | Keep | Retain to avoid breaking another creation |
 | Local source, keys, other people's comments/zaps/forks | Keep | Keep |
+| Backend/CVM game state and scores | Provider retention applies | No backend purge is requested; manage this with its provider |
 
 **Republish** verifies that the saved build is still available and signs a fresh
 current listing under the same key/identifier. Its naddr and readable route stay
