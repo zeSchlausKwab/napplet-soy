@@ -3,18 +3,18 @@ import { ArrowUpRight, BookOpen } from 'lucide-react';
 import { DocCommand } from '@/components/doc-command';
 import { createCommand } from '@/lib/creator-commands';
 import { SoyliBenefits, SoyliIdentity } from '@/components/soyli-intro';
+import { siteHead } from '@/lib/site-head';
 
 const description =
   'The napplet soyLI field guide: create, preview, publish and collaborate. Manage identities, preserve keys and choose where your work goes.';
 export const Route = createFileRoute('/docs')({
-  head: () => ({
-    meta: [
-      { title: 'soyLI documentation — napplet.soy' },
-      { name: 'description', content: description },
-      { property: 'og:title', content: 'napplet soyLI · The field guide' },
-      { property: 'og:description', content: description },
-    ],
-  }),
+  head: ({ match }) =>
+    siteHead(
+      match.context.clientPolicy.siteOrigin,
+      '/docs',
+      'soyLI documentation — napplet.soy',
+      description,
+    ),
   component: Documentation,
 });
 

@@ -5,6 +5,7 @@ import { NostrProvider } from '@/components/nostr-provider';
 import { Shell } from '@/components/shell';
 import styles from '@/styles.css?url';
 import { ProfilesProvider } from '@/lib/profiles';
+import { siteHead } from '@/lib/site-head';
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
@@ -12,16 +13,13 @@ export const Route = createRootRoute({
     if (typeof window !== 'undefined') configureClient(policy);
     return { clientPolicy: policy };
   },
-  head: () => ({
+  head: ({ match }) => ({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'napplet.soy — Small code. Big weird.' },
-      {
-        name: 'description',
-        content:
-          'A playground for tiny games, digital experiments, and wonderfully unnecessary things. Play, inspect, and remix.',
-      },
+      ...(match.context.clientPolicy
+        ? siteHead(match.context.clientPolicy.siteOrigin).meta
+        : [{ title: 'napplet.soy' }]),
       {
         httpEquiv: 'Content-Security-Policy',
         content: "frame-src 'self' blob:; object-src 'none'; base-uri 'self'",

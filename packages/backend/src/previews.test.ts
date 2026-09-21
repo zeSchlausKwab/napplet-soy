@@ -191,7 +191,7 @@ test('linked screenshots reach cached gallery/player covers and OG images, with 
     const og = (await ogImage(event.id))!;
     expect((await sharp(og).metadata()).width).toBe(1200);
     const pixel = await sharp(og)
-      .extract({ left: 900, top: 300, width: 1, height: 1 })
+      .extract({ left: 400, top: 300, width: 1, height: 1 })
       .removeAlpha()
       .raw()
       .toBuffer();

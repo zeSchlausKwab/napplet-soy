@@ -3,7 +3,17 @@ import { useEffect, useState } from 'react';
 import { network, saveNetwork } from '@/lib/network';
 import { Button } from '@/components/ui/button';
 import { MultiplayerSettings } from '../../../../packages/runtime/src/multiplayer-settings';
-export const Route = createFileRoute('/network')({ component: Network });
+import { siteHead } from '@/lib/site-head';
+export const Route = createFileRoute('/network')({
+  head: ({ match }) =>
+    siteHead(
+      match.context.clientPolicy.siteOrigin,
+      '/network',
+      'Your connections — napplet.soy',
+      'Choose the Nostr relays, Blossom storage and multiplayer connections used by this browser.',
+    ),
+  component: Network,
+});
 function Network() {
   const [relays, setRelays] = useState(''),
     [blossom, setBlossom] = useState(''),

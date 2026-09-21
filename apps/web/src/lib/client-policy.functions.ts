@@ -2,11 +2,13 @@ import { profileRelays } from '../../../../packages/backend/src/profiles';
 import { createServerFn } from '@tanstack/react-start';
 import { readPolicy } from '../../../../packages/moderation/src/policy';
 import { browserRelayDefaults } from '../../../../packages/backend/src/client-network';
+import { siteOrigin } from '../../../../packages/backend/src/site-origin';
 /** Site-owned curation and operator defaults, never a Nostr event/asset proxy. */
 export const getClientPolicy = createServerFn({ method: 'GET' }).handler(async () => {
   const policy = readPolicy();
   const relays = await profileRelays();
   return {
+    siteOrigin: siteOrigin(),
     ...(process.env.SPACE_CVM_PUBKEY
       ? {
           backend: {

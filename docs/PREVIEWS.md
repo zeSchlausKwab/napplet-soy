@@ -55,6 +55,41 @@ PNG, JPEG, WebP, and GIF input is decoded using pinned Sharp 0.35.4. Take the fi
 
 Catalog refresh has the existing fifteen-minute TTL. Cached verified images at content-addressed URLs can be reused; ordinary mutable HTTPS URLs are fetched again on refresh. Cache profile `app-descriptors-1` triggers enrichment once for an older catalog. Current and previous refresh images are retained; older PNGs are pruned after the new catalog is committed. Signed descriptor bindings, cached byte hashes, and PNG dimensions are checked when reading images. Corrupt or missing files yield the generated card. OG ETags include the rendered bytes; share metadata includes the selected image hash.
 
+### Website share cards — 2026-09-21 source update
+
+The root, About, Create, Docs, connections, creator collections and proposal routes
+include server-rendered Open Graph and Twitter large-image metadata. `/cli` keeps
+redirecting to `/create`. The shared `/api/og/site?v=4` PNG shows Soybert and the
+outlined Fredoka **napplet.soy** wordmark. A root fallback also covers pages without
+their own image; existing profile and napplet metadata override it without duplicate
+image tags. Canonical origins come from `SPACE_SITE_ORIGIN`, never request headers.
+
+Napplet cards remain at `/api/og/<event-id>?v=4` and are 1200 × 630 PNGs. The
+724 × 482 preview area preserves the full image's aspect ratio, with a Soybert
+header and title, description excerpt, topics and creator alongside. Titles scale
+and wrap using the bundled font metrics; long text is truncated with an ellipsis.
+Missing or unusable cached covers get branded fallback art. All publishers use the
+same renderer and metadata rules. Profile cards share the typography and branding.
+
+OG is a server composition for crawlers, not a replacement for direct Blossom
+image/video links in the browser. Rendering never downloads a URL or executes a
+napplet: covers still come only from the admitted, normalized cache. Visibility
+and moderation are checked before serving cached napplet images. GET, HEAD and
+ETag validation remain supported; the version changes shared image URLs so new
+scrapes request the redesign. Existing social-platform caches can still take time
+to refresh after deployment.
+
+Production uses shipped DM Sans/Fredoka fonts and the existing mascot, independent
+of system fonts or the server working directory. `scripts/og-fonts.py` regenerates
+the static bold fonts and wrapping metrics from the pinned Fontsource packages
+using Python FontTools; neither Python nor FontTools is needed at runtime. SIL OFL
+licenses are retained in `packages/backend/assets/`.
+
+Verified locally with the production build: 17 page routes expose one absolute
+image without JavaScript, and site/profile/napplet PNG responses pass dimensions,
+HEAD and applicable ETag checks. Existing image-admission and moderation tests
+remain in place. This source update is not yet deployed.
+
 ## Running and verification
 
 ```sh

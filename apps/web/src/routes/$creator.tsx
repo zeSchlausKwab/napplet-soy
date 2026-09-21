@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useMatchRoute, notFound } from '@tanstack/reac
 import { getGallery, getCreatorNames } from '@/lib/catalog.functions';
 import { NappletCard } from '@/components/napplet-card';
 import { CreatorLink } from '@/components/creator-link';
+import { siteHead } from '@/lib/site-head';
 export const Route = createFileRoute('/$creator')({
   loader: async ({ params }) => {
     if (params.creator === '@space-lab')
@@ -14,6 +15,13 @@ export const Route = createFileRoute('/$creator')({
     if (!aliases.length) throw notFound();
     return { napplets: [], aliases };
   },
+  head: ({ match, params }) =>
+    siteHead(
+      match.context.clientPolicy.siteOrigin,
+      `/${params.creator}`,
+      `${params.creator} — napplet.soy`,
+      'Explore this creator’s napplets. Play, inspect and remix.',
+    ),
   component: Creator,
 });
 function Creator() {

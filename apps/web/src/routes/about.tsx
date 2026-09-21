@@ -3,19 +3,14 @@ import { ArrowUpRight, Asterisk, Code2, GitFork, Play, Radio } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { getProjectLinks } from '@/lib/about.functions';
 import { AboutFaq } from '@/components/about-faq';
+import { siteHead } from '@/lib/site-head';
 
 const description =
   'How napplet.soy works: play tiny creations, inspect their source, remix them and share through Nostr.';
 export const Route = createFileRoute('/about')({
   loader: () => getProjectLinks(),
-  head: () => ({
-    meta: [
-      { title: 'About — napplet.soy' },
-      { name: 'description', content: description },
-      { property: 'og:title', content: 'Small code. Open possibilities.' },
-      { property: 'og:description', content: description },
-    ],
-  }),
+  head: ({ match }) =>
+    siteHead(match.context.clientPolicy.siteOrigin, '/about', 'About — napplet.soy', description),
   component: About,
 });
 const resources = [

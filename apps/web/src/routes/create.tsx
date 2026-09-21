@@ -4,18 +4,16 @@ import { StarterCommand } from '@/components/starter-command';
 import release from '../../../cli/distribution/version.json';
 import { creatorSearch } from '@/lib/creator-search';
 import { SoyliIdentity } from '@/components/soyli-intro';
+import { siteHead } from '@/lib/site-head';
 export const Route = createFileRoute('/create')({
   validateSearch: creatorSearch,
-  head: () => ({
-    meta: [
-      { title: 'Create with napplet soyLI — napplet.soy' },
-      {
-        name: 'description',
-        content:
-          'Install napplet soyLI, create with your own AI tools, preview and publish. Setup, skills and downloads in one guide. No website account needed.',
-      },
-    ],
-  }),
+  head: ({ match }) =>
+    siteHead(
+      match.context.clientPolicy.siteOrigin,
+      '/create',
+      'Create with napplet soyLI — napplet.soy',
+      'Install napplet soyLI, create with your own AI tools, preview and publish. Setup, skills and downloads in one guide. No website account needed.',
+    ),
   component: Create,
 });
 function Create() {

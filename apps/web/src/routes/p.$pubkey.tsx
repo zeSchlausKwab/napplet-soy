@@ -12,6 +12,7 @@ import { ProfileEditor } from '@/components/profile-editor';
 import { NappletCard } from '@/components/napplet-card';
 import { GallerySocialProvider } from '@/components/gallery-social';
 import { Button } from '@/components/ui/button';
+import { OG_VERSION } from '../../../../packages/backend/src/public-model';
 
 export const Route = createFileRoute('/p/$pubkey')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -36,7 +37,7 @@ export const Route = createFileRoute('/p/$pubkey')({
       title = `${p.name} — napplet.soy`,
       description = p.about || 'Explore this Nostr creator’s napplets. Play, inspect, and remix.';
     const url = `${data.siteOrigin}${profilePath(p.pubkey)}`,
-      image = `${data.siteOrigin}/api/profile-og?pubkey=${p.pubkey}&v=${p.eventId ?? 'missing'}`;
+      image = `${data.siteOrigin}/api/profile-og?pubkey=${p.pubkey}&v=${OG_VERSION}-${p.eventId ?? 'missing'}`;
     return {
       meta: [
         { title },
@@ -53,6 +54,7 @@ export const Route = createFileRoute('/p/$pubkey')({
         { name: 'twitter:title', content: p.name },
         { name: 'twitter:description', content: description },
         { name: 'twitter:image', content: image },
+        { name: 'twitter:image:alt', content: `${p.name} on napplet.soy` },
       ],
       links: [{ rel: 'canonical', href: url }],
     };

@@ -11,7 +11,7 @@ export { default as DEFAULT_PUBLIC_RELAYS } from '../../nostr/discovery-relays.j
 
 export const PUBLIC_CACHE_TTL = 15 * 60 * 1000;
 // Shared by gallery URLs, SSR share metadata, and the renderer's cache validators.
-export const OG_VERSION = '3';
+export const OG_VERSION = '4';
 const hex = z.string().regex(/^[a-f0-9]{64}$/);
 export const publicNappletSchema = z.object({
   provenance: z.literal('nostr'),

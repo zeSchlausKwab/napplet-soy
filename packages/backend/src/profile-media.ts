@@ -1,10 +1,9 @@
-import { renderAsync } from '@resvg/resvg-js';
 import { profilePubkey, profileView } from '../../protocol/src/profile';
 import { CommunityError } from '../../community/src/store';
 import { profileRelays, profileService } from './profiles';
 import { fetchPublicBytes } from './blossom';
 import { normalizePreview } from './preview-images';
-import { previewSvg } from './og';
+import { previewSvg, renderOg } from './og';
 import { communityBudget, communityFailure, communityHeaders } from './community-http';
 import { blocked } from '../../moderation/src/policy';
 
@@ -43,22 +42,8 @@ export async function profileMediaResponse(request: Request, key: string, mode: 
               slug: '',
               topics: [],
               label: 'NOSTR CREATOR',
-              footer: 'Explore their napplets ↗',
             });
-            return new Uint8Array(
-              (
-                await renderAsync(svg, {
-                  font: {
-                    loadSystemFonts: false,
-                    defaultFontFamily: 'DM Sans',
-                    fontFiles: [
-                      process.env.SPACE_FONT_PATH ??
-                        new URL('../assets/DMSans.ttf', import.meta.url).pathname,
-                    ],
-                  },
-                })
-              ).asPng(),
-            );
+            return new Uint8Array(await renderOg(svg));
           }
           const url = profile[field];
           if (!url) return null;

@@ -6,6 +6,15 @@ process.env.SPACE_FONT_PATH ??= resolve(
   import.meta.dir,
   '../../packages/backend/assets/DMSans.ttf',
 );
+process.env.SPACE_OG_FONT_PATH ??= resolve(
+  import.meta.dir,
+  '../../packages/backend/assets/Fredoka-Bold.ttf',
+);
+process.env.SPACE_OG_BODY_BOLD_PATH ??= resolve(
+  import.meta.dir,
+  '../../packages/backend/assets/DMSans-Bold.ttf',
+);
+process.env.SPACE_OG_MASCOT_PATH ??= resolve(import.meta.dir, 'public/brand/soy-mascot.png');
 
 const staticRoot = resolve(import.meta.dir, 'dist/client');
 process.env.SPACE_ARTIFACT_DIR ??= resolve(

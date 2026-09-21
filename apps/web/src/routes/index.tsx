@@ -20,6 +20,7 @@ import { publicLink } from '../../../../packages/backend/src/public-model';
 import { FeaturedHero } from '@/components/featured-hero';
 import { StarterCommand } from '@/components/starter-command';
 import { SoyliBenefits, SoyliIdentity } from '@/components/soyli-intro';
+import { siteHead } from '@/lib/site-head';
 
 export const Route = createFileRoute('/')({
   validateSearch: (input: SearchSchemaInput & Partial<GallerySearch>) =>
@@ -29,6 +30,7 @@ export const Route = createFileRoute('/')({
   },
   loaderDeps: ({ search }) => search,
   loader: ({ deps }) => getBrowseGallery({ data: deps }),
+  head: ({ match }) => siteHead(match.context.clientPolicy.siteOrigin),
   component: Gallery,
 });
 function Gallery() {
