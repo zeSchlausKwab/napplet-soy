@@ -1151,11 +1151,11 @@ fallback in an existing napplet requires editing its settings module.
 
 ## soyLI 0.17.0 — author lifecycle, 2026-09-21
 
-Prepared from source `1246e19`: confirmed [unpublish, republish and hosted-data
+Prepared from source `b4da13c`: confirmed [unpublish, republish and hosted-data
 deletion](LIFECYCLE.md) in the CLI and shell. Four standalone archives are built;
 checksums and execution coverage are in
 [the release record](../apps/cli/distribution/release-0.17.0.json).
-Typecheck and 342 repository tests pass (2,470 assertions), production build
+Typecheck and 344 repository tests pass (2,480 assertions), production build
 passes, and temporary real-service and mobile browser lifecycle checks pass.
 Deletion testing uses isolated fixtures, not real user publications.
 
