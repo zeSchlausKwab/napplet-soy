@@ -102,99 +102,214 @@
         background: transparent;
         color: inherit;
       }
+
       .hero {
         display: grid;
-        grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.45fr);
+        grid-template-columns: minmax(0, 740px) minmax(270px, 420px);
+        justify-content: space-between;
         gap: 48px;
         align-items: center;
-        padding: 48px 0 30px;
+        padding: 44px 0 48px;
+      }
+      .hero-copy {
+        min-width: 0;
+        container-type: inline-size;
+        container-name: hero-copy;
       }
       .eyebrow {
-        font: 11px Mono;
-        letter-spacing: 1.5px;
+        font: 10px Mono;
+        letter-spacing: 1.2px;
+        margin-bottom: 22px;
       }
       .eyebrow::before {
         content: '●';
         color: #8ca76c;
         margin-right: 9px;
       }
+      .hero-heading {
+        display: grid;
+        grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+        gap: 24px;
+        align-items: center;
+        margin-bottom: 18px;
+      }
       h1 {
-        font-size: clamp(58px, 5.1vw, 80px);
-        line-height: 0.98;
-        letter-spacing: -4px;
+        font-size: clamp(48px, 11.5cqi, 88px);
+        line-height: 0.99;
+        letter-spacing: -0.06em;
         font-weight: 600;
-        margin: 22px 0;
+        margin: 0 0 10px;
+        white-space: nowrap;
       }
       .coral {
         color: var(--coral);
       }
       .weird {
         position: relative;
+        display: inline-block;
       }
-      .weird::after {
-        content: '';
+      .weird svg {
         position: absolute;
-        bottom: -7px;
+        bottom: -13px;
         left: 0;
-        right: 0;
-        border-bottom: 3px solid var(--coral);
-        border-radius: 50%;
-        height: 10px;
-        transform: rotate(-2deg);
+        width: 100%;
+        height: 22px;
+        overflow: visible;
+        fill: none;
+        stroke: var(--coral);
+        stroke-width: 2.5;
+        stroke-linecap: round;
       }
-      .lede {
-        color: #7b806f;
+      .hero-intro {
+        position: relative;
+        padding-left: 17px;
+      }
+      .hero-intro::before {
+        content: '*';
+        position: absolute;
+        left: 0;
+        top: -4px;
+        font: 26px Georgia;
+        color: var(--coral);
+      }
+      .hero-intro p {
         font:
-          italic 19px/1.5 Georgia,
+          italic 16px/1.4 Georgia,
           serif;
-        max-width: 410px;
-        margin: 27px 0 24px;
+        color: #686e5c;
+        margin: 0 0 10px;
+      }
+      .hero-intro .hero-aside {
+        font: 10px/1.6 Mono;
+        color: #a0523b;
+        margin: 0;
+      }
+      .hero-aside span {
+        text-decoration: underline;
+      }
+      @container hero-copy (max-width:600px) {
+        .hero-heading {
+          grid-template-columns: 1fr;
+          gap: 14px;
+        }
+        .hero-heading h1 {
+          font-size: clamp(52px, 15cqi, 80px);
+        }
+        .hero-intro p {
+          display: inline;
+          font-size: 14px;
+        }
+        .hero-intro .hero-aside {
+          display: block;
+          margin-top: 7px;
+        }
       }
       .identity {
         display: flex;
         align-items: center;
-        gap: 11px;
-        margin: 20px 0 17px;
+        gap: 16px;
+        margin: 22px 0;
       }
-      .identity img {
-        width: 52px;
-        height: 52px;
-        object-fit: contain;
+      .mascot {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        flex-shrink: 0;
+      }
+      .mascot input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        z-index: 1;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+      .mascot:has(input:focus-visible) {
+        outline: 2px solid var(--coral);
+      }
+      .mascot span {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: url('soybert-laptop.png') 0 0 / 300% 300%;
+        animation: typing 1.8s step-end infinite;
+      }
+      .mascot input:checked + span {
+        animation-play-state: paused;
+      }
+      @keyframes typing {
+        0%,
+        100% {
+          background-position: 0 0;
+        }
+        11.111% {
+          background-position: 50% 0;
+        }
+        22.222% {
+          background-position: 100% 0;
+        }
+        33.333% {
+          background-position: 0 50%;
+        }
+        44.444% {
+          background-position: 50% 50%;
+        }
+        55.556% {
+          background-position: 100% 50%;
+        }
+        66.667% {
+          background-position: 0 100%;
+        }
+        77.778% {
+          background-position: 50% 100%;
+        }
+        88.889% {
+          background-position: 100% 100%;
+        }
       }
       .identity strong {
-        font-size: 25px;
+        font-size: 38px;
+        letter-spacing: -2px;
+      }
+      .identity .ipa {
+        font: 21px Georgia;
+        color: #7c806f;
+        margin-left: 14px;
       }
       .identity .pronunciation {
-        font: 12px Mono;
+        display: block;
+        font: 11px Mono;
         color: #7c806f;
-        margin-left: 10px;
+        margin-top: 5px;
       }
       .identity small {
         display: block;
         color: var(--green);
-        font-size: 12px;
-        margin-top: 4px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 8px;
       }
       .account {
-        font-size: 12px;
+        font-size: 13px;
         color: var(--green);
         font-weight: 600;
-        margin: 0 0 11px;
+        margin: 0 0 12px;
       }
       .terminal {
         background: #293326;
         color: #f0edda;
         border-radius: 9px;
         overflow: hidden;
-        position: relative;
       }
       .terminal-head {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 16px;
+        padding: 13px 17px;
         color: #bdc6a4;
-        font: 11px Mono;
+        font: 12px Mono;
         border-bottom: 1px solid #566349;
       }
       .terminal button {
@@ -204,15 +319,26 @@
       }
       .terminal code {
         display: block;
-        font: 12px/1.8 Mono;
-        padding: 17px;
+        font: 13px/1.8 Mono;
+        padding: 21px;
         overflow-wrap: anywhere;
+      }
+      .terminal-hint {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: #afb99c;
+        padding: 0 21px 16px;
       }
       .help {
         color: #868a79;
         font-size: 10px;
         line-height: 1.6;
-        margin: 9px 0;
+        margin: 10px 0;
+      }
+      .help a {
+        text-decoration: underline;
+        text-underline-offset: 3px;
       }
       .copy-status {
         font-size: 11px;
@@ -225,134 +351,161 @@
         gap: 28px;
         font-weight: 600;
         font-size: 12px;
-        margin-top: 13px;
+        margin-top: 22px;
       }
-      .stage-wrap {
+      .benefits {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+        margin: 24px 0;
+        color: #686d5f;
+        font-size: 11px;
+        line-height: 1.75;
+      }
+      .benefits strong {
+        display: block;
+        font-size: 12px;
+        line-height: 1.5;
+        margin: 8px 0;
+        color: var(--ink);
+      }
+      .benefits svg {
+        width: 19px;
+        height: 19px;
+        stroke: var(--green);
+        fill: none;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .featured {
         min-width: 0;
       }
-      .stage-note {
-        font: 11px Mono;
+      .featured-note {
+        font: 10px Mono;
+        letter-spacing: 1px;
         color: var(--green);
-        margin: 0 0 12px;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .featured img {
+        width: 100%;
+        aspect-ratio: 8/5;
+        object-fit: cover;
+        border-radius: 10px;
+      }
+      .featured h2 {
+        font-size: 25px;
+        margin: 19px 0 8px;
+        letter-spacing: -0.6px;
+      }
+      .featured p {
+        font-size: 12px;
+        line-height: 1.7;
+        color: #7d826f;
+      }
+      .featured small {
+        font-size: 11px;
+        color: #7d826f;
+      }
+      .featured-controls {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        gap: 9px;
+        margin-top: 22px;
       }
-      .cinema {
-        position: relative;
-        aspect-ratio: 1.6;
-        background: #122725;
+      .featured-controls .outline {
+        min-width: 42px;
+        min-height: 42px;
+      }
+      .featured-controls a {
+        margin-left: auto;
+        font-size: 11px;
+      }
+      .story {
+        padding: 0 0 50px;
+      }
+      .story-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 20px;
+      }
+      .story-heading h2 {
+        font: 600 33px Fredoka;
+        margin: 7px 0 0;
+        letter-spacing: -0.6px;
+      }
+      .story-kicker {
+        font: 10px Mono;
+        letter-spacing: 1.1px;
+        color: var(--green);
+      }
+      .story-heading p {
+        font-size: 13px;
+        color: #7d826f;
+        line-height: 1.7;
+        margin: 0;
+        max-width: 355px;
+      }
+      .story-shell {
+        background: #112725;
         border-radius: 15px;
         overflow: hidden;
         box-shadow: 0 22px 35px -27px #0d2926aa;
-        isolation: isolate;
       }
-      .poster {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-      }
-      .stage-label {
-        position: absolute;
-        top: 26px;
-        left: 28px;
-        color: #f7edcf;
-        z-index: 1;
-      }
-      .stage-label small {
-        font: 10px Mono;
-        letter-spacing: 1.5px;
-        color: #afbea2;
-      }
-      .stage-label h2 {
-        font: 600 clamp(25px, 2.7vw, 40px)/1.1 Fredoka;
-        max-width: 320px;
-        margin: 10px 0;
-      }
-      .stage-label p {
-        font-size: 12px;
-        line-height: 1.6;
-        color: #c6cbb4;
-        max-width: 310px;
-      }
-      .stage-actions {
-        position: absolute;
-        bottom: 27px;
-        left: 28px;
-        right: 28px;
+      .story-toolbar {
         display: flex;
-        gap: 12px;
         align-items: center;
-      }
-      .watch {
-        background: #d8e1ad;
-        color: #263c2c;
-        border: 0;
-        border-radius: 7px;
+        gap: 10px;
         padding: 13px 20px;
-        font-weight: 600;
-        font-size: 13px;
+        color: #dce4ca;
+        border-bottom: 1px solid #354b3c;
+        flex-wrap: wrap;
       }
-      .tree {
-        color: #e8ead4;
-        border: 1px solid #8d9f83;
-        background: #163029d9;
-        border-radius: 7px;
-        padding: 12px 15px;
-        font-size: 12px;
-      }
-      .stage-actions small {
-        margin-left: auto;
-        color: #b0c0ab;
+      .story-toolbar .sequence {
         font: 10px Mono;
+        letter-spacing: 1px;
+        color: #aebfa1;
+        margin-right: auto;
       }
-      .stage-footer {
-        display: flex;
-        gap: 15px;
-        justify-content: space-between;
+      .story-toolbar button {
+        border: 1px solid #69816b;
+        background: transparent;
+        color: #e4ead5;
+        border-radius: 6px;
+        padding: 9px 12px;
         font-size: 12px;
-        padding: 15px 2px 0;
-        color: #6d7864;
+        min-height: 40px;
       }
-      .stage-footer strong {
-        color: #455e42;
-        font-weight: 600;
+      .story-toolbar button:hover {
+        background: #31463a;
       }
-      .stage-footer span {
-        font: 10px Mono;
+      .story-toolbar button:disabled {
+        opacity: 0.5;
+        cursor: default;
       }
-      .cinema video {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
+      .cinema {
+        position: relative;
+        aspect-ratio: 16/9;
+        isolation: isolate;
+        background: #112725;
       }
+      .cinema video,
       .cinema iframe {
         display: block;
         width: 100%;
         height: 100%;
         border: 0;
-        background: #122725;
+        object-fit: contain;
       }
-      .back {
-        border: 1px solid #92a78a;
-        background: #143129ed;
-        color: #f6ecd2;
-        padding: 9px 13px;
-        border-radius: 6px;
-        font-size: 12px;
-      }
-      body.expanded .stage-note {
-        position: sticky;
-        top: 0;
-        z-index: 3;
-        background: var(--paper);
-        padding: 10px 0;
-        gap: 12px;
-      }
-      body.expanded .duration {
-        display: none;
+      .story.exploring .cinema {
+        aspect-ratio: auto;
+        height: min(800px, 83svh);
+        min-height: 590px;
       }
       .film-end {
         position: absolute;
@@ -364,47 +517,46 @@
         background: #10292566;
         backdrop-filter: blur(4px);
         color: #f6ecd2;
+        padding: 15px;
       }
       .film-end p {
         font: 600 32px Fredoka;
         margin: 0;
       }
-      body.expanded .hero {
-        grid-template-columns: 1fr;
-        padding-top: 25px;
+      .watch,
+      .tree {
+        border-radius: 7px;
+        padding: 13px 20px;
+        font-weight: 600;
+        font-size: 13px;
       }
-      body.expanded .hero-copy {
-        display: none;
+      .watch {
+        background: #d8e1ad;
+        color: #263c2c;
+        border: 0;
       }
-      body.expanded .cinema {
-        aspect-ratio: 16/9;
+      .tree {
+        color: #e8ead4;
+        border: 1px solid #8d9f83;
+        background: #163029d9;
       }
-      body.exploring .cinema {
-        aspect-ratio: auto;
-        height: min(800px, 83svh);
-        min-height: 590px;
-      }
-      body.expanded .stage-footer {
-        padding-bottom: 14px;
-      }
-      .benefits {
+      .story-caption {
         display: flex;
+        gap: 15px;
+        align-items: center;
         justify-content: space-between;
-        gap: 26px;
-        padding: 0 0 37px;
-        color: #77816d;
-        font-size: 12px;
+        margin-top: 14px;
+        font-size: 11px;
+        color: #7b846d;
         line-height: 1.6;
       }
-      .benefits strong {
-        display: block;
-        font-size: 13px;
-        color: var(--ink);
-        margin-bottom: 3px;
+      .story-caption p {
+        margin: 0;
       }
-      .benefits span {
-        color: var(--green);
-        margin-right: 7px;
+      .story-caption a {
+        white-space: nowrap;
+        text-decoration: underline;
+        text-underline-offset: 4px;
       }
       .browse {
         background: #eceee1;
@@ -428,26 +580,11 @@
         color: #7f866f;
         font-size: 13px;
       }
-      .featured-heading {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 28px;
-      }
-      .featured-heading h3 {
-        font: 11px Mono;
-        letter-spacing: 1px;
-        font-weight: 400;
-      }
-      .featured-heading small {
-        color: #7f866f;
-        font: 10px Mono;
-      }
       .cards {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 22px;
-        margin: 14px 0 30px;
+        margin: 28px 0 30px;
       }
       .card {
         min-width: 0;
@@ -474,6 +611,7 @@
         align-items: center;
         flex-wrap: wrap;
         font-size: 12px;
+        margin-top: 24px;
       }
       .tags span {
         padding: 9px;
@@ -503,31 +641,21 @@
         }
         .hero {
           gap: 28px;
-          grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);
+          grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
         }
-        h1 {
-          font-size: 65px;
+        .benefits {
+          grid-template-columns: 1fr;
+          gap: 12px;
         }
-        .stage-label {
-          top: 18px;
-          left: 20px;
+        .benefits strong {
+          margin: 0 0 3px;
         }
-        .stage-label p {
-          display: none;
+        .benefits svg {
+          float: left;
+          margin: 3px 12px 30px 0;
         }
-        .stage-actions {
-          left: 20px;
-          right: 20px;
-          bottom: 19px;
-        }
-        .stage-actions small {
-          display: none;
-        }
-        .cinema {
-          aspect-ratio: 1.3;
-        }
-        .identity .pronunciation {
-          font-size: 10px;
+        .identity .ipa {
+          font-size: 17px;
         }
       }
       @media (max-width: 760px) {
@@ -552,55 +680,90 @@
           font-size: 11px;
         }
         .hero {
-          display: flex;
-          flex-direction: column;
-          align-items: stretch;
-          gap: 25px;
+          grid-template-columns: 1fr;
+          gap: 34px;
           padding-top: 31px;
         }
         .hero h1 {
           font-size: 60px;
           letter-spacing: -3px;
-          margin: 20px 0;
         }
-        .lede {
-          font-size: 17px;
-          margin: 22px 0 16px;
+        .hero-heading {
+          gap: 12px;
         }
-        .hero-copy {
-          width: 100%;
+        .identity {
+          gap: 10px;
+          margin: 16px 0;
         }
-        .stage-label h2 {
-          font-size: 28px;
+        .mascot {
+          width: 64px;
+          height: 64px;
         }
-        .stage-label p {
-          display: none;
+        .identity strong {
+          font-size: 30px;
         }
-        .cinema {
-          aspect-ratio: 1.42;
+        .identity .ipa {
+          font-size: 16px;
         }
-        .poster {
-          object-fit: contain;
-        }
-        .stage-footer {
-          font-size: 11px;
-        }
-        .stage-footer span {
+        .identity .pronunciation {
           font-size: 9px;
         }
-        .benefits {
-          gap: 10px;
-          font-size: 10px;
-          padding-bottom: 27px;
-        }
-        .benefits strong {
+        .identity small {
           font-size: 11px;
         }
-        .benefits p {
-          display: none;
+        .benefits {
+          margin: 22px 0;
         }
-        .browse {
-          margin-top: 24px;
+        .featured {
+          max-width: 490px;
+          width: 100%;
+          margin: auto;
+        }
+        .story {
+          padding-bottom: 44px;
+        }
+        .story-heading {
+          align-items: start;
+          flex-direction: column;
+          gap: 9px;
+        }
+        .story-heading h2 {
+          font-size: 29px;
+        }
+        .story-heading p {
+          font-size: 12px;
+        }
+        .story-toolbar {
+          padding: 12px;
+          gap: 7px;
+        }
+        .story-toolbar .sequence {
+          width: 100%;
+          font-size: 9px;
+          margin: 0 0 4px;
+        }
+        .story-toolbar button {
+          font-size: 11px;
+          padding: 9px 10px;
+        }
+        .story.exploring .cinema {
+          aspect-ratio: auto;
+          height: 690px;
+          min-height: 0;
+        }
+        .story-caption {
+          align-items: start;
+          font-size: 10px;
+        }
+        .film-end {
+          gap: 8px;
+        }
+        .film-end p {
+          font-size: 24px;
+        }
+        .film-end button {
+          padding: 10px 13px;
+          font-size: 12px;
         }
         .browse-intro {
           font-size: 12px;
@@ -626,32 +789,10 @@
         .study {
           font-size: 9px;
         }
-        body.expanded .hero-copy {
-          display: none;
-        }
-        body.expanded .cinema {
-          aspect-ratio: 16/9;
-        }
-        body.exploring .cinema {
-          aspect-ratio: auto;
-          height: 720px;
-          min-height: 0;
-        }
-        .back {
-          padding: 7px 9px;
-          font-size: 10px;
-          flex-shrink: 0;
-        }
-        .stage-actions {
-          gap: 8px;
-        }
-        .watch {
-          padding: 12px;
-          font-size: 12px;
-        }
-        .tree {
-          padding: 11px;
-          font-size: 11px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .mascot span {
+          animation: none;
         }
       }
     </style>
@@ -668,96 +809,156 @@
       </div>
     </header>
     <main>
-      <section class="wrap hero">
+      <section class="wrap hero" aria-label="Introduction">
         <div class="hero-copy">
           <div class="eyebrow">A PLAYGROUND FOR THE INTERNET</div>
-          <h1>Small code.<br />Big <span class="weird">weird</span><span class="coral">.</span></h1>
-          <p class="lede">
-            Tiny games. Happy accidents.<br />Your idea, out in the world.<br />Someone else’s
-            beautifully bad improvement.
-          </p>
+          <div class="hero-heading">
+            <h1>
+              Small code.<br />Big
+              <span class="weird"
+                >weird<svg viewBox="0 0 320 22" aria-hidden="true">
+                  <path d="M4 13Q110 -2 208 12T316 8M19 19Q166 5 289 18" /></svg></span
+              ><span class="coral">.</span>
+            </h1>
+            <div class="hero-intro">
+              <p>Tiny games. Happy accidents. Wonderfully unnecessary things.</p>
+              <p>Made by people with an idea and an afternoon.</p>
+              <p class="hero-aside">
+                A little place for devs to live out their <span>AI psychosis</span>.
+              </p>
+            </div>
+          </div>
           <div class="identity">
-            <img src="soybert.png" alt="Soybert" />
+            <label class="mascot" title="Pause / resume Soybert"
+              ><input type="checkbox" aria-label="Pause Soybert animation" /><span
+                role="img"
+                aria-label="Soybert using a laptop"
+              ></span
+            ></label>
             <div>
               <strong>soy<span class="coral">LI</span></strong
-              ><span class="pronunciation">say “soy–el–eye”</span
+              ><span class="ipa">/ˌsɔɪ.ɛlˈaɪ/</span
+              ><span class="pronunciation">say “soy–el–eye” · a play on CLI</span
               ><small>The command line for the agentic age.</small>
             </div>
           </div>
-          <p class="account">Create, remix, contribute. No website account needed.</p>
+          <p class="account">Create, remix and publish. No website account needed.</p>
           <div class="terminal">
             <div class="terminal-head">
-              <span>›_ ONE COMMAND. YOUR NEXT IDEA.</span
+              <span>›_ napplet soyLI</span
               ><button id="copy" aria-label="Copy starter command">Copy ⧉</button>
             </div>
             <code id="command"
               >curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet</code
             >
+            <a class="terminal-hint" href="#story">How it works <span>30 sec ↓</span></a>
           </div>
-          <p class="help">macOS &amp; Linux · Git required · No Bun or Node installation needed.</p>
+          <p class="help">
+            macOS &amp; Linux · Git required · No Bun or Node installation needed.
+            <a href="https://napplet.soy/create#setup">Setup help ↗</a>
+          </p>
           <p class="copy-status" role="status"></p>
+          <div class="benefits">
+            <div>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5C8 2 4 3 2 4v16c4-2 7-1 10 1 3-2 6-3 10-1V4c-2-1-6-2-10 1v16" /></svg
+              ><strong>Context for your agent</strong>A working project, skills and protocol
+              guidance. Simple commands, with the context built in.
+            </div>
+            <div>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M7 3v18M17 3v18M3 8h4m10 0h4M3 16h4m10 0h4" /></svg
+              ><strong>Covers &amp; preview clips</strong>Tools for your agent to capture images,
+              record video previews and check the listing. Less time on the fiddly bits.
+            </div>
+            <div>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 2 3 6v6c0 6 9 10 9 10s9-4 9-10V6zM8 12l3 3 5-6" /></svg
+              ><strong>Checks before publishing</strong>Validate metadata, files and supported
+              capabilities, then test startup in the host. Conformance checks are included too.
+            </div>
+          </div>
           <div class="links">
             <a href="https://napplet.soy/docs">Meet soyLI. Read the docs ↗</a
             ><a href="#playground">Explore first ↓</a>
           </div>
         </div>
-        <div class="stage-wrap">
-          <div class="stage-note">
-            <span>AN IDEA IS JUST THE BEGINNING</span><span class="duration">30 SEC ↙</span>
-            <button class="back" id="collapse" hidden>↙ Back to the page</button>
+        <aside class="featured" aria-label="Featured napplet placement">
+          <div class="featured-note">
+            <span>✧ PICKED FOR THE PLAYGROUND</span><span id="featured-count">01 / 03</span>
+          </div>
+          <a href="./" id="featured-link"
+            ><img
+              id="featured-image"
+              src="01-original.png"
+              alt="Soybert’s original platform game"
+            />
+            <h2 id="featured-title">Soybert’s little world ↗</h2></a
+          >
+          <p id="featured-description">
+            Every little world starts somewhere. Jump, collect, dodge the enemies.
+          </p>
+          <small>Local example · featured placement</small>
+          <div class="featured-controls">
+            <button class="outline" id="featured-prev" aria-label="Previous featured example">
+              ←</button
+            ><button class="outline" id="featured-next" aria-label="Next featured example">→</button
+            ><a href="https://napplet.soy/?sort=featured">All featured ↗</a>
+          </div>
+        </aside>
+      </section>
+      <section class="wrap story" id="story" aria-labelledby="story-title">
+        <div class="story-heading">
+          <div>
+            <span class="story-kicker">MAKE IT. SHARE IT. CHANGE IT.</span>
+            <h2 id="story-title">A little idea branches out.</h2>
+          </div>
+          <p>
+            One idea, someone else’s twist, a better game.<br />Follow the branches. Then have a go.
+          </p>
+        </div>
+        <div class="story-shell">
+          <div class="story-toolbar">
+            <span class="sequence">ORIGINAL → REMIX → MERGE → PLAY</span>
+            <button id="toggle-play" aria-controls="story-film">Pause story</button>
+            <button id="toggle-sound" aria-controls="story-film" aria-pressed="false">
+              Sound off
+            </button>
+            <button id="explore-tree">Explore the tree ↗</button>
+            <button id="back-film" hidden>← Back to the story</button>
           </div>
           <div class="cinema" id="cinema">
-            <img
-              class="poster"
-              src="tree-poster.png"
-              alt="Four versions of Soybert’s game connected by branching paths"
-              width="1920"
-              height="1080"
-            />
-            <div class="stage-label">
-              <small>MAKE IT. SHARE IT. CHANGE IT.</small>
-              <h2>A little idea<br />branches out.</h2>
-            </div>
-            <div class="stage-actions">
-              <button class="watch" id="watch-film">▶ Watch the story</button
-              ><button class="tree" id="explore-tree">Explore the tree</button
-              ><small>SOUND ON · PIXELS READY</small>
-            </div>
+            <video
+              id="story-film"
+              muted
+              autoplay
+              playsinline
+              controls
+              preload="metadata"
+              poster="tree-poster.png"
+              aria-label="From original to remix: a 30-second story"
+            >
+              <source src="spatial-proof.mp4?mix=2" type="video/mp4" />
+            </video>
             <div class="film-end" hidden>
               <p>Your turn.</p>
               <button class="watch" id="play-game">Play Soybert →</button
-              ><button class="tree" id="explore-after">Explore how it changed</button>
+              ><button class="tree" id="replay">Replay the story ↺</button>
             </div>
           </div>
-          <div class="stage-footer">
-            <strong>Open source. Open season.</strong><span>ORIGINAL → REMIX → MERGE → PLAY</span>
-          </div>
+        </div>
+        <div class="story-caption">
+          <p id="story-status" role="status">Sound off. The story plays when it comes into view.</p>
+          <a href="#playground">Into the playground ↓</a>
         </div>
       </section>
-      <div class="wrap benefits">
-        <div>
-          <strong><span>⌘</span> Context for your agent</strong>Skills, a working project, simple
-          commands.
-        </div>
-        <div>
-          <strong><span>▣</span> Presentation, taken care of</strong>Images, clips and a listing
-          worth sharing.
-        </div>
-        <div>
-          <strong><span>↗</span> Ready for the world</strong>Checks, Git, storage and publishing
-          defaults.
-        </div>
-      </div>
       <section class="browse" id="playground">
         <div class="wrap">
           <h2>The playground</h2>
           <div class="browse-intro">
             <span>Follow a tag. Find your kind of weird.</span
             ><a class="outline" href="https://napplet.soy">Browse live napplets ↗</a>
-          </div>
-          <div class="featured-heading">
-            <h3>FEATURED FROM THE PLAYGROUND</h3>
-            <small>SAMPLE PLACEMENT · LIVE SELECTION IN THE APP</small>
           </div>
           <div class="cards">
             <article class="card">
@@ -796,59 +997,128 @@
       <a href="spatial-effects.mp4">Game effects only</a>
     </footer>
     <script>
+      const story = document.querySelector('#story');
       const cinema = document.querySelector('#cinema');
-      let media;
-      const initial = [...cinema.querySelectorAll('.poster,.stage-label,.stage-actions')];
-      const scrollBehavior = matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 'auto'
-        : 'smooth';
-      function expand(mode) {
-        if (media) {
-          media.remove();
-          media = undefined;
+      const film = document.querySelector('#story-film');
+      const pauseButton = document.querySelector('#toggle-play');
+      const soundButton = document.querySelector('#toggle-sound');
+      const ending = document.querySelector('.film-end');
+      const status = document.querySelector('#story-status');
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let wantsPlayback = !reduced;
+      let inView = false;
+      let visibilityPause = false;
+      let frame;
+      film.muted = true;
+      // The open film starts on sight, so the story is not over before leaving the hero.
+      film.autoplay = false;
+      function quietPause() {
+        if (!film.paused) {
+          visibilityPause = true;
+          film.pause();
         }
-        document.body.classList.add('expanded');
-        document.body.classList.toggle('exploring', mode === 'tree');
-        initial.forEach((el) => (el.hidden = true));
-        document.querySelector('.film-end').hidden = true;
-        document.querySelector('#collapse').hidden = false;
       }
+      quietPause();
+      if (reduced) pauseButton.textContent = 'Play story';
+      function updateSound() {
+        soundButton.textContent = film.muted ? 'Sound off' : 'Sound on';
+        soundButton.setAttribute('aria-pressed', String(!film.muted));
+      }
+      function syncPlayback() {
+        if (frame || document.hidden || !inView || !wantsPlayback || film.ended) {
+          quietPause();
+          return;
+        }
+        film.play().catch(() => {
+          pauseButton.textContent = 'Play story';
+          status.textContent = 'Press Play story to start.';
+        });
+      }
+      film.addEventListener('play', () => {
+        wantsPlayback = true;
+        pauseButton.textContent = 'Pause story';
+        ending.hidden = true;
+        status.textContent = '30 seconds. Open source. Open season.';
+      });
+      film.addEventListener('pause', () => {
+        if (visibilityPause) {
+          visibilityPause = false;
+          return;
+        }
+        wantsPlayback = false;
+        pauseButton.textContent = film.ended ? 'Replay story' : 'Play story';
+      });
+      film.addEventListener('ended', () => {
+        ending.hidden = false;
+        pauseButton.textContent = 'Replay story';
+      });
+      film.addEventListener('volumechange', updateSound);
+      film.addEventListener('error', () => {
+        status.textContent = 'The film could not load. Reload the page or explore the tree.';
+      });
+      pauseButton.onclick = () => {
+        if (film.paused || film.ended) {
+          if (film.ended) film.currentTime = 0;
+          wantsPlayback = true;
+          film
+            .play()
+            .catch(
+              () => (status.textContent = 'Playback could not start. Try the video controls.'),
+            );
+        } else {
+          wantsPlayback = false;
+          film.pause();
+        }
+      };
+      soundButton.onclick = () => {
+        film.muted = !film.muted;
+        updateSound();
+      };
+      document.querySelector('#replay').onclick = () => {
+        film.currentTime = 0;
+        wantsPlayback = true;
+        ending.hidden = true;
+        syncPlayback();
+      };
       function tree(play = false) {
-        expand('tree');
-        media = document.createElement('iframe');
-        media.title = 'Explore the collaborative game tree';
-        media.allow = 'fullscreen';
-        media.src = './?embed' + (play ? '&play=release' : '');
-        cinema.prepend(media);
-        cinema.parentElement.scrollIntoView({ behavior: scrollBehavior, block: 'start' });
+        quietPause();
+        film.hidden = true;
+        ending.hidden = true;
+        story.classList.add('exploring');
+        frame = document.createElement('iframe');
+        frame.title = 'Explore the collaborative game tree';
+        frame.allow = 'fullscreen';
+        frame.src = './?embed' + (play ? '&play=release' : '');
+        cinema.append(frame);
+        pauseButton.hidden = soundButton.hidden = true;
+        document.querySelector('#explore-tree').hidden = true;
+        document.querySelector('#back-film').hidden = false;
+        status.textContent =
+          'Choose a branch. Play either version. This local interactive demo is silent.';
       }
-      document.querySelector('#watch-film').onclick = () => {
-        expand('film');
-        media = document.createElement('video');
-        media.controls = true;
-        media.playsInline = true;
-        media.preload = 'none';
-        media.src = 'spatial-proof.mp4?mix=2';
-        media.setAttribute('aria-label', 'From original to remix: a 30-second story');
-        media.onended = () => (document.querySelector('.film-end').hidden = false);
-        cinema.prepend(media);
-        media.play().catch(() => {});
-        cinema.parentElement.scrollIntoView({ behavior: scrollBehavior, block: 'start' });
-      };
       document.querySelector('#explore-tree').onclick = () => tree();
-      document.querySelector('#explore-after').onclick = () => tree();
       document.querySelector('#play-game').onclick = () => tree(true);
-      document.querySelector('#collapse').onclick = () => {
-        if (media) {
-          media.remove();
-          media = undefined;
-        }
-        document.body.classList.remove('expanded', 'exploring');
-        initial.forEach((el) => (el.hidden = false));
-        document.querySelector('.film-end').hidden = true;
-        document.querySelector('#collapse').hidden = true;
-        document.querySelector('#watch-film').focus();
+      document.querySelector('#back-film').onclick = () => {
+        frame?.remove();
+        frame = undefined;
+        story.classList.remove('exploring');
+        film.hidden = false;
+        pauseButton.hidden = soundButton.hidden = false;
+        document.querySelector('#explore-tree').hidden = false;
+        document.querySelector('#back-film').hidden = true;
+        ending.hidden = !film.ended;
+        status.textContent = '30 seconds. Open source. Open season.';
+        syncPlayback();
       };
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          inView = entry.isIntersecting && entry.intersectionRatio >= 0.2;
+          syncPlayback();
+        },
+        { threshold: [0, 0.2] },
+      );
+      observer.observe(cinema);
+      document.addEventListener('visibilitychange', syncPlayback);
       document.querySelector('#copy').onclick = async () => {
         const message = document.querySelector('.copy-status');
         try {
@@ -858,9 +1128,35 @@
           message.textContent = 'Select the command above and copy it manually.';
         }
       };
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden && media instanceof HTMLVideoElement) media.pause();
-      });
+      const examples = [
+        [
+          '01-original.png',
+          'Soybert’s little world ↗',
+          'Every little world starts somewhere. Jump, collect, dodge the enemies.',
+        ],
+        [
+          '02b-remix-play.png',
+          'A little chaos ↗',
+          'Someone had a beautifully bad idea. A shotgun changes the game.',
+        ],
+        [
+          '04-release.png',
+          'Built together ↗',
+          'The original creator brings the improvement home. Everyone gets to play.',
+        ],
+      ];
+      let featured = 0;
+      function feature(offset) {
+        featured = (featured + offset + examples.length) % examples.length;
+        const [src, title, description] = examples[featured];
+        document.querySelector('#featured-image').src = src;
+        document.querySelector('#featured-image').alt = title.replace(' ↗', '');
+        document.querySelector('#featured-title').textContent = title;
+        document.querySelector('#featured-description').textContent = description;
+        document.querySelector('#featured-count').textContent = '0' + (featured + 1) + ' / 03';
+      }
+      document.querySelector('#featured-prev').onclick = () => feature(-1);
+      document.querySelector('#featured-next').onclick = () => feature(1);
     </script>
   </body>
 </html>

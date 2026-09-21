@@ -23,6 +23,10 @@ export async function buildSpatial() {
   for (const [pkg, from, to] of fonts)
     await cp(join(root, `node_modules/@fontsource/${pkg}/files/${from}`), join(output, to));
   await cp(join(root, 'apps/web/public/brand/soy-mascot.png'), join(output, 'soybert.png'));
+  await cp(
+    join(root, 'apps/web/public/brand/soybert-laptop-aligned.png'),
+    join(output, 'soybert-laptop.png'),
+  );
   console.log(`Spatial proof built: ${output}`);
 }
 if (import.meta.main) await buildSpatial();

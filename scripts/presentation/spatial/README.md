@@ -66,18 +66,22 @@ rendered film has this mix.
 ## Landing-page composition study
 
 Open `http://127.0.0.1:4191/landing.html` after rendering the stills and movie. This
-is a local layout study, not a change to the production homepage. The install
-command and short introduction sit beside a poster of the tree. **Watch the story**
-expands the film inline; **Explore the tree** loads the interactive scene on demand.
-The film ends with a **Play Soybert** handoff to the actual local game. Collapsing
-removes the media/renderer, and the initial page loads neither video nor Three.js.
-Featured napplets move to the beginning of the playground in this study; the
-sample cards are explicitly labelled illustrative and do not query live listings.
+is a local layout study, not a change to the production homepage. It preserves
+the original hero's copy, installer, animated mascot, benefits and featured area.
+The story is a separate, full-width section **below the hero and above the
+playground**, open by default. The film starts muted when it comes into view,
+pauses off-screen or in a hidden tab, and resumes unless the viewer paused it.
+Reduced-motion preferences keep it paused until explicitly played. Sound is
+opt-in through the visible toggle or native video controls.
 
-Desktop and touch layouts keep the collapse control outside the embedded scene.
-Native video controls provide sound, seeking and pause; sound begins on user
-interaction. The isolated iframe is a prototype integration boundary, not a new
-napplet host or protocol requirement.
+**Explore the tree** loads the interactive scene on demand. The film ends with a
+**Play Soybert** handoff to the actual local game. Returning to the film removes
+the renderer; Three.js is never needed just to watch the movie. The sample featured
+and gallery cards are explicitly illustrative and do not query live listings.
+
+Desktop and touch layouts keep controls outside the embedded scene. Native video
+controls also provide seeking and fullscreen. The isolated iframe is a prototype
+integration boundary, not a new napplet host or protocol requirement.
 
 ## Structure
 
@@ -104,9 +108,10 @@ napplet host or protocol requirement.
   delay. `audio.ts` mixes the supplied music, ducks it under game sounds and exports
   the mixed and effects-only films. The [music prompt](MUSIC-PROMPT.md) preserves
   the music direction used when requesting the replacement track.
-- `landing.html`: lightweight landing composition with lazy media and an inline
-  interactive scene. `verify-landing.ts` checks initial requests, playback,
-  collapse cleanup and the film-to-playable-game handoff on desktop and mobile.
+- `landing.html`: landing composition with an open, muted story below the original
+  hero and an on-demand interactive scene. `verify-landing.ts` checks placement,
+  muted autoplay, sound opt-in, visibility/manual pauses, reduced motion, renderer
+  cleanup and the film-to-playable-game handoff on desktop and mobile.
 - `verify.ts`: real-browser checks for deterministic frame seeking, playback,
   version selection, keyboard movement/jump/shoot, touch controls and mobile layout.
 
