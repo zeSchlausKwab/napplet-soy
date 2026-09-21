@@ -202,7 +202,7 @@ export async function planLifecycle(input: {
   const add = (origin: string, hash: string, label: string, other = false) => {
     if (!/^[a-f0-9]{64}$/.test(hash)) return;
     try {
-      origin = new URL(lifecycleEndpoint(origin, 'http', input.local)).origin;
+      origin = lifecycleEndpoint(origin, 'http', input.local);
       if (other) {
         protectedHashes.add(hash);
         return;
@@ -219,10 +219,10 @@ export async function planLifecycle(input: {
     if (!url) return;
     try {
       const u = new URL(url),
-        hash = /^\/([a-f0-9]{64})(?:\.[a-z0-9]+)?$/.exec(u.pathname)?.[1];
-      if (hash) {
+        path = /^(.*\/)([a-f0-9]{64})(?:\.[a-z0-9]+)?$/.exec(u.pathname);
+      if (path) {
         lifecycleEndpoint(url, 'http', input.local);
-        add(u.origin, hash, label, other);
+        add(`${u.origin}${path[1]}`, path[2], label, other);
       } else if (!other)
         warnings.push(
           `${label} is not a content-addressed Blossom link; retain it on its original host.`,
