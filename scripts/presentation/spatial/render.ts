@@ -4,10 +4,15 @@ import { browserCache, browserEngine } from '../../../apps/cli/src/browser';
 import { DiagnosticError } from '../../../packages/diagnostics/src';
 import { buildSpatial, output, root } from './build';
 import { serveSpatial } from './serve';
-import { spatialScore } from './score';
+import { mixSpatialAudio } from './audio';
 import { DURATION, FPS } from './story';
 
 const frameCount = DURATION * FPS;
+
+if (process.argv.includes('--audio-only')) {
+  await mixSpatialAudio();
+  process.exit(0);
+}
 
 await buildSpatial();
 const cache = join(root, '.local/spatial-proof');
@@ -48,10 +53,14 @@ try {
     await page.screenshot({ path: join(output, `${name}.png`) });
     console.log(`Frame ${name}: ${JSON.stringify(state)}`);
   }
+  await page.evaluate((frame) => window.spatialProof.at(frame), 24 * FPS);
+  const poster = await page
+    .locator('#scene')
+    .evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL('image/png'));
+  await Bun.write(join(output, 'tree-poster.png'), Buffer.from(poster.split(',')[1], 'base64'));
   if (errors.length) throw new Error(errors.join('\n'));
   if (!process.argv.includes('--stills-only')) {
-    const soundtrack = join(cache, 'score.wav');
-    await spatialScore(soundtrack);
+    const picture = join(cache, 'picture.mp4');
     const encoder = Bun.spawn(
       [
         'ffmpeg',
@@ -67,13 +76,6 @@ try {
         String(FPS),
         '-i',
         'pipe:0',
-        '-i',
-        soundtrack,
-        '-c:a',
-        'aac',
-        '-b:a',
-        '160k',
-        '-shortest',
         '-c:v',
         'libx264',
         '-preset',
@@ -84,7 +86,7 @@ try {
         'yuv420p',
         '-movflags',
         '+faststart',
-        join(output, 'spatial-proof.mp4'),
+        picture,
       ],
       { stdin: 'pipe', stdout: 'ignore', stderr: 'pipe' },
     );
@@ -103,7 +105,7 @@ try {
           tool: 'ffmpeg',
           exitCode,
           detail: await stderr,
-          target: join(output, 'spatial-proof.mp4'),
+          target: picture,
         });
     } finally {
       if (encoder.exitCode === null) {
@@ -112,6 +114,7 @@ try {
       }
     }
     if (errors.length) throw new Error(errors.join('\n'));
+    await mixSpatialAudio(picture);
     console.log(`Film: ${join(output, 'spatial-proof.mp4')}`);
   }
   await Bun.write(

@@ -1,7 +1,7 @@
 import { Replay } from './game';
 import { beats, DURATION, nodes } from './story';
-/** Original synthesized score and effects, with deterministic noise; no samples. */
-export async function spatialScore(path: string) {
+/** Effects-only stem. Music is a separate input so it can be replaced or muted cleanly. */
+export async function spatialEffects(path: string) {
   const seconds = DURATION,
     rate = 48000,
     count = seconds * rate;
@@ -19,38 +19,56 @@ export async function spatialScore(path: string) {
   bytes.write('data', 36);
   bytes.writeUInt32LE(count * 4, 40);
   const shots: number[] = [];
-  for (const index of [1, 3]) {
+  const jumps: number[] = [],
+    coins: number[] = [],
+    hits: number[] = [];
+  for (const index of [0, 1, 3]) {
     const n = nodes[index];
     const start = index === 1 ? beats.equipped : n.start;
-    const replay = new Replay('shotgun');
-    let last = 0;
-    const end = index === 1 ? 12.6 : DURATION;
+    const replay = new Replay(index === 0 ? 'original' : 'shotgun');
+    let last = replay.at(0);
+    const end = index === 0 ? 5.1 : index === 1 ? 12.6 : DURATION;
     for (let f = 0; start + f / 60 < end; f++) {
       const g = replay.at(f / 60);
-      if (g.shots > last) shots.push(start + f / 60);
-      last = g.shots;
+      const at = start + f / 60;
+      if (g.shots > last.shots) shots.push(at);
+      if (g.jumps > last.jumps) jumps.push(at);
+      if (g.gems > last.gems) coins.push(at);
+      if (g.kills > last.kills) hits.push(at);
+      last = g;
     }
   }
-  const notes = [220, 329.63, 440, 554.37, 493.88, 329.63, 293.66, 440];
   let noise = 173;
   for (let i = 0; i < count; i++) {
     const t = i / rate,
       fade = Math.min(1, t * 2, (seconds - t) * 1.5);
-    const beat = Math.floor(t / 0.42),
-      age = t % 0.42,
-      pitch = notes[beat % notes.length];
-    const pluck =
-      (Math.sin(2 * Math.PI * pitch * t) + 0.12 * Math.sin(2 * Math.PI * pitch * 3 * t)) *
-      Math.exp(-age * 12) *
-      0.025;
-    let sample = Math.sin(2 * Math.PI * 110 * t) * 0.012 + pluck;
+    let sample = 0;
     noise = (Math.imul(noise, 1664525) + 1013904223) | 0;
     const grain = noise / 2147483648;
     for (const start of shots) {
       const a = t - start;
       if (a >= 0 && a < 0.24)
         sample +=
-          (0.045 * grain + 0.055 * Math.sin(2 * Math.PI * (90 - 130 * a) * a)) * Math.exp(-a * 25);
+          (0.22 * grain + 0.28 * Math.sin(2 * Math.PI * (90 - 130 * a) * a)) * Math.exp(-a * 22);
+    }
+    for (const start of jumps) {
+      const a = t - start;
+      if (a >= 0 && a < 0.18)
+        sample +=
+          0.11 * Math.sin(2 * Math.PI * (300 * a + 1400 * a * a)) * Math.sin((Math.PI * a) / 0.18);
+    }
+    for (const start of coins) {
+      const a = t - start;
+      if (a >= 0 && a < 0.28)
+        sample +=
+          0.14 * Math.sin(2 * Math.PI * (a < 0.065 ? 1318.5 : 1760) * a) * Math.exp(-a * 12);
+    }
+    for (const start of hits) {
+      const a = t - start;
+      if (a >= 0 && a < 0.18)
+        sample +=
+          (0.07 * grain + 0.1 * Math.sin(2 * Math.PI * (260 * a - 520 * a * a))) *
+          Math.exp(-a * 20);
     }
     for (const start of [
       5.3,
@@ -62,7 +80,7 @@ export async function spatialScore(path: string) {
       beats.flyToPlayer,
     ]) {
       const a = t - start;
-      if (a >= 0 && a < 1) sample += grain * Math.sin(a * Math.PI) * 0.008;
+      if (a >= 0 && a < 1) sample += grain * Math.sin(a * Math.PI) * 0.018;
     }
     for (const start of [beats.equipped, beats.merged, 21.6, beats.fillScreen]) {
       const a = t - start;
@@ -71,7 +89,7 @@ export async function spatialScore(path: string) {
           (Math.sin(a * Math.PI * 880) +
             Math.sin(a * Math.PI * 1108.73) +
             Math.sin(a * Math.PI * 1318.51)) *
-          0.019 *
+          0.045 *
           Math.min(1, a * 50) *
           Math.exp(-a * 3);
     }

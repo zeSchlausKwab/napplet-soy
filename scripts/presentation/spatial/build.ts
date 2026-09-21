@@ -13,6 +13,7 @@ export async function buildSpatial() {
     throw new AggregateError(result.logs, 'Could not build the spatial presentation.');
   await Bun.write(join(output, 'spatial.js'), await result.outputs[0].text());
   await cp(join(import.meta.dir, 'index.html'), join(output, 'index.html'));
+  await cp(join(import.meta.dir, 'landing.html'), join(output, 'landing.html'));
   const fonts = [
     ['dm-sans', 'dm-sans-latin-400-normal.woff2', 'sans.woff2'],
     ['dm-sans', 'dm-sans-latin-600-normal.woff2', 'sans-bold.woff2'],

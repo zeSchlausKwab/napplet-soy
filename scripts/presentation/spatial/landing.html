@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>A little idea branches out · landing composition</title>
+    <style>
+      @font-face {
+        font-family: Sans;
+        src: url('sans.woff2');
+      }
+      @font-face {
+        font-family: Sans;
+        src: url('sans-bold.woff2');
+        font-weight: 600;
+      }
+      @font-face {
+        font-family: Mono;
+        src: url('mono.woff2');
+      }
+      @font-face {
+        font-family: Fredoka;
+        src: url('display.woff2');
+        font-weight: 600;
+      }
+      :root {
+        --paper: #f8f6ec;
+        --ink: #293025;
+        --green: #537551;
+        --coral: #ed8068;
+        --line: #dcded0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: Sans, sans-serif;
+      }
+      button,
+      a,
+      input {
+        touch-action: manipulation;
+      }
+      button {
+        cursor: pointer;
+        font: inherit;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      button:focus-visible,
+      a:focus-visible {
+        outline: 3px solid var(--coral);
+        outline-offset: 5px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .wrap {
+        width: min(1440px, calc(100% - 80px));
+        margin: auto;
+      }
+      .top {
+        background: #e8ecdb;
+      }
+      .nav {
+        min-height: 86px;
+        display: flex;
+        align-items: center;
+        gap: 34px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font: 600 31px Fredoka;
+        color: #fff3d5;
+        -webkit-text-stroke: 3px #2a3024;
+        paint-order: stroke fill;
+      }
+      .brand img {
+        width: 47px;
+        height: 47px;
+        object-fit: contain;
+      }
+      .nav nav {
+        display: flex;
+        gap: 25px;
+        font-size: 14px;
+      }
+      .nav .end {
+        margin-left: auto;
+      }
+      .outline {
+        border: 1px solid #c7cbbb;
+        border-radius: 7px;
+        padding: 10px 14px;
+        background: transparent;
+        color: inherit;
+      }
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.45fr);
+        gap: 48px;
+        align-items: center;
+        padding: 48px 0 30px;
+      }
+      .eyebrow {
+        font: 11px Mono;
+        letter-spacing: 1.5px;
+      }
+      .eyebrow::before {
+        content: '●';
+        color: #8ca76c;
+        margin-right: 9px;
+      }
+      h1 {
+        font-size: clamp(58px, 5.1vw, 80px);
+        line-height: 0.98;
+        letter-spacing: -4px;
+        font-weight: 600;
+        margin: 22px 0;
+      }
+      .coral {
+        color: var(--coral);
+      }
+      .weird {
+        position: relative;
+      }
+      .weird::after {
+        content: '';
+        position: absolute;
+        bottom: -7px;
+        left: 0;
+        right: 0;
+        border-bottom: 3px solid var(--coral);
+        border-radius: 50%;
+        height: 10px;
+        transform: rotate(-2deg);
+      }
+      .lede {
+        color: #7b806f;
+        font:
+          italic 19px/1.5 Georgia,
+          serif;
+        max-width: 410px;
+        margin: 27px 0 24px;
+      }
+      .identity {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        margin: 20px 0 17px;
+      }
+      .identity img {
+        width: 52px;
+        height: 52px;
+        object-fit: contain;
+      }
+      .identity strong {
+        font-size: 25px;
+      }
+      .identity .pronunciation {
+        font: 12px Mono;
+        color: #7c806f;
+        margin-left: 10px;
+      }
+      .identity small {
+        display: block;
+        color: var(--green);
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .account {
+        font-size: 12px;
+        color: var(--green);
+        font-weight: 600;
+        margin: 0 0 11px;
+      }
+      .terminal {
+        background: #293326;
+        color: #f0edda;
+        border-radius: 9px;
+        overflow: hidden;
+        position: relative;
+      }
+      .terminal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        color: #bdc6a4;
+        font: 11px Mono;
+        border-bottom: 1px solid #566349;
+      }
+      .terminal button {
+        color: inherit;
+        background: transparent;
+        border: 0;
+      }
+      .terminal code {
+        display: block;
+        font: 12px/1.8 Mono;
+        padding: 17px;
+        overflow-wrap: anywhere;
+      }
+      .help {
+        color: #868a79;
+        font-size: 10px;
+        line-height: 1.6;
+        margin: 9px 0;
+      }
+      .copy-status {
+        font-size: 11px;
+        min-height: 15px;
+        color: var(--green);
+        margin: 0;
+      }
+      .links {
+        display: flex;
+        gap: 28px;
+        font-weight: 600;
+        font-size: 12px;
+        margin-top: 13px;
+      }
+      .stage-wrap {
+        min-width: 0;
+      }
+      .stage-note {
+        font: 11px Mono;
+        color: var(--green);
+        margin: 0 0 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .cinema {
+        position: relative;
+        aspect-ratio: 1.6;
+        background: #122725;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 22px 35px -27px #0d2926aa;
+        isolation: isolate;
+      }
+      .poster {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .stage-label {
+        position: absolute;
+        top: 26px;
+        left: 28px;
+        color: #f7edcf;
+        z-index: 1;
+      }
+      .stage-label small {
+        font: 10px Mono;
+        letter-spacing: 1.5px;
+        color: #afbea2;
+      }
+      .stage-label h2 {
+        font: 600 clamp(25px, 2.7vw, 40px)/1.1 Fredoka;
+        max-width: 320px;
+        margin: 10px 0;
+      }
+      .stage-label p {
+        font-size: 12px;
+        line-height: 1.6;
+        color: #c6cbb4;
+        max-width: 310px;
+      }
+      .stage-actions {
+        position: absolute;
+        bottom: 27px;
+        left: 28px;
+        right: 28px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .watch {
+        background: #d8e1ad;
+        color: #263c2c;
+        border: 0;
+        border-radius: 7px;
+        padding: 13px 20px;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .tree {
+        color: #e8ead4;
+        border: 1px solid #8d9f83;
+        background: #163029d9;
+        border-radius: 7px;
+        padding: 12px 15px;
+        font-size: 12px;
+      }
+      .stage-actions small {
+        margin-left: auto;
+        color: #b0c0ab;
+        font: 10px Mono;
+      }
+      .stage-footer {
+        display: flex;
+        gap: 15px;
+        justify-content: space-between;
+        font-size: 12px;
+        padding: 15px 2px 0;
+        color: #6d7864;
+      }
+      .stage-footer strong {
+        color: #455e42;
+        font-weight: 600;
+      }
+      .stage-footer span {
+        font: 10px Mono;
+      }
+      .cinema video {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .cinema iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #122725;
+      }
+      .back {
+        border: 1px solid #92a78a;
+        background: #143129ed;
+        color: #f6ecd2;
+        padding: 9px 13px;
+        border-radius: 6px;
+        font-size: 12px;
+      }
+      body.expanded .stage-note {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--paper);
+        padding: 10px 0;
+        gap: 12px;
+      }
+      body.expanded .duration {
+        display: none;
+      }
+      .film-end {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        gap: 14px;
+        text-align: center;
+        background: #10292566;
+        backdrop-filter: blur(4px);
+        color: #f6ecd2;
+      }
+      .film-end p {
+        font: 600 32px Fredoka;
+        margin: 0;
+      }
+      body.expanded .hero {
+        grid-template-columns: 1fr;
+        padding-top: 25px;
+      }
+      body.expanded .hero-copy {
+        display: none;
+      }
+      body.expanded .cinema {
+        aspect-ratio: 16/9;
+      }
+      body.exploring .cinema {
+        aspect-ratio: auto;
+        height: min(800px, 83svh);
+        min-height: 590px;
+      }
+      body.expanded .stage-footer {
+        padding-bottom: 14px;
+      }
+      .benefits {
+        display: flex;
+        justify-content: space-between;
+        gap: 26px;
+        padding: 0 0 37px;
+        color: #77816d;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .benefits strong {
+        display: block;
+        font-size: 13px;
+        color: var(--ink);
+        margin-bottom: 3px;
+      }
+      .benefits span {
+        color: var(--green);
+        margin-right: 7px;
+      }
+      .browse {
+        background: #eceee1;
+        padding: 44px 0 65px;
+        margin-top: 19px;
+      }
+      .browse h2 {
+        display: table;
+        margin: -67px 0 22px;
+        background: #35412d;
+        color: #f6f4e6;
+        padding: 15px 22px;
+        border-radius: 12px 12px 12px 0;
+        font-size: 23px;
+      }
+      .browse-intro {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: center;
+        color: #7f866f;
+        font-size: 13px;
+      }
+      .featured-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 28px;
+      }
+      .featured-heading h3 {
+        font: 11px Mono;
+        letter-spacing: 1px;
+        font-weight: 400;
+      }
+      .featured-heading small {
+        color: #7f866f;
+        font: 10px Mono;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+        margin: 14px 0 30px;
+      }
+      .card {
+        min-width: 0;
+      }
+      .card img {
+        width: 100%;
+        aspect-ratio: 1.8;
+        object-fit: cover;
+        border-radius: 8px;
+        display: block;
+      }
+      .card h4 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 12px 0 6px;
+      }
+      .card small {
+        font-size: 11px;
+        color: #7d876e;
+      }
+      .tags {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        font-size: 12px;
+      }
+      .tags span {
+        padding: 9px;
+      }
+      .tags span:first-child {
+        background: #37422f;
+        color: #faf5df;
+        border-radius: 6px;
+      }
+      .tags .search {
+        margin-left: auto;
+        color: #7f8976;
+        border-bottom: 1px solid #cbd0bd;
+        min-width: 225px;
+      }
+      .study {
+        padding: 25px 0;
+        font: 10px/1.8 Mono;
+        color: #828975;
+      }
+      .study a {
+        text-decoration: underline;
+      }
+      @media (max-width: 1050px) {
+        .wrap {
+          width: calc(100% - 44px);
+        }
+        .hero {
+          gap: 28px;
+          grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);
+        }
+        h1 {
+          font-size: 65px;
+        }
+        .stage-label {
+          top: 18px;
+          left: 20px;
+        }
+        .stage-label p {
+          display: none;
+        }
+        .stage-actions {
+          left: 20px;
+          right: 20px;
+          bottom: 19px;
+        }
+        .stage-actions small {
+          display: none;
+        }
+        .cinema {
+          aspect-ratio: 1.3;
+        }
+        .identity .pronunciation {
+          font-size: 10px;
+        }
+      }
+      @media (max-width: 760px) {
+        .wrap {
+          width: calc(100% - 32px);
+        }
+        .nav {
+          min-height: 72px;
+          gap: 12px;
+        }
+        .brand {
+          font-size: 25px;
+        }
+        .brand img {
+          width: 37px;
+          height: 37px;
+        }
+        .nav nav {
+          display: none;
+        }
+        .nav .outline {
+          font-size: 11px;
+        }
+        .hero {
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 25px;
+          padding-top: 31px;
+        }
+        .hero h1 {
+          font-size: 60px;
+          letter-spacing: -3px;
+          margin: 20px 0;
+        }
+        .lede {
+          font-size: 17px;
+          margin: 22px 0 16px;
+        }
+        .hero-copy {
+          width: 100%;
+        }
+        .stage-label h2 {
+          font-size: 28px;
+        }
+        .stage-label p {
+          display: none;
+        }
+        .cinema {
+          aspect-ratio: 1.42;
+        }
+        .poster {
+          object-fit: contain;
+        }
+        .stage-footer {
+          font-size: 11px;
+        }
+        .stage-footer span {
+          font-size: 9px;
+        }
+        .benefits {
+          gap: 10px;
+          font-size: 10px;
+          padding-bottom: 27px;
+        }
+        .benefits strong {
+          font-size: 11px;
+        }
+        .benefits p {
+          display: none;
+        }
+        .browse {
+          margin-top: 24px;
+        }
+        .browse-intro {
+          font-size: 12px;
+        }
+        .cards {
+          display: flex;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          padding-bottom: 10px;
+        }
+        .card {
+          flex: 0 0 76%;
+          scroll-snap-align: start;
+        }
+        .tags {
+          gap: 0;
+        }
+        .tags .search {
+          margin-left: 0;
+          width: 100%;
+          margin-top: 10px;
+        }
+        .study {
+          font-size: 9px;
+        }
+        body.expanded .hero-copy {
+          display: none;
+        }
+        body.expanded .cinema {
+          aspect-ratio: 16/9;
+        }
+        body.exploring .cinema {
+          aspect-ratio: auto;
+          height: 720px;
+          min-height: 0;
+        }
+        .back {
+          padding: 7px 9px;
+          font-size: 10px;
+          flex-shrink: 0;
+        }
+        .stage-actions {
+          gap: 8px;
+        }
+        .watch {
+          padding: 12px;
+          font-size: 12px;
+        }
+        .tree {
+          padding: 11px;
+          font-size: 11px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap nav">
+        <a class="brand" href="landing.html"><img src="soybert.png" alt="" />napplet.soy</a>
+        <nav>
+          <a href="#playground">Explore</a><a href="https://napplet.soy/create">Make something ↗</a
+          ><a href="https://napplet.soy/docs">Docs</a>
+        </nav>
+        <a class="outline end" href="https://napplet.soy">Sign in ↗</a>
+      </div>
+    </header>
+    <main>
+      <section class="wrap hero">
+        <div class="hero-copy">
+          <div class="eyebrow">A PLAYGROUND FOR THE INTERNET</div>
+          <h1>Small code.<br />Big <span class="weird">weird</span><span class="coral">.</span></h1>
+          <p class="lede">
+            Tiny games. Happy accidents.<br />Your idea, out in the world.<br />Someone else’s
+            beautifully bad improvement.
+          </p>
+          <div class="identity">
+            <img src="soybert.png" alt="Soybert" />
+            <div>
+              <strong>soy<span class="coral">LI</span></strong
+              ><span class="pronunciation">say “soy–el–eye”</span
+              ><small>The command line for the agentic age.</small>
+            </div>
+          </div>
+          <p class="account">Create, remix, contribute. No website account needed.</p>
+          <div class="terminal">
+            <div class="terminal-head">
+              <span>›_ ONE COMMAND. YOUR NEXT IDEA.</span
+              ><button id="copy" aria-label="Copy starter command">Copy ⧉</button>
+            </div>
+            <code id="command"
+              >curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet</code
+            >
+          </div>
+          <p class="help">macOS &amp; Linux · Git required · No Bun or Node installation needed.</p>
+          <p class="copy-status" role="status"></p>
+          <div class="links">
+            <a href="https://napplet.soy/docs">Meet soyLI. Read the docs ↗</a
+            ><a href="#playground">Explore first ↓</a>
+          </div>
+        </div>
+        <div class="stage-wrap">
+          <div class="stage-note">
+            <span>AN IDEA IS JUST THE BEGINNING</span><span class="duration">30 SEC ↙</span>
+            <button class="back" id="collapse" hidden>↙ Back to the page</button>
+          </div>
+          <div class="cinema" id="cinema">
+            <img
+              class="poster"
+              src="tree-poster.png"
+              alt="Four versions of Soybert’s game connected by branching paths"
+              width="1920"
+              height="1080"
+            />
+            <div class="stage-label">
+              <small>MAKE IT. SHARE IT. CHANGE IT.</small>
+              <h2>A little idea<br />branches out.</h2>
+            </div>
+            <div class="stage-actions">
+              <button class="watch" id="watch-film">▶ Watch the story</button
+              ><button class="tree" id="explore-tree">Explore the tree</button
+              ><small>SOUND ON · PIXELS READY</small>
+            </div>
+            <div class="film-end" hidden>
+              <p>Your turn.</p>
+              <button class="watch" id="play-game">Play Soybert →</button
+              ><button class="tree" id="explore-after">Explore how it changed</button>
+            </div>
+          </div>
+          <div class="stage-footer">
+            <strong>Open source. Open season.</strong><span>ORIGINAL → REMIX → MERGE → PLAY</span>
+          </div>
+        </div>
+      </section>
+      <div class="wrap benefits">
+        <div>
+          <strong><span>⌘</span> Context for your agent</strong>Skills, a working project, simple
+          commands.
+        </div>
+        <div>
+          <strong><span>▣</span> Presentation, taken care of</strong>Images, clips and a listing
+          worth sharing.
+        </div>
+        <div>
+          <strong><span>↗</span> Ready for the world</strong>Checks, Git, storage and publishing
+          defaults.
+        </div>
+      </div>
+      <section class="browse" id="playground">
+        <div class="wrap">
+          <h2>The playground</h2>
+          <div class="browse-intro">
+            <span>Follow a tag. Find your kind of weird.</span
+            ><a class="outline" href="https://napplet.soy">Browse live napplets ↗</a>
+          </div>
+          <div class="featured-heading">
+            <h3>FEATURED FROM THE PLAYGROUND</h3>
+            <small>SAMPLE PLACEMENT · LIVE SELECTION IN THE APP</small>
+          </div>
+          <div class="cards">
+            <article class="card">
+              <a href="./"
+                ><img src="01-original.png" alt="The original Soybert platform game" />
+                <h4>Soybert’s little world ↗</h4></a
+              ><small>Original · local demo</small>
+            </article>
+            <article class="card">
+              <a href="./"
+                ><img src="02b-remix-play.png" alt="Soybert’s shotgun remix" />
+                <h4>A little chaos ↗</h4></a
+              ><small>Remix · local demo</small>
+            </article>
+            <article class="card">
+              <a href="./"
+                ><img
+                  src="04-release.png"
+                  alt="The published result of the illustrated collaboration"
+                />
+                <h4>Built together ↗</h4></a
+              ><small>Shared improvement · local demo</small>
+            </article>
+          </div>
+          <div class="tags">
+            <span>✳ Everything</span><span>#game</span><span>#generative</span><span>#visual</span
+            ><span>#music</span><span class="search">⌕ Search or paste a napplet link…</span>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="wrap study">
+      LOCAL COMPOSITION STUDY · Gallery cards are illustrative. The deployed home page is
+      unchanged.<br /><a href="./">Standalone 3D proof</a> ·
+      <a href="spatial-proof.mp4">Film with supplied music</a> ·
+      <a href="spatial-effects.mp4">Game effects only</a>
+    </footer>
+    <script>
+      const cinema = document.querySelector('#cinema');
+      let media;
+      const initial = [...cinema.querySelectorAll('.poster,.stage-label,.stage-actions')];
+      const scrollBehavior = matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'auto'
+        : 'smooth';
+      function expand(mode) {
+        if (media) {
+          media.remove();
+          media = undefined;
+        }
+        document.body.classList.add('expanded');
+        document.body.classList.toggle('exploring', mode === 'tree');
+        initial.forEach((el) => (el.hidden = true));
+        document.querySelector('.film-end').hidden = true;
+        document.querySelector('#collapse').hidden = false;
+      }
+      function tree(play = false) {
+        expand('tree');
+        media = document.createElement('iframe');
+        media.title = 'Explore the collaborative game tree';
+        media.allow = 'fullscreen';
+        media.src = './?embed' + (play ? '&play=release' : '');
+        cinema.prepend(media);
+        cinema.parentElement.scrollIntoView({ behavior: scrollBehavior, block: 'start' });
+      }
+      document.querySelector('#watch-film').onclick = () => {
+        expand('film');
+        media = document.createElement('video');
+        media.controls = true;
+        media.playsInline = true;
+        media.preload = 'none';
+        media.src = 'spatial-proof.mp4?mix=2';
+        media.setAttribute('aria-label', 'From original to remix: a 30-second story');
+        media.onended = () => (document.querySelector('.film-end').hidden = false);
+        cinema.prepend(media);
+        media.play().catch(() => {});
+        cinema.parentElement.scrollIntoView({ behavior: scrollBehavior, block: 'start' });
+      };
+      document.querySelector('#explore-tree').onclick = () => tree();
+      document.querySelector('#explore-after').onclick = () => tree();
+      document.querySelector('#play-game').onclick = () => tree(true);
+      document.querySelector('#collapse').onclick = () => {
+        if (media) {
+          media.remove();
+          media = undefined;
+        }
+        document.body.classList.remove('expanded', 'exploring');
+        initial.forEach((el) => (el.hidden = false));
+        document.querySelector('.film-end').hidden = true;
+        document.querySelector('#collapse').hidden = true;
+        document.querySelector('#watch-film').focus();
+      };
+      document.querySelector('#copy').onclick = async () => {
+        const message = document.querySelector('.copy-status');
+        try {
+          await navigator.clipboard.writeText(document.querySelector('#command').textContent);
+          message.textContent = 'Copied. Paste it into your terminal.';
+        } catch {
+          message.textContent = 'Select the command above and copy it manually.';
+        }
+      };
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && media instanceof HTMLVideoElement) media.pause();
+      });
+    </script>
+  </body>
+</html>

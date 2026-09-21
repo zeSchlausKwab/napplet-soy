@@ -321,7 +321,19 @@
         right: 48px;
         bottom: 30px;
       }
+      html.embed header,
+      html.embed #disclosure,
+      html.embed #mobile-info {
+        display: none;
+      }
+      html.embed #world {
+        height: calc(100svh - 151px);
+        min-height: 200px;
+      }
       @media (max-width: 760px) {
+        html.embed #world {
+          height: calc(100svh - 265px);
+        }
         #world {
           height: 52svh;
           min-height: 350px;
@@ -495,6 +507,8 @@
     <script>
       if (new URLSearchParams(location.search).has('capture'))
         document.documentElement.classList.add('capture');
+      if (new URLSearchParams(location.search).has('embed'))
+        document.documentElement.classList.add('embed');
     </script>
     <script type="module" src="spatial.js"></script>
   </body>

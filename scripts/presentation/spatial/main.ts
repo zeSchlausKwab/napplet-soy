@@ -282,6 +282,10 @@ async function boot() {
     },
   };
   resize();
+  if (new URLSearchParams(location.search).get('play') === 'release') {
+    select(3);
+    play();
+  }
   if (!capture) requestAnimationFrame(loop);
   window.addEventListener(
     'pagehide',

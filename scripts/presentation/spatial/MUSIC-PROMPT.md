@@ -2,7 +2,8 @@
 
 Paste this into ElevenLabs Music. Request a 30-second instrumental; the cue times
 below describe the desired visual arc, not a guarantee of frame-accurate generation.
-The current film uses the locally synthesized score until a generated track is chosen.
+The film now uses the user-supplied `assets/soundtrack.mp3`, with separately mixed
+game effects. This prompt is retained as the original music direction.
 
 > Create a 30-second instrumental for a playful indie video-game film. Modern
 > chiptune meets warm electronic adventure music, 128 BPM, 4/4. A catchy square-wave

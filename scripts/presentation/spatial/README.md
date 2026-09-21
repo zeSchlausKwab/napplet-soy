@@ -33,20 +33,51 @@ camera journey runs only when explicitly played or scrubbed.
 ```sh
 bun run presentation:spatial:render --stills-only
 bun run presentation:spatial:render
+bun run presentation:spatial:render --audio-only
 bun test scripts/presentation/spatial
 bun scripts/presentation/spatial/verify.ts
+bun scripts/presentation/spatial/verify-landing.ts
 ```
 
 The renderer needs FFmpeg on PATH and the soyLI Chromium browser (`bun run soyli
 browser install`). The browser scene requires WebGL 2. These are local authoring
 tools; they add no runtime requirement to published napplets or the shell app.
 
-Generated files live in ignored `output/spatial-proof/`: MP4, ten stills, bundled
-interactive page, fonts and verification records. Intermediate audio lives under
+Generated files live in ignored `output/spatial-proof/`: mixed and effects-only
+MP4s, ten stills, a clean tree poster, bundled interactive pages, fonts and
+verification records. Intermediate audio lives under
 `.local/spatial-proof/`. The renderer writes explicit frames through the exact
 same browser scene used interactively, then encodes H.264/AAC. This proof uses
 Three.js directly; there is no additional React Three Fiber, Blender or Remotion
 scene adapter. The earlier Remotion proof remains independently reproducible.
+
+## Audio
+
+`assets/soundtrack.mp3` is the user-supplied 30-second music bed. The previous
+synthesized music has been removed. Jump, coin, enemy-hit and shotgun effects
+follow the deterministic game replay; pickup, travel and merge cues remain.
+The music is lowered and briefly ducked under effects, with a final peak limiter.
+
+`--audio-only` replaces the film's audio without re-encoding its picture. It exports
+`spatial-proof.mp4` (music plus effects) and `spatial-effects.mp4` (effects only).
+The interactive WebGL story and playable game currently remain silent; only the
+rendered film has this mix.
+
+## Landing-page composition study
+
+Open `http://127.0.0.1:4191/landing.html` after rendering the stills and movie. This
+is a local layout study, not a change to the production homepage. The install
+command and short introduction sit beside a poster of the tree. **Watch the story**
+expands the film inline; **Explore the tree** loads the interactive scene on demand.
+The film ends with a **Play Soybert** handoff to the actual local game. Collapsing
+removes the media/renderer, and the initial page loads neither video nor Three.js.
+Featured napplets move to the beginning of the playground in this study; the
+sample cards are explicitly labelled illustrative and do not query live listings.
+
+Desktop and touch layouts keep the collapse control outside the embedded scene.
+Native video controls provide sound, seeking and pause; sound begins on user
+interaction. The isolated iframe is a prototype integration boundary, not a new
+napplet host or protocol requirement.
 
 ## Structure
 
@@ -69,11 +100,13 @@ scene adapter. The earlier Remotion proof remains independently reproducible.
 - `main.ts` / `index.html`: replay/explore controls and an isolated local play
   dialog. Short jump/shoot inputs are latched until a simulation step so taps
   aren't lost between rendered frames. The story pauses when the tab is hidden.
-- `score.ts`: original synthesized music, travel cues and shot effects timed to
-  the replay, including the pickup delay. The merge has its own resolution cue
-  instead of repeated shooting. No samples or external audio dependencies. The
-  [music prompt](MUSIC-PROMPT.md) describes an optional ElevenLabs replacement;
-  the rendered proof still uses the original synthesized score.
+- `score.ts`: code-authored effects timed to the replay, including the pickup
+  delay. `audio.ts` mixes the supplied music, ducks it under game sounds and exports
+  the mixed and effects-only films. The [music prompt](MUSIC-PROMPT.md) preserves
+  the music direction used when requesting the replacement track.
+- `landing.html`: lightweight landing composition with lazy media and an inline
+  interactive scene. `verify-landing.ts` checks initial requests, playback,
+  collapse cleanup and the film-to-playable-game handoff on desktop and mobile.
 - `verify.ts`: real-browser checks for deterministic frame seeking, playback,
   version selection, keyboard movement/jump/shoot, touch controls and mobile layout.
 
@@ -86,7 +119,8 @@ rendering does not create repositories, proposals, public releases or relay even
 separate node illustrates publishing. This is not end-to-end verification of an
 actual contribution or a packaged NAP release.
 
-Pixel sprites, scenery, geometry and sound are authored in code. The header uses
-the project's existing Soybert mascot. No new generated image assets are required.
+Pixel sprites, scenery, geometry and effects are authored in code; the music is
+supplied separately. The header uses the project's existing Soybert mascot.
+No new generated image assets are required.
 All assets are served locally. Nothing is installed on the production site and
 the existing onboarding film is unchanged.
