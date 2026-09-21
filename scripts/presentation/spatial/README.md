@@ -59,29 +59,35 @@ follow the deterministic game replay; pickup, travel and merge cues remain.
 The music is lowered and briefly ducked under effects, with a final peak limiter.
 
 `--audio-only` replaces the film's audio without re-encoding its picture. It exports
-`spatial-proof.mp4` (music plus effects) and `spatial-effects.mp4` (effects only).
-The interactive WebGL story and playable game currently remain silent; only the
-rendered film has this mix.
+`spatial-proof.mp4` (music plus effects), `spatial-effects.mp4` (effects only) and
+`story-audio.m4a` (the same mix for the live scene). The landing scene loads audio
+only after **Sound off** is toggled on. Audible playback uses the audio clock so
+dropped rendering frames do not desynchronize the game effects. Seeking pauses
+and moves both timelines. The manually playable game itself remains silent.
 
 ## Landing-page composition study
 
 Open `http://127.0.0.1:4191/landing.html` after rendering the stills and movie. This
 is a local layout study, not a change to the production homepage. It preserves
 the original hero's copy, installer, animated mascot, benefits and featured area.
-The story is a separate, full-width section **below the hero and above the
-playground**, open by default. The film starts muted when it comes into view,
-pauses off-screen or in a hidden tab, and resumes unless the viewer paused it.
-Reduced-motion preferences keep it paused until explicitly played. Sound is
-opt-in through the visible toggle or native video controls.
+The live Three.js story runs **edge to edge across the browser width**, below the
+hero and above the playground. It is open by default, animates silently when in
+view, pauses rendering/game simulation/audio off-screen or in a hidden tab, and
+resumes unless the viewer paused it. Reduced-motion preferences require explicit
+play. Sound is opt-in through the visible toggle.
 
-**Explore the tree** loads the interactive scene on demand. The film ends with a
-**Play Soybert** handoff to the actual local game. Returning to the film removes
-the renderer; Three.js is never needed just to watch the movie. The sample featured
-and gallery cards are explicitly illustrative and do not query live listings.
+The simple progress slider controls the actual camera, prompts, branches and game
+states; mouse/touch dragging pauses at the chosen moment. Arrow keys, Home and End
+also seek, and **Watch the story** resumes from that position. **Explore tree**
+shows the same scene's complete tree; nodes can be selected and played. The ending
+retains **PRESS START** for the finished game. The sample featured and gallery
+cards are illustrative and do not query live listings.
 
-Desktop and touch layouts keep controls outside the embedded scene. Native video
-controls also provide seeking and fullscreen. The isolated iframe is a prototype
-integration boundary, not a new napplet host or protocol requirement.
+The scene is loaded immediately in a same-origin `?landing` iframe with compact
+controls. It does not download the movie or audio on arrival. The outer page
+reports visibility to suspend the scene, and a WebGL startup failure links to the
+rendered film. This iframe is a prototype integration boundary, not a new napplet
+host or protocol requirement.
 
 ## Structure
 
@@ -106,12 +112,12 @@ integration boundary, not a new napplet host or protocol requirement.
   aren't lost between rendered frames. The story pauses when the tab is hidden.
 - `score.ts`: code-authored effects timed to the replay, including the pickup
   delay. `audio.ts` mixes the supplied music, ducks it under game sounds and exports
-  the mixed and effects-only films. The [music prompt](MUSIC-PROMPT.md) preserves
+  the mixed/effects-only films and live-scene audio. The [music prompt](MUSIC-PROMPT.md) preserves
   the music direction used when requesting the replacement track.
-- `landing.html`: landing composition with an open, muted story below the original
-  hero and an on-demand interactive scene. `verify-landing.ts` checks placement,
-  muted autoplay, sound opt-in, visibility/manual pauses, reduced motion, renderer
-  cleanup and the film-to-playable-game handoff on desktop and mobile.
+- `landing.html`: landing composition with the open live scene below the original
+  hero. `verify-landing.ts` checks edge-to-edge placement, silent autoplay,
+  mouse/touch/keyboard scrubbing, audio synchronization, visibility/manual pauses,
+  reduced motion and playable ending on desktop and mobile.
 - `verify.ts`: real-browser checks for deterministic frame seeking, playback,
   version selection, keyboard movement/jump/shoot, touch controls and mobile layout.
 

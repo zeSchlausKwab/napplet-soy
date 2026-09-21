@@ -452,93 +452,20 @@
         max-width: 355px;
       }
       .story-shell {
-        background: #112725;
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: 0 22px 35px -27px #0d2926aa;
-      }
-      .story-toolbar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 13px 20px;
-        color: #dce4ca;
-        border-bottom: 1px solid #354b3c;
-        flex-wrap: wrap;
-      }
-      .story-toolbar .sequence {
-        font: 10px Mono;
-        letter-spacing: 1px;
-        color: #aebfa1;
-        margin-right: auto;
-      }
-      .story-toolbar button {
-        border: 1px solid #69816b;
-        background: transparent;
-        color: #e4ead5;
-        border-radius: 6px;
-        padding: 9px 12px;
-        font-size: 12px;
-        min-height: 40px;
-      }
-      .story-toolbar button:hover {
-        background: #31463a;
-      }
-      .story-toolbar button:disabled {
-        opacity: 0.5;
-        cursor: default;
+        background: #122725;
+        width: 100%;
       }
       .cinema {
         position: relative;
-        aspect-ratio: 16/9;
-        isolation: isolate;
-        background: #112725;
+        height: clamp(430px, calc(56.25vw + 110px), 92svh);
+        min-height: 430px;
+        background: #122725;
       }
-      .cinema video,
       .cinema iframe {
         display: block;
         width: 100%;
         height: 100%;
         border: 0;
-        object-fit: contain;
-      }
-      .story.exploring .cinema {
-        aspect-ratio: auto;
-        height: min(800px, 83svh);
-        min-height: 590px;
-      }
-      .film-end {
-        position: absolute;
-        inset: 0;
-        display: grid;
-        place-content: center;
-        gap: 14px;
-        text-align: center;
-        background: #10292566;
-        backdrop-filter: blur(4px);
-        color: #f6ecd2;
-        padding: 15px;
-      }
-      .film-end p {
-        font: 600 32px Fredoka;
-        margin: 0;
-      }
-      .watch,
-      .tree {
-        border-radius: 7px;
-        padding: 13px 20px;
-        font-weight: 600;
-        font-size: 13px;
-      }
-      .watch {
-        background: #d8e1ad;
-        color: #263c2c;
-        border: 0;
-      }
-      .tree {
-        color: #e8ead4;
-        border: 1px solid #8d9f83;
-        background: #163029d9;
       }
       .story-caption {
         display: flex;
@@ -733,37 +660,9 @@
         .story-heading p {
           font-size: 12px;
         }
-        .story-toolbar {
-          padding: 12px;
-          gap: 7px;
-        }
-        .story-toolbar .sequence {
-          width: 100%;
-          font-size: 9px;
-          margin: 0 0 4px;
-        }
-        .story-toolbar button {
-          font-size: 11px;
-          padding: 9px 10px;
-        }
-        .story.exploring .cinema {
-          aspect-ratio: auto;
-          height: 690px;
-          min-height: 0;
-        }
         .story-caption {
           align-items: start;
           font-size: 10px;
-        }
-        .film-end {
-          gap: 8px;
-        }
-        .film-end p {
-          font-size: 24px;
-        }
-        .film-end button {
-          padding: 10px 13px;
-          font-size: 12px;
         }
         .browse-intro {
           font-size: 12px;
@@ -908,8 +807,8 @@
           </div>
         </aside>
       </section>
-      <section class="wrap story" id="story" aria-labelledby="story-title">
-        <div class="story-heading">
+      <section class="story" id="story" aria-labelledby="story-title">
+        <div class="wrap story-heading">
           <div>
             <span class="story-kicker">MAKE IT. SHARE IT. CHANGE IT.</span>
             <h2 id="story-title">A little idea branches out.</h2>
@@ -919,37 +818,20 @@
           </p>
         </div>
         <div class="story-shell">
-          <div class="story-toolbar">
-            <span class="sequence">ORIGINAL → REMIX → MERGE → PLAY</span>
-            <button id="toggle-play" aria-controls="story-film">Pause story</button>
-            <button id="toggle-sound" aria-controls="story-film" aria-pressed="false">
-              Sound off
-            </button>
-            <button id="explore-tree">Explore the tree ↗</button>
-            <button id="back-film" hidden>← Back to the story</button>
-          </div>
           <div class="cinema" id="cinema">
-            <video
-              id="story-film"
-              muted
-              autoplay
-              playsinline
-              controls
-              preload="metadata"
-              poster="tree-poster.png"
-              aria-label="From original to remix: a 30-second story"
-            >
-              <source src="spatial-proof.mp4?mix=2" type="video/mp4" />
-            </video>
-            <div class="film-end" hidden>
-              <p>Your turn.</p>
-              <button class="watch" id="play-game">Play Soybert →</button
-              ><button class="tree" id="replay">Replay the story ↺</button>
-            </div>
+            <iframe
+              id="story-scene"
+              src="./?landing"
+              title="Live 3D collaboration story"
+              allow="autoplay; fullscreen"
+              allowfullscreen
+            ></iframe>
           </div>
         </div>
-        <div class="story-caption">
-          <p id="story-status" role="status">Sound off. The story plays when it comes into view.</p>
+        <div class="wrap story-caption">
+          <p id="story-status" role="status">
+            Live 3D · drag the timeline to explore. Sound is off until you enable it.
+          </p>
           <a href="#playground">Into the playground ↓</a>
         </div>
       </section>
@@ -997,128 +879,30 @@
       <a href="spatial-effects.mp4">Game effects only</a>
     </footer>
     <script>
-      const story = document.querySelector('#story');
       const cinema = document.querySelector('#cinema');
-      const film = document.querySelector('#story-film');
-      const pauseButton = document.querySelector('#toggle-play');
-      const soundButton = document.querySelector('#toggle-sound');
-      const ending = document.querySelector('.film-end');
-      const status = document.querySelector('#story-status');
-      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      let wantsPlayback = !reduced;
+      const frame = document.querySelector('#story-scene');
       let inView = false;
-      let visibilityPause = false;
-      let frame;
-      film.muted = true;
-      // The open film starts on sight, so the story is not over before leaving the hero.
-      film.autoplay = false;
-      function quietPause() {
-        if (!film.paused) {
-          visibilityPause = true;
-          film.pause();
-        }
+      let player;
+      function syncVisibility() {
+        player?.setVisible(inView && !document.hidden);
       }
-      quietPause();
-      if (reduced) pauseButton.textContent = 'Play story';
-      function updateSound() {
-        soundButton.textContent = film.muted ? 'Sound off' : 'Sound on';
-        soundButton.setAttribute('aria-pressed', String(!film.muted));
-      }
-      function syncPlayback() {
-        if (frame || document.hidden || !inView || !wantsPlayback || film.ended) {
-          quietPause();
-          return;
+      frame.addEventListener('load', () => {
+        const child = frame.contentWindow;
+        function connect() {
+          player = child.spatialProof;
+          syncVisibility();
         }
-        film.play().catch(() => {
-          pauseButton.textContent = 'Play story';
-          status.textContent = 'Press Play story to start.';
-        });
-      }
-      film.addEventListener('play', () => {
-        wantsPlayback = true;
-        pauseButton.textContent = 'Pause story';
-        ending.hidden = true;
-        status.textContent = '30 seconds. Open source. Open season.';
+        if (child.spatialProof) connect();
+        else child.addEventListener('spatial-ready', connect, { once: true });
       });
-      film.addEventListener('pause', () => {
-        if (visibilityPause) {
-          visibilityPause = false;
-          return;
-        }
-        wantsPlayback = false;
-        pauseButton.textContent = film.ended ? 'Replay story' : 'Play story';
-      });
-      film.addEventListener('ended', () => {
-        ending.hidden = false;
-        pauseButton.textContent = 'Replay story';
-      });
-      film.addEventListener('volumechange', updateSound);
-      film.addEventListener('error', () => {
-        status.textContent = 'The film could not load. Reload the page or explore the tree.';
-      });
-      pauseButton.onclick = () => {
-        if (film.paused || film.ended) {
-          if (film.ended) film.currentTime = 0;
-          wantsPlayback = true;
-          film
-            .play()
-            .catch(
-              () => (status.textContent = 'Playback could not start. Try the video controls.'),
-            );
-        } else {
-          wantsPlayback = false;
-          film.pause();
-        }
-      };
-      soundButton.onclick = () => {
-        film.muted = !film.muted;
-        updateSound();
-      };
-      document.querySelector('#replay').onclick = () => {
-        film.currentTime = 0;
-        wantsPlayback = true;
-        ending.hidden = true;
-        syncPlayback();
-      };
-      function tree(play = false) {
-        quietPause();
-        film.hidden = true;
-        ending.hidden = true;
-        story.classList.add('exploring');
-        frame = document.createElement('iframe');
-        frame.title = 'Explore the collaborative game tree';
-        frame.allow = 'fullscreen';
-        frame.src = './?embed' + (play ? '&play=release' : '');
-        cinema.append(frame);
-        pauseButton.hidden = soundButton.hidden = true;
-        document.querySelector('#explore-tree').hidden = true;
-        document.querySelector('#back-film').hidden = false;
-        status.textContent =
-          'Choose a branch. Play either version. This local interactive demo is silent.';
-      }
-      document.querySelector('#explore-tree').onclick = () => tree();
-      document.querySelector('#play-game').onclick = () => tree(true);
-      document.querySelector('#back-film').onclick = () => {
-        frame?.remove();
-        frame = undefined;
-        story.classList.remove('exploring');
-        film.hidden = false;
-        pauseButton.hidden = soundButton.hidden = false;
-        document.querySelector('#explore-tree').hidden = false;
-        document.querySelector('#back-film').hidden = true;
-        ending.hidden = !film.ended;
-        status.textContent = '30 seconds. Open source. Open season.';
-        syncPlayback();
-      };
-      const observer = new IntersectionObserver(
+      new IntersectionObserver(
         ([entry]) => {
           inView = entry.isIntersecting && entry.intersectionRatio >= 0.2;
-          syncPlayback();
+          syncVisibility();
         },
         { threshold: [0, 0.2] },
-      );
-      observer.observe(cinema);
-      document.addEventListener('visibilitychange', syncPlayback);
+      ).observe(cinema);
+      document.addEventListener('visibilitychange', syncVisibility);
       document.querySelector('#copy').onclick = async () => {
         const message = document.querySelector('.copy-status');
         try {

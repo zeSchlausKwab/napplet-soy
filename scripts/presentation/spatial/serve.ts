@@ -7,6 +7,7 @@ export function serveSpatial(port = 4191) {
     '.woff2': 'font/woff2',
     '.png': 'image/png',
     '.mp4': 'video/mp4',
+    '.m4a': 'audio/mp4',
     '.vtt': 'text/vtt',
     '.json': 'application/json',
   };

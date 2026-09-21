@@ -15,6 +15,7 @@ import {
 import { createGame, drawGame, stepGame, DT, type Game, type Input } from './game';
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const capture = new URLSearchParams(location.search).has('capture');
+const landing = new URLSearchParams(location.search).has('landing');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 async function boot() {
@@ -25,18 +26,46 @@ async function boot() {
     document.fonts.load('600 32px "Fredoka"'),
   ]);
   const scene = new SpatialScene($<HTMLCanvasElement>('#scene'));
-  let time = capture ? 0 : DURATION,
-    playing = false,
-    explore = !capture,
+  let time = capture || landing ? 0 : DURATION,
+    playing = landing && !reduced,
+    explore = !capture && !landing,
     active = 0,
-    overview = !capture;
-  let pose = capture ? cameraAt(0) : overviewPose,
+    overview = !capture && !landing,
+    suspended = landing;
+  let pose = capture || landing ? cameraAt(0) : overviewPose,
     flight: { from: typeof pose; to: typeof pose; at: number } | undefined;
   let last = performance.now(),
     game: Game | undefined,
     gameAccum = 0;
   const keys: Input = {};
   const pulses: Input = {};
+  const audio = new Audio();
+  audio.preload = 'none';
+  audio.muted = true;
+  let audioError = '';
+  function syncAudio() {
+    if (audio.muted || !playing || suspended || document.hidden || explore || game) {
+      audio.pause();
+      return;
+    }
+    if (Math.abs(audio.currentTime - time) > 0.15) audio.currentTime = time;
+    if (audio.paused)
+      void audio.play().catch((error) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        audio.muted = true;
+        audioError = 'Sound could not start. Tap Sound off to retry.';
+        labels();
+      });
+  }
+  audio.addEventListener('error', () => {
+    audio.muted = true;
+    audioError = 'Sound could not load. Tap Sound off to retry.';
+    labels();
+  });
+  audio.addEventListener('ended', () => {
+    playing = false;
+    seek(DURATION);
+  });
   const dialog = $<HTMLDialogElement>('#game-dialog'),
     playCanvas = $<HTMLCanvasElement>('#play-canvas');
   const captions = [
@@ -46,6 +75,7 @@ async function boot() {
     'Same roots. A different kind of game.',
   ];
   function labels() {
+    document.documentElement.classList.toggle('exploring', explore);
     const outro = explore ? 0 : outroAt(time);
     $('#world').style.setProperty('--story-chrome', String(1 - smooth(outro * 1.5)));
     $('header').inert = outro > 0.6;
@@ -70,7 +100,12 @@ async function boot() {
         b.setAttribute('aria-pressed', String(Number(b.dataset.node) === active && !overview)),
       );
     $<HTMLInputElement>('#timeline').value = String(time);
+    $('#timeline').style.setProperty('--progress', `${(time / DURATION) * 100}%`);
+    $('#timeline').setAttribute('aria-valuetext', `${time.toFixed(1)} seconds of ${DURATION}`);
     $('#time').textContent = `00:${String(Math.floor(time)).padStart(2, '0')} / 00:${DURATION}`;
+    $('#sound').textContent = audio.muted ? 'Sound off' : 'Sound on';
+    $('#sound').setAttribute('aria-pressed', String(!audio.muted));
+    $('#audio-status').textContent = audioError;
   }
   function resize() {
     const rect = $('#world').getBoundingClientRect();
@@ -88,6 +123,8 @@ async function boot() {
     explore = false;
     flight = undefined;
     pose = cameraAt(time);
+    if (audio.src) audio.currentTime = time;
+    syncAudio();
     render();
   }
   function fly(to: typeof pose) {
@@ -99,6 +136,7 @@ async function boot() {
   function select(index: number) {
     active = index;
     playing = false;
+    syncAudio();
     explore = true;
     overview = false;
     time = nodes[index].start + 2.8;
@@ -107,6 +145,7 @@ async function boot() {
   }
   function showOverview() {
     playing = false;
+    syncAudio();
     explore = true;
     overview = true;
     fly(overviewPose);
@@ -120,7 +159,19 @@ async function boot() {
       playing = true;
       explore = false;
       flight = undefined;
+      last = performance.now();
     }
+    syncAudio();
+    labels();
+  };
+  $('#sound').onclick = () => {
+    audioError = '';
+    if (audio.muted) {
+      if (!audio.src || audio.error) audio.src = 'story-audio.m4a';
+      audio.muted = false;
+      audio.currentTime = time;
+    } else audio.muted = true;
+    syncAudio();
     labels();
   };
   $<HTMLInputElement>('#timeline').oninput = (event) => {
@@ -141,6 +192,7 @@ async function boot() {
   }
   function play() {
     playing = false;
+    syncAudio();
     flight = undefined;
     clearKeys();
     gameAccum = 0;
@@ -207,24 +259,34 @@ async function boot() {
   document.addEventListener('visibilitychange', () => {
     last = performance.now();
     if (document.hidden) {
-      playing = false;
+      if (!landing) playing = false;
       clearKeys();
       labels();
     }
+    syncAudio();
   });
   const observer = new ResizeObserver(resize);
   observer.observe($('#world'));
   function loop(now: number) {
     const dt = Math.min((now - last) / 1000, 0.06);
     last = now;
-    if (!document.hidden) {
+    if (!document.hidden && !suspended) {
       const advancing = playing || !!flight;
       if (playing) {
-        time = Math.min(DURATION, time + dt);
+        // Audible playback follows the media clock, so dropped 3D frames don't drift.
+        time = Math.min(
+          DURATION,
+          !audio.muted && !audio.paused && !audio.seeking && audio.readyState >= 2
+            ? audio.currentTime
+            : time + dt,
+        );
         pose = cameraAt(time);
         active = chapterAt(time);
         overview = isOverviewAt(time);
-        if (time >= DURATION) playing = false;
+        if (time >= DURATION) {
+          playing = false;
+          audio.pause();
+        }
       }
       if (flight) {
         const a = smooth((now - flight.at) / 1100);
@@ -260,6 +322,12 @@ async function boot() {
     },
     select,
     play,
+    setVisible(visible) {
+      suspended = !visible;
+      last = performance.now();
+      if (suspended) clearKeys();
+      syncAudio();
+    },
     state() {
       return {
         time,
@@ -267,6 +335,11 @@ async function boot() {
         explore,
         active,
         overview,
+        suspended,
+        muted: audio.muted,
+        audioTime: audio.currentTime,
+        audioPlaying: !audio.paused,
+        audioError,
         game: game
           ? {
               x: game.x,
@@ -287,11 +360,15 @@ async function boot() {
     play();
   }
   if (!capture) requestAnimationFrame(loop);
+  window.dispatchEvent(new Event('spatial-ready'));
   window.addEventListener(
     'pagehide',
     (event) => {
       if (event.persisted) return;
       observer.disconnect();
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
       scene.dispose();
     },
     { once: true },
@@ -313,12 +390,18 @@ declare global {
       at(frame: number): unknown;
       select(index: number): void;
       play(): void;
+      setVisible(visible: boolean): void;
       state(): {
         time: number;
         playing: boolean;
         explore: boolean;
         active: number;
         overview: boolean;
+        suspended: boolean;
+        muted: boolean;
+        audioTime: number;
+        audioPlaying: boolean;
+        audioError: string;
         game: {
           x: number;
           y: number;

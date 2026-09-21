@@ -215,6 +215,10 @@
         white-space: nowrap;
         color: #b7c4ac;
       }
+      #sound,
+      #audio-status {
+        display: none;
+      }
       #mobile-info {
         display: none;
       }
@@ -419,6 +423,107 @@
           min-width: 49px;
         }
       }
+      html.landing header,
+      html.landing #film-title,
+      html.landing #disclosure,
+      html.landing #mobile-info,
+      html.landing .node,
+      html.landing .right a,
+      html.landing:not(.exploring) .right {
+        display: none;
+      }
+      html.landing #world {
+        height: calc(100svh - 110px);
+        min-height: 0;
+      }
+      html.landing .controls {
+        height: 110px;
+        padding: 10px max(20px, calc((100vw - 1440px) / 2)) 8px;
+        border: 0;
+      }
+      html.landing nav {
+        gap: 8px;
+      }
+      html.landing nav button {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-height: 38px;
+      }
+      html.landing #sound {
+        display: block;
+      }
+      html.landing #audio-status:not(:empty) {
+        display: block;
+        position: absolute;
+        bottom: 100%;
+        right: 16px;
+        background: #10211f;
+        padding: 12px;
+        font-size: 12px;
+      }
+      html.landing #timeline-row {
+        gap: 16px;
+        margin: 4px 0 0;
+      }
+      html.landing #timeline {
+        appearance: none;
+        height: 40px;
+        padding: 0;
+        margin: 0;
+        min-width: 0;
+        background: transparent;
+        touch-action: none;
+      }
+      html.landing #timeline::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 2px;
+        background: linear-gradient(
+          to right,
+          #d4deae var(--progress, 0%),
+          #496153 var(--progress, 0%)
+        );
+      }
+      html.landing #timeline::-webkit-slider-thumb {
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        margin-top: -7px;
+        background: #f6ecd2;
+        box-shadow: 0 0 0 5px #d4deae18;
+      }
+      html.landing #timeline::-moz-range-track {
+        height: 4px;
+        background: #496153;
+      }
+      html.landing #timeline::-moz-range-progress {
+        height: 4px;
+        background: #d4deae;
+      }
+      html.landing #timeline::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border: 0;
+        border-radius: 50%;
+        background: #f6ecd2;
+      }
+      @media (max-width: 760px) {
+        html.landing .controls {
+          padding-inline: 16px;
+        }
+        html.landing .right {
+          margin-left: auto;
+        }
+        html.landing.exploring #world {
+          height: calc(100svh - 154px);
+        }
+        html.landing.exploring .controls {
+          height: 154px;
+        }
+        html.landing #error {
+          inset: 10%;
+        }
+      }
     </style>
   </head>
   <body>
@@ -446,6 +551,7 @@
         <nav aria-label="Versions and playback">
           <button class="primary" id="watch">Watch the story</button
           ><button class="quiet" id="overview">Explore tree</button>
+          <button class="quiet" id="sound" aria-pressed="false">Sound off</button>
           <button class="node" data-node="0" aria-pressed="true"><span>01</span>Original</button>
           <button class="node" data-node="1" aria-pressed="false">
             <span>02</span>Shotgun remix
@@ -466,10 +572,11 @@
             aria-label="Story position"
             min="0"
             max="30"
-            step="0.033333"
+            step="0.01"
             value="0"
           /><span id="time">00:00 / 00:30</span>
         </div>
+        <p id="audio-status" role="status"></p>
       </section>
       <aside id="mobile-info">
         <small id="mobile-owner"></small>
@@ -509,6 +616,8 @@
         document.documentElement.classList.add('capture');
       if (new URLSearchParams(location.search).has('embed'))
         document.documentElement.classList.add('embed');
+      if (new URLSearchParams(location.search).has('landing'))
+        document.documentElement.classList.add('landing');
     </script>
     <script type="module" src="spatial.js"></script>
   </body>

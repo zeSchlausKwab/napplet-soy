@@ -57,6 +57,20 @@ export async function mixSpatialAudio(video = join(output, 'spatial-proof.mp4'))
     ],
     mix,
   );
+  await ffmpeg(
+    [
+      '-i',
+      mix,
+      '-c:a',
+      'aac',
+      '-b:a',
+      '192k',
+      '-movflags',
+      '+faststart',
+      join(output, 'story-audio.m4a'),
+    ],
+    join(output, 'story-audio.m4a'),
+  );
   for (const [audio, target] of [
     [effects, join(output, 'spatial-effects.mp4')],
     [mix, temporary],
