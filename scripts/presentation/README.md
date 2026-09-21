@@ -6,6 +6,9 @@ change merging before the next release is published.
 
 This is a local authoring tool. It does not replace the website's onboarding video.
 
+The newer [spatial study](spatial/README.md) makes the branching history a
+navigable Three.js scene, with a 2D Soybert platformer inside each node.
+
 ## Render and view
 
 From the repository root, with dependencies installed:

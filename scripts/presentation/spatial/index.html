@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>A little idea branches out · napplet.soy</title>
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        src: url('sans.woff2');
+      }
+      @font-face {
+        font-family: 'DM Sans';
+        src: url('sans-bold.woff2');
+        font-weight: 600;
+      }
+      @font-face {
+        font-family: 'DM Mono';
+        src: url('mono.woff2');
+      }
+      @font-face {
+        font-family: Fredoka;
+        src: url('display.woff2');
+        font-weight: 600;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #122725;
+        color: #f6ecd2;
+        font-family: 'DM Sans', sans-serif;
+      }
+      button,
+      a,
+      input {
+        touch-action: manipulation;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      button:focus-visible,
+      a:focus-visible,
+      input:focus-visible {
+        outline: 3px solid #fa9b81;
+        outline-offset: 4px;
+      }
+      #world {
+        position: relative;
+        height: calc(100svh - 151px);
+        min-height: 480px;
+        overflow: hidden;
+      }
+      #scene {
+        width: 100%;
+        height: 100%;
+        display: block;
+        cursor: pointer;
+      }
+      header {
+        position: absolute;
+        left: 36px;
+        right: 36px;
+        top: 23px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      header a {
+        pointer-events: auto;
+        color: inherit;
+        text-decoration: none;
+        font-family: Fredoka;
+        font-size: 27px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      header img {
+        width: 45px;
+        height: 45px;
+        object-fit: contain;
+      }
+      header p {
+        font: 12px 'DM Mono';
+        letter-spacing: 2px;
+        color: #aebda6;
+        text-align: right;
+        line-height: 1.7;
+        margin: 0;
+      }
+      #film-title {
+        position: absolute;
+        left: 36px;
+        bottom: 22px;
+        pointer-events: none;
+      }
+      #film-title p {
+        font: 12px 'DM Mono';
+        color: #aebda6;
+        margin: 0 0 5px;
+      }
+      #film-title strong {
+        font-family: Fredoka;
+        font-size: 24px;
+        font-weight: 600;
+      }
+      #disclosure {
+        position: absolute;
+        right: 36px;
+        bottom: 26px;
+        font: 10px 'DM Mono';
+        color: #98b19f;
+        max-width: 250px;
+        text-align: right;
+        line-height: 1.7;
+      }
+      .controls {
+        position: relative;
+        z-index: 1;
+        background: #10211f;
+        border-top: 1px solid #45614e;
+        padding: 17px 36px 19px;
+      }
+      nav {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .primary,
+      .node,
+      .quiet {
+        border: 1px solid #486452;
+        color: #f6ecd2;
+        border-radius: 9px;
+        padding: 10px 15px;
+        background: transparent;
+        min-height: 42px;
+      }
+      .primary {
+        background: #d4deae;
+        color: #1d352a;
+        border-color: #d4deae;
+        font-weight: 600;
+      }
+      .node[aria-pressed='true'] {
+        background: #294439;
+        border-color: #d4deae;
+      }
+      .node span {
+        font: 11px 'DM Mono';
+        margin-right: 8px;
+        color: #c0cba9;
+      }
+      .quiet:hover,
+      .node:hover {
+        background: #294439;
+      }
+      .right {
+        margin-left: auto;
+        display: flex;
+        gap: 10px;
+      }
+      a.quiet {
+        text-decoration: none;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+      }
+      #timeline-row {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        margin-top: 16px;
+      }
+      input[type='range'] {
+        accent-color: #d4deae;
+        width: 100%;
+        cursor: pointer;
+      }
+      #time {
+        font: 12px 'DM Mono';
+        white-space: nowrap;
+        color: #b7c4ac;
+      }
+      #mobile-info {
+        display: none;
+      }
+      #error {
+        display: none;
+        position: absolute;
+        inset: 30%;
+        background: #10211f;
+        padding: 24px;
+        z-index: 4;
+      }
+      #error a {
+        color: #d4deae;
+      }
+      dialog {
+        padding: 0;
+        border: 1px solid #7b956f;
+        border-radius: 16px;
+        max-width: 1050px;
+        width: calc(100% - 32px);
+        background: #172e27;
+        color: #f6ecd2;
+      }
+      dialog::backdrop {
+        background: #081913dc;
+        backdrop-filter: blur(8px);
+      }
+      .game-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        gap: 15px;
+      }
+      .game-head strong {
+        font-family: Fredoka;
+        font-size: 25px;
+      }
+      #play-canvas {
+        width: 100%;
+        aspect-ratio: 16/9;
+        display: block;
+        image-rendering: pixelated;
+      }
+      dialog p {
+        margin: 0;
+        padding: 12px 20px;
+        font-size: 14px;
+        color: #c4ccae;
+      }
+      .touch {
+        display: flex;
+        gap: 12px;
+        padding: 12px 20px;
+        justify-content: space-between;
+      }
+      .touch div {
+        display: flex;
+        gap: 8px;
+      }
+      .touch button {
+        background: #38553c;
+        border: 1px solid #789267;
+        border-radius: 10px;
+        min-width: 58px;
+        height: 48px;
+        color: #f6ecd2;
+        touch-action: none;
+        user-select: none;
+      }
+      .touch button[data-key='shoot'] {
+        background: #ae654e;
+        border-color: #e3a57c;
+      }
+      .touch button:active {
+        transform: translateY(2px);
+      }
+      html.capture #world {
+        width: 1920px;
+        height: 1080px;
+        min-height: 0;
+      }
+      html.capture .controls,
+      html.capture #mobile-info {
+        display: none;
+      }
+      html.capture header {
+        left: 48px;
+        right: 48px;
+        top: 30px;
+      }
+      html.capture header a {
+        font-size: 32px;
+      }
+      html.capture header img {
+        width: 58px;
+        height: 58px;
+      }
+      html.capture #film-title {
+        left: 48px;
+        bottom: 30px;
+      }
+      html.capture #disclosure {
+        right: 48px;
+        bottom: 30px;
+      }
+      @media (max-width: 760px) {
+        #world {
+          height: 52svh;
+          min-height: 350px;
+        }
+        header {
+          left: 16px;
+          right: 16px;
+          top: 13px;
+        }
+        header a {
+          font-size: 21px;
+          gap: 7px;
+        }
+        header img {
+          width: 32px;
+          height: 32px;
+        }
+        header p {
+          font-size: 9px;
+          letter-spacing: 1px;
+        }
+        #film-title {
+          left: 16px;
+          bottom: 14px;
+        }
+        #film-title strong {
+          font-size: 17px;
+        }
+        #film-title p {
+          font-size: 9px;
+        }
+        #disclosure {
+          display: none;
+        }
+        .controls {
+          padding: 14px 16px;
+        }
+        .right {
+          margin-left: 0;
+        }
+        .node {
+          padding: 9px 11px;
+          font-size: 13px;
+        }
+        .node span {
+          display: none;
+        }
+        #timeline-row {
+          margin-top: 11px;
+        }
+        #mobile-info {
+          display: block;
+          padding: 22px 18px 34px;
+          background: #f3ead4;
+          color: #21382d;
+        }
+        #mobile-info small {
+          font-family: 'DM Mono';
+          color: #56705c;
+        }
+        #mobile-info p {
+          font-size: 21px;
+          line-height: 1.45;
+        }
+        #mobile-info code {
+          font: 13px 'DM Mono';
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+        dialog {
+          width: calc(100% - 16px);
+        }
+        .game-head {
+          padding: 12px;
+        }
+        .game-head strong {
+          font-size: 19px;
+        }
+        .touch {
+          padding: 10px;
+        }
+        .touch button {
+          min-width: 49px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section id="world" aria-label="Interactive collaboration tree">
+        <canvas
+          id="scene"
+          aria-label="3D history containing four versions of a 2D Soybert game"
+        ></canvas>
+        <header>
+          <a href="./"><img src="soybert.png" alt="" />napplet.soy</a>
+          <p>SMALL CODE. BIG WEIRD.<br />A LITTLE IDEA BRANCHES OUT.</p>
+        </header>
+        <div id="film-title">
+          <p id="chapter-label">01 / THE ORIGINAL</p>
+          <strong id="chapter-title">Every little world starts somewhere.</strong>
+        </div>
+        <div id="disclosure">
+          LOCAL PLAYABLE PROTOTYPE<br />ILLUSTRATED COLLABORATION · STUDY 02
+        </div>
+        <div id="error" role="alert"></div>
+      </section>
+      <section class="controls" aria-label="Story controls">
+        <nav aria-label="Versions and playback">
+          <button class="primary" id="watch">Watch the story</button
+          ><button class="quiet" id="overview">Explore tree</button>
+          <button class="node" data-node="0" aria-pressed="true"><span>01</span>Original</button>
+          <button class="node" data-node="1" aria-pressed="false">
+            <span>02</span>Shotgun remix
+          </button>
+          <button class="node" data-node="2" aria-pressed="false"><span>03</span>Accepted</button>
+          <button class="node" data-node="3" aria-pressed="false">
+            <span>04</span>New release
+          </button>
+          <div class="right">
+            <button class="primary" id="play">Play this version ↗</button
+            ><a class="quiet" href="spatial-proof.mp4">Watch MP4</a>
+          </div>
+        </nav>
+        <div id="timeline-row">
+          <input
+            id="timeline"
+            type="range"
+            aria-label="Story position"
+            min="0"
+            max="24"
+            step="0.033333"
+            value="0"
+          /><span id="time">00:00 / 00:24</span>
+        </div>
+      </section>
+      <aside id="mobile-info">
+        <small id="mobile-owner"></small>
+        <p id="mobile-prompt"></p>
+        <code id="mobile-command"></code>
+      </aside>
+    </main>
+    <dialog id="game-dialog" aria-labelledby="game-title">
+      <div class="game-head">
+        <strong id="game-title">Soybert’s little world</strong
+        ><button class="quiet" id="close-game">Back to the tree ×</button>
+      </div>
+      <canvas
+        id="play-canvas"
+        width="512"
+        height="288"
+        aria-label="Playable 2D Soybert platformer"
+        tabindex="0"
+      ></canvas>
+      <div class="touch">
+        <div>
+          <button data-key="left" aria-label="Move left">←</button
+          ><button data-key="right" aria-label="Move right">→</button>
+        </div>
+        <div>
+          <button id="restart-game">Restart</button><button data-key="jump">Jump</button
+          ><button data-key="shoot">Shoot</button>
+        </div>
+      </div>
+      <p>
+        Move: arrows / A D · Jump: Space / W / ↑ · Shoot: X / J · Restart: R. A local prototype;
+        nothing is published.
+      </p>
+    </dialog>
+    <script>
+      if (new URLSearchParams(location.search).has('capture'))
+        document.documentElement.classList.add('capture');
+    </script>
+    <script type="module" src="spatial.js"></script>
+  </body>
+</html>
