@@ -198,6 +198,19 @@ export class Replay {
   }
 }
 
+/** The presentation's flying pickup uses the exact same sprite as the playable gun. */
+export function drawShotgun(ctx: CanvasRenderingContext2D, kick = 0) {
+  const rect = (x: number, y: number, w: number, h: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x + kick, y, w, h);
+  };
+  rect(4, 16, 9, 6, '#694b37');
+  rect(10, 14, 20, 5, '#3b3e3c');
+  rect(19, 16, 7, 4, '#a57243');
+  rect(14, 13, 15, 2, '#656962');
+  rect(12, 19, 3, 3, '#3b3e3c');
+}
+
 export function drawGame(ctx: CanvasRenderingContext2D, g: Game) {
   const rect = (x: number, y: number, w: number, h: number, color: string) => {
     ctx.fillStyle = color;
@@ -307,11 +320,7 @@ export function drawGame(ctx: CanvasRenderingContext2D, g: Game) {
   rect(4, 23 - stride, 6, 2, '#f7e4b7');
   if (g.variant === 'shotgun') {
     const kick = g.flash > 0 ? -2 : 0;
-    rect(4 + kick, 16, 9, 6, '#694b37');
-    rect(10 + kick, 14, 20, 5, '#3b3e3c');
-    rect(19 + kick, 16, 7, 4, '#a57243');
-    rect(14 + kick, 13, 15, 2, '#656962');
-    rect(12 + kick, 19, 3, 3, '#3b3e3c');
+    drawShotgun(ctx, kick);
     rect(6, 18, 5, 3, '#f6d8a5');
     if (g.flash > 0) {
       rect(31, 11, 5, 10, '#fff5c8');

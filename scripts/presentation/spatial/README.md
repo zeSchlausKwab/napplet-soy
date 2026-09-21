@@ -27,7 +27,7 @@ camera journey runs only when explicitly played or scrubbed.
 ```sh
 bun run presentation:spatial:render --stills-only
 bun run presentation:spatial:render
-bun test scripts/presentation/spatial/game.test.ts
+bun test scripts/presentation/spatial
 bun scripts/presentation/spatial/verify.ts
 ```
 
@@ -35,7 +35,7 @@ The renderer needs FFmpeg on PATH and the soyLI Chromium browser (`bun run soyli
 browser install`). The browser scene requires WebGL 2. These are local authoring
 tools; they add no runtime requirement to published napplets or the shell app.
 
-Generated files live in ignored `output/spatial-proof/`: MP4, five stills, bundled
+Generated files live in ignored `output/spatial-proof/`: MP4, eight stills, bundled
 interactive page, fonts and verification records. Intermediate audio lives under
 `.local/spatial-proof/`. The renderer writes explicit frames through the exact
 same browser scene used interactively, then encodes H.264/AAC. This proof uses
@@ -49,7 +49,14 @@ scene adapter. The earlier Remotion proof remains independently reproducible.
   An automatic controller drives the same simulation during the story. Checkpoints
   are cloned, making seeks independent of frame order and caller mutations.
 - `story.ts`: node positions, prompts, supported command shapes, completion
-  milestones and camera keyframes. Acceptance and publication remain distinct.
+  milestones and camera keyframes. Prompts type first, then commands; text keeps
+  its final wrapping while it types. Acceptance and publication remain distinct.
+- `screens.ts`: separate story actions: the original game, a shotgun flying into
+  the unarmed remix, two parent versions converging with a change wipe, and the
+  finished game's replay. The merge uses matching world states to make the change
+  visible, then holds the locally merged result until publication. Distant nodes
+  retain distinct posters for each action, rather than repeating the same game.
+- `paths.ts`: straight history lanes and rounded, tangent-continuous Bézier elbows.
 - `scene.ts`: floating stages, canvas textures, paths, camera and ray picking.
   Focused games replay while distant stages use stable preview states. Supporting
   stages dim while reading a node. Resources are disposed on final page exit.
@@ -57,7 +64,8 @@ scene adapter. The earlier Remotion proof remains independently reproducible.
   dialog. Short jump/shoot inputs are latched until a simulation step so taps
   aren't lost between rendered frames. The story pauses when the tab is hidden.
 - `score.ts`: original synthesized music, travel cues and shot effects timed to
-  the replay. No samples or external audio dependencies.
+  the replay, including the pickup delay. The merge has its own resolution cue
+  instead of repeated shooting. No samples or external audio dependencies.
 - `verify.ts`: real-browser checks for deterministic frame seeking, playback,
   version selection, keyboard movement/jump/shoot, touch controls and mobile layout.
 

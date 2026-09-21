@@ -31,7 +31,10 @@ try {
   await page.waitForFunction(() => !!window.spatialProof, undefined, { timeout: 30_000 });
   for (const [seconds, name] of [
     [4.7, '01-original'],
-    [10.72, '02-remix'],
+    [9.12, '02-remix'],
+    [10.95, '02b-remix-play'],
+    [15.9, '03-merge-parents'],
+    [16.6, '03b-merging'],
     [17.7, '03-accepted'],
     [21.9, '04-release'],
     [24, '05-tree'],

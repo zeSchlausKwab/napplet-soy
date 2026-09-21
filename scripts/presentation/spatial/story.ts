@@ -77,6 +77,23 @@ export const smooth = (value: number) => {
   const x = Math.max(0, Math.min(1, value));
   return x * x * (3 - 2 * x);
 };
+/** Shared visual/audio milestones; the proposal must acquire its change before firing. */
+export const beats = {
+  deliveryStart: 8.65,
+  equipped: 9.65,
+  mergeStart: 16.15,
+  merged: 17.5,
+};
+export function typingAt(index: number, time: number, complete = false) {
+  const node = nodes[index];
+  const promptDuration = Math.min(1.55, Math.max(0.95, node.prompt.length / 48));
+  const elapsed = time - node.start;
+  const progress = (value: number) => Math.max(0, Math.min(1, value));
+  return {
+    prompt: complete ? 1 : progress(elapsed / promptDuration),
+    command: complete ? 1 : progress((elapsed - promptDuration - 0.12) / 0.8),
+  };
+}
 export function focusPose(index: number) {
   const p = nodes[index].position;
   return { eye: [p[0] + 1.1, p[1] + 2.3, p[2] + 19.5], target: [p[0], p[1] + 0.35, p[2]] };

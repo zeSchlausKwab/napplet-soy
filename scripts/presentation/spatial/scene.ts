@@ -1,6 +1,8 @@
 import * as T from 'three';
-import { createGame, drawGame, Replay, WIDTH, HEIGHT, type Game } from './game';
-import { cameraAt, nodes, smooth, type focusPose } from './story';
+import { createGame, drawGame, WIDTH, HEIGHT, type Game } from './game';
+import { cameraAt, nodes, smooth, typingAt, type focusPose } from './story';
+import { historyLane, roundedPath } from './paths';
+import { screenPosters, StoryScreens } from './screens';
 
 type Pose = ReturnType<typeof focusPose>;
 const ink = '#132b28',
@@ -18,19 +20,34 @@ function write(
   y: number,
   width: number,
   height: number,
+  visible = text.length,
+  cursor = false,
 ) {
-  let row = '',
-    offset = 0;
+  const rows: string[] = [];
+  let row = '';
   for (const word of text.split(' ')) {
     if (ctx.measureText(row + word).width > width && row) {
-      ctx.fillText(row.trim(), x, y + offset);
-      offset += height;
+      rows.push(row.trim());
       row = '';
     }
     row += word + ' ';
   }
-  ctx.fillText(row.trim(), x, y + offset);
-  return offset + height;
+  rows.push(row.trim());
+  let consumed = 0;
+  rows.forEach((line, i) => {
+    const remaining = visible - consumed;
+    const prefix = line.slice(0, Math.max(0, remaining));
+    ctx.fillText(prefix, x, y + i * height);
+    if (cursor && remaining >= 0 && remaining <= line.length)
+      ctx.fillRect(
+        x + ctx.measureText(prefix).width + 3,
+        y + i * height - height * 0.6,
+        3,
+        height * 0.68,
+      );
+    consumed += line.length + 1;
+  });
+  return rows.length * height;
 }
 function material(color: string) {
   return new T.MeshStandardMaterial({ color, roughness: 0.86, metalness: 0.05 });
@@ -75,9 +92,8 @@ type Stage = {
   gameTexture: T.CanvasTexture;
   actionCanvas: HTMLCanvasElement;
   actionTexture: T.CanvasTexture;
-  replay: Replay;
   tick: number;
-  panelKey: number;
+  panelKey: string;
   marker: T.Mesh;
 };
 
@@ -87,9 +103,10 @@ export class SpatialScene {
   readonly scene = new T.Scene();
   readonly camera = new T.PerspectiveCamera(39, 16 / 9, 0.1, 400);
   readonly stages: Stage[] = [];
+  private screens = new StoryScreens();
   private pickTargets: T.Object3D[] = [];
   private edges: {
-    curve: T.CatmullRomCurve3;
+    curve: T.CurvePath<T.Vector3>;
     mesh: T.Mesh;
     glow: T.Mesh;
     dot: T.Mesh;
@@ -218,9 +235,8 @@ export class SpatialScene {
         gameTexture: game.texture,
         actionCanvas,
         actionTexture: action.texture,
-        replay: new Replay(node.variant),
         tick: -1,
-        panelKey: -1,
+        panelKey: '',
         marker,
       });
     });
@@ -230,34 +246,14 @@ export class SpatialScene {
       b = anchor(1),
       c = anchor(2),
       d = anchor(3);
-    this.edge(
-      [a, a.clone().add(new T.Vector3(11, -1, 0)), c.clone().add(new T.Vector3(-11, -1, 0)), c],
-      '#94a982',
-      0,
-      17.5,
-    );
-    this.edge(
-      [a, a.clone().add(new T.Vector3(7, -4, 5)), b.clone().add(new T.Vector3(-7, -1, -1)), b],
-      '#fa9b81',
-      5.2,
-      7.7,
-    );
-    this.edge(
-      [b, b.clone().add(new T.Vector3(8, -1, -1)), c.clone().add(new T.Vector3(-7, -4, 5)), c],
-      '#fa9b81',
-      13,
-      17.5,
-    );
-    this.edge(
-      [c, c.clone().add(new T.Vector3(7, -1.5, 0)), d.clone().add(new T.Vector3(-7, -1.5, 0)), d],
-      '#9bdec3',
-      18.1,
-      21.6,
-    );
+    this.edge(historyLane(a, c), '#94a982', 0, 17.5);
+    this.edge(historyLane(a, b), '#fa9b81', 5.2, 7.7);
+    this.edge(historyLane(b, c), '#fa9b81', 13, 17.5);
+    this.edge(historyLane(c, d), '#9bdec3', 18.1, 21.6);
     this.resize(1920, 1080);
   }
   private edge(points: T.Vector3[], color: string, start: number, end: number) {
-    const curve = new T.CatmullRomCurve3(points);
+    const curve = roundedPath(points);
     const geo = new T.TubeGeometry(curve, 160, 0.075, 5, false);
     const mesh = new T.Mesh(geo, new T.MeshBasicMaterial({ color }));
     this.scene.add(mesh);
@@ -285,8 +281,11 @@ export class SpatialScene {
       n = nodes[index],
       ctx = stage.actionCanvas.getContext('2d')!;
     const done = explore || time >= n.done;
-    const typing = explore ? 1 : smooth((time - n.start - 0.2) / 1.8);
-    const key = Math.round(typing * 60) + Number(done) * 100;
+    const typing = typingAt(index, time, explore);
+    const prompt = '“' + n.prompt + '”';
+    const promptLength = Math.floor(prompt.length * typing.prompt);
+    const commandLength = Math.floor(n.command.length * typing.command);
+    const key = `${promptLength}:${commandLength}:${done}`;
     if (stage.panelKey === key) return;
     stage.panelKey = key;
     ctx.clearRect(0, 0, 960, 1350);
@@ -305,7 +304,7 @@ export class SpatialScene {
     ctx.fillText('TO THEIR AI', 55, 205);
     ctx.fillStyle = '#172d27';
     ctx.font = '500 66px "DM Sans"';
-    write(ctx, '“' + n.prompt + '”', 55, 319, 846, 84);
+    write(ctx, prompt, 55, 319, 846, 84, promptLength, typing.prompt < 1 && time >= n.start);
     ctx.fillStyle = n.color;
     ctx.fillRect(55, 770, 140, 7);
     ctx.fillStyle = '#0a1c19';
@@ -323,7 +322,7 @@ export class SpatialScene {
     write(ctx, n.before, 44, 1004, 866, 38);
     ctx.fillStyle = cream;
     ctx.font = '400 39px "DM Mono"';
-    const command = n.command.slice(0, Math.ceil(n.command.length * typing));
+    const command = n.command.slice(0, commandLength);
     command
       .split('\n')
       .forEach((line, i) => ctx.fillText((i ? '  ' : '$ ') + line, 44, 1110 + i * 55));
@@ -375,16 +374,15 @@ export class SpatialScene {
         }
       });
       this.panel(i, time, !!options.explore);
-      const nearby = eye.distanceTo(stage.group.position) < 30;
-      const seconds = Math.max(0, time - n.start);
-      const g =
-        options.live && options.active === i
-          ? options.live
-          : stage.replay.at(nearby ? seconds : i === 0 ? 2.4 : 2.6);
-      if (g.tick !== stage.tick || options.live) {
-        drawGame(stage.gameCanvas.getContext('2d')!, g);
+      const nearby = new T.Vector3().fromArray(pose.eye).distanceTo(stage.group.position) < 30;
+      const screenTime = nearby && !options.explore ? time : screenPosters[i];
+      const tick = Math.round(screenTime * 60);
+      if (tick !== stage.tick || options.live) {
+        const ctx = stage.gameCanvas.getContext('2d')!;
+        if (options.live && options.active === i) drawGame(ctx, options.live);
+        else this.screens.draw(ctx, i, screenTime);
         stage.gameTexture.needsUpdate = true;
-        stage.tick = g.tick;
+        stage.tick = tick;
       }
       stage.marker.rotation.z = time * 0.4;
     });

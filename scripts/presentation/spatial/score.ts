@@ -1,8 +1,8 @@
 import { Replay } from './game';
-import { nodes } from './story';
+import { beats, DURATION, nodes } from './story';
 /** Original synthesized score and effects, with deterministic noise; no samples. */
 export async function spatialScore(path: string) {
-  const seconds = 24,
+  const seconds = DURATION,
     rate = 48000,
     count = seconds * rate;
   const bytes = Buffer.alloc(44 + count * 4);
@@ -19,13 +19,15 @@ export async function spatialScore(path: string) {
   bytes.write('data', 36);
   bytes.writeUInt32LE(count * 4, 40);
   const shots: number[] = [];
-  for (const n of nodes.slice(1)) {
+  for (const index of [1, 3]) {
+    const n = nodes[index];
+    const start = index === 1 ? beats.equipped : n.start;
     const replay = new Replay('shotgun');
     let last = 0;
-    const end = n.id === 'remix' ? 12.6 : n.id === 'merge' ? 17.8 : 22.1;
-    for (let f = 0; n.start + f / 60 < end; f++) {
+    const end = index === 1 ? 12.6 : 22.1;
+    for (let f = 0; start + f / 60 < end; f++) {
       const g = replay.at(f / 60);
-      if (g.shots > last) shots.push(n.start + f / 60);
+      if (g.shots > last) shots.push(start + f / 60);
       last = g.shots;
     }
   }
@@ -50,11 +52,11 @@ export async function spatialScore(path: string) {
         sample +=
           (0.045 * grain + 0.055 * Math.sin(2 * Math.PI * (90 - 130 * a) * a)) * Math.exp(-a * 25);
     }
-    for (const start of [5.3, 13, 18.1, 22.1]) {
+    for (const start of [5.3, beats.deliveryStart, 13, beats.mergeStart, 18.1, 22.1]) {
       const a = t - start;
       if (a >= 0 && a < 1) sample += grain * Math.sin(a * Math.PI) * 0.008;
     }
-    for (const start of [17.5, 21.6]) {
+    for (const start of [beats.equipped, beats.merged, 21.6]) {
       const a = t - start;
       if (a >= 0 && a < 1.5)
         sample +=

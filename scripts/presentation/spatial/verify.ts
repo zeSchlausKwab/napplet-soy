@@ -26,18 +26,21 @@ try {
   await page.goto(server.url.href);
   await page.waitForFunction(() => !!window.spatialProof);
   // Reading arbitrary times must not depend on which frame was rendered first.
-  await page.evaluate(() => window.spatialProof.at(321));
-  const first = await page.locator('#scene').screenshot();
-  await page.evaluate(() => {
-    window.spatialProof.at(720);
-    window.spatialProof.at(70);
-    window.spatialProof.at(321);
-  });
-  check(
-    first.equals(await page.locator('#scene').screenshot()),
-    'Seeking changed the same rendered frame',
-  );
+  for (const frame of [274, 294, 321, 498, 531]) {
+    await page.evaluate((f) => window.spatialProof.at(f), frame);
+    const first = await page.locator('#scene').screenshot();
+    await page.evaluate((f) => {
+      window.spatialProof.at(720);
+      window.spatialProof.at(70);
+      window.spatialProof.at(f);
+    }, frame);
+    check(
+      first.equals(await page.locator('#scene').screenshot()),
+      `Seeking changed pickup/merge frame ${frame}`,
+    );
+  }
   results.deterministicFrameSeek = true;
+  await page.evaluate(() => window.spatialProof.at(321));
   await page.getByRole('button', { name: 'Watch the story', exact: true }).click();
   await page.waitForFunction(() => window.spatialProof.state().time > 10.9);
   await page.getByRole('button', { name: 'Pause story' }).click();
