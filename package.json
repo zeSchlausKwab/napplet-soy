@@ -43,6 +43,8 @@
     "test:publish:native": "SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/publish*.test.ts",
     "test:index": "bun run build && bun test tests/services/index.test.ts",
     "walkthrough:render": "bun scripts/render-walkthrough.ts",
+    "presentation:render": "bun scripts/presentation/render.ts",
+    "presentation:preview": "bun scripts/presentation/serve.ts",
     "mascot:align": "bun scripts/sprite-align/serve.ts"
   },
   "dependencies": {

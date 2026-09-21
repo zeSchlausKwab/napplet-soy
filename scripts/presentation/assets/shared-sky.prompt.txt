@@ -1,0 +1,13 @@
+Built-in image_gen generation, 2026-09-21.
+Original output: exec-105a53d7-48d9-4113-8b3a-91f1e7b62e32.png
+Used unchanged; composition scales/crops it at render time.
+
+Use case: stylized-concept
+Asset type: cinematic background plate for the napplet.soy launch film, 16:9 landscape, 2048x1152 or larger.
+Primary request: a beautiful nocturnal shared sky for a miniature floating creative workshop, quiet and spacious enough to composite sharp game windows, typography and a branching constellation over it.
+Scene/backdrop: immense deep ink-green night sky; a warm pale moon barely visible near the upper right; sculptural soft mist clouds along the lowest edge and extreme corners; tiny sparse warm ivory stars. A few very distant floating stone islands at the outer edges only. Keep the central 80 percent and especially the left upper half dark, open and visually calm.
+Style/medium: art-directed miniature set photography blended with hand-painted editorial illustration; tactile fine film grain, soft volumetric atmosphere, sophisticated and playful; rich velvety shadows, restrained coral and sage rim light. Atmospheric depth, not a flat gradient.
+Color palette: near-black green #101d1b, muted pine #29403a, warm cream #f8f3df, very restrained coral #f47a60 and sage #becf9b highlights.
+Composition/framing: wide theatrical proscenium, environment only, background will drift slowly behind foreground elements. No major foreground object.
+Text: none.
+Avoid: all lettering, logos, people, characters, UI, windows, code, diagrams, network lines, game boards, busy star fields, purple/blue cyberpunk neon, watermarks.
