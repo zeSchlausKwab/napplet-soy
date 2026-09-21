@@ -1,6 +1,6 @@
 # Public relay defaults
 
-Source update for soyLI **0.16.3** and the next website deployment; not yet published.
+Released in soyLI **0.17.0** and deployed on the website on **2026-09-21**.
 Reviewed on **2026-09-20** using [nostr.watch](https://nostr.watch/), relay NIP-11
 documents, and direct anonymous WebSocket reads of napplet kinds 15129, 35129 and
 5129 with the website's Origin header. No test events were published.

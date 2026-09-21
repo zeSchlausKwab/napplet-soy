@@ -3,7 +3,7 @@
 Source **0.16.2** replaces the top-level `CLI_FAILED` message with a shared
 diagnostic. Failures report the operation, original error message/code, available
 tool exit status or service HTTP status, underlying causes and a recovery step.
-This patch is not yet published or deployed.
+These changes and the 0.16.3 improvements below ship in **0.17.0**.
 
 Source **0.16.3** also retains Git failure output from **both stdout and stderr**.
 Git merge preflight reports conflicts on stdout, including affected filenames;

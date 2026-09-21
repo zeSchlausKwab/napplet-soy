@@ -1162,5 +1162,24 @@ Deletion testing uses isolated fixtures, not real user publications.
 This release also ships the earlier source improvements since 0.14.1, including
 controller tools, runtime actions, relay defaults and diagnostics. The website
 includes the integrated collaboration story and branded OG cards. CLI downloads
-are published before the new installer is activated. Live verification is recorded
-separately below when rollout completes.
+were published before the new installer was activated.
+
+Website release **`20260921154858567-22461`** is live at https://napplet.soy.
+The deployment passed the full repository check on VPS Bun 1.3.8, Go relay
+checks, Blossom and GRASP service suites, candidate checks and activation health
+checks. The shared Caddy configuration, web port 3040 and legacy-CPU profile
+were retained. Source through `655a7c5` was pushed to the public GitHub repository.
+
+Read-only live verification confirms healthy services with a fresh, error-free
+index, installer version 0.17.0, and matching checksums for all four public CLI
+archives. `/`, `/about`, `/docs`, `/create`, `/manage` and a published napplet
+return working pages and OG images. A fresh temporary installation from the
+public installer runs 0.17.0 and exposes the lifecycle commands; the user's real
+installed CLI and identities were left unchanged.
+
+The standalone macOS ARM64 binary passed the full isolated lifecycle round trip.
+Other archives are build-verified only. The production VPS lacks SSE4.2 and its
+standalone Linux x64 CLI probe was OOM-killed, matching its previously documented
+unsupported Bun 1.3.11 CPU profile. This is not counted as successful CLI execution
+coverage; the website uses the verified Bun 1.3.8 compatibility runtime. Logs are
+retained locally in `.local/lifecycle-*.log`.

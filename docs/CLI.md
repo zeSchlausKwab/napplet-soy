@@ -14,18 +14,18 @@ this is not an alternative runtime implementation for users who reject Bun itsel
 Source **0.16.3** fixes signer-free `soyli check` for projects whose creator is
 stored in the ignored local binding, retains Git conflict details and optional
 mirror diagnostics, stops exact-release lookups waiting on slow fallback relays,
-and removes Damus from default relay lists. These source
-changes require a new CLI distribution; existing installed binaries do not update
-automatically.
+and removes Damus from default relay lists. These changes ship in **0.17.0**;
+existing installed binaries do not update automatically.
 
 Source **0.16.2** adds [actionable error diagnostics](CLI-ERRORS.md) across wrapped
 tools and services, in the terminal, JSON output and local workshop. It includes
 the 0.16.1 [public remix transport repair](REMIXING.md).
-This patch is not yet published or deployed.
+These changes ship in **0.17.0**.
 
-Pending 0.15.0 adds [runtime file imports, uploads, social actions and public lists](RUNTIME-ACTIONS.md)
-to both preview and the shared website host. It also expands new-project publication defaults to **six relays**:
-Soy as primary plus five [shared public mirrors](RELAY-DEFAULTS.md). Existing
+The 0.15.0 source changes, released in **0.17.0**, add
+[runtime file imports, uploads, social actions and public lists](RUNTIME-ACTIONS.md)
+to both preview and the shared website host. New-project publication defaults now use **five relays**:
+Soy as primary plus four [shared public mirrors](RELAY-DEFAULTS.md). Existing
 project lists and saved publication jobs keep their configured destinations.
 
 ## Local workshop — 0.14.0
@@ -36,10 +36,10 @@ and temporary mappings with a small playable input test. New projects and
 `skills update` receive the [controller guide](CONTROLLERS.md) and a native
 Gamepad input helper. Games must connect their actions to the helper; no new
 NAP domain, server or account is required. Physical device support needs testing
-on the intended browsers. This release is not yet published or deployed.
+on the intended browsers. These changes ship in **0.17.0**.
 
-`soyli dev` opens Play, Listing and **Manage project**. Starting with **0.15.0
-(not yet published)**, it prefers port 4173 and automatically chooses a free port
+`soyli dev` opens Play, Listing and **Manage project**. In **0.17.0**, it prefers
+port 4173 and automatically chooses a free port
 when that port is occupied. An explicit `--port 4173` keeps that port fixed and
 reports an actionable conflict. `soyli dev --port 0` asks the OS for a free port;
 this also works in 0.14.1. Existing previews are not stopped or replaced.
