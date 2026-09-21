@@ -21,6 +21,7 @@ import { FeaturedHero } from '@/components/featured-hero';
 import { StarterCommand } from '@/components/starter-command';
 import { SoyliBenefits, SoyliIdentity } from '@/components/soyli-intro';
 import { siteHead } from '@/lib/site-head';
+import { CollaborationStory } from '@/components/collaboration-story';
 
 export const Route = createFileRoute('/')({
   validateSearch: (input: SearchSchemaInput & Partial<GallerySearch>) =>
@@ -145,6 +146,7 @@ function Gallery() {
           }
         />
       </section>
+      <CollaborationStory />
       <section id="explore" className="explore-section" aria-label="Explore napplets">
         {refresh}
         <div className="explore-top">

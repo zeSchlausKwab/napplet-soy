@@ -13,3 +13,5 @@ playwright-report/
 # Local planning is private until explicitly published.
 /AGENDA.md
 output/
+# Generated from the shared collaboration scene whenever Vite starts/builds.
+/apps/web/public/story/

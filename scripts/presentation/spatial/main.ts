@@ -16,6 +16,7 @@ import { createGame, drawGame, stepGame, DT, type Game, type Input } from './gam
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const capture = new URLSearchParams(location.search).has('capture');
 const landing = new URLSearchParams(location.search).has('landing');
+const site = new URLSearchParams(location.search).has('site');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 async function boot() {
@@ -26,6 +27,8 @@ async function boot() {
     document.fonts.load('600 32px "Fredoka"'),
   ]);
   const scene = new SpatialScene($<HTMLCanvasElement>('#scene'));
+  let disposed = false,
+    animationFrame = 0;
   let time = capture || landing ? 0 : DURATION,
     playing = landing && !reduced,
     explore = !capture && !landing,
@@ -254,7 +257,8 @@ async function boot() {
         : 'Soybert’s little world · shotgun remix';
     $<HTMLButtonElement>('[data-key="shoot"]').disabled = nodes[active].variant === 'original';
     if (!dialog.open) dialog.showModal();
-    playCanvas.focus();
+    playCanvas.focus({ preventScroll: true });
+    window.dispatchEvent(new Event('spatial-game-open'));
     drawGame(playCanvas.getContext('2d')!, game);
     labels();
   }
@@ -264,7 +268,7 @@ async function boot() {
   dialog.addEventListener('close', () => {
     game = undefined;
     clearKeys();
-    $('#play').focus();
+    $(explore ? '#play' : '#watch').focus({ preventScroll: true });
   });
   $('#restart-game').onclick = () => {
     if (game) game = createGame(game.variant);
@@ -323,6 +327,7 @@ async function boot() {
   const observer = new ResizeObserver(resize);
   observer.observe($('#world'));
   function loop(now: number) {
+    if (disposed) return;
     const dt = Math.min((now - last) / 1000, 0.06);
     last = now;
     if (!document.hidden && !suspended) {
@@ -368,9 +373,23 @@ async function boot() {
       }
       if (advancing || cameraDirty) render(advancing);
     }
-    requestAnimationFrame(loop);
+    animationFrame = requestAnimationFrame(loop);
+  }
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    cancelAnimationFrame(animationFrame);
+    observer.disconnect();
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+    game = undefined;
+    clearKeys();
+    if (dialog.open) dialog.close();
+    scene.dispose();
   }
   window.spatialProof = {
+    dispose,
     at(frame) {
       playing = false;
       resetPointer(true);
@@ -381,6 +400,7 @@ async function boot() {
     play,
     overview: showOverview,
     setVisible(visible) {
+      if (disposed) return;
       suspended = !visible;
       last = performance.now();
       if (suspended) {
@@ -392,6 +412,7 @@ async function boot() {
     state() {
       return {
         time,
+        disposed,
         playing,
         explore,
         active,
@@ -420,17 +441,13 @@ async function boot() {
     select(3);
     play();
   }
-  if (!capture) requestAnimationFrame(loop);
+  if (!capture) animationFrame = requestAnimationFrame(loop);
   window.dispatchEvent(new Event('spatial-ready'));
   window.addEventListener(
     'pagehide',
     (event) => {
       if (event.persisted) return;
-      observer.disconnect();
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
-      scene.dispose();
+      dispose();
     },
     { once: true },
   );
@@ -440,20 +457,24 @@ void boot().catch((error) => {
   box.style.display = 'block';
   box.textContent = `The 3D view could not start: ${error instanceof Error ? error.message : String(error)}. `;
   const a = document.createElement('a');
-  a.href = 'spatial-proof.mp4';
-  a.textContent = 'Watch the rendered film';
+  a.href = site ? '/docs' : 'spatial-proof.mp4';
+  a.target = site ? '_parent' : '_self';
+  a.textContent = site ? 'Read the soyLI guide' : 'Watch the rendered film';
   box.append(a);
+  window.dispatchEvent(new Event('spatial-error'));
   console.error(error);
 });
 declare global {
   interface Window {
     spatialProof: {
+      dispose(): void;
       at(frame: number): unknown;
       select(index: number): void;
       play(): void;
       overview(): void;
       setVisible(visible: boolean): void;
       state(): {
+        disposed: boolean;
         time: number;
         playing: boolean;
         explore: boolean;

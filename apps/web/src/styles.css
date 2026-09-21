@@ -180,8 +180,8 @@ pre:focus-visible {
 }
 .hero {
   padding: 44px 0 40px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(270px, 1fr);
   align-items: center;
   gap: 48px;
 }
@@ -189,7 +189,6 @@ pre:focus-visible {
   flex: 1;
   min-width: 0;
   width: 100%;
-  max-width: 740px;
   container-type: inline-size;
   container-name: hero-copy;
 }
@@ -2618,7 +2617,7 @@ pre:focus-visible {
 }
 
 /* One editorial preview in the hero; executable napplets open in the shared player. */
-.featured-hero { width: min(43%, 490px); flex-shrink: 0; min-width: 0; }
+.featured-hero { width: 100%; min-width: 0; }
 .featured-slider { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; border-radius: 10px; }
 .featured-slider::-webkit-scrollbar { display: none; }
 .featured-slider:focus-visible { outline: 2px solid var(--coral); outline-offset: 5px; }
@@ -2640,8 +2639,8 @@ pre:focus-visible {
 .featured-all { margin-left: auto; display: flex; align-items: center; gap: 5px; font-size: 10px; }
 .admin-order { display: flex; gap: 6px; flex-shrink: 0; }
 @media (max-width: 760px) {
-  .hero:has(.featured-hero) { flex-direction: column; gap: 38px; }
-  .featured-hero { width: 100%; max-width: 490px; }
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 38px; }
+  .featured-hero { width: 100%; }
   .featured-art { transform: none; }
   .admin-rules li { flex-wrap: wrap; }
   .admin-rules li > div:first-child { width: 100%; min-width: 0; }

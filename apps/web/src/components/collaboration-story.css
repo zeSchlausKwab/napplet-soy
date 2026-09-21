@@ -1,0 +1,114 @@
+.collaboration-story {
+  padding: 14px 0 64px;
+}
+.story-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+.story-heading h2 {
+  font:
+    600 33px Fredoka,
+    sans-serif;
+  margin: 7px 0 0;
+  letter-spacing: -0.6px;
+}
+.story-kicker {
+  font: 10px var(--mono);
+  letter-spacing: 1.1px;
+  color: #4c7150;
+}
+.story-heading p {
+  font-size: 13px;
+  color: #737a66;
+  line-height: 1.7;
+  margin: 0;
+  max-width: 355px;
+}
+.story-cinema {
+  position: relative;
+  width: var(--story-width, 100%);
+  margin-left: calc((100% - var(--story-width, 100%)) / 2);
+  height: clamp(281.6px, calc(45vw + 25.6px), 73.6svh);
+  min-height: 281.6px;
+  background: #122725;
+}
+.story-cinema iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  visibility: hidden;
+}
+.story-cinema iframe.ready {
+  visibility: visible;
+}
+.story-placeholder {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.story-placeholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.8;
+}
+.story-placeholder span {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f6ecd2;
+  background: #122725e6;
+  padding: 9px 15px;
+  font: 12px var(--mono);
+  text-align: center;
+  max-width: 90%;
+  width: max-content;
+}
+.story-caption {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  font-size: 11px;
+  color: #737a66;
+  line-height: 1.6;
+}
+.story-caption p {
+  margin: 0;
+}
+.story-caption button {
+  white-space: nowrap;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  padding: 8px 0;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.story-caption button:disabled {
+  opacity: 0.5;
+}
+@media (max-width: 760px) {
+  .story-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .story-heading h2 {
+    font-size: 29px;
+  }
+  .story-caption {
+    align-items: flex-start;
+  }
+  .story-caption button {
+    padding-top: 0;
+    min-height: 44px;
+  }
+}

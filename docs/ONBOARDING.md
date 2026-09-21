@@ -58,6 +58,41 @@ questions, including pseudonymous publication and identity reuse. `/create` keep
 all setup and download information and now includes a Git checkpoint before
 publication. See [About and documentation](ABOUT.md#soyli-field-guide-and-faq--2026-09-18).
 
+## Homepage collaboration story — 2026-09-21
+
+The actual `/` route now includes the approved Three.js story between the original
+hero and the playground. The hero uses a 1.3:1 desktop grid with a fixed gap and a
+larger featured column; phones stack both columns. The existing administrator
+selections still supply Featured. The story's illustrated game versions do not
+become gallery entries or featured napplets.
+
+The scene spans the viewport and retains the shorter height, mouse parallax,
+30-second camera journey, animated prompts, branch/merge paths, draggable timeline
+and playable 2D ending. Compact play/pause and sound controls sit left of the thin
+timeline; touch controls have larger hit targets. Sound starts off and its media
+file is requested only after opt-in. Reduced motion starts paused. Loading happens
+near the section, playback pauses off-screen/in hidden tabs, and manual pause
+survives scrolling. Navigation disposes the scene, animation loop and audio.
+
+This is a site-owned presentation in a same-origin iframe, not a downloaded napplet
+or another host capability. The game and people are illustrative; it sends no
+scores, proposals, payments or publications. The real protocol gallery and its
+social actions remain independent. Without JavaScript there is a poster and a
+short text explanation. If WebGL or scene loading fails, the poster and retry
+action remain available while the rest of the homepage continues to work.
+
+Vite generates `/story/` automatically for `bun dev`, direct web development and
+`bun run build`. The production server serves these static files from the client
+build. `scripts/presentation/spatial/` remains the shared scene source for both
+the website and movie authoring; there is no dependency on port 4191 or ignored
+`output/` files. The committed poster and 30-second music/effects mix live in
+its `assets/` directory. Regenerating those media requires authoring tools; normal
+builds require only the repository's usual Bun dependencies. Generated files under
+`apps/web/public/story/` are ignored. Editing the scene in dev rebuilds it and
+reloads the page. The standalone composition remains an authoring tool.
+
+This integration is a local source update; it has not been deployed.
+
 ## Maintaining the guide
 
 ### soyLI introduction and mascot — 2026-09-19

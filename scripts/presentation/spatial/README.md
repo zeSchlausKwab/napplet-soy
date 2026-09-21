@@ -4,6 +4,19 @@ A local interactive Three.js scene and 30-second movie. The branching history is
 the space the camera travels through. Each node contains its version of a **2D
 pixel platformer**, a developer prompt, and an illustrated soyLI action.
 
+The same scene is now embedded in the actual homepage, between its hero and gallery.
+`bun dev` and `bun run build` generate its static assets automatically through
+`vite.ts`; the separate preview server below is only for authoring. `landing.html`
+remains the original composition study, with illustrative featured/gallery cards.
+Production uses the real app's curation and Nostr gallery instead.
+
+`assets/story-audio.m4a` is the approved 30-second soundtrack/effects mix and
+`assets/story-poster.webp` is its static tree fallback. These checked-in files let
+clean builds work without FFmpeg or local rendering outputs. After authoring a
+new film/mix, update these delivery assets deliberately. No audio/video is fetched
+by the homepage until sound is enabled; WebGL, timeline and the playable ending
+use the scene bundle directly. The parent disposes it when leaving the route.
+
 The game stays entirely 2D. Three.js displays its canvas on a surface within each
 stage; the stage, connecting paths and camera are 3D.
 
