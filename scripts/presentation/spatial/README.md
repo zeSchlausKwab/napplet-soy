@@ -78,7 +78,9 @@ play. Sound is opt-in through the visible toggle.
 
 The simple progress slider controls the actual camera, prompts, branches and game
 states; mouse/touch dragging pauses at the chosen moment. Arrow keys, Home and End
-also seek, and **Watch the story** resumes from that position. **Explore tree**
+also seek, and the play icon resumes from that position. The landing control strip
+uses a 2-pixel track, small play/pause and sound icons on the left, and larger
+invisible touch targets. **Explore tree**, below the scene,
 shows the same scene's complete tree; nodes can be selected and played. The ending
 retains **PRESS START** for the finished game. The sample featured and gallery
 cards are illustrative and do not query live listings.

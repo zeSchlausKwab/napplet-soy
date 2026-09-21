@@ -86,11 +86,15 @@ async function boot() {
     $('#play').textContent = overview ? 'Select a version' : 'Play this version ↗';
     $('#chapter-label').textContent = overview ? 'THE WHOLE IDEA' : nodes[active].status;
     $('#chapter-title').textContent = overview ? 'One idea. More possibilities.' : captions[active];
-    $('#watch').textContent = playing
+    const watchLabel = playing
       ? 'Pause story'
       : time >= DURATION
         ? 'Replay story'
         : 'Watch the story';
+    $('#watch .control-label').textContent = watchLabel;
+    $('#watch').setAttribute('aria-label', watchLabel);
+    $('#watch').title = watchLabel;
+    $('#watch').dataset.playing = String(playing);
     $('#mobile-owner').textContent = `${nodes[active].owner} · ${nodes[active].role}`;
     $('#mobile-prompt').textContent = '“' + nodes[active].prompt + '”';
     $('#mobile-command').textContent = nodes[active].command;
@@ -103,7 +107,10 @@ async function boot() {
     $('#timeline').style.setProperty('--progress', `${(time / DURATION) * 100}%`);
     $('#timeline').setAttribute('aria-valuetext', `${time.toFixed(1)} seconds of ${DURATION}`);
     $('#time').textContent = `00:${String(Math.floor(time)).padStart(2, '0')} / 00:${DURATION}`;
-    $('#sound').textContent = audio.muted ? 'Sound off' : 'Sound on';
+    const soundLabel = audio.muted ? 'Sound off' : 'Sound on';
+    $('#sound .control-label').textContent = soundLabel;
+    $('#sound').setAttribute('aria-label', soundLabel);
+    $('#sound').title = audio.muted ? 'Turn sound on' : 'Turn sound off';
     $('#sound').setAttribute('aria-pressed', String(!audio.muted));
     $('#audio-status').textContent = audioError;
   }
@@ -322,6 +329,7 @@ async function boot() {
     },
     select,
     play,
+    overview: showOverview,
     setVisible(visible) {
       suspended = !visible;
       last = performance.now();
@@ -390,6 +398,7 @@ declare global {
       at(frame: number): unknown;
       select(index: number): void;
       play(): void;
+      overview(): void;
       setVisible(visible: boolean): void;
       state(): {
         time: number;

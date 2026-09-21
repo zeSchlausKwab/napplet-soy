@@ -457,8 +457,8 @@
       }
       .cinema {
         position: relative;
-        height: clamp(430px, calc(56.25vw + 110px), 92svh);
-        min-height: 430px;
+        height: clamp(352px, calc(56.25vw + 32px), 92svh);
+        min-height: 352px;
         background: #122725;
       }
       .cinema iframe {
@@ -482,6 +482,15 @@
       }
       .story-caption a {
         white-space: nowrap;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+      .story-caption button {
+        color: inherit;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        font: inherit;
         text-decoration: underline;
         text-underline-offset: 4px;
       }
@@ -832,7 +841,7 @@
           <p id="story-status" role="status">
             Live 3D · drag the timeline to explore. Sound is off until you enable it.
           </p>
-          <a href="#playground">Into the playground ↓</a>
+          <button id="explore-tree" disabled>Explore the tree ↗</button>
         </div>
       </section>
       <section class="browse" id="playground">
@@ -890,6 +899,7 @@
         const child = frame.contentWindow;
         function connect() {
           player = child.spatialProof;
+          document.querySelector('#explore-tree').disabled = false;
           syncVisibility();
         }
         if (child.spatialProof) connect();
@@ -903,6 +913,7 @@
         { threshold: [0, 0.2] },
       ).observe(cinema);
       document.addEventListener('visibilitychange', syncVisibility);
+      document.querySelector('#explore-tree').onclick = () => player?.overview();
       document.querySelector('#copy').onclick = async () => {
         const message = document.querySelector('.copy-status');
         try {

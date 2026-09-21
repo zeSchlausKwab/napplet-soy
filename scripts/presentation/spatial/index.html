@@ -219,6 +219,9 @@
       #audio-status {
         display: none;
       }
+      .control-icon {
+        display: none;
+      }
       #mobile-info {
         display: none;
       }
@@ -428,29 +431,72 @@
       html.landing #disclosure,
       html.landing #mobile-info,
       html.landing .node,
+      html.landing #overview,
       html.landing .right a,
       html.landing:not(.exploring) .right {
         display: none;
       }
       html.landing #world {
-        height: calc(100svh - 110px);
+        height: calc(100svh - 32px);
         min-height: 0;
       }
       html.landing .controls {
-        height: 110px;
-        padding: 10px max(20px, calc((100vw - 1440px) / 2)) 8px;
+        height: 32px;
+        padding: 0 max(16px, calc((100vw - 1440px) / 2));
         border: 0;
+        background: #122725;
+        display: flex;
+        align-items: center;
+        gap: 2px;
       }
       html.landing nav {
-        gap: 8px;
+        display: contents;
       }
-      html.landing nav button {
-        padding: 8px 12px;
-        font-size: 12px;
-        min-height: 38px;
-      }
+      html.landing #watch,
       html.landing #sound {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 32px;
+        min-height: 0;
+        flex-shrink: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 3px;
+        background: transparent;
+        color: #d4deae;
+      }
+      html.landing .control-label {
+        display: none;
+      }
+      html.landing .control-icon {
         display: block;
+        width: 12px;
+        height: 12px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      html.landing #watch[data-playing='true'] .play-icon,
+      html.landing #watch:not([data-playing='true']) .pause-icon,
+      html.landing #sound[aria-pressed='true'] .muted-icon,
+      html.landing #sound[aria-pressed='false'] .audible-icon {
+        display: none;
+      }
+      html.landing #watch:hover,
+      html.landing #sound:hover {
+        color: #fff6df;
+      }
+      html.landing .right {
+        position: absolute;
+        bottom: calc(100% + 12px);
+        right: 16px;
+        margin: 0;
+      }
+      html.landing .right button {
+        font-size: 12px;
       }
       html.landing #audio-status:not(:empty) {
         display: block;
@@ -462,12 +508,18 @@
         font-size: 12px;
       }
       html.landing #timeline-row {
-        gap: 16px;
-        margin: 4px 0 0;
+        flex: 1;
+        min-width: 0;
+        gap: 12px;
+        margin: 0 0 0 6px;
+      }
+      html.landing #time {
+        font-size: 9px;
+        color: #99ad9e;
       }
       html.landing #timeline {
         appearance: none;
-        height: 40px;
+        height: 32px;
         padding: 0;
         margin: 0;
         min-width: 0;
@@ -475,8 +527,8 @@
         touch-action: none;
       }
       html.landing #timeline::-webkit-slider-runnable-track {
-        height: 4px;
-        border-radius: 2px;
+        height: 2px;
+        border-radius: 1px;
         background: linear-gradient(
           to right,
           #d4deae var(--progress, 0%),
@@ -485,40 +537,51 @@
       }
       html.landing #timeline::-webkit-slider-thumb {
         appearance: none;
-        width: 18px;
-        height: 18px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
-        margin-top: -7px;
+        margin-top: -3px;
         background: #f6ecd2;
-        box-shadow: 0 0 0 5px #d4deae18;
       }
       html.landing #timeline::-moz-range-track {
-        height: 4px;
+        height: 2px;
         background: #496153;
       }
       html.landing #timeline::-moz-range-progress {
-        height: 4px;
+        height: 2px;
         background: #d4deae;
       }
       html.landing #timeline::-moz-range-thumb {
-        width: 18px;
-        height: 18px;
+        width: 8px;
+        height: 8px;
         border: 0;
         border-radius: 50%;
         background: #f6ecd2;
       }
+      html.landing #timeline:focus-visible {
+        outline: none;
+      }
+      html.landing #timeline:focus-visible::-webkit-slider-thumb {
+        box-shadow: 0 0 0 3px #fa9b81;
+      }
+      html.landing #timeline:focus-visible::-moz-range-thumb {
+        box-shadow: 0 0 0 3px #fa9b81;
+      }
       @media (max-width: 760px) {
         html.landing .controls {
-          padding-inline: 16px;
+          height: 44px;
+          padding-inline: 10px;
         }
-        html.landing .right {
-          margin-left: auto;
+        html.landing #watch,
+        html.landing #sound {
+          width: 40px;
+          height: 44px;
         }
-        html.landing.exploring #world {
-          height: calc(100svh - 154px);
+        html.landing #timeline {
+          height: 44px;
         }
-        html.landing.exploring .controls {
-          height: 154px;
+        html.landing #world {
+          height: calc(100svh - 44px);
         }
         html.landing #error {
           inset: 10%;
@@ -549,9 +612,19 @@
       </section>
       <section class="controls" aria-label="Story controls">
         <nav aria-label="Versions and playback">
-          <button class="primary" id="watch">Watch the story</button
+          <button class="primary" id="watch">
+            <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path class="play-icon" d="m8 4 12 8-12 8Z" />
+              <g class="pause-icon"><path d="M8 5v14M16 5v14" /></g></svg
+            ><span class="control-label">Watch the story</span></button
           ><button class="quiet" id="overview">Explore tree</button>
-          <button class="quiet" id="sound" aria-pressed="false">Sound off</button>
+          <button class="quiet" id="sound" aria-pressed="false">
+            <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 9h4l5-4v14l-5-4H3Z" />
+              <path class="muted-icon" d="m17 9 5 6m0-6-5 6" />
+              <path class="audible-icon" d="M16 9q3 3 0 6m3-10q7 7 0 14" /></svg
+            ><span class="control-label">Sound off</span>
+          </button>
           <button class="node" data-node="0" aria-pressed="true"><span>01</span>Original</button>
           <button class="node" data-node="1" aria-pressed="false">
             <span>02</span>Shotgun remix
