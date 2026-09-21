@@ -1,5 +1,11 @@
 # napplet soyLI — creator CLI
 
+Version **0.17.0** adds [unpublish, republish and confirmed hosted-data deletion](LIFECYCLE.md).
+Use `soyli unpublish`, `soyli republish`, `soyli delete`, and `soyli lifecycle`
+inside the publishing project. Each modifying operation requires confirmation
+and reports progress per service. This release also includes the earlier source
+changes described below; release verification is recorded in DEPLOYMENT.md.
+
 The installer at `https://napplet.soy/install.sh` installs **napplet soyLI** as the
 standalone `soyli` executable, with its pinned Playwright support files. A separate
 Bun, Node, npm, or platform checkout is not required. The executable embeds Bun;

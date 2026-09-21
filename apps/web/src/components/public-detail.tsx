@@ -1,3 +1,4 @@
+import { LifecycleManager } from './lifecycle-manager';
 import { useProtocolRefresh } from '@/lib/use-protocol-refresh';
 import { seedCatalog, findManifest } from '@/lib/protocol-catalog';
 import { SourceSection } from './source-section';
@@ -81,6 +82,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
                 </Link>
               </Button>
               {napplet.naddr && <NameButton naddr={napplet.naddr} author={napplet.pubkey} />}
+              <LifecycleManager manifest={napplet.manifest} relays={napplet.relays} metadata={napplet.metadata} />
               <RemixButton revision={napplet.revisionId} title={napplet.title} />
             </div>
           </div>

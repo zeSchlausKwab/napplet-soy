@@ -14,11 +14,11 @@ export class AccountError extends Error {
     super(message);
   }
 }
-export const publishingKinds = [30617, 30618, 24242, 32267, 35129, 15129, 5129];
+export const publishingKinds = [5, 30617, 30618, 24242, 32267, 35129, 15129, 5129];
 // Viewer-authorized NAP-COMMON, NAP-LISTS and Blossom upload auth, plus shell actions.
 export const websiteKinds = [
   0, 3, 5, 7, 1111, 1984, 9734, 10000, 10001, 10002, 10003, 10006, 10007, 10015, 10063, 24242,
-  27235, 30000, 30002, 30003, 30015,
+  27235, 30000, 30002, 30003, 30015, 35129, 15129,
 ];
 export const defaultSignerRelays = ['wss://relay.napplet.soy'];
 export type SignerOptions = {

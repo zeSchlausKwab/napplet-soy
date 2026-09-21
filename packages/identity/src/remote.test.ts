@@ -276,7 +276,7 @@ test('browser identity scopes signatures, reconnects the same user, cancels pair
     expect(identity.state.pubkey).toBe(creator);
     for (const kind of websiteKinds)
       expect((await identity.sign(creator, { ...template, kind })).pubkey).toBe(creator);
-    await expect(identity.sign(creator, { ...template, kind: 35129 })).rejects.toThrow(
+    await expect(identity.sign(creator, { ...template, kind: 30617 })).rejects.toThrow(
       'permissions',
     );
     e.provider.onSignEvent = () => false;

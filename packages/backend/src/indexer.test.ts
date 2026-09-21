@@ -159,6 +159,7 @@ test('authenticated deletions and expiration survive restart without hiding anot
     'ready',
   );
   w.store.admit(deletion(r.secret));
+  expect(w.store.row(manifestKey(r.current))!.projection).toBeNull();
   expect((await indexedLookup({ type: 'address', naddr: r.naddr })).entry).toBeNull();
   const config = w.config;
   w.close();

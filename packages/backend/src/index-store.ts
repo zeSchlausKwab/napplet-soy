@@ -151,6 +151,13 @@ export class IndexStore {
           ON CONFLICT(target, author) DO UPDATE SET at=max(at, excluded.at)`,
             [target, event.pubkey, event.created_at],
           );
+        // Drop serving/cache references immediately; the worker prunes unreferenced bytes.
+        for (const row of this.rows()) {
+          if (this.removed(JSON.parse(row.event)))
+            this.db.run('UPDATE records SET projection=NULL, retry_at=0, preview_at=0 WHERE id=?', [
+              row.id,
+            ]);
+        }
         if (
           this.db.query<{ n: number }, []>('SELECT count(*) AS n FROM deletions').get()!.n > 10000
         )

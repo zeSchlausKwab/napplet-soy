@@ -33,7 +33,8 @@ import { executableBytes } from './artifact';
 import { committedSource } from './git-source';
 
 export { PublishError } from './config';
-type RelayOperations = Pick<PublicationRelays, 'latest' | 'ensure' | 'close'>;
+type RelayOperations = Pick<PublicationRelays, 'latest' | 'ensure' | 'close'> &
+  Partial<Pick<PublicationRelays, 'read'>>;
 type Dependencies = {
   relays?: RelayOperations;
   source?: typeof publishSource;
@@ -243,6 +244,47 @@ export async function publishProject(options: PublishOptions) {
       const index = await journal.index();
       let job = index.active ? await journal.load(index.active) : null;
       const previous = index.latest ? await journal.load(index.latest) : null;
+      const previousCurrent = previous?.current;
+      const retirement =
+        previousCurrent && relays.read
+          ? (
+              await relays.read(previous.plan.targets.relay, {
+                kinds: [5],
+                authors: [account.pubkey],
+                limit: 200,
+              })
+            ).filter(
+              (e) =>
+                e.created_at >= previousCurrent.created_at &&
+                e.tags.some(
+                  (t) =>
+                    (t[0] === 'e' && t[1] === previousCurrent.id) ||
+                    (t[0] === 'a' &&
+                      t[1] === `35129:${account.pubkey}:${previous.plan.identifier}`),
+                ),
+            )
+          : [];
+      const remotePrevious = previousCurrent
+        ? await relays.latest(
+            previous.plan.targets.relay,
+            account.pubkey,
+            previous.plan.identifier,
+            35129,
+          )
+        : null;
+      const sameListing = !!(
+        previousCurrent &&
+        remotePrevious &&
+        previousCurrent.content === remotePrevious.content &&
+        JSON.stringify(previousCurrent.tags) === JSON.stringify(remotePrevious.tags)
+      );
+      const retired = retirement.length > 0;
+      const refreshedInShell = sameListing && remotePrevious?.id !== previousCurrent?.id;
+      if (options.resume && !job && (retired || refreshedInShell))
+        throw new PublishError(
+          'PUBLICATION_RETIRED',
+          'This saved listing was unpublished or republished elsewhere. Run publish without --resume to create a fresh release.',
+        );
       if (options.resume && !job) {
         if (!previous)
           throw new PublishError(
@@ -268,6 +310,8 @@ export async function publishProject(options: PublishOptions) {
           if (
             !job &&
             previous?.fingerprint === inspected.fingerprint &&
+            !retired &&
+            !refreshedInShell &&
             (!options.requirePreview || previous.preview)
           )
             job = previous;
@@ -299,7 +343,11 @@ export async function publishProject(options: PublishOptions) {
               relays.latest(source.relay, account.pubkey, plan.identifier, 30618),
               relays.latest(source.relay, account.pubkey, plan.identifier, 30617),
             ]);
-            if ((current?.id ?? null) !== (previous?.current?.id ?? null))
+            if (
+              (current?.id ?? null) !== (previous?.current?.id ?? null) &&
+              !(retired && !current) &&
+              !(refreshedInShell && current?.id === remotePrevious?.id)
+            )
               throw new PublishError(
                 'REMOTE_CONFLICT',
                 'A remote release or source state differs from this journal. Restore the current journal or choose a new napplet identifier; stale releases are never forced over it.',
@@ -336,6 +384,7 @@ export async function publishProject(options: PublishOptions) {
             const now = Math.floor(Date.now() / 1000);
             const createdAt = Math.max(
               now,
+              ...retirement.map((e) => e.created_at + 1),
               ...[current, sourceState, announcement].map((e) => (e ? e.created_at + 1 : 0)),
             );
             if (createdAt > now + 60)

@@ -46,3 +46,13 @@ Keep the entire working directory together: Git storage, relay LMDB, `.relay-own
 ngit-grasp 3.x has storage migrations. A binary rollback is not a database downgrade. The VPS script records `upstream.commit` in the state directory and rejects automatic pin changes. Before changing the pinned upstream version, stop writes and back up the complete state; rehearse migration and restore on a copy before updating the guard. Monitor disk usage: request/pack limits are not a total storage quota. Peer synchronization, Git object expansion and repeated public repositories also consume storage. This integration does not yet provide operator quotas or abuse-management tools.
 
 Local builds require Git, a C compiler and Rust 1.97.1 on PATH; Linux also needs `pkg-config` and OpenSSL development headers. Build artifacts and dependencies are cached under `.local/grasp-build`. No VPS deployment has been executed yet.
+
+## Author publication lifecycle — 0.17.0
+
+[Unpublish, republish and hosted-data deletion](LIFECYCLE.md) use signed NIP-09
+requests (kind 5), fresh NIP-5D current listings and direct Blossom BUD-11/12
+requests. The author confirms a concrete inventory; per-service status distinguishes
+confirmed absence, retained shared data and incomplete requests. No manifest
+extension or website deletion API is required. NIP-5D and NAP pins are unchanged.
+GRASP retains deleted repository archives for 90 days by default; copies and forks
+outside the selected services are not recalled.

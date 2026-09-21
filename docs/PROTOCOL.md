@@ -204,3 +204,13 @@ no manifest identity, required presentation/source metadata or NIP-5D pin change
 [Runtime actions](RUNTIME-ACTIONS.md) specifies viewer-owned signing/consent,
 configured direct transports, supported subsets and lifecycle limits. Arbitrary
 signing and relay/outbox publishing remain unavailable to frames.
+
+## Author publication lifecycle — 0.17.0
+
+[Unpublish, republish and hosted-data deletion](LIFECYCLE.md) use signed NIP-09
+requests (kind 5), fresh NIP-5D current listings and direct Blossom BUD-11/12
+requests. The author confirms a concrete inventory; per-service status distinguishes
+confirmed absence, retained shared data and incomplete requests. No manifest
+extension or website deletion API is required. NIP-5D and NAP pins are unchanged.
+GRASP retains deleted repository archives for 90 days by default; copies and forks
+outside the selected services are not recalled.

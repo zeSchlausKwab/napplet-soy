@@ -3,6 +3,24 @@ import { ChevronDown } from 'lucide-react';
 
 const questions = [
   {
+    id: 'unpublish',
+    question: 'Can I unpublish or delete my napplet?',
+    answer: (
+      <p>
+        Yes. Sign in as its author and choose Manage publication, or open
+        <Link to="/manage"> Your napplets</Link> from the identity menu. Unpublish keeps the files
+        for later republishing at the same address. Delete hosted data asks for confirmation and
+        shows progress for each relay, upload and repository. Shared files may stay; Soy’s Git
+        server retains a recovery archive for 90 days. Downloads, forks and independent copies
+        cannot be recalled.{' '}
+        <Link to="/docs" hash="lifecycle">
+          Lifecycle guide
+        </Link>
+        .
+      </p>
+    ),
+  },
+  {
     id: 'how-it-works',
     question: 'How does this work?',
     answer: (
@@ -78,11 +96,11 @@ const questions = [
         It reuses your selected identity so repeat setup does not replace it.{' '}
         <code>account backup</code> saves or locates that same key’s backup. A different identity
         needs explicit creation with <code>account create --new</code>; previous identities and
-        backups are retained. This option currently awaits a packaged CLI release. See the{' '}
+        backups are retained. See the{' '}
         <Link to="/docs" hash="identities">
-          source-checkout instructions
+          identity instructions
         </Link>{' '}
-        to use it now.
+        for details.
       </p>
     ),
   },

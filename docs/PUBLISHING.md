@@ -190,3 +190,13 @@ See [preview capture and metadata](PREVIEWS.md#creator-capture-and-publication-2
 for automatic screenshots and choosing an inspected image. `soyli skills
 update` refreshes the bundled integration note in an existing project while
 preserving creator edits and upstream skill bodies.
+
+## Author publication lifecycle — 0.17.0
+
+[Unpublish, republish and hosted-data deletion](LIFECYCLE.md) use signed NIP-09
+requests (kind 5), fresh NIP-5D current listings and direct Blossom BUD-11/12
+requests. The author confirms a concrete inventory; per-service status distinguishes
+confirmed absence, retained shared data and incomplete requests. No manifest
+extension or website deletion API is required. NIP-5D and NAP pins are unchanged.
+GRASP retains deleted repository archives for 90 days by default; copies and forks
+outside the selected services are not recalled.

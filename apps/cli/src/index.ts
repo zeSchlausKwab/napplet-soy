@@ -1,3 +1,4 @@
+import { lifecycleCommand } from './lifecycle';
 import { diagnose, formatDiagnostic } from '../../../packages/diagnostics/src';
 import { publishFromProject, proposeFromProject } from './share-project';
 import { manageProject, editProject } from './manager';
@@ -66,6 +67,8 @@ Usage:
   bun run soyli account use <npub-or-account-id>
   bun run soyli account export <new-recovery-file> [--passphrase-stdin]
   bun run soyli publish [--project <folder>] [--dry-run | --resume]
+  bun run soyli unpublish|republish|delete [--project <folder>] [--dry-run | --confirm <token> | --resume]
+  bun run soyli lifecycle [--project <folder>]
   bun run soyli status [--project <folder>] [--refresh]
   bun run soyli dev [--project <folder>] [--port 4173] [--no-open]
   bun run soyli check [--project <folder>]
@@ -131,6 +134,10 @@ try {
       'skills',
       'account',
       'publish',
+      'unpublish',
+      'republish',
+      'delete',
+      'lifecycle',
       'status',
       'dev',
       'check',
@@ -170,6 +177,7 @@ try {
       args: process.argv.slice(2),
       allowPositionals: true,
       options: {
+        confirm: { type: 'string' },
         revision: { type: 'string' },
         target: { type: 'string' },
         rebuild: { type: 'boolean' },
@@ -260,6 +268,35 @@ try {
     if (!json && backupFile) console.log(backupNotice(backupFile));
   };
   const [command, action, argument, ...extra] = positionals;
+  if (['unpublish', 'republish', 'delete', 'lifecycle'].includes(command)) {
+    const allowed = new Set(['network', 'json', 'project', 'dry-run', 'confirm', 'resume']);
+    if (
+      action ||
+      Object.entries(values).some(([k, v]) => v !== undefined && !allowed.has(k)) ||
+      (values['dry-run'] && values.confirm) ||
+      (command === 'lifecycle' && (values['dry-run'] || values.confirm || values.resume))
+    )
+      throw new AccountError(
+        'USAGE',
+        'Use unpublish|republish|delete [--project folder] [--dry-run | --confirm token | --resume], or lifecycle to view saved progress.',
+      );
+    await lifecycleCommand({
+      directory: values.project ?? process.cwd(),
+      network,
+      operation: command as 'unpublish' | 'republish' | 'delete' | 'lifecycle',
+      dryRun: values['dry-run'],
+      confirm: values.confirm,
+      resume: values.resume,
+      json,
+      signal: controller.signal,
+      accounts,
+      onAuth,
+    });
+    process.exit(process.exitCode ?? 0);
+  }
+  if (values.confirm)
+    throw new AccountError('USAGE', 'Use --confirm only with unpublish, republish or delete.');
+
   if ((values.storage || values.license) && !(command === 'assets' && action === 'add'))
     throw new AccountError('USAGE', 'Use --storage and --license with assets add.');
   if (values.storage && !['embedded', 'external'].includes(values.storage))

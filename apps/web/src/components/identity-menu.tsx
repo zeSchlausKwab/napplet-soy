@@ -141,6 +141,7 @@ export function IdentityMenu({
                 View & edit your profile
               </Link>
             </Button>
+            <Button variant="outline" asChild><Link to="/manage" onClick={() => changeOpen(false)}>Your napplets</Link></Button>
             {adminAccess === 'authorized' && (
               <Button variant="outline" asChild>
                 <Link to="/admin" onClick={() => changeOpen(false)}>

@@ -28,6 +28,7 @@ const sections = [
   ['backend', 'Scores & multiplayer'],
   ['controllers', 'Game controllers'],
   ['help', 'Updates & troubleshooting'],
+  ['lifecycle', 'Unpublish & delete'],
 ] as const;
 
 function Documentation() {
@@ -173,10 +174,9 @@ function Documentation() {
               option creates and selects another key while preserving earlier accounts and backups.
             </p>
             <aside className="docs-note">
-              <strong>Release note.</strong> The <code>--new</code> option is currently in the
-              source checkout and awaits a packaged CLI release. From the napplet-soy repository,
-              use <code>bun run soyli account create --new</code>. Check <code>soyli --help</code>{' '}
-              before using it in an installed CLI.
+              <strong>Keep the original identity.</strong> Existing projects keep their creator
+              binding. Select that creator again before publishing an existing project; creating
+              another key does not transfer its ownership.
             </aside>
             <h3>Preserve your key</h3>
             <DocCommand label="Locate your backup">{'soyli account backup'}</DocCommand>
@@ -404,6 +404,27 @@ function Documentation() {
                 controller guide
               </a>{' '}
               for mappings and supported behavior.
+            </p>
+          </section>
+          <section id="lifecycle" aria-labelledby="docs-lifecycle">
+            <h2 id="docs-lifecycle">Your publication, your choice.</h2>
+            <p>
+              Use <Link to="/manage">Your napplets</Link> in the identity menu, or Manage
+              publication on a napplet you authored. Unpublish keeps the files so you can republish
+              later at the same address. Save the recovery record before clearing browser data.
+            </p>
+            <DocCommand label="Manage a published project">
+              {'soyli unpublish\nsoyli republish\nsoyli delete\nsoyli lifecycle'}
+            </DocCommand>
+            <p>
+              Commands show the inventory and ask for confirmation. Deletion removes selected hosted
+              uploads and requests Git removal; each service has its own live result and retry
+              state. Local files and keys stay on your device.
+            </p>
+            <p>
+              Shared uploads may be retained. Soy’s Git server keeps a recovery archive for 90 days.
+              Copies, forks and independent mirrors cannot be recalled. Republish creates a fresh
+              listing; old pinned release links stay unpublished.
             </p>
           </section>
           <section id="help" aria-labelledby="docs-help">

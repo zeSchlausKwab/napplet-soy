@@ -1,6 +1,7 @@
 import type { Filter } from 'nostr-tools';
 import {
   decodeAddress,
+  verifiedEvent,
   encodeAddress,
   type SignedEvent,
   type GallerySearch,
@@ -20,6 +21,15 @@ import { blossomBytes, downloadBytes, resourceUrl } from '../../../../packages/c
 import { protocolClient, network, manifestAllowed, blocked, featuredRules } from './network';
 
 const entries = new Map<string, PublicNapplet>();
+const localDeletions = new Map<string, number>();
+function locallyRemoved(e: SignedEvent) {
+  const address = `${e.kind}:${e.pubkey}:${e.kind === 15129 ? '' : (e.tags.find((t) => t[0] === 'd')?.[1] ?? '')}`;
+  return (
+    (localDeletions.get(`${e.pubkey}:e:${e.id}`) ?? -1) >= e.created_at ||
+    (localDeletions.get(`${e.pubkey}:a:${address}`) ?? -1) >= e.created_at
+  );
+}
+
 const metadataCache = new Map<string, { at: number; events: SignedEvent[] }>();
 const availabilityCache = new Map<string, { at: number; ready: boolean; size: number | null }>();
 const manifestCache = new Map<string, SignedEvent>();
@@ -27,7 +37,7 @@ const newest = (a: SignedEvent, b: SignedEvent) =>
   b.created_at - a.created_at || a.id.localeCompare(b.id);
 export function seedCatalog(values: PublicNapplet[]) {
   for (const n of values) {
-    if (!manifestAllowed(n.manifest)) continue;
+    if (!manifestAllowed(n.manifest) || locallyRemoved(n.manifest)) continue;
     entries.set(n.revisionId, n);
     if (!availabilityCache.has(n.revisionId))
       availabilityCache.set(n.revisionId, {
@@ -71,7 +81,7 @@ export async function findManifest(reference: string, hints: string[] = []) {
   )[0];
   if (!result) return null;
   await validateManifest(result);
-  if (!manifestAllowed(result)) return null;
+  if (!manifestAllowed(result) || locallyRemoved(result)) return null;
   // NIP-09 deletion requests are authored by the event owner; a later valid release survives.
   const ownerAddress =
     result.kind === 5129
@@ -102,7 +112,8 @@ export async function findManifest(reference: string, hints: string[] = []) {
   return result;
 }
 export async function hydrateNapplet(event: SignedEvent, hints: string[] = []) {
-  if (!manifestAllowed(event)) throw new Error('This napplet is unavailable here.');
+  if (!manifestAllowed(event) || locallyRemoved(event))
+    throw new Error('This napplet is unavailable here.');
   const n = await publicNapplet(event, [...new Set([...network().relays, ...hints])].slice(0, 8));
   const previous = entries.get(event.id);
   if (previous) {
@@ -222,7 +233,7 @@ export async function queryCatalog(author?: string) {
         d.created_at >= e.created_at &&
         d.tags.some((t) => (t[0] === 'e' && t[1] === e.id) || (t[0] === 'a' && t[1] === key)),
     );
-    if (!manifestAllowed(e) || removed) {
+    if (!manifestAllowed(e) || removed || locallyRemoved(e)) {
       for (const [id, n] of entries)
         if (
           n.pubkey === e.pubkey &&
@@ -283,7 +294,8 @@ export async function queryCatalog(author?: string) {
   return [...entries.values()].filter((n) => manifestEntry(n) && (!author || n.pubkey === author));
 }
 export const availableCatalog = () => [...entries.values()].filter(manifestEntry);
-const manifestEntry = (n: PublicNapplet) => n.manifest.kind !== 5129 && manifestAllowed(n.manifest);
+const manifestEntry = (n: PublicNapplet) =>
+  n.manifest.kind !== 5129 && manifestAllowed(n.manifest) && !locallyRemoved(n.manifest);
 export function featured(n: PublicNapplet) {
   const e = n.manifest,
     address = `${e.kind}:${e.pubkey}:${e.kind === 15129 ? '' : e.tags.find((t) => t[0] === 'd')?.[1]}`;
@@ -379,4 +391,35 @@ export async function featuredProtocol() {
     } catch {}
   }
   return selected;
+}
+
+/** Apply author actions immediately; relay/index refresh continues independently. */
+export function applyLifecycleEvent(event: SignedEvent) {
+  event = verifiedEvent(event);
+  protocolClient().seed([event]);
+  if (event.kind === 5) {
+    for (const t of event.tags)
+      if (t[0] === 'e' || t[0] === 'a') {
+        const key = `${event.pubkey}:${t[0]}:${t[1]}`;
+        localDeletions.set(key, Math.max(localDeletions.get(key) ?? 0, event.created_at));
+      }
+    while (localDeletions.size > 2000) localDeletions.delete(localDeletions.keys().next().value!);
+    for (const [id, n] of entries) {
+      const e = n.manifest,
+        address = `${e.kind}:${e.pubkey}:${e.kind === 15129 ? '' : (e.tags.find((t) => t[0] === 'd')?.[1] ?? '')}`;
+      if (
+        e.pubkey === event.pubkey &&
+        e.created_at <= event.created_at &&
+        event.tags.some((t) => (t[0] === 'e' && t[1] === id) || (t[0] === 'a' && t[1] === address))
+      ) {
+        entries.delete(id);
+        manifestCache.delete(id);
+        availabilityCache.delete(id);
+      }
+    }
+  } else if ([35129, 15129].includes(event.kind)) {
+    manifestCache.set(event.id, event);
+    void hydrateNapplet(event).catch(() => {});
+  }
+  catalogFresh = 0;
 }

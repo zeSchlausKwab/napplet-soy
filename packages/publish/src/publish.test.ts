@@ -837,3 +837,35 @@ test('public and local endpoints cannot be mixed and saved targets cannot change
     await f.close();
   }
 });
+
+test('publishing unchanged code after an author deletion creates new current and snapshot events', async () => {
+  const f = await fixture();
+  try {
+    const first = await publishProject(f.options),
+      job = await f.load();
+    const signer = await f.accounts.signer();
+    const deletion = await signer.signEvent({
+      kind: 5,
+      created_at: job.createdAt + 1,
+      content: 'Unpublish',
+      tags: [
+        ['a', `35129:${f.creator.pubkey}:${job.plan.identifier}`],
+        ['e', job.snapshot!.id],
+      ],
+    });
+    await signer.close();
+    f.events.set(job.plan.targets.relay, [deletion]);
+    f.deps.relays!.read = async (url, filter) =>
+      (f.events.get(url) ?? []).filter((e) => !filter.kinds || filter.kinds.includes(e.kind));
+    await expect(publishProject({ ...f.options, resume: true })).rejects.toThrow('fresh release');
+    const second = await publishProject(f.options),
+      next = await f.load();
+    if (first.status === 'dry_run' || second.status === 'dry_run')
+      throw new Error('Expected published releases');
+    expect(second.naddr).toBe(first.naddr);
+    expect(second.snapshotId).not.toBe(first.snapshotId);
+    expect(next.createdAt).toBeGreaterThan(deletion.created_at);
+  } finally {
+    await f.close();
+  }
+});

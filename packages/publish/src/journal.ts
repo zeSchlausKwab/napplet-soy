@@ -174,7 +174,7 @@ async function safeDirectory(path: string) {
       'Publication state must be a private regular directory.',
     );
 }
-async function readJson(path: string) {
+export async function readJson(path: string) {
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const stat = await file.stat();
@@ -184,7 +184,7 @@ async function readJson(path: string) {
     await file.close();
   }
 }
-async function atomicJson(path: string, value: unknown) {
+export async function atomicJson(path: string, value: unknown) {
   const temporary = `${path}.${crypto.randomUUID()}.tmp`;
   const file = await open(temporary, 'wx', 0o600);
   try {
