@@ -5,6 +5,9 @@ import { DiagnosticError } from '../../../packages/diagnostics/src';
 import { buildSpatial, output, root } from './build';
 import { serveSpatial } from './serve';
 import { spatialScore } from './score';
+import { DURATION, FPS } from './story';
+
+const frameCount = DURATION * FPS;
 
 await buildSpatial();
 const cache = join(root, '.local/spatial-proof');
@@ -38,8 +41,10 @@ try {
     [17.7, '03-accepted'],
     [21.9, '04-release'],
     [24, '05-tree'],
+    [26.7, '06-fly-to-player'],
+    [29.8, '07-press-start'],
   ] as const) {
-    const state = await page.evaluate((f) => window.spatialProof.at(f), seconds * 30);
+    const state = await page.evaluate((f) => window.spatialProof.at(f), seconds * FPS);
     await page.screenshot({ path: join(output, `${name}.png`) });
     console.log(`Frame ${name}: ${JSON.stringify(state)}`);
   }
@@ -59,7 +64,7 @@ try {
         '-vcodec',
         'png',
         '-framerate',
-        '30',
+        String(FPS),
         '-i',
         'pipe:0',
         '-i',
@@ -85,11 +90,11 @@ try {
     );
     const stderr = new Response(encoder.stderr).text();
     try {
-      for (let frame = 0; frame < 720; frame++) {
+      for (let frame = 0; frame < frameCount; frame++) {
         await page.evaluate((f) => window.spatialProof.at(f), frame);
         encoder.stdin.write(await page.screenshot({ type: 'png' }));
         await encoder.stdin.flush();
-        if (frame % 60 === 0) console.log(`Render ${Math.round((frame / 720) * 100)}%`);
+        if (frame % 60 === 0) console.log(`Render ${Math.round((frame / frameCount) * 100)}%`);
       }
       encoder.stdin.end();
       const exitCode = await encoder.exited;
@@ -113,8 +118,8 @@ try {
     join(output, 'render-verification.json'),
     JSON.stringify(
       {
-        frames: 720,
-        fps: 30,
+        frames: frameCount,
+        fps: FPS,
         stillsOnly: process.argv.includes('--stills-only'),
         errors,
         renderer: 'Three.js; shared with interactive browser scene',

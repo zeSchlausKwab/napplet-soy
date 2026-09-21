@@ -1,6 +1,6 @@
 import * as T from 'three';
 import { createGame, drawGame, WIDTH, HEIGHT, type Game } from './game';
-import { cameraAt, nodes, smooth, typingAt, type focusPose } from './story';
+import { cameraAt, nodes, outroAt, smooth, typingAt, type focusPose } from './story';
 import { historyLane, roundedPath } from './paths';
 import { screenPosters, StoryScreens } from './screens';
 
@@ -90,6 +90,7 @@ type Stage = {
   group: T.Group;
   gameCanvas: HTMLCanvasElement;
   gameTexture: T.CanvasTexture;
+  gameMesh: T.Mesh<T.PlaneGeometry, T.MeshBasicMaterial>;
   actionCanvas: HTMLCanvasElement;
   actionTexture: T.CanvasTexture;
   tick: number;
@@ -233,6 +234,7 @@ export class SpatialScene {
         group,
         gameCanvas,
         gameTexture: game.texture,
+        gameMesh: game.mesh,
         actionCanvas,
         actionTexture: action.texture,
         tick: -1,
@@ -352,6 +354,7 @@ export class SpatialScene {
     this.camera.position.copy(eye);
     this.camera.lookAt(target);
     this.camera.updateMatrixWorld();
+    const outro = options.explore ? 0 : outroAt(time);
     this.stages.forEach((stage, i) => {
       const n = nodes[i];
       stage.group.visible = !!options.explore || time >= n.reveal;
@@ -361,13 +364,13 @@ export class SpatialScene {
           target.distanceTo(s.group.position) < 4 &&
           new T.Vector3().fromArray(pose.eye).distanceTo(s.group.position) < 26,
       );
-      const opacity = focus && focus !== stage ? 0.1 : 1;
+      const opacity = (focus && focus !== stage ? 0.1 : 1) * (1 - outro);
       stage.group.traverse((object) => {
         if (!(object instanceof T.Mesh)) return;
         const materials = Array.isArray(object.material) ? object.material : [object.material];
         for (const mat of materials) {
           mat.userData.originalTransparent ??= mat.transparent;
-          mat.opacity = opacity;
+          mat.opacity = outro > 0 && i === 3 && object === stage.gameMesh ? 1 : opacity;
           mat.transparent = mat.userData.originalTransparent || opacity < 1;
           // Distant versions remain as context without competing with the focused prompt.
           mat.depthWrite = !mat.transparent;
@@ -375,7 +378,7 @@ export class SpatialScene {
       });
       this.panel(i, time, !!options.explore);
       const nearby = new T.Vector3().fromArray(pose.eye).distanceTo(stage.group.position) < 30;
-      const screenTime = nearby && !options.explore ? time : screenPosters[i];
+      const screenTime = (nearby || i === 3) && !options.explore ? time : screenPosters[i];
       const tick = Math.round(screenTime * 60);
       if (tick !== stage.tick || options.live) {
         const ctx = stage.gameCanvas.getContext('2d')!;
@@ -386,12 +389,36 @@ export class SpatialScene {
       }
       stage.marker.rotation.z = time * 0.4;
     });
+    // The published screen leaves its stage and flies toward the stationary viewer.
+    // Interpolate camera-space depth logarithmically so its apparent size grows smoothly.
+    const release = this.stages[3];
+    release.gameMesh.position.set(-3, 0.5, 0.19);
+    release.gameMesh.quaternion.identity();
+    if (outro > 0) {
+      const start = release.gameMesh.position.clone().add(release.group.position);
+      const projected = start.clone().project(this.camera);
+      const cameraSpace = this.camera.worldToLocal(start.clone());
+      const tangent = Math.tan(T.MathUtils.degToRad(this.camera.fov / 2));
+      const endDepth = Math.max(6.75 / 2 / tangent, 12 / 2 / (tangent * this.camera.aspect));
+      const depth = Math.exp(Math.log(-cameraSpace.z) * (1 - outro) + Math.log(endDepth) * outro);
+      const flight = new T.Vector3(
+        projected.x * (1 - outro) * depth * tangent * this.camera.aspect,
+        projected.y * (1 - outro) * depth * tangent,
+        -depth,
+      );
+      this.camera.localToWorld(flight);
+      release.gameMesh.position.copy(flight.sub(release.group.position));
+      release.gameMesh.quaternion.slerp(this.camera.quaternion, outro);
+    }
     this.edges.forEach((e) => {
       const progress = options.explore ? 1 : smooth((time - e.start) / (e.end - e.start));
       const count = Math.floor(progress * 160) * 5 * 6;
       e.mesh.geometry.setDrawRange(0, count);
       e.glow.geometry.setDrawRange(0, count);
-      e.dot.visible = progress > 0 && progress < 1;
+      (e.mesh.material as T.MeshBasicMaterial).opacity = 1 - outro;
+      (e.mesh.material as T.MeshBasicMaterial).transparent = outro > 0;
+      (e.glow.material as T.MeshBasicMaterial).opacity = 0.1 * (1 - outro);
+      e.dot.visible = progress > 0 && progress < 1 && outro < 1;
       e.dot.position.copy(e.curve.getPointAt(progress));
     });
     this.stars.rotation.y = time * 0.0008;

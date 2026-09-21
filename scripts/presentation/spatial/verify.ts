@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { browserCache, browserEngine } from '../../../apps/cli/src/browser';
 import { buildSpatial, output } from './build';
 import { serveSpatial } from './serve';
+import { DURATION, FPS } from './story';
 
 await buildSpatial();
 const server = serveSpatial(0);
@@ -26,17 +27,17 @@ try {
   await page.goto(server.url.href);
   await page.waitForFunction(() => !!window.spatialProof);
   // Reading arbitrary times must not depend on which frame was rendered first.
-  for (const frame of [274, 294, 321, 498, 531]) {
+  for (const frame of [274, 294, 321, 498, 531, 801, 894]) {
     await page.evaluate((f) => window.spatialProof.at(f), frame);
     const first = await page.locator('#scene').screenshot();
     await page.evaluate((f) => {
-      window.spatialProof.at(720);
+      window.spatialProof.at(900);
       window.spatialProof.at(70);
       window.spatialProof.at(f);
     }, frame);
     check(
       first.equals(await page.locator('#scene').screenshot()),
-      `Seeking changed pickup/merge frame ${frame}`,
+      `Seeking changed story frame ${frame}`,
     );
   }
   results.deterministicFrameSeek = true;
@@ -106,6 +107,22 @@ try {
   await page.getByRole('button', { name: 'Explore tree' }).click();
   await page.screenshot({ path: join(output, 'interactive-desktop.png') });
   results.nodeControls = true;
+  await page.evaluate((frame) => window.spatialProof.at(frame), DURATION * FPS);
+  check(
+    !(await page.evaluate(() => window.spatialProof.state().overview)),
+    'Ending stayed in overview mode',
+  );
+  check(
+    await page.getByRole('button', { name: 'PRESS START', exact: true }).isVisible(),
+    'Final play invitation missing',
+  );
+  await page.getByRole('button', { name: 'PRESS START', exact: true }).click();
+  check(
+    (await page.evaluate(() => window.spatialProof.state().game?.variant)) === 'shotgun',
+    'Final invitation did not launch the finished game',
+  );
+  await page.getByRole('button', { name: 'Back to the tree' }).click();
+  results.finalPlayInvitation = true;
   const mobile = await browser.newPage({
     viewport: { width: 390, height: 844 },
     isMobile: true,
@@ -144,6 +161,19 @@ try {
   );
   await mobile.screenshot({ path: join(output, 'interactive-mobile-play.png'), fullPage: true });
   results.touchPlay = true;
+  await mobile.getByRole('button', { name: 'Back to the tree' }).tap();
+  await mobile.evaluate((frame) => window.spatialProof.at(frame), DURATION * FPS);
+  check(
+    !(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth)),
+    'Final mobile view overflows',
+  );
+  await mobile.screenshot({ path: join(output, 'interactive-mobile-ending.png'), fullPage: true });
+  await mobile.getByRole('button', { name: 'PRESS START', exact: true }).tap();
+  check(
+    (await mobile.evaluate(() => window.spatialProof.state().game?.variant)) === 'shotgun',
+    'Mobile final invitation did not launch the finished game',
+  );
+  results.mobileFinalPlayInvitation = true;
   if (await Bun.file(join(output, 'spatial-proof.mp4')).exists()) {
     const movie = await browser.newPage();
     movie.on('pageerror', (error) => errors.push(error.message));
@@ -162,17 +192,17 @@ try {
     check(
       metadata.width === 1920 &&
         metadata.height === 1080 &&
-        Math.abs(metadata.duration - 24) < 0.1 &&
+        Math.abs(metadata.duration - DURATION) < 0.1 &&
         !metadata.error,
       'Rendered movie did not play at the expected dimensions/duration',
     );
-    await movie.locator('video').evaluate(async (video: HTMLVideoElement) => {
+    await movie.locator('video').evaluate(async (video: HTMLVideoElement, duration: number) => {
       video.pause();
       await new Promise<void>((resolve) => {
         video.addEventListener('seeked', () => resolve(), { once: true });
-        video.currentTime = 23.8;
+        video.currentTime = duration - 0.2;
       });
-    });
+    }, DURATION);
     const range = await movie.request.get(`${server.url}spatial-proof.mp4`, {
       headers: { Range: 'bytes=100-199' },
     });

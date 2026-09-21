@@ -1,5 +1,17 @@
 import { SpatialScene } from './scene';
-import { cameraAt, chapterAt, DURATION, focusPose, nodes, overviewPose, smooth } from './story';
+import {
+  beats,
+  cameraAt,
+  chapterAt,
+  DURATION,
+  FPS,
+  focusPose,
+  isOverviewAt,
+  nodes,
+  outroAt,
+  overviewPose,
+  smooth,
+} from './story';
 import { createGame, drawGame, stepGame, DT, type Game, type Input } from './game';
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 const capture = new URLSearchParams(location.search).has('capture');
@@ -34,6 +46,12 @@ async function boot() {
     'Same roots. A different kind of game.',
   ];
   function labels() {
+    const outro = explore ? 0 : outroAt(time);
+    $('#world').style.setProperty('--story-chrome', String(1 - smooth(outro * 1.5)));
+    $('header').inert = outro > 0.6;
+    const invitation = $('#enter-game');
+    invitation.hidden = explore || time < beats.pressStart;
+    invitation.style.opacity = String(smooth((time - beats.pressStart) / 0.3));
     $<HTMLButtonElement>('#play').disabled = overview;
     $('#play').textContent = overview ? 'Select a version' : 'Play this version ↗';
     $('#chapter-label').textContent = overview ? 'THE WHOLE IDEA' : nodes[active].status;
@@ -52,7 +70,7 @@ async function boot() {
         b.setAttribute('aria-pressed', String(Number(b.dataset.node) === active && !overview)),
       );
     $<HTMLInputElement>('#timeline').value = String(time);
-    $('#time').textContent = `00:${String(Math.floor(time)).padStart(2, '0')} / 00:24`;
+    $('#time').textContent = `00:${String(Math.floor(time)).padStart(2, '0')} / 00:${DURATION}`;
   }
   function resize() {
     const rect = $('#world').getBoundingClientRect();
@@ -66,7 +84,7 @@ async function boot() {
   function seek(t: number) {
     time = Math.max(0, Math.min(DURATION, t));
     active = chapterAt(time);
-    overview = time >= 23.8;
+    overview = isOverviewAt(time);
     explore = false;
     flight = undefined;
     pose = cameraAt(time);
@@ -113,6 +131,7 @@ async function boot() {
     b.onclick = () => select(Number(b.dataset.node));
   });
   $('#scene').onclick = (event) => {
+    if (!explore && time >= beats.fillScreen) return play();
     const found = scene.pick(event.clientX, event.clientY);
     if (found !== undefined) select(found);
   };
@@ -137,6 +156,7 @@ async function boot() {
     labels();
   }
   $('#play').onclick = play;
+  $('#enter-game').onclick = play;
   $('#close-game').onclick = () => dialog.close();
   dialog.addEventListener('close', () => {
     game = undefined;
@@ -198,11 +218,12 @@ async function boot() {
     const dt = Math.min((now - last) / 1000, 0.06);
     last = now;
     if (!document.hidden) {
+      const advancing = playing || !!flight;
       if (playing) {
         time = Math.min(DURATION, time + dt);
         pose = cameraAt(time);
         active = chapterAt(time);
-        overview = time >= 23.8;
+        overview = isOverviewAt(time);
         if (time >= DURATION) playing = false;
       }
       if (flight) {
@@ -227,14 +248,14 @@ async function boot() {
         }
         drawGame(playCanvas.getContext('2d')!, game);
       }
-      if (playing || flight) render();
+      if (advancing) render();
     }
     requestAnimationFrame(loop);
   }
   window.spatialProof = {
     at(frame) {
       playing = false;
-      seek(frame / 30);
+      seek(frame / FPS);
       return { time, active, ...scene.stats() };
     },
     select,

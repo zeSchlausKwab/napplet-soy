@@ -1,4 +1,5 @@
-export const DURATION = 24;
+export const DURATION = 30;
+export const FPS = 30;
 export const nodes = [
   {
     id: 'original',
@@ -83,7 +84,16 @@ export const beats = {
   equipped: 9.65,
   mergeStart: 16.15,
   merged: 17.5,
+  flyToPlayer: 24.5,
+  fillScreen: 28.7,
+  pressStart: 29,
 };
+export function outroAt(time: number) {
+  return smooth((time - beats.flyToPlayer) / (beats.fillScreen - beats.flyToPlayer));
+}
+export function isOverviewAt(time: number) {
+  return time >= 23.8 && time <= beats.flyToPlayer;
+}
 export function typingAt(index: number, time: number, complete = false) {
   const node = nodes[index];
   const promptDuration = Math.min(1.55, Math.max(0.95, node.prompt.length / 48));
@@ -113,6 +123,7 @@ const keys = [
   { t: 19.7, ...focusPose(3) },
   { t: 22.1, ...focusPose(3) },
   { t: 24, ...overviewPose },
+  { t: DURATION, ...overviewPose },
 ];
 export function cameraAt(time: number) {
   const t = Math.max(0, Math.min(DURATION, time));

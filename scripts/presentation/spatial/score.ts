@@ -24,7 +24,7 @@ export async function spatialScore(path: string) {
     const start = index === 1 ? beats.equipped : n.start;
     const replay = new Replay('shotgun');
     let last = 0;
-    const end = index === 1 ? 12.6 : 22.1;
+    const end = index === 1 ? 12.6 : DURATION;
     for (let f = 0; start + f / 60 < end; f++) {
       const g = replay.at(f / 60);
       if (g.shots > last) shots.push(start + f / 60);
@@ -52,11 +52,19 @@ export async function spatialScore(path: string) {
         sample +=
           (0.045 * grain + 0.055 * Math.sin(2 * Math.PI * (90 - 130 * a) * a)) * Math.exp(-a * 25);
     }
-    for (const start of [5.3, beats.deliveryStart, 13, beats.mergeStart, 18.1, 22.1]) {
+    for (const start of [
+      5.3,
+      beats.deliveryStart,
+      13,
+      beats.mergeStart,
+      18.1,
+      22.1,
+      beats.flyToPlayer,
+    ]) {
       const a = t - start;
       if (a >= 0 && a < 1) sample += grain * Math.sin(a * Math.PI) * 0.008;
     }
-    for (const start of [beats.equipped, beats.merged, 21.6]) {
+    for (const start of [beats.equipped, beats.merged, 21.6, beats.fillScreen]) {
       const a = t - start;
       if (a >= 0 && a < 1.5)
         sample +=

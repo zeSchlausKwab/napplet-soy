@@ -63,6 +63,29 @@
         display: block;
         cursor: pointer;
       }
+      header,
+      #film-title,
+      #disclosure {
+        opacity: var(--story-chrome, 1);
+      }
+      #enter-game {
+        position: absolute;
+        left: 50%;
+        bottom: 7%;
+        transform: translateX(-50%);
+        padding: 16px 25px;
+        border: 3px solid #f6ecd2;
+        border-radius: 0;
+        background: #15312b;
+        color: #f6ecd2;
+        box-shadow: 5px 5px 0 #15312b;
+        font: 600 20px 'DM Mono';
+        letter-spacing: 3px;
+        white-space: nowrap;
+      }
+      #enter-game:hover {
+        background: #315846;
+      }
       header {
         position: absolute;
         left: 36px;
@@ -405,6 +428,7 @@
           LOCAL PLAYABLE PROTOTYPE<br />ILLUSTRATED COLLABORATION · STUDY 02
         </div>
         <div id="error" role="alert"></div>
+        <button id="enter-game" hidden>PRESS START</button>
       </section>
       <section class="controls" aria-label="Story controls">
         <nav aria-label="Versions and playback">
@@ -429,10 +453,10 @@
             type="range"
             aria-label="Story position"
             min="0"
-            max="24"
+            max="30"
             step="0.033333"
             value="0"
-          /><span id="time">00:00 / 00:24</span>
+          /><span id="time">00:00 / 00:30</span>
         </div>
       </section>
       <aside id="mobile-info">

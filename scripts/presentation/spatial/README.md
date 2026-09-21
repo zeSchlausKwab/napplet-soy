@@ -1,11 +1,17 @@
 # Spatial collaboration proof
 
-A local interactive Three.js scene and 24-second movie. The branching history is
+A local interactive Three.js scene and 30-second movie. The branching history is
 the space the camera travels through. Each node contains its version of a **2D
 pixel platformer**, a developer prompt, and an illustrated soyLI action.
 
 The game stays entirely 2D. Three.js displays its canvas on a surface within each
 stage; the stage, connecting paths and camera are 3D.
+
+After the tree overview, the published game lifts off its node and flies toward
+the viewer, filling the movie frame by 28.7 seconds. The game keeps running as the
+surrounding scene and labels fade. A final **PRESS START** invitation launches the
+playable version in the interactive preview. Compact screens contain the complete
+16:9 game surface rather than cropping it.
 
 ## Run
 
@@ -35,7 +41,7 @@ The renderer needs FFmpeg on PATH and the soyLI Chromium browser (`bun run soyli
 browser install`). The browser scene requires WebGL 2. These are local authoring
 tools; they add no runtime requirement to published napplets or the shell app.
 
-Generated files live in ignored `output/spatial-proof/`: MP4, eight stills, bundled
+Generated files live in ignored `output/spatial-proof/`: MP4, ten stills, bundled
 interactive page, fonts and verification records. Intermediate audio lives under
 `.local/spatial-proof/`. The renderer writes explicit frames through the exact
 same browser scene used interactively, then encodes H.264/AAC. This proof uses
@@ -65,7 +71,9 @@ scene adapter. The earlier Remotion proof remains independently reproducible.
   aren't lost between rendered frames. The story pauses when the tab is hidden.
 - `score.ts`: original synthesized music, travel cues and shot effects timed to
   the replay, including the pickup delay. The merge has its own resolution cue
-  instead of repeated shooting. No samples or external audio dependencies.
+  instead of repeated shooting. No samples or external audio dependencies. The
+  [music prompt](MUSIC-PROMPT.md) describes an optional ElevenLabs replacement;
+  the rendered proof still uses the original synthesized score.
 - `verify.ts`: real-browser checks for deterministic frame seeking, playback,
   version selection, keyboard movement/jump/shoot, touch controls and mobile layout.
 
