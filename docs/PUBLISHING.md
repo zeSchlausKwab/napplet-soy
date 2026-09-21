@@ -148,7 +148,6 @@ include explicit public and local profiles:
         "grasp": "https://git.napplet.soy",
         "site": "https://napplet.soy",
         "mirrors": [
-          "wss://relay.damus.io",
           "wss://nos.lol",
           "wss://relay.primal.net",
           "wss://nostr.mom",

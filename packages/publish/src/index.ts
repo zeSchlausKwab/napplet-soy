@@ -98,6 +98,7 @@ function result(job: PublishJob, unchanged = false) {
       ? { ...job.video, url: `${job.plan.targets.blossom}/${job.video.hash}` }
       : null,
     mirrors: job.mirrors,
+    mirrorErrors: job.mirrorErrors ?? {},
     receipts: job.receipts,
     error: job.error ?? null,
   };
@@ -744,13 +745,30 @@ export async function publishProject(options: PublishOptions) {
         await guard();
         for (const mirror of job.plan.targets.mirrors) {
           progress('mirror');
+          let event = job.preview?.descriptor ?? job.snapshot;
           try {
-            if (job.preview?.descriptor) await relays.ensure(mirror, job.preview.descriptor);
-            await relays.ensure(mirror, job.snapshot);
-            await relays.ensure(mirror, job.current);
+            for (const next of [job.preview?.descriptor, job.snapshot, job.current]) {
+              if (!next) continue;
+              event = next;
+              await relays.ensure(mirror, event);
+            }
             job.mirrors[mirror] = true;
-          } catch {
+            if (job.mirrorErrors) delete job.mirrorErrors[mirror];
+          } catch (cause) {
             job.mirrors[mirror] = false;
+            const diagnostic = diagnose(cause, 'publish optional mirror');
+            job.mirrorErrors ??= {};
+            job.mirrorErrors[mirror] = {
+              eventId: event.id,
+              eventKind: event.kind,
+              attemptedAt: Date.now(),
+              diagnostic: {
+                ...diagnostic,
+                retryable: diagnostic.retryable ?? true,
+                recovery:
+                  'The primary publication is unaffected. With unchanged source, rerun soyli publish to repair copies of the same signed release. Edit future mirrors in soyli dev (Where it goes).',
+              },
+            };
           }
           await save();
         }

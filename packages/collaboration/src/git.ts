@@ -113,8 +113,9 @@ export async function mergeReviewed(
         : 'Merge preflight failed. Your working tree is unchanged.',
       {
         cause,
-        recovery:
-          'Resolve reported conflicts locally, or address the Git error before retrying the merge.',
+        recovery: conflicts
+          ? `Review the files listed below. To resolve in ordinary Git, run git merge --no-ff ${input.head}, edit the conflicts, then git add and git commit. git merge --abort cancels that manual attempt. Inspect soyli review again before publishing.`
+          : 'Check git --version and the Git error below. Merge preflight needs Git 2.38 or newer with merge-tree --write-tree; update Git if that option is unavailable, then retry.',
       },
     );
   });

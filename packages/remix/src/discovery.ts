@@ -8,6 +8,11 @@ import { verifiedEvent, type SignedEvent } from '../../protocol/src';
 /** Finite, signer-free discovery using the same DNS-pinned Bun transport as playback. */
 export async function discoverRemix(filter: Filter, relays: string[], signal: AbortSignal) {
   const events = new Map<string, SignedEvent>();
+  // A full event hash identifies one immutable revision. Once verified, waiting
+  // for fallback relays cannot improve it. Named/latest lookups still gather all
+  // responses within their deadline before choosing the newest signed event.
+  const exact = filter.ids?.length === 1 && /^[a-f0-9]{64}$/.test(filter.ids[0]);
+  const resolved = new AbortController();
   let completed = 0;
   const failures: Error[] = [];
   const cancelled = () =>
@@ -20,7 +25,7 @@ export async function discoverRemix(filter: Filter, relays: string[], signal: Ab
     relays.map(async (value) => {
       const lifetime = new AbortController();
       const deadline = setTimeout(() => lifetime.abort(), 5000);
-      const combined = AbortSignal.any([signal, lifetime.signal]);
+      const combined = AbortSignal.any([signal, lifetime.signal, resolved.signal]);
       let finished = false,
         failure: unknown;
       let pool: Awaited<ReturnType<typeof openPlaybackRelay>> | undefined;
@@ -48,8 +53,13 @@ export async function discoverRemix(filter: Filter, relays: string[], signal: Ab
                 if (message.type !== 'EVENT') return;
                 try {
                   const event = verifiedEvent(message.event);
-                  if (matchFilters([filter], event) && event.created_at <= Date.now() / 1000 + 60)
+                  if (matchFilters([filter], event) && event.created_at <= Date.now() / 1000 + 60) {
                     events.set(event.id, event);
+                    if (exact) {
+                      finished = true;
+                      resolved.abort();
+                    }
+                  }
                 } catch {
                   /* Untrusted relay events must pass signature and size checks. */
                 }
@@ -64,7 +74,7 @@ export async function discoverRemix(filter: Filter, relays: string[], signal: Ab
       } catch (cause) {
         failure = cause;
       } finally {
-        if (!finished)
+        if (!finished && !resolved.signal.aborted)
           failures.push(
             new DiagnosticError('RELAY_READ', 'Relay lookup did not complete.', {
               target: value,

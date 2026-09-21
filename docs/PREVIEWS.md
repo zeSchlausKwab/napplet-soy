@@ -141,10 +141,13 @@ not the in-progress session in the creator's visible browser.
 
 The capture viewport is 960 × 600, with a selectable 2–8 second interval, a 0–10
 second start delay after normal startup, and optional timed clicks/key presses.
-The encoder can append a brief final still frame. The creator reviews the WebM
-beside the static cover, title and other posting fields; recording does not publish.
-A simple 2-second button scene measured 22,521 bytes and 2.56 seconds on macOS/Chromium.
-This is a fixture measurement, not a size promise for complex scenes.
+The pinned Playwright 1.63.0 recorder holds its last captured frame for at least
+one extra second when stopping (`FfmpegVideoRecorder._stop`). A requested 7-second
+action window can therefore produce an 8-second clip; `record` reports the actual
+encoded duration. This is a recording tail, not extra scripted action time.
+The creator reviews the WebM beside the static cover, title and other posting
+fields; recording does not publish. Duration and size depend on the encoder and
+scene; the reported output duration is authoritative for the resulting file.
 
 ```json
 {

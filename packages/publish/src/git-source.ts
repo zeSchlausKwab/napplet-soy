@@ -2,7 +2,15 @@ import { sourceGit } from '../../grasp/src/client';
 import { PublishError } from './config';
 
 export async function committedSource(directory: string) {
-  const commit = await sourceGit(directory, ['rev-parse', '--verify', 'HEAD']).catch(() => '');
+  const commit = await sourceGit(directory, ['rev-parse', '--verify', 'HEAD']).catch((cause) => {
+    throw new PublishError(
+      'COMMIT_REQUIRED',
+      'Could not read a committed source revision. Check the Git error below; for a new project, save a checkpoint with soyli checkpoint "Describe your changes".',
+      'check',
+      false,
+      cause,
+    );
+  });
   if (!/^[a-f0-9]{40}$/.test(commit))
     throw new PublishError(
       'COMMIT_REQUIRED',

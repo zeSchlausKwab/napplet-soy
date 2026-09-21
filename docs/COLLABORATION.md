@@ -5,6 +5,12 @@ Code and the pushed commit ancestry are open source by default. Editing or makin
 local checkpoint does not upload anything. New projects use MIT; remixes keep their
 existing license. A website account is unnecessary: the CLI uses your Nostr signer.
 
+soyLI 0.16.3 retains both Git output streams in failure diagnostics, including
+conflicting filenames emitted by `merge-tree` on stdout. Merge preflight needs
+Git 2.38 or newer. Conflicts leave the checkout unchanged; the diagnostic explains
+how to resolve with ordinary Git and how to abort that manual attempt. Tool errors
+(including an unsupported Git option) remain distinct from merge conflicts.
+
 ```sh
 soyli remix <napplet-link> my-idea
 cd my-idea
@@ -95,6 +101,10 @@ soyli merge <proposal-id> --revision <reviewed-event-id> --target <reviewed-loca
 soyli push       # publish Git state and merged status, without a napplet release
 soyli publish    # deliberately release the merged napplet
 ```
+
+Merging does not delete the proposal, its revisions or discussion. `soyli push`
+announces a separate NIP-34 merged-status event for included open proposals.
+A local or ordinary Git merge alone does not announce that relay status.
 
 Merge requires a maintainer signer, current proposal revision, unchanged clean local
 HEAD and an upstream state already integrated into that target. A Git conflict stops

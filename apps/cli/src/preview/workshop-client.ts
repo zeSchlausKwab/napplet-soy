@@ -1,4 +1,5 @@
 import type { WorkshopState } from '../workshop';
+import { formatDiagnostic } from '../../../../packages/diagnostics/src';
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, text = '', className = '') => {
   const node = document.createElement(tag);
@@ -329,6 +330,15 @@ export function setupWorkshop(
           Website: state.publication.targets.site,
           'Extra relay copies': state.publication.targets.mirrors.join(', ') || 'None',
         });
+        for (const [relay, failure] of Object.entries(state.publication.mirrorErrors)) {
+          published.append(
+            el(
+              'pre',
+              `Optional mirror failed: ${relay}\nEvent kind ${failure.eventKind}\n${formatDiagnostic(failure.diagnostic)}`,
+              'workshop-error',
+            ),
+          );
+        }
         if (state.pendingJob)
           published.append(
             action('Resume saved release', (button) =>

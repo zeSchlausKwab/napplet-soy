@@ -5,6 +5,13 @@ standalone `soyli` executable, with its pinned Playwright support files. A separ
 Bun, Node, npm, or platform checkout is not required. The executable embeds Bun;
 this is not an alternative runtime implementation for users who reject Bun itself.
 
+Source **0.16.3** fixes signer-free `soyli check` for projects whose creator is
+stored in the ignored local binding, retains Git conflict details and optional
+mirror diagnostics, stops exact-release lookups waiting on slow fallback relays,
+and removes Damus from default relay lists. These source
+changes require a new CLI distribution; existing installed binaries do not update
+automatically.
+
 Source **0.16.2** adds [actionable error diagnostics](CLI-ERRORS.md) across wrapped
 tools and services, in the terminal, JSON output and local workshop. It includes
 the 0.16.1 [public remix transport repair](REMIXING.md).

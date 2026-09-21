@@ -19,5 +19,6 @@ test('development can keep its configured local relay and an unconfigured client
     'ws://127.0.0.1:19347/relay',
   ]);
   expect(browserRelayDefaults([])).toEqual(['wss://relay.napplet.soy', ...discoveryRelays]);
+  expect(browserRelayDefaults([])).not.toContain('wss://relay.damus.io');
   expect(new Set(browserRelayDefaults([])).size).toBe(browserRelayDefaults([]).length);
 });

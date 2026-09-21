@@ -1,4 +1,4 @@
-import { DiagnosticError } from '../../diagnostics/src';
+import { DiagnosticError, ToolOutput } from '../../diagnostics/src';
 import { RelayPool } from 'applesauce-relay';
 import { lastValueFrom, toArray } from 'rxjs';
 import { nip19, type EventTemplate } from 'nostr-tools';
@@ -97,7 +97,16 @@ export async function sourceGit(
     timeout = true;
     child.kill('SIGKILL');
   }, 60000);
-  const read = async (stream: ReadableStream<Uint8Array>) => {
+  const outDiagnostic = new ToolOutput(),
+    errDiagnostic = new ToolOutput();
+  const failureOutput = () =>
+    [
+      outDiagnostic.text && `Git stdout:\n${outDiagnostic.text.slice(-900)}`,
+      errDiagnostic.text && `Git stderr:\n${errDiagnostic.text.slice(-900)}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  const read = async (stream: ReadableStream<Uint8Array>, diagnostic: ToolOutput) => {
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
     let size = 0;
@@ -105,6 +114,7 @@ export async function sourceGit(
       while (true) {
         const next = await reader.read();
         if (next.done) break;
+        diagnostic.push(next.value);
         size += next.value.byteLength;
         if (size > outputLimit) {
           child.kill('SIGKILL');
@@ -117,19 +127,22 @@ export async function sourceGit(
       }
       return Buffer.concat(chunks).toString('utf8').trim();
     } finally {
+      diagnostic.finish();
       reader.releaseLock();
     }
   };
   try {
-    const [stdout, stderr, code] = await Promise.all([
-      read(child.stdout),
-      read(child.stderr),
+    const [stdout, , code] = await Promise.all([
+      read(child.stdout, outDiagnostic),
+      read(child.stderr, errDiagnostic),
       child.exited,
     ]);
     if (timeout)
       throw new DiagnosticError('GIT_TIMEOUT', 'Git operation timed out after 60 seconds.', {
         operation,
         tool: 'git',
+        target: directory,
+        detail: failureOutput(),
         recovery:
           'Check the Git server and connection; inspect soyli status before retrying a push.',
       });
@@ -138,7 +151,10 @@ export async function sourceGit(
         operation,
         tool: 'git',
         exitCode: code,
-        detail: stderr,
+        target: directory,
+        // merge-tree and other Git commands report actionable failures on stdout.
+        // Keep both sanitized streams; never print successful source/diff output here.
+        detail: failureOutput(),
         recovery: 'Resolve the Git error shown here, then retry the operation.',
       });
     return stdout;

@@ -73,6 +73,69 @@ test('remix discovery distinguishes completed absence from a failed lookup', asy
   }
 });
 
+test('an exact verified release does not wait for a silent fallback relay', async () => {
+  const event = finalizeEvent(
+    { kind: 5129, created_at: 1, content: '', tags: [] },
+    generateSecretKey(),
+  );
+  let queried!: () => void;
+  const started = new Promise<void>((resolve) => {
+    queried = resolve;
+  });
+  const silent = relay(() => queried());
+  const good = relay((send, id) => {
+    void started.then(() => send(['EVENT', id, event]));
+  });
+  try {
+    expect(
+      await discoverRemix({ ids: [event.id] }, [silent.url, good.url], AbortSignal.timeout(2000)),
+    ).toEqual(event);
+    const deadline = AbortSignal.timeout(1000);
+    while ((!silent.closed() || !good.closed()) && !deadline.aborted) await Bun.sleep(5);
+    expect(silent.closed()).toBe(1);
+    expect(good.closed()).toBe(1);
+  } finally {
+    silent.close();
+    good.close();
+  }
+});
+
+test('named lookups wait for the newer version from another relay', async () => {
+  const signer = generateSecretKey();
+  const old = finalizeEvent(
+    { kind: 35129, created_at: 1, content: '', tags: [['d', 'versioned']] },
+    signer,
+  );
+  const latest = finalizeEvent({ ...old, created_at: 2 }, signer);
+  let queried!: () => void;
+  const started = new Promise<void>((resolve) => {
+    queried = resolve;
+  });
+  const first = relay((send, id) => {
+    send(['EVENT', id, old]);
+    send(['EOSE', id]);
+    queried();
+  });
+  const second = relay((send, id) => {
+    void started.then(() => {
+      send(['EVENT', id, latest]);
+      send(['EOSE', id]);
+    });
+  });
+  try {
+    expect(
+      await discoverRemix(
+        { kinds: [35129], authors: [old.pubkey], '#d': ['versioned'] },
+        [first.url, second.url],
+        AbortSignal.timeout(2000),
+      ),
+    ).toEqual(latest);
+  } finally {
+    first.close();
+    second.close();
+  }
+});
+
 test('remix cancellation closes an in-flight relay and also rejects an already cancelled lookup', async () => {
   const controller = new AbortController();
   const waiting = relay(() => controller.abort());

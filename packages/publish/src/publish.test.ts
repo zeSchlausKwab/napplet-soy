@@ -735,12 +735,57 @@ test('a repeated publication repairs missing relay events/blobs and retries fail
     f.options.targets = { mirrors: [mirror] };
     const ensure = f.deps.relays!.ensure;
     f.deps.relays!.ensure = async (url, event) => {
-      if (url === mirror) throw new Error('offline mirror');
+      if (url === mirror && event.kind === 35129)
+        throw new Error('offline mirror\nAuthorization: Bearer fixture-mirror-token');
       await ensure(url, event);
     };
     await publishProject(f.options);
     const first = await f.load();
     expect(first.mirrors[mirror]).toBe(false);
+    expect(first.mirrorErrors?.[mirror]).toMatchObject({
+      eventId: first.current!.id,
+      eventKind: 35129,
+      diagnostic: { operation: 'publish optional mirror', retryable: true },
+    });
+    expect(first.mirrorErrors![mirror].diagnostic.message).toContain('offline mirror');
+    expect(first.mirrorErrors![mirror].attemptedAt).toBeGreaterThan(0);
+    expect(JSON.stringify(first)).not.toContain('fixture-mirror-token');
+    const status = await publicationStatus(f.project, 'local');
+    expect('mirrorErrors' in status && status.mirrorErrors[mirror]).toEqual(
+      first.mirrorErrors![mirror],
+    );
+    expect(first.receipts.current).toBe(true);
+    expect(first.error).toBeUndefined();
+    expect(f.events.get(mirror)).toHaveLength(1);
+    for (const json of [false, true]) {
+      const child = Bun.spawn(
+        [
+          ...(process.env.SPACE_TEST_CLI
+            ? [process.env.SPACE_TEST_CLI]
+            : [
+                process.execPath,
+                new URL('../../../apps/cli/src/index.ts', import.meta.url).pathname,
+              ]),
+          'status',
+          '--project',
+          f.project,
+          '--network',
+          'local',
+          ...(json ? ['--json'] : []),
+        ],
+        { stdout: 'pipe', stderr: 'pipe', stdin: 'ignore' },
+      );
+      const [code, output, error] = await Promise.all([
+        child.exited,
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+      ]);
+      expect(code, output + error).toBe(0);
+      expect(output).toContain('offline mirror');
+      expect(output).not.toContain('fixture-mirror-token');
+      if (json) expect(JSON.parse(output).mirrorErrors[mirror].eventId).toBe(first.current!.id);
+      else expect(output).toContain('Optional mirror failed:');
+    }
     f.deps.relays!.ensure = ensure;
     f.events.set(first.plan.targets.relay, []);
     f.blobs.delete(first.plan.artifactHash);
@@ -749,6 +794,7 @@ test('a repeated publication repairs missing relay events/blobs and retries fail
       currentId: first.current!.id,
       snapshotId: first.snapshot!.id,
       mirrors: { [mirror]: true },
+      mirrorErrors: {},
     });
     expect(f.events.get(first.plan.targets.relay)).toHaveLength(2);
     expect(f.events.get(mirror)).toHaveLength(2);

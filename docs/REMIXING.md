@@ -18,6 +18,11 @@ is required. Each relay has a five-second lookup budget including connection
 setup, and cancellation closes pending connections. An available signed matching
 event can be used even when another relay fails.
 
+Source **0.16.3** returns as soon as a requested full event hash is verified and
+closes the remaining relay queries. A silent fallback cannot delay a verified
+pinned release. Named/latest lookups still collect responses within their budget
+and choose the newest matching signed event; this shortcut does not apply to them.
+
 `REMIX_RELAYS_UNAVAILABLE` means no relay completed the lookup;
 `REMIX_NOT_FOUND` means responding relays did not return the requested release.
 An old pinned event may no longer be retained: a portable naddr selects the latest

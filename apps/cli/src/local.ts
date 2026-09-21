@@ -4,6 +4,8 @@ import { realpath } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { AccountError, type Network } from '../../../packages/identity/src/signer';
 import { inspectProject, regularFile } from '../../../packages/publish/src/project';
+import { effectiveProject } from '../../../packages/publish/src/binding';
+import { projectSchema } from '../../../packages/publish/src/config';
 import { browserCompatibilityNote, browserEngine, browserInstalled } from './browser';
 import { checkPublication } from './publish-check';
 import { previewAssets } from './preview/assets';
@@ -152,10 +154,11 @@ export async function checkProject(directory: string, network: Network) {
     throw new AccountError('PROJECT_CONFIG', 'Invalid napplet.json.');
   }
   // Inspection needs no signer. A declared creator is only a public reference.
+  const project = await effectiveProject(root, projectSchema.parse(config));
   const { plan, contents } = await inspectProject(
     root,
     network,
-    config.creator?.pubkey ?? '0'.repeat(64),
+    project.creator?.pubkey ?? '0'.repeat(64),
   );
   const { profile, browser, preview } = await checkPublication(contents);
   return {

@@ -102,6 +102,29 @@ export const jobSchema = z
       })
       .strict(),
     mirrors: z.record(z.string(), z.boolean()),
+    mirrorErrors: z
+      .record(
+        z.string(),
+        z
+          .object({
+            eventId: hash,
+            eventKind: z.number().int().nonnegative(),
+            attemptedAt: z.number().int().nonnegative(),
+            diagnostic: z
+              .object({
+                code: z.string().max(80),
+                message: z.string().max(2000),
+                operation: z.string().max(160),
+                recovery: z.string().max(2000),
+                details: z.array(z.string().max(2000)).max(8).optional(),
+                stage: z.string().max(40).optional(),
+                retryable: z.boolean(),
+              })
+              .strict(),
+          })
+          .strict(),
+      )
+      .optional(),
     status: z.enum(['prepared', 'announced_pending_index']),
     website: z
       .object({

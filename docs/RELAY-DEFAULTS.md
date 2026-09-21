@@ -1,6 +1,6 @@
 # Public relay defaults
 
-Source update for soyLI **0.15.0** and the next website deployment; not yet published.
+Source update for soyLI **0.16.3** and the next website deployment; not yet published.
 Reviewed on **2026-09-20** using [nostr.watch](https://nostr.watch/), relay NIP-11
 documents, and direct anonymous WebSocket reads of napplet kinds 15129, 35129 and
 5129 with the website's Origin header. No test events were published.
@@ -8,13 +8,12 @@ documents, and direct anonymous WebSocket reads of napplet kinds 15129, 35129 an
 | Relay | Default role |
 | --- | --- |
 | `wss://relay.napplet.soy` | Primary publication and discovery |
-| `wss://relay.damus.io` | Discovery and optional publication copy |
 | `wss://nos.lol` | Discovery and optional publication copy |
 | `wss://relay.primal.net` | Discovery and optional publication copy |
 | `wss://nostr.mom` | Discovery and optional publication copy |
 | `wss://relay.pocketstr.com` | Discovery and optional publication copy |
 
-All six returned a napplet event and completed EOSE in the live check, in roughly
+The previous six-relay set returned a napplet event and completed EOSE in that check, in roughly
 0.14–0.79 seconds from the development machine. This is a dated availability
 sample, not a guaranteed latency, retention period or future write acceptance.
 The relay documents did not advertise required payment or authentication for
@@ -31,7 +30,11 @@ not a new runtime dependency or authority over napplet content.
 
 ## Configuration and scope
 
-The five external relays live in
+On **2026-09-21**, Damus was removed from the shared defaults following the reported
+outage and failed publication mirror. The current set has Soy plus four external
+relays; the earlier successful probe is historical evidence, not current availability.
+
+The four external relays live in
 [`packages/nostr/discovery-relays.json`](../packages/nostr/discovery-relays.json).
 The public website, production index, publicdev discovery and CLI remix lookup
 consume that list. Production reads its managed relay internally and advertises

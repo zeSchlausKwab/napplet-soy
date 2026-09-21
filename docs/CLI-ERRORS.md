@@ -5,6 +5,22 @@ diagnostic. Failures report the operation, original error message/code, availabl
 tool exit status or service HTTP status, underlying causes and a recovery step.
 This patch is not yet published or deployed.
 
+Source **0.16.3** also retains Git failure output from **both stdout and stderr**.
+Git merge preflight reports conflicts on stdout, including affected filenames;
+those details now reach terminal, JSON and local review errors. A conflict still
+leaves the working tree untouched. Both streams use the same bounded secret
+redaction as other tool errors.
+
+Optional publication copies retain `mirrorErrors` alongside the existing
+`mirrors` success flags in `soyli publish` / `soyli status --json` and the saved
+journal. Each failure identifies the public event ID/kind, attempt time, diagnostic
+and retryability. Terminal output and the workshop also show these nonfatal
+warnings. A failed mirror does not undo primary publication; a successful retry
+clears that mirror's failure. Older journals without this field remain readable.
+Run `soyli publish` again to repair copies of the saved release; unchanged source
+reuses the existing signed events. Failed primary publication still uses
+`publish --resume`.
+
 For example, a failed project dependency installation can report:
 
 ```text
@@ -51,7 +67,7 @@ local HTTP error responses retain their `error` text and add a `diagnostic` obje
 
 ## Wrapped operations
 
-- **Git:** startup, exit status, bounded stderr, timeout and output-limit errors.
+- **Git:** startup, exit status, bounded stdout/stderr, timeout and output-limit errors.
   Failed source alternatives retain their causes when no source succeeds.
   Proposal inbox confirmation includes failed Git ref pushes, and Git execution
   errors are distinguished from merge conflicts or an advanced upstream branch.

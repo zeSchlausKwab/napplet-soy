@@ -8,6 +8,62 @@ const command = process.env.SPACE_TEST_CLI
   ? [process.env.SPACE_TEST_CLI]
   : [process.execPath, new URL('./index.ts', import.meta.url).pathname];
 
+test('Git failures reach the real CLI with stdout, stderr, status and redaction', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'soyli-git-errors-'));
+  try {
+    const bin = join(root, 'tools');
+    await mkdir(bin);
+    const git = Bun.which('git')!;
+    await writeFile(
+      join(bin, 'git'),
+      `#!/bin/sh
+for arg in "$@"; do
+  if [ "$arg" = commit ]; then
+    printf 'CONFLICT: fixture game.ts needs attention\\n'
+    printf 'Authorization: Bearer fixture-git-token\\n'
+    printf 'fixture: cannot finish Git operation\\n' >&2
+    exit 23
+  fi
+done
+exec '${git.replace(/'/g, "'\\''")}' "$@"
+`,
+      { mode: 0o755 },
+    );
+    const project = join(root, 'project');
+    await Bun.write(join(project, 'game.ts'), 'export const game = true;');
+    for (const json of [false, true]) {
+      const child = Bun.spawn(
+        [...command, 'checkpoint', 'Fixture', '--project', project, ...(json ? ['--json'] : [])],
+        {
+          cwd: project,
+          env: { PATH: `${bin}:${process.env.PATH}`, SPACE_ACCOUNT_HOME: join(root, 'accounts') },
+          stdin: 'ignore',
+          stdout: 'pipe',
+          stderr: 'pipe',
+        },
+      );
+      const [code, out, err] = await Promise.all([
+        child.exited,
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+      ]);
+      expect(code).toBe(1);
+      const text = out + err;
+      expect(text).not.toContain('fixture-git-token');
+      expect(text).toContain('game.ts needs attention');
+      expect(text).toContain('cannot finish Git operation');
+      expect(text).toContain('Exit status: 23');
+      if (json)
+        expect(JSON.parse(out).error).toMatchObject({
+          code: 'GIT_COMMAND',
+          operation: 'Git commit',
+        });
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('real CLI preserves actionable dependency errors and identifies missing project files', async () => {
   const root = await mkdtemp(join(tmpdir(), 'soyli-errors-'));
   const run = async () => {
