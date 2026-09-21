@@ -161,6 +161,7 @@ pre:focus-visible {
 .header-actions {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 22px;
   margin-left: auto;
   font-size: 12px;
@@ -177,6 +178,21 @@ pre:focus-visible {
   font-size: 12px;
   border-color: #b9baaa;
   border-radius: 5px;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 190px;
+}
+.identity-button-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.identity-button-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .hero {
   padding: 44px 0 40px;

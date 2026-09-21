@@ -89,6 +89,11 @@ backed up in their signer application, not exported as local creator keys.
 
 ## Website sign-in
 
+The header identity button resolves the selected account's Nostr display name and
+avatar through the shared profile cache. Missing names fall back to the shortened
+public key; missing or failed images show an initial. Long names truncate to fit
+the header, and a signer that needs reconnecting keeps its warning indicator.
+
 Presentation revision (deployed 2026-09-15 in `20260915084016730-23084`): the identity button
 opens a non-modal popup anchored directly beneath it. It contains the same saved
 accounts, profile link, extension/NIP-46/private-key methods, key creation and recovery.

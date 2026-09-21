@@ -1,9 +1,31 @@
 import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, Check, CircleAlert, CircleHelp, Plus, Radio } from 'lucide-react';
+import { ArrowUpRight, CircleAlert, CircleHelp, Plus, Radio } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNostr } from './nostr-provider';
 import { PopoverTrigger } from './ui/popover';
+import { ProfileAvatar } from './creator-link';
+import { useProfile } from '@/lib/profiles';
+import { shortPubkey } from '../../../../packages/protocol/src/profile';
+
+function ConnectedIdentity({
+  pubkey,
+  needsReconnect,
+}: {
+  pubkey: string;
+  needsReconnect: boolean;
+}) {
+  const profile = useProfile(pubkey);
+  const name =
+    profile?.name && profile.name !== shortPubkey(pubkey) ? profile.name : `${pubkey.slice(0, 6)}…`;
+  return (
+    <span className="identity-button-account" title={`${name} · ${pubkey}`}>
+      <ProfileAvatar key={pubkey} profile={profile} name={name} />
+      <span className="identity-button-name">{name}</span>
+      {needsReconnect && <CircleAlert size={14} aria-label="Unlock or reconnect your signer" />}
+    </span>
+  );
+}
 
 export function Shell({ children }: { children: ReactNode }) {
   const { pubkey, ready, relayConfigured, needsReconnect } = useNostr();
@@ -60,10 +82,7 @@ export function Shell({ children }: { children: ReactNode }) {
               }
             >
               {pubkey ? (
-                <>
-                  {needsReconnect ? <CircleAlert size={14} /> : <Check size={14} />}
-                  {pubkey.slice(0, 6)}…
-                </>
+                <ConnectedIdentity pubkey={pubkey} needsReconnect={needsReconnect} />
               ) : (
                 'Connect'
               )}
