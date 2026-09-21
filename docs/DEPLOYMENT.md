@@ -1148,3 +1148,19 @@ curl -fsSL https://napplet.soy/install.sh | sh
 Restart `soyli dev` for the workshop. Run `soyli skills update` in an existing
 project to refresh guidance; project source is preserved, so adopting the settings
 fallback in an existing napplet requires editing its settings module.
+
+## soyLI 0.17.0 — author lifecycle, 2026-09-21
+
+Prepared from source `1246e19`: confirmed [unpublish, republish and hosted-data
+deletion](LIFECYCLE.md) in the CLI and shell. Four standalone archives are built;
+checksums and execution coverage are in
+[the release record](../apps/cli/distribution/release-0.17.0.json).
+Typecheck and 342 repository tests pass (2,470 assertions), production build
+passes, and temporary real-service and mobile browser lifecycle checks pass.
+Deletion testing uses isolated fixtures, not real user publications.
+
+This release also ships the earlier source improvements since 0.14.1, including
+controller tools, runtime actions, relay defaults and diagnostics. The website
+includes the integrated collaboration story and branded OG cards. CLI downloads
+are published before the new installer is activated. Live verification is recorded
+separately below when rollout completes.
