@@ -39,6 +39,47 @@ async function boot() {
     gameAccum = 0;
   const keys: Input = {};
   const pulses: Input = {};
+  const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+  const hoverPointer = matchMedia('(any-hover: hover) and (any-pointer: fine)');
+  const parallax = { x: 0, y: 0 };
+  const pointerTarget = { x: 0, y: 0 };
+  let cameraDirty = false;
+  function resetPointer(immediate = false) {
+    pointerTarget.x = pointerTarget.y = 0;
+    if (immediate) {
+      parallax.x = parallax.y = 0;
+      cameraDirty = true;
+    }
+  }
+  function easePointer(dt: number) {
+    const blend = 1 - Math.exp(-7 * dt);
+    for (const axis of ['x', 'y'] as const) {
+      const delta = pointerTarget[axis] - parallax[axis];
+      if (delta === 0) continue;
+      parallax[axis] =
+        Math.abs(delta) < 0.0001 ? pointerTarget[axis] : parallax[axis] + delta * blend;
+      cameraDirty = true;
+    }
+  }
+  $('#scene').addEventListener('pointermove', (event) => {
+    if (
+      capture ||
+      motionPreference.matches ||
+      !hoverPointer.matches ||
+      event.pointerType !== 'mouse' ||
+      event.buttons ||
+      suspended ||
+      game
+    )
+      return;
+    const rect = $('#scene').getBoundingClientRect();
+    pointerTarget.x = Math.max(-1, Math.min(1, ((event.clientX - rect.left) / rect.width) * 2 - 1));
+    pointerTarget.y = Math.max(-1, Math.min(1, 1 - ((event.clientY - rect.top) / rect.height) * 2));
+  });
+  $('#scene').addEventListener('pointerleave', () => resetPointer());
+  $('#scene').addEventListener('pointercancel', () => resetPointer());
+  motionPreference.addEventListener('change', () => resetPointer(true));
+  hoverPointer.addEventListener('change', () => resetPointer(true));
   const audio = new Audio();
   audio.preload = 'none';
   audio.muted = true;
@@ -119,9 +160,10 @@ async function boot() {
     scene.resize(Math.round(rect.width), Math.round(rect.height));
     render();
   }
-  function render() {
-    scene.render(time, { pose, explore, active });
-    labels();
+  function render(updateLabels = true) {
+    scene.render(time, { pose, explore, active, parallax });
+    cameraDirty = false;
+    if (updateLabels) labels();
   }
   function seek(t: number) {
     time = Math.max(0, Math.min(DURATION, t));
@@ -201,6 +243,8 @@ async function boot() {
     playing = false;
     syncAudio();
     flight = undefined;
+    resetPointer(true);
+    render();
     clearKeys();
     gameAccum = 0;
     game = createGame(nodes[active].variant);
@@ -262,12 +306,16 @@ async function boot() {
         keys[b.dataset.key as keyof Input] = false;
       });
   });
-  window.addEventListener('blur', clearKeys);
+  window.addEventListener('blur', () => {
+    clearKeys();
+    resetPointer();
+  });
   document.addEventListener('visibilitychange', () => {
     last = performance.now();
     if (document.hidden) {
       if (!landing) playing = false;
       clearKeys();
+      resetPointer(true);
       labels();
     }
     syncAudio();
@@ -279,6 +327,7 @@ async function boot() {
     last = now;
     if (!document.hidden && !suspended) {
       const advancing = playing || !!flight;
+      easePointer(dt);
       if (playing) {
         // Audible playback follows the media clock, so dropped 3D frames don't drift.
         time = Math.min(
@@ -317,13 +366,14 @@ async function boot() {
         }
         drawGame(playCanvas.getContext('2d')!, game);
       }
-      if (advancing) render();
+      if (advancing || cameraDirty) render(advancing);
     }
     requestAnimationFrame(loop);
   }
   window.spatialProof = {
     at(frame) {
       playing = false;
+      resetPointer(true);
       seek(frame / FPS);
       return { time, active, ...scene.stats() };
     },
@@ -333,7 +383,10 @@ async function boot() {
     setVisible(visible) {
       suspended = !visible;
       last = performance.now();
-      if (suspended) clearKeys();
+      if (suspended) {
+        clearKeys();
+        resetPointer(true);
+      }
       syncAudio();
     },
     state() {

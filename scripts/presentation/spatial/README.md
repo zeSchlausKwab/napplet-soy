@@ -29,6 +29,10 @@ remix adds X/J to shoot. Both variants also have on-screen touch controls. Mobil
 layouts repeat the focused prompt and command below the scene for readability.
 Reduced-motion preferences make manual node navigation immediate; the cinematic
 camera journey runs only when explicitly played or scrubbed.
+Mouse movement gently shifts the camera around its current focus, revealing the
+depth between stages. It eases back to centre on pointer exit and works while
+paused. Touch, reduced-motion preferences and exported frame captures keep the
+authored camera steady; the effect fades out during the final fly-in.
 
 ```sh
 bun run presentation:spatial:render --stills-only
@@ -75,6 +79,8 @@ hero and above the playground. It is open by default, animates silently when in
 view, pauses rendering/game simulation/audio off-screen or in a hidden tab, and
 resumes unless the viewer paused it. Reduced-motion preferences require explicit
 play. Sound is opt-in through the visible toggle.
+The story container is 20% shorter than the original full-width composition,
+including its minimum and viewport-height cap, leaving more room for content below.
 
 The simple progress slider controls the actual camera, prompts, branches and game
 states; mouse/touch dragging pauses at the chosen moment. Arrow keys, Home and End
@@ -119,7 +125,8 @@ host or protocol requirement.
 - `landing.html`: landing composition with the open live scene below the original
   hero. `verify-landing.ts` checks edge-to-edge placement, silent autoplay,
   mouse/touch/keyboard scrubbing, audio synchronization, visibility/manual pauses,
-  reduced motion and playable ending on desktop and mobile.
+  camera parallax/recentering, the shorter container, reduced motion, stable export
+  captures and playable ending on desktop and mobile.
 - `verify.ts`: real-browser checks for deterministic frame seeking, playback,
   version selection, keyboard movement/jump/shoot, touch controls and mobile layout.
 

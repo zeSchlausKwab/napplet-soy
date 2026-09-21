@@ -340,7 +340,13 @@ export class SpatialScene {
   }
   render(
     time: number,
-    options: { pose?: Pose; explore?: boolean; active?: number; live?: Game } = {},
+    options: {
+      pose?: Pose;
+      explore?: boolean;
+      active?: number;
+      live?: Game;
+      parallax?: { x: number; y: number };
+    } = {},
   ) {
     const pose = options.pose ?? cameraAt(time);
     const target = new T.Vector3().fromArray(pose.target),
@@ -351,10 +357,20 @@ export class SpatialScene {
         .sub(target)
         .multiplyScalar(1.45 / this.camera.aspect)
         .add(target);
+    const outro = options.explore ? 0 : outroAt(time);
+    if (options.parallax) {
+      // Shift the eye around the authored focus, revealing depth without moving the story.
+      // Settle back onto the exact camera path as the final game fills the screen.
+      const distance = eye.distanceTo(target) * (1 - outro);
+      const forward = target.clone().sub(eye).normalize();
+      const right = forward.clone().cross(this.camera.up).normalize();
+      const up = right.clone().cross(forward).normalize();
+      eye.addScaledVector(right, options.parallax.x * distance * 0.035);
+      eye.addScaledVector(up, options.parallax.y * distance * 0.02);
+    }
     this.camera.position.copy(eye);
     this.camera.lookAt(target);
     this.camera.updateMatrixWorld();
-    const outro = options.explore ? 0 : outroAt(time);
     this.stages.forEach((stage, i) => {
       const n = nodes[i];
       stage.group.visible = !!options.explore || time >= n.reveal;

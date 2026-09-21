@@ -58,6 +58,15 @@ try {
       }),
       'Scene is not edge-to-edge between the original hero and playground',
     );
+    const cinemaHeight = await page.locator('#cinema').evaluate((element) => {
+      const previousHeight = Math.max(352, Math.min(innerWidth * 0.5625 + 32, innerHeight * 0.92));
+      const height = element.getBoundingClientRect().height;
+      return { height, expected: previousHeight * 0.8 };
+    });
+    check(
+      Math.abs(cinemaHeight.height - cinemaHeight.expected) < 1,
+      'Story container is not 20% shorter',
+    );
     await page.locator('#cinema').scrollIntoViewIfNeeded();
     await frame.waitForFunction(() => window.spatialProof.state().time > 0.15);
     const initial = await frame.evaluate(() => window.spatialProof.state());
@@ -121,6 +130,31 @@ try {
       'Scrubbing did not change the rendered canvas',
     );
     await frame.evaluate(() => window.spatialProof.at(321));
+    const centered = await frame.locator('#scene').screenshot();
+    const sceneBounds = await frame.locator('#scene').boundingBox();
+    check(sceneBounds, 'Scene has no bounds');
+    await page.mouse.move(
+      sceneBounds.x + sceneBounds.width * 0.9,
+      sceneBounds.y + sceneBounds.height * 0.2,
+    );
+    await page.waitForTimeout(1600);
+    const shifted = await frame.locator('#scene').screenshot();
+    check(
+      centered.equals(shifted) === mobile,
+      mobile ? 'Touch layout acquired mouse parallax' : 'Mouse movement did not move the 3D camera',
+    );
+    check(
+      (await frame.evaluate(() => window.spatialProof.state())).time === 10.7,
+      'Pointer movement advanced the paused story',
+    );
+    if (!mobile)
+      await frame.locator('#scene').screenshot({ path: join(output, 'landing-parallax.png') });
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(1600);
+    check(
+      centered.equals(await frame.locator('#scene').screenshot()),
+      'Camera did not return to the exact authored pose after pointer exit',
+    );
     await page.screenshot({
       path: join(output, `landing-${mobile ? 'mobile' : 'desktop'}.png`),
       fullPage: true,
@@ -187,6 +221,8 @@ try {
     evidence[mobile ? 'mobile' : 'desktop'] = {
       liveWebGL: true,
       edgeToEdge: true,
+      cinemaHeight: cinemaHeight.height,
+      pointerParallax: mobile ? 'disabled for touch' : 'moves and recenters without advancing time',
       mutedAutoplay: true,
       dragSeek: dragged.time,
       keyboardSeek: true,
@@ -210,10 +246,31 @@ try {
       !(await frame!.evaluate(() => window.spatialProof.state())).playing,
     'Reduced motion automatically played',
   );
+  await frame!.evaluate(() => window.spatialProof.at(321));
+  const still = await frame!.locator('#scene').screenshot();
+  await frame!.locator('#scene').hover({ position: { x: 30, y: 40 } });
+  await reduced.waitForTimeout(300);
+  check(
+    still.equals(await frame!.locator('#scene').screenshot()),
+    'Reduced motion camera followed the mouse',
+  );
   await frame!.getByRole('button', { name: 'Watch the story', exact: true }).click();
   await frame!.waitForFunction(() => window.spatialProof.state().time > 0.15);
   await reduced.close();
-  evidence.reducedMotion = { manualPlayback: true };
+  evidence.reducedMotion = { manualPlayback: true, noPointerParallax: true };
+  const capture = await browser.newPage({ viewport: { width: 960, height: 540 } });
+  await capture.goto(`${server.url}?capture`);
+  await capture.waitForFunction(() => !!window.spatialProof);
+  await capture.evaluate(() => window.spatialProof.at(321));
+  const captured = await capture.locator('#scene').screenshot();
+  await capture.locator('#scene').hover({ position: { x: 40, y: 40 } });
+  await capture.waitForTimeout(300);
+  check(
+    captured.equals(await capture.locator('#scene').screenshot()),
+    'Mouse altered export capture',
+  );
+  await capture.close();
+  evidence.capture = { noPointerParallax: true };
   check(!errors.length, errors.join('\n'));
   await Bun.write(
     join(output, 'landing-verification.json'),
