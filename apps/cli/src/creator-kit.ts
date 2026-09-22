@@ -6,6 +6,7 @@ import settingsSchema from '../templates/config.schema.json';
 import settingsExample from '../templates/napplet-settings.ts.txt' with { type: 'text' };
 import actionsGuide from '../../../docs/RUNTIME-ACTIONS.md' with { type: 'text' };
 import controllersGuide from '../../../docs/CONTROLLERS.md' with { type: 'text' };
+import mobileGuide from '../../../docs/MOBILE.md' with { type: 'text' };
 // Distinct module identity keeps Bun's raw-source cache separate from executable imports.
 import gamepadHelper from '../../../packages/input/src/gamepad.ts?raw' with { type: 'text' };
 import backendGuide from '../../../docs/BACKEND-CREATOR.md' with { type: 'text' };
@@ -19,6 +20,12 @@ const profile = `# napplet soyLI integration
 This project includes the maintained napplet/boilerplate and unchanged upstream
 napplet-* skills. Start with napplet-make. Protocol guidance stays upstream;
 this note maps its local tooling commands to the installed napplet soyLI.
+
+Mobile is part of the default delivery. Read docs/napplet-mobile.md before building
+the interface and before calling it finished. Verify touch controls and real narrow
+viewports in the host; desktop startup checks alone do not establish mobile support.
+Prepare representative landscape and portrait promotional media when tooling allows,
+and report missing coverage honestly. Never invent a portrait recording option.
 
 ## Commands
 
@@ -354,6 +361,7 @@ export function creatorSkills() {
     'docs/napplet-backend.md': backendGuide,
     'docs/napplet-actions.md': actionsGuide,
     'docs/napplet-controllers.md': controllersGuide,
+    'docs/napplet-mobile.md': mobileGuide,
     'docs/examples/gamepad.ts': gamepadHelper,
     'docs/examples/multiplayer-sync.ts': multiplayerSync,
     'docs/examples/multiplayer-scenario.mjs': multiplayerScenario,

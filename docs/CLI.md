@@ -30,6 +30,13 @@ project lists and saved publication jobs keep their configured destinations.
 
 ## Local workshop — 0.14.0
 
+Unreleased source guidance adds a [mobile delivery and promotional media guide](MOBILE.md),
+bundled as `docs/napplet-mobile.md` for new projects and `soyli skills update`.
+It asks agents to check touch input and portrait/landscape layouts and prepare
+representative mobile sharing assets when possible. Current capture tools still use
+fixed landscape viewports; portrait recording and social export presets are not
+implemented. Existing installed CLIs need a release containing this guide first.
+
 Source **0.16.0** adds a **Controller tester** in the workshop header. It runs in
 the napplet sandbox and shows connected controllers, buttons, axes, dead zones
 and temporary mappings with a small playable input test. New projects and
