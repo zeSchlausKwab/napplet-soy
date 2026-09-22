@@ -1,9 +1,13 @@
 # Files, uploads and viewer actions
 
-Implemented in the **soyLI 0.15.0 source** and shared website runtime
-`space-playback-4`. Not yet published or deployed. Upgrading the CLI does not
-upgrade a remote website; check `napplet.shell.supports(domain)` after
-`await napplet.shell.ready()` and handle each operation's error.
+Available in soyLI since **0.15.0** and the shared website runtime
+`space-playback-4`. Upgrading the CLI does not upgrade a remote website.
+The host installs the runtime before app code runs; apps must not perform the
+host's bootstrap handshake. Use the starter's `runtimeHasDomain(domain)` helper
+to gate optional domains and the upstream SDK to call them. Handle operations
+with `try { await ... } catch { ... }` so both synchronous errors and rejected
+promises reach a useful fallback. Namespace presence alone does not guarantee
+that an operation is implemented or permitted.
 
 These are the selected NAP-FS, NAP-UPLOAD, NAP-COMMON and NAP-LISTS contracts.
 Use the upstream SDK or injected `window.napplet` namespace; no Soy-only iframe

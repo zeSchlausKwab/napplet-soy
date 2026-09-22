@@ -1,6 +1,6 @@
 # napplet soyLI — creator CLI
 
-Source **0.18.1** includes GitHub release CI, `soyli update`, and latest-release checks
+Source **0.18.2** includes GitHub release CI, `soyli update`, and latest-release checks
 in `soyli doctor`. The workflow and updater are implemented locally; the first
 GitHub release must be published before they can deliver an update. No background
 updates occur. [Release workflow](CLI-RELEASES.md).
@@ -239,10 +239,25 @@ your project's tools. **Publish and propose build dist/index.html projects** bef
 checking the artifact. `check` inspects and runs the finished HTML without building.
 Opening a proposal never runs its source build unless you explicitly use `review --rebuild`.
 
+Preview cleanup in **0.18.2**: Ctrl+C, SIGTERM and terminal
+hangup stop the preview and its detached build watcher. A foreground `dev` session
+also stops when its known launching process exits. Keep an agent's terminal/tool
+session alive while using the preview; closed stdin alone does not stop it. Reuse
+one preview per project and its printed URL, then stop that owned session after
+testing. Browser-tab closure does not stop a server. Forced kills or a surviving
+background launcher can still leave processes needing manual cleanup; this does
+not remove already-running previews from an older CLI. Never kill unrelated
+Bun/Node processes to reclaim a port. Use `--port 0` for independent test sessions.
+
 `soyli run verify` uses the upstream guidance tests, TypeScript check and
 build. `soyli run test:conformance` runs the reference harness and downloads
 its own pinned Playwright browser on first use. This complements the Space host
-check; skipped reference cases are reported by the upstream harness.
+check; skipped reference cases are reported by the upstream harness. The pinned
+0.2.15 reference host exposes empty objects for most domains and can misreport an
+app startup exception as missing injection. Inspect the original error and test
+real interactions in `soyli dev`; a partial pass does not verify skipped manifest,
+wire or lifecycle cases. See [compatibility evidence](COMPATIBILITY.md).
+Keep product-specific tests in the project's normal verification workflow too.
 
 After upgrading the CLI, `soyli skills update [--project folder]` adds its
 bundled skills to existing projects. It replaces only unchanged managed files,
@@ -363,7 +378,7 @@ metadata. The artifact and NIP-5D publication format are the same for both profi
 ## Building and releasing
 
 The primary distribution channel is now **GitHub Releases**. Push a version tag
-such as `soyli-v0.18.1` matching `apps/cli/distribution/version.json` and the installer.
+such as `soyli-v0.18.2` matching `apps/cli/distribution/version.json` and the installer.
 CI checks the source, builds and smoke-tests all four platforms on native runners,
 then publishes their archives/checksums and the pinned installer. PRs and manual
 branch runs validate without publishing. Only the release job has write permission;
@@ -374,7 +389,7 @@ Use the pinned Bun 1.3.11 toolchain for builds:
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.18.1/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.18.2/soyli-darwin-arm64/soyli" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts
@@ -442,6 +457,10 @@ the static NAP-CONFIG example with one main.ts import. The former schema-free-st
 assertion now checks that example is an object; all other guidance assertions remain.
 See `creator-kit.ts` and its
 fidelity test for the complete adaptation surface.
+
+Source regressions run the upstream documentation checks on the assembled starter,
+including soyLI's managed guides. Native release smoke runs its complete `verify`
+script with the starter's pinned dependencies before the host/browser check.
 
 Review toolchain pins separately against Node's official release checksums and
 pnpm's npm integrity value. Then validate a fresh scaffold, upstream verify and

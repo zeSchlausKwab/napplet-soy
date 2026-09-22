@@ -14,6 +14,37 @@ import { sha256 } from '../../../packages/protocol/src';
 const root = await mkdtemp(join(tmpdir(), 'napplet-creator-kit-'));
 afterAll(() => rm(root, { recursive: true, force: true }));
 
+test('the assembled starter passes upstream documentation checks, including bundled soyLI docs', async () => {
+  const project = await scaffold(root, 'guidance-check', 'boilerplate');
+  // Run the starter's actual checks after all managed guides/skills are installed.
+  // The unchanged domain-helper test needs the starter's older TS compiler API;
+  // here run all documentation/layout checks with no dependency downloads.
+  await symlink(
+    new URL('../../../node_modules', import.meta.url).pathname,
+    join(project, 'node_modules'),
+  );
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      'test',
+      'tests/guidance.test.mjs',
+      '--test-name-pattern',
+      '^(rejects|keeps|ships)',
+    ],
+    {
+      cwd: project,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  );
+  const [code, stdout, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  expect(code, stdout + stderr).toBe(0);
+});
+
 test('preserves the upstream project and skill bodies with only the documented integration changes', () => {
   const files = boilerplateFiles('my-creation');
   const adapted = new Set([

@@ -37,6 +37,8 @@ and report missing coverage honestly. Never invent a portrait recording option.
 - soyli run verify runs the upstream guidance/type/build checks.
 - soyli run test:conformance runs the upstream reference-shell checks.
   Its pinned test browser is downloaded and cached on first use.
+  Report passed, failed and skipped cases separately; skipped is not verified.
+  See "Verification boundaries" below before diagnosing a conformance failure.
 - soyli dev watches the Vite build inside the napplet.soy sandbox.
   Use its URL for preview. The upstream pnpm dev URL serves source without a host.
   Manage project edits name/title, description, tags/license, destinations and assets.
@@ -255,6 +257,40 @@ Signing continues to use the OS credential store; the project contains only the
 public creator reference. Remote-signer identities are backed up in their signer.
 Never copy the key into source, skills, browser code, or published assets.
 
+## Preview process ownership
+
+Keep one preview per project and reuse the URL it prints. Do not assume port 4173:
+when it is busy soyli dev selects another free port; use --port 0 for isolated tests.
+Keep the terminal/tool session handle or PID when starting a preview. Stop that
+session with Ctrl+C or SIGTERM in cleanup after browser tests and recordings, and
+verify that its listener closed. Never kill all Bun/Node processes or an unknown
+process just because it owns the desired port. Do not start a replacement preview
+while leaving your earlier one behind.
+
+Leave a preview running only for an intentional user handoff; report its project,
+actual URL and how to stop the owning session. Keep its launcher alive. soyLI stops
+its preview and detached build watcher on Ctrl+C, SIGTERM, terminal hangup or loss
+of a known launcher. Closing a browser tab is not a shutdown. Forced kills, surviving
+background launchers and already-orphaned processes still need explicit owner cleanup.
+
+## Verification boundaries
+
+The pinned @napplet/conformance-cli 0.2.15 reference harness advertises empty objects
+for most domains while only installing resource methods. A storage namespace can
+therefore exist without working methods. It also reports installedGlobal from the
+absence of boot errors, so an app exception can be described as missing injection.
+Inspect the original boot error and reproduce in soyli dev before attributing it
+to the app or changing its capability requirements. Do not install a shim inside
+the napplet or weaken checks to make the report green. Keep the conformance result,
+soyli check result and real interaction evidence separate. The pinned suite can
+skip manifest, wire and lifecycle cases; that is unmeasured coverage.
+
+For optional capabilities, wrap the SDK call itself in try/await/catch; attaching
+.catch to its result alone misses synchronous exceptions. If an optional save fails,
+keep the app usable and explain that progress was not saved. Do not silently treat
+failed required capabilities as success. Include your game/interaction regression
+tests in your normal verification command, not only in a one-off test run.
+
 ## Runtime capabilities
 
 Keep hard domain requirements in vite.config.ts; the publisher reads the build's
@@ -287,7 +323,7 @@ an empty query as confirmed absence. Verify lookup and playback together on both
 preview and the deployed host. Do not republish another author's event to work
 around a lookup failure or bypass the iframe's network restrictions.
 
-Check host capability discovery before implementing a capability-dependent feature:
+Check injected domain availability before implementing a capability-dependent feature:
 an SDK export or passing upstream reference-shell test does not mean soyLI or the
 deployed website implements that domain. Local and deployed versions may differ.
 soyLI 0.8.0 adds NAP-MEDIA shell-owned audio/stream playback. The website needs the
@@ -330,6 +366,12 @@ through config.registerSchema before subscribing. Preserve that fallback when
 editing settings; do not replace a schema the host already supplied. Embedded
 build metadata alone is not consumed by every client.
 
+For these pinned packages, edit config.schema.json as the single schema source.
+The Vite plugin emits the static metadata; src/napplet-settings.ts supplies the
+runtime registration fallback; the SDK exposes calls, and the host decides what
+is supported. Read the installed package types before using an API from a newer
+NAP proposal. Do not add a second, divergent schema in vite.config.ts or app code.
+
 The host validates edits and pushes values; a napplet cannot write configuration.
 Space scopes values by verified creator/address/build and viewer. A new build
 starts fresh. Non-secret settings persist on this browser; x-napplet-secret
@@ -353,7 +395,7 @@ files are reported as conflicts and preserved. Template/source changes are never
 applied by that command.
 `;
 
-const pointer = `## napplet soyLI workspace\n\nRead [docs/napplet-space.md](docs/napplet-space.md) first for this project's CLI commands, installed skills and host capabilities. Use the upstream guidance below with those tooling mappings.\n\n`;
+const pointer = `## napplet soyLI workspace\n\nRead [docs/napplet-space.md](docs/napplet-space.md) first for this project's CLI commands, installed skills, preview cleanup and host capabilities. This project and its skills are already installed; do not re-scaffold or reinstall them. Use soyli dev and its printed URL for hosted preview, and stop your preview session after testing. Use the upstream guidance below with those tooling mappings.\n\n`;
 
 export function creatorSkills() {
   const files: Record<string, string> = {

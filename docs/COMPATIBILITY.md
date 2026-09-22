@@ -125,6 +125,18 @@ traffic was exercised and lifecycle was not measured. Our real-shim tests separa
 exercise registration, schemas, snapshots, form edits, reset/cancel, fullscreen,
 persistence, secrets, account changes and rebuilds.
 
+Rail Game audit, **2026-09-22**: the same pinned harness limitation affects storage:
+its namespace exists but `getItem` is not installed, and the SDK delegates directly
+to it. Its `installedGlobal` result is computed from `bootError === null`, so an
+application exception can also produce a misleading injection failure. These
+findings were checked against the installed 0.2.15 host bundle, not inferred from
+the summary label. No upstream dependency was patched. The managed creator guide
+now explains these boundaries and how to catch both synchronous SDK exceptions
+and promise rejections without making the napplet own bootstrap. A separate
+distributed-guide defect (retired bootstrap examples) was reproduced through the
+assembled starter's guidance test and corrected in source. Full manifest/wire/
+lifecycle evidence and corrected upstream harness diagnostics remain open.
+
 ## Wider-launch work still open
 
 1. Pin and audit every remaining NAP's exact proposal/dependency/operation contract.

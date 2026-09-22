@@ -1,8 +1,15 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.18.1**. A successful GitHub workflow run and published
+The source version is **0.18.2**. A successful GitHub workflow run and published
 release are separate acceptance steps.
+
+Version 0.18.2 fixes preview cleanup on terminal hangup and launcher exit, corrects
+the bundled action guide's retired bootstrap instructions, and clarifies agent
+preview ownership, mobile checks and reference-harness limitations. Release CI now
+checks packaged preview cleanup and runs the assembled starter's complete `verify`
+command. After updating, restart previews and run `soyli skills update` in existing
+projects; review any reported conflicts without discarding your local edits.
 
 For website deployment, use `bun run deploy` with the usual options, without the
 old `bun run cli:release --host … &&` prefix. The optional legacy `cli:release`
@@ -69,9 +76,9 @@ installer is running before removing the reported `.install-lock` directory.
 2. Commit the change and push the commit, then its matching tag:
 
    ```sh
-   git tag -a soyli-v0.18.1 -m 'napplet soyLI 0.18.1'
+   git tag -a soyli-v0.18.2 -m 'napplet soyLI 0.18.2'
    git push origin main
-   git push origin soyli-v0.18.1
+   git push origin soyli-v0.18.2
    ```
 
 3. Watch **soyLI releases** in Actions. Publish only after all four native jobs pass.
@@ -115,7 +122,7 @@ access as appropriate for the maintainers.
 ```sh
 bun run check
 bun run cli:build --target darwin-arm64
-SPACE_TEST_CLI="$PWD/.local/cli/0.18.1/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.18.2/soyli-darwin-arm64/soyli" \
   bun test tests/services/cli-update.test.ts tests/services/cli-distribution.test.ts
 ```
 

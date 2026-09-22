@@ -102,16 +102,20 @@ let json = process.argv.slice(2).includes('--json');
 let createdProject: string | undefined;
 let operation = 'starting soyli';
 const controller = new AbortController();
+const launcherPid = process.ppid;
+function shutdown(code: number) {
+  if (controller.signal.aborted) return;
+  controller.abort();
+  // Native keychain prompts cannot be aborted. The pending reservation is
+  // recoverable even when we must exit before that OS operation returns.
+  setTimeout(() => process.exit(code), 1000).unref();
+}
 for (const [signal, code] of [
   ['SIGTERM', 143],
   ['SIGINT', 130],
+  ['SIGHUP', 129],
 ] as const) {
-  process.once(signal, () => {
-    controller.abort();
-    // Native keychain prompts cannot be aborted. The pending reservation is
-    // recoverable even when we must exit before that OS operation returns.
-    setTimeout(() => process.exit(code), 1000).unref();
-  });
+  process.once(signal, () => shutdown(code));
 }
 const hiddenInput = (label: string) => readHiddenInput(label, controller.signal);
 const publicAccount = (a: Account, network: Network) => ({
@@ -674,14 +678,38 @@ try {
         port > 65535
       )
         throw new AccountError('USAGE', 'Choose a port from 0 to 65535.');
-      await preview(
-        values.project ?? process.cwd(),
-        values.port === undefined ? undefined : port,
-        !values['no-open'],
-        json,
-        controller.signal,
-        network,
-      );
+      // Agent launchers sometimes exit without delivering a terminal signal.
+      // Supervise only this foreground preview, never scan/kill other projects
+      // or treat closed stdin as an exit (agents commonly ignore stdin).
+      const ownerCheck =
+        launcherPid > 1
+          ? setInterval(() => {
+              if (controller.signal.aborted) return;
+              let exited = process.ppid !== launcherPid;
+              try {
+                process.kill(launcherPid, 0);
+              } catch (error) {
+                exited ||= (error as NodeJS.ErrnoException).code === 'ESRCH';
+              }
+              if (exited) {
+                console.error('Preview launcher exited; stopping the preview and build watcher.');
+                shutdown(0);
+              }
+            }, 500)
+          : undefined;
+      ownerCheck?.unref();
+      try {
+        await preview(
+          values.project ?? process.cwd(),
+          values.port === undefined ? undefined : port,
+          !values['no-open'],
+          json,
+          controller.signal,
+          network,
+        );
+      } finally {
+        clearInterval(ownerCheck);
+      }
     } else {
       const result =
         command === 'check'

@@ -79,7 +79,7 @@ jobs:
         run: |
           export SPACE_TEST_CLI="$PWD/.local/cli/$VERSION/soyli-$PLATFORM/soyli"
           "$SPACE_TEST_CLI" browser install
-          bun test tests/services/cli-distribution.test.ts tests/services/cli-update.test.ts apps/cli/src/update.test.ts
+          bun test tests/services/cli-distribution.test.ts tests/services/cli-update.test.ts apps/cli/src/update.test.ts apps/cli/src/preview-lifecycle.test.ts
       - name: Fresh account-free create, build and browser check
         env:
           VERSION: ${{ needs.check.outputs.version }}
