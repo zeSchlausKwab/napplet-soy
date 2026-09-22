@@ -2003,10 +2003,11 @@ pre:focus-visible {
 }
 .player-wrap.player-expanded { border: 0; }
 .player-corner {
+  --player-corner-offset: 64px;
   position: absolute;
   z-index: 10;
   right: max(10px, env(safe-area-inset-right));
-  bottom: max(10px, env(safe-area-inset-bottom));
+  bottom: calc(var(--player-corner-offset) + env(safe-area-inset-bottom));
   display: flex;
   align-items: flex-end;
   gap: 4px;
@@ -2045,7 +2046,7 @@ pre:focus-visible {
   gap: 8px 16px;
   width: min(620px, calc(100vw - 76px - env(safe-area-inset-left) - env(safe-area-inset-right)));
   min-width: 0;
-  max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: calc(100dvh - var(--player-corner-offset) - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow: auto;
   padding: 12px 14px;
   border: 1px solid #d0d2c0a0;
@@ -2093,6 +2094,9 @@ pre:focus-visible {
 .player-corner .player-controls button { min-width: 44px; min-height: 44px; }
 .player-corner .host-files { order: 2; width: 100%; padding: 0; gap: 8px 12px; font-size: 12px; }
 .player-corner .host-files > span { width: 100%; }
+@media (any-pointer: coarse), (max-width: 760px) {
+  .player-corner { --player-corner-offset: 112px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .player-corner .player-chrome-panel { transition: none; transform: none; }
 }

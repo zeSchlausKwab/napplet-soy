@@ -106,6 +106,10 @@ Clicking the triangle returns to details. On touchscreens, the first tap reveals
 the panel and a second tap on the triangle returns to details; touching the napplet
 again dismisses the panel. The triangle has a 48px target, other controls at least
 44px, and the panel respects safe-area insets and narrow/landscape viewports.
+The corner control sits 64px above the bottom safe area, increased to 112px on
+touch-capable or narrow screens to leave room for typical game controls. The open
+panel's available height accounts for this offset, including in landscape. These
+fixed offsets cannot guarantee separation from every napplet's custom controls.
 Hidden controls are inert. Escape dismisses an open corner panel before leaving
 CSS expansion; settings/save dialogs retain their own keyboard handling.
 

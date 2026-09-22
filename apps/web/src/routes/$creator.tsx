@@ -15,13 +15,15 @@ export const Route = createFileRoute('/$creator')({
     if (!aliases.length) throw notFound();
     return { napplets: [], aliases };
   },
-  head: ({ match, params }) =>
-    siteHead(
-      match.context.clientPolicy.siteOrigin,
-      `/${params.creator}`,
-      `${params.creator} — napplet.soy`,
-      'Explore this creator’s napplets. Play, inspect and remix.',
-    ),
+  head: ({ match, matches, params }) =>
+    matches.at(-1)?.id !== match.id
+      ? {}
+      : siteHead(
+          match.context.clientPolicy.siteOrigin,
+          `/${params.creator}`,
+          `${params.creator} — napplet.soy`,
+          'Explore this creator’s napplets. Play, inspect and remix.',
+        ),
   component: Creator,
 });
 function Creator() {
