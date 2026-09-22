@@ -1,223 +1,242 @@
-# napplet.soy
+<p align="center">
+  <a href="https://napplet.soy">
+    <img src="apps/web/public/brand/soy-mascot.png" width="120" alt="Soybert, the napplet.soy mascot" />
+  </a>
+</p>
 
-A playground for self-contained games, visual experiments, and digital nonsense.
+<h1 align="center">napplet.soy</h1>
 
-Implementation details and current limits live in the feature documents and the
-[NAP review](docs/NAP-REVIEW.md). The original [plan](PLAN.md) is design history;
-[deployment evidence](docs/DEPLOYMENT.md) records what has shipped.
+<p align="center"><strong>Small code. Big weird.</strong><br />Make a little app. Share it. Make it better together.</p>
 
-This is the first working implementation slice: Bun + React + TanStack Start, shadcn/ui, and Applesauce. It includes six signed local examples, SSR and client navigation, named/Nostr/pinned URLs, hash-verified sandbox playback, source inspection, a standalone creator CLI, and Caddy/PM2 deployment tooling.
+<p align="center">
+  <a href="https://napplet.soy">Play something</a> ·
+  <a href="#make-your-first-napplet">Make something</a> ·
+  <a href="#see-the-idea-in-30-seconds">Watch the film</a> ·
+  <a href="https://napplet.soy/docs">soyLI docs</a> ·
+  <a href="LICENSE">MIT licensed</a>
+</p>
 
-Released 2026-09-14 with CLI **0.5.0**: [napplet settings](docs/CONFIGURATION.md),
-gallery social actions/rankings, anonymous zap invoices, and [shared sign-in](docs/IDENTITY.md)
-through extensions, NIP-46 and memory-only key import. The CLI supports both bunker
-links and `account pair` QR onboarding. See [compatibility](docs/COMPATIBILITY.md)
-and [deployment evidence](docs/DEPLOYMENT.md) for verified behavior and remaining work.
+**napplet.soy is a playground for small games, useful tools and digital experiments.**
+Build one with your favorite coding agent, publish it for anyone to try, then let
+someone else remix it or propose an improvement.
 
-## Start developing
+**soyLI**—say *“soy-el-eye”*, a play on CLI—handles the project setup, previews,
+checks, Git workflow and publishing. Your agent gets the context; you get to make
+the interesting part. Git hosting and asset storage come with convenient defaults,
+and you can choose your own providers.
 
-Platform development requires Bun **1.3.11**, Node **18+** for PM2, Git, Go **1.21+**, Rust **1.97.1**, and a C compiler. Linux additionally needs `pkg-config` and OpenSSL development headers. The relay build selects Go **1.25.0** automatically. See [relay setup](docs/RELAY.md) and [Git hosting](docs/GRASP.md).
+**You don't need a website account to create, publish or contribute.**
+
+## Make your first napplet
+
+```sh
+curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet
+cd my-napplet
+soyli dev
+```
+
+macOS or Linux, with Git installed. No separate Bun or Node installation required.
+Follow the installer's PATH instruction if prompted, then open the preview URL it
+prints. See [requirements and troubleshooting](docs/CLI.md#requirements-and-storage).
+
+Open the project with your coding agent and describe what you want. For example:
+
+> Make a tiny platformer with satisfying jumps, a few silly enemies and touch controls.
+
+The project includes the maintained [Napplet boilerplate](https://github.com/napplet/boilerplate),
+agent skills and soyLI's host/tooling guidance. In the local workshop, you can edit
+the name and description, manage assets, capture screenshots and short clips, and
+check the listing before publishing. Changes go back into your project files.
+
+When it's ready, review your changes and publish:
+
+```sh
+soyli checkpoint "First playable version"
+soyli publish
+```
+
+Publishing builds and checks the app, uploads its files and source, and signs its
+public Nostr listing. The CLI helps create or connect a signing identity; preserve
+its [recovery backup](docs/IDENTITY.md#cli-backups). **Published source and pushed
+Git history are public by default.** Local editing stays local until you publish,
+propose or push.
+
+## See the idea in 30 seconds
+
+[![Soybert's game branches into a remix, returns through a merge, and becomes a new release](docs/media/story-poster.png)](docs/media/napplet-soy-story.mp4)
+
+**[▶ Watch or download the film](docs/media/napplet-soy-story.mp4)** · 30 seconds · MP4 · 3.1 MB
+
+A staged Soybert story: make a platformer, give the remix a shotgun, propose the
+change, merge it, and let everyone play the new version. Rendered from the same
+interactive Three.js scene used on the [homepage](https://napplet.soy), with music
+and game effects. [Scene source and rendering instructions](scripts/presentation/spatial/README.md).
+
+## From an idea to a shared playground
+
+![The napplet.soy homepage, with soyLI onboarding and a featured community creation](docs/media/playground.jpg)
+
+| You want to… | napplet.soy and soyLI help you… |
+| --- | --- |
+| **Make something** | Start with source, agent skills, a build pipeline and a preview using the website's sandbox. |
+| **Make it presentable** | Capture covers and short preview clips; review the title, description, tags and assets. |
+| **Put it out there** | Check the build, publish signed listings, and upload source and assets to visible, configurable destinations. |
+| **Make it better together** | Remix real Git history, propose a playable change, inspect the diff and merge locally. |
+| **Find and enjoy things** | Browse by tags, play inline or fullscreen, view creator profiles, comment, like and send Lightning zaps. |
+| **Build beyond a single player** | Use shared scoreboards, CVM matchmaking and WebRTC peer sessions through the supported host APIs. |
+
+<details>
+<summary><strong>A look inside the playground</strong></summary>
+
+![Community napplets with previews, creator credits, tags and social actions](docs/media/gallery.jpg)
+
+Screenshots show the public site as captured on 22 September 2026. Creations remain
+credited to their authors; the collection changes as people publish.
+
+</details>
+
+## A workshop for you and your agent
+
+![The soyLI project manager editing a Tiny tennis example, with metadata and cover selection](docs/media/soyli-workshop.jpg)
+
+`soyli dev` provides **Play**, **Listing** and **Manage project** views. The manager
+also exposes Git changes, checkpoints, proposals and publishing. Use the GUI, ask
+your agent to use the CLI, or edit the files directly—they work on the same project.
+The screenshot uses a local example, without a publication or account.
+
+[soyLI commands](docs/CLI.md) · [Assets](docs/ASSETS.md) ·
+[Covers and clips](docs/PREVIEWS.md) · [Mobile guidance](docs/MOBILE.md)
+
+## Remix first. Decide what to do with it later.
+
+Like something? Take a copy and change it. You can publish your own version,
+propose the improvement to its original author, or do both.
+
+```sh
+soyli remix 'NAPPLET_LINK' my-remix
+cd my-remix
+# Make your changes and try them in soyli dev.
+soyli checkpoint "Give Soybert a shotgun"
+soyli propose "Give Soybert a shotgun"
+```
+
+Replace `NAPPLET_LINK` with the napplet's share URL. For Git-backed creations,
+remixing preserves history and the upstream relationship. Source/archive-only
+creations can still be remixed, but cannot invent a Git upstream for proposals.
+
+The original author opens their project and runs:
+
+```sh
+soyli review
+```
+
+The review workbench lists proposals, runs the original and proposed versions, and
+shows the diff and discussion. Accepting merges locally. `soyli push` shares the
+Git update; `soyli publish` releases the improved napplet. Ordinary Git and ngit
+remain available. [Full collaboration workflow](docs/COLLABORATION.md).
+
+## Open source. Open infrastructure.
+
+This is a Nostr client and a set of creator tools. Napplets made here use the same
+protocol as creations published elsewhere; extra presentation and source metadata
+are optional. A name on this website is not the napplet's identity.
+
+| Part | What it does |
+| --- | --- |
+| **Nostr + NIP-5D / NAPs** | Signed listings, portable identities and host capabilities. [Protocol contract](docs/PROTOCOL.md) and [compatibility matrix](docs/COMPATIBILITY.md). |
+| **Blossom** | Content-addressed app files, assets and previews, retrieved directly with hash verification. [Asset workflow](docs/ASSETS.md). |
+| **Git + NIP-34 / GRASP** | Public source history and ordinary Git repositories, with signed proposals and review. [Source hosting](docs/GRASP.md). |
+| **ContextVM + WebRTC** | Shared scores, rooms, matchmaking and peer connections. [Creator guide](docs/BACKEND-CREATOR.md) and [service limits](docs/CONTEXTVM.md). |
+
+Run `soyli config` to see where a project's listings, files and source will go.
+The defaults use `relay.napplet.soy`, `blossom.napplet.soy` and `git.napplet.soy`;
+you can configure alternatives. The website also has **Network settings**.
+[Direct protocol access and the remaining HTTP endpoints](docs/PROTOCOL-ACCESS.md).
+
+The shell uses React, TanStack Start, Bun and Applesauce. The managed relay uses
+Khatru with LMDB and Bleve. NAP support follows the project's pinned proposals;
+see the [upstream review](docs/NAP-REVIEW.md) for exact contracts and known gaps.
+
+### A few practical limits
+
+soyLI checks metadata, files, supported capabilities and startup in the host; it
+doesn't certify gameplay, mobile usability or multiplayer performance. Test those
+with real users and devices. Built-in video capture currently produces short,
+silent landscape WebM clips; portrait presets are not yet implemented.
+
+Authors can unpublish, republish and request deletion of hosted files with explicit
+confirmation and per-service results. Independent copies cannot be recalled.
+[Lifecycle controls](docs/LIFECYCLE.md) · [Runtime permissions and limits](docs/PUBLIC-RUNTIME.md).
+
+## Work on the platform
+
+Want to improve napplet.soy itself? This repository is the shell, soyLI and the
+supporting services. Bug reports, docs, fixes and new ideas are welcome.
+Making a napplet does **not** require checking out this repository.
+
+<details>
+<summary><strong>Local development and verification</strong></summary>
+
+The platform toolchain needs Bun **1.3.11**, Node **18+** for PM2, Git, Go, Rust
+**1.97.1** and a C compiler. The relay tooling selects Go **1.25.0** automatically.
+Linux also needs `pkg-config` and OpenSSL development headers.
 
 ```sh
 bun install --frozen-lockfile
 bun run dev
 ```
 
-Open <http://localhost:3000>. The persistent Khatru/LMDB/Bleve relay, [Blossom storage](docs/BLOSSOM.md), and [GRASP source hosting](docs/GRASP.md) start automatically; no wallet or account is needed to explore the starter collection. Every dev launch checks and repairs the six examples, verifies their bytes and ownership in local Blossom, and reconciles their 12 signed events through the local relay. It also reconciles six Git repositories through signed Nostr state and Git HTTP. Unchanged blobs, source commits and fixture files are not rewritten. A warm source check takes about 1.2 seconds. The browser opens no public relay connections by default. Set `VITE_NOSTR_RELAYS` to an explicit comma-separated relay list to enable the Applesauce subscription; restart/rebuild after changing public configuration.
-
-## Browse public napplets
-
-```sh
-bun run dev publicdev
-# Force a refresh, or use the production stack:
-bun run dev publicdev --refresh
-PORT=3020 bun run dev:prod publicdev
-```
-
-This discovers signed napplet manifests from Nostr relays through Applesauce and caches verified Blossom artifacts. Repeat starts reuse a 15-minute cache. Public entries resolve through naddr/snapshot routes; unsupported required capabilities are shown explicitly. No Nappelin/HTTP directory is used. See [public development and OG previews](docs/PUBLIC-DEVELOPMENT.md).
-
-Click a playable card's preview to run it inline. Only one card runs at a time; fullscreen preserves its session, and scrolling it away stops it. Click its title for the detail page. The player provides the upstream NAP shim, scoped saves, virtual file exports, verified resource loading, and Nostr reads. File exports appear below the player for download. Napplet-initiated writes remain disabled. Connecting or disconnecting in the host notifies the running napplet and isolates its account data. See the [public runtime capabilities and limits](docs/PUBLIC-RUNTIME.md).
-
-Every napplet page includes server-rendered Open Graph metadata and a 1200×630 PNG preview. `SPACE_SITE_ORIGIN` controls absolute share URLs; the VPS script sets it from the deployment domain.
-
-The gallery searches and filters the full retained index, with 24 results per page.
-Paste a portable Nostr napplet link into search to discover a creation not yet
-indexed here. Cold links trigger a bounded relay lookup, including server-rendered
-share metadata once the signed manifest is available. See [discovery and OG](docs/DISCOVERY.md).
-
-## Shared backend and peer sessions
-
-The encrypted ContextVM service offers persistent casual scoreboards, protocol-version
-matchmaking and leased named rooms. The shared browser/soyLI host implements
-NAP-CVM and NAP-WEBRTC. Run the backend alone against a relay with:
+Open [localhost:3000](http://localhost:3000). The local relay, Blossom, GRASP and
+backend services start with the dev stack. Local examples are test fixtures;
+they are not automatically published or featured on the public site.
 
 ```sh
-SPACE_CVM_RELAYS=ws://127.0.0.1:19347/relay bun run cvm
+bun run dev publicdev      # browse public publications in development
+bun run check
+bun run build
+bun run test:browser       # with the web server running
 ```
 
-The platform dev stack starts it automatically. The server keeps a persistent
-private service key and SQLite board data outside release directories. Creators use
-`soyli backend init`, an isolated `soyli dev` backend, and ordinary publishing to
-register declared boards. Read the bundled [creator guide](docs/BACKEND-CREATOR.md)
-and [service contract, signaling and limits](docs/CONTEXTVM.md). Local engineering
-checks and a public encrypted CVM health round trip pass; real-network gameplay,
-TURN packet delivery and independent creator demos remain separate acceptance checks.
+Service changes also have focused `test:relay`, `test:blossom`, `test:grasp`,
+`test:identity` and `test:publish` suites. Browser checks require the Playwright
+browser; see the guides below for setup and toolchain details.
 
-## Make a local napplet
+[Local development](docs/LOCAL-DEVELOPMENT.md) ·
+[Public discovery in development](docs/PUBLIC-DEVELOPMENT.md) ·
+[Web architecture](docs/WEB-ARCHITECTURE.md) ·
+[CLI builds and releases](docs/CLI.md#building-and-releasing)
 
-No platform checkout, Bun or Node installation is needed.
+</details>
 
-Creator CLI: **napplet soyLI**, command `soyli`. Published **0.14.1** includes public
-Git collaboration, the project/asset workshop and a cross-client settings fallback.
-See [upgrading and compatibility](docs/CLI.md#rename-and-upgrade--2026-09-15).
+<details>
+<summary><strong>Self-hosting and deployment</strong></summary>
 
-```sh
-curl -fsSL https://napplet.soy/install.sh | sh -s -- new my-napplet
-# Follow the printed PATH instruction if needed.
-cd my-napplet
-soyli dev
-```
-
-Open <http://localhost:4173> and point your existing coding agent at the new project.
-It contains the pinned creator-maintained [napplet/boilerplate](https://github.com/napplet/boilerplate):
-TypeScript source, its SDK/Vite plugin, lockfile, documentation, MIT license and
-eight official Napplet skills. The CLI prepares a private Node/pnpm toolchain and
-builds the self-contained `dist/index.html`; nothing needs installing globally.
-The preview watches the upstream build and uses the same sandbox and supported
-NAP services as the website. Save a reviewed Git checkpoint before publishing;
-`publish` builds the upstream project and checks the result. Run `soyli build` before
-standalone `check` after editing. See [the creator CLI guide](docs/CLI.md) for verification commands,
-upstream pins and `skills update` for existing projects. The six single-file
-example starters remain available through explicit `--template` options.
-
-## Collaborate on a napplet
-
-Source and pushed Git history are public by default. A single Git-backed remix
-preserves the original history and can propose changes upstream, publish an independent
-napplet, or do both. Editing and local checkpoints do not upload anything.
-
-```sh
-soyli remix <napplet-link> my-idea
-cd my-idea
-# Edit and test with your coding agent.
-soyli checkpoint "Improve the controls"
-soyli propose "Improve the controls"
-# Maintainer, in the original project:
-soyli review
-```
-
-The review workbench opens a proposal inbox, playable versions, Git diffs and
-public discussion. Accepting merges locally; `soyli push` publishes Git and
-`soyli publish` releases the napplet. The website reads NIP-34 proposals directly
-from relays and offers shareable previews. No website account is needed; ordinary
-Git/ngit remain available. [Workflow and current limits](docs/COLLABORATION.md).
-
-## Creator identity
-
-Interactive `new` offers a new identity, an existing remote signer, or setup later. Once selected, the same identity is reused across projects. Noninteractive creation can use `--identity create`; `--identity later` creates just the preview project.
-
-```sh
-bun run soyli account create          # create once, then reuse
-bun run soyli account connect         # paste a bunker link at the hidden prompt
-bun run soyli account show
-bun run soyli account export "$HOME/napplet-recovery.ncryptsec"
-```
-
-Local keys and NIP-46 session credentials use the OS credential store. New projects contain only the selected creator's public key and network. Export creates a passphrase-encrypted NIP-49 recovery file; `account import` restores it or imports an nsec through hidden input. `account list` and `account use <account-id>` switch saved identities. Add `--network local` for separate test credentials. Linux creator accounts need an unlocked Secret Service/keyring; there is no plaintext fallback. See [identity and recovery](docs/IDENTITY.md).
-
-## Run the production build locally
-
-```sh
-bun run dev:setup
-bun run dev:prod
-```
-
-This downloads a checksum-verified Caddy **2.10.2** binary into `.local/bin`, builds the application, and starts Caddy, the Bun server, Nostr relay, Blossom and GRASP under an isolated PM2 **7.0.4** instance. Open <http://localhost:8080>. Blossom uses the separate origin <http://127.0.0.1:8081>, with its direct loopback origin at port 19348 available in either dev mode. Git hosting and its repository relay share <http://127.0.0.1:8082>. Both dev modes start the same Caddy proxy and backing services. Stop the ordinary dev server first, or select another backend port with `PORT=3020 bun run dev:prod`.
-
-```sh
-bun run dev:doctor
-bun run dev:down
-```
-
-These commands affect only this checkout's `.local/pm2` state. They do not install global PM2 services or modify the OS trust store. Local HTTP is the initial convenience mode; `SPACE_SITE_ADDRESS=https://localhost:8443` selects Caddy's local HTTPS. For that mode, install/trust its local CA separately before browsing; readiness checks also need the local CA trusted. Public HTTPS is configured by the VPS deploy script.
-
-## Publish a creation
-
-The CLI now freezes selected source, checks it in the shared browser sandbox, pushes a Git release, uploads HTML and a source archive to Blossom, and publishes standard snapshot/current manifests. Retries reuse saved signatures and commits. Try it against the running local services with a matching local creator:
-
-```sh
-bun run soyli account create --network local
-bun run soyli new local-experiment --network local
-bunx playwright install chromium
-bun run soyli publish --project local-experiment --network local --dry-run
-bun run soyli publish --project local-experiment --network local
-bun run soyli status --project local-experiment --network local
-# After interruption, finish the saved bytes even if the editor has newer changes:
-bun run soyli publish --project local-experiment --network local --resume
-```
-
-Publication returns `indexed` once the website confirms the exact current/snapshot pair and verified artifact. If the website is still catching up, it returns `announced_pending_index`; use `bun run soyli status --project local-experiment --network local --refresh` to check again without signing or publishing. Keep `.napplet-space` for retry history. Signed creator handles and permanent named routes are available from the napplet detail page; and the public defaults target the deployed napplet.soy services. See [publishing and recovery](docs/PUBLISHING.md) and [persistent indexing](docs/INDEXING.md).
-
-## Deploy to a VPS
-
-Point your website hostname, `relay.<website-hostname>`, `blossom.<website-hostname>` and `git.<website-hostname>` at a Debian/Ubuntu VPS with systemd, SSH access, and reachable ports 80/443:
+Point the site, relay, Blossom and Git hostnames at a Debian/Ubuntu VPS with SSH
+access and ports 80/443 available, then run:
 
 ```sh
 bun run deploy --host root@your-vps --domain napplet.example
-# Optional: --relay-domain relay.example --blossom-domain files.example --git-domain source.example
-# Use --shared-caddy when sharing an existing Caddy installation with other sites.
 ```
 
-The script installs Bun, Caddy, PM2 and pinned Go/Rust toolchains, creates an unprivileged service account, uploads a source archive excluding local secrets and dependencies, builds on the VPS, tests a candidate release on a loopback port, and activates it under PM2. Caddy manages HTTPS, and systemd restores both services after a reboot. Failed activation attempts restore the previous release/configuration where available. See [deployment details](docs/DEPLOYMENT.md).
+The deployment uses Caddy for HTTPS and PM2/systemd for services. It builds and
+checks a candidate release before activation. Use `--shared-caddy` when sharing
+an existing Caddy installation with other sites.
 
-The managed public relay is `wss://relay.napplet.soy`. The old `wss://napplet.soy/relay`
-address remains compatible with existing publications and project settings. CLI
-0.4.1 uses the subdomain by default. Deployment also installs daily verified state
-backups; see [backup and recovery](docs/RECOVERY.md) for restoration and off-VPS copies.
+[Deployment and shipped-release evidence](docs/DEPLOYMENT.md) ·
+[Backups and restoration](docs/RECOVERY.md) ·
+[Relay](docs/RELAY.md) · [Blossom](docs/BLOSSOM.md) · [GRASP](docs/GRASP.md)
 
-## Verify
+</details>
 
-```sh
-bun run check
-bun run test:relay
-bun run test:blossom
-bun run test:grasp
-bun run test:identity
-bun run test:publish
-bun run build
-bunx playwright install chromium
-# With the web server running:
-bun run test:browser
-# Or verify through the actual local PM2/Caddy stack:
-TEST_ORIGIN=http://localhost:8080 bun run test:browser
-```
+## Keep exploring
 
-`bun run fixtures` regenerates the deterministic signed local examples and SVG posters. The fixture signing key is public test data and must never be used as an account. Dev startup writes fixture events, blobs and Git source only to literal-loopback services; public relays and storage never receive fixtures. The CLI now connects creator source, artifact publication and relay discovery; persistent website indexing confirms portable current and snapshot routes. Fixtures use the same manifest validation and runtime policy as relay imports. The local posters are bundled illustrations. Relay imports resolve linked NIP-89 pictures and Zapstore screenshots/icons, cache safe raster images for gallery/player/OG previews, and fall back to generated cards when unavailable. See [linked previews](docs/PREVIEWS.md) for formats and limits.
+[Napplet](https://napplet.run) ·
+[NAP specifications](https://github.com/napplet/naps) ·
+[Official boilerplate](https://github.com/napplet/boilerplate) ·
+[Identity and recovery](docs/IDENTITY.md) ·
+[Community features](docs/COMMUNITY.md) ·
+[Profiles](docs/PROFILES.md) ·
+[Moderation](docs/MODERATION.md)
 
-Our publishing contract is standard NIP-5D manifests, public relays, retrievable Blossom bytes, and open source by default. Additional Space metadata and named routes are optional overlays. Publishing is not complete until an independent client discovers and runs a release without the Space API; see [the interoperability contract](docs/PROTOCOL.md).
-
-## What is still ahead
-
-The gallery merges the persistent SQLite relay index and optional publicdev collection by Nostr identity. Examples enter through the same discovery path as other creations; Featured is an explicit administrator selection. Its separate PM2 worker verifies manifests, downloads artifacts and resolves linked previews. Signed naming claims, comments, likes, zaps, full-index pagination and inline playback are implemented. The public installer distributes standalone macOS/Linux creator packages. The player supports the single-HTML profile and documented playback NAP domains. User-created site layouts, iframe publishing permissions and full upstream conformance remain ahead; composability is outside the current scope.
-
-The deployment script includes the [managed relay](docs/RELAY.md), [signed Blossom storage](docs/BLOSSOM.md), [GRASP source hosting](docs/GRASP.md), and [persistent website index](docs/INDEXING.md). Creators can claim permanent `/@handle/slug` links, remix pinned source, and comment, like or zap from detail pages. See [remixing](docs/REMIXING.md) and [community actions and limits](docs/COMMUNITY.md).
-
-Standalone creator installation, requirements and release procedure: [CLI guide](docs/CLI.md).
-
-### Remix and share
-
-Open a napplet and choose **Remix this** for an exact-version CLI command. Signed source archives retain source and attribution; other napplets provide a verified HTML starting point. Connect the author's Nostr signer to claim a permanent **Named link**. Comments, replies, likes and zaps appear below the player.
-
-CLI 0.4.0 and these website features are live on napplet.soy. The CLI adds the local Listing preview and screenshot capture controls. The website offers install-and-remix, comment likes/zaps, and an initially empty admin Featured collection. For future releases, upload CLI archives before deploying the website. Existing CLI users can rerun the installer and restart `soyli dev`; `soyli skills update` refreshes their creator guidance. Readable links require a one-time **Named link** claim on the website and then follow future releases. See [CLI instructions](docs/CLI.md) and [community behavior](docs/COMMUNITY.md).
-
-Creator media: see [where to put assets and current limitations](docs/ASSETS.md).
-Creator profiles and the remix family tree are implemented and verified locally,
-pending deployment: [Nostr profiles](docs/PROFILES.md) and
-[genealogy](docs/REMIXING.md#genealogy-on-napplet-pages). Creator labels open portable
-`/p/<npub>` pages; connected authors can edit their optional kind-0 profile.
-The deployed website includes a [pinned original-source browser](docs/REMIXING.md#browsing-a-releases-original-files); its release status is recorded in [deployment history](docs/DEPLOYMENT.md).
-
-Browser relay and fallback Blossom defaults can be overridden under **Network settings**
-in the footer. Interactive protocol data and files go directly to those providers;
-SSR and OG rendering retain their server cache. See [direct protocol access and the
-remaining site APIs](docs/PROTOCOL-ACCESS.md).
+Platform code is [MIT licensed](LICENSE). Individual napplets and their assets
+retain their own licenses and credits. [Media sources and reproduction](docs/media/README.md).
