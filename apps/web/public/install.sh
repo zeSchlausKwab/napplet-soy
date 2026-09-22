@@ -23,9 +23,11 @@ case "$base" in https://*|http://127.0.0.1:*|http://localhost:*) ;; *) fail 'Dow
 case "$(uname -s)" in Darwin) os=darwin ;; Linux) os=linux ;; *) fail 'This installer supports macOS and Linux. On Windows use a supported Linux desktop environment; a native Windows package is not available yet.' ;; esac
 case "$(uname -m)" in arm64|aarch64) arch=arm64 ;; x86_64|amd64) arch=x64 ;; *) fail 'Supported processors: Apple Silicon/ARM64 and x86-64.' ;; esac
 # Prefer the native Apple Silicon package even from a terminal running in Rosetta.
-if [ "$os" = darwin ] && [ "$(sysctl -in sysctl.proc_translated 2>/dev/null || true)" = 1 ]; then arch=arm64; fi
+if [ "$os" = darwin ] && [ "$(/usr/sbin/sysctl -in sysctl.proc_translated 2>/dev/null || true)" = 1 ]; then arch=arm64; fi
 if [ "$os-$arch" = darwin-x64 ]; then
-  sysctl -n machdep.cpu.leaf7_features 2>/dev/null | grep -q AVX2 || fail 'The Intel macOS package requires AVX2. Older Intel Macs are not supported by the bundled runtime.'
+  # System utilities must also work in a minimal PATH without /usr/sbin.
+  cpu_features=$(/usr/sbin/sysctl -n machdep.cpu.leaf7_features) || fail 'Could not read Intel CPU capabilities with /usr/sbin/sysctl. Check the system utility error above and retry.'
+  printf '%s\n' "$cpu_features" | grep -q -w AVX2 || fail 'The Intel macOS package requires AVX2. Older Intel Macs are not supported by the bundled runtime.'
 fi
 if [ "$os-$arch" = linux-x64 ]; then
   grep -q -w sse4_2 /proc/cpuinfo || fail 'The x86-64 Linux package requires SSE4.2.'
