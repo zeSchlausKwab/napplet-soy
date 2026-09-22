@@ -1,6 +1,6 @@
 # napplet soyLI — creator CLI
 
-Source **0.18.0** adds GitHub release CI, `soyli update`, and latest-release checks
+Source **0.18.1** includes GitHub release CI, `soyli update`, and latest-release checks
 in `soyli doctor`. The workflow and updater are implemented locally; the first
 GitHub release must be published before they can deliver an update. No background
 updates occur. [Release workflow](CLI-RELEASES.md).
@@ -363,7 +363,7 @@ metadata. The artifact and NIP-5D publication format are the same for both profi
 ## Building and releasing
 
 The primary distribution channel is now **GitHub Releases**. Push a version tag
-such as `soyli-v0.18.0` matching `apps/cli/distribution/version.json` and the installer.
+such as `soyli-v0.18.1` matching `apps/cli/distribution/version.json` and the installer.
 CI checks the source, builds and smoke-tests all four platforms on native runners,
 then publishes their archives/checksums and the pinned installer. PRs and manual
 branch runs validate without publishing. Only the release job has write permission;
@@ -374,7 +374,7 @@ Use the pinned Bun 1.3.11 toolchain for builds:
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.18.0/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.18.1/soyli-darwin-arm64/soyli" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts

@@ -286,6 +286,11 @@ function prepared(signal?: AbortSignal) {
   }));
 }
 
+/** The pinned runtime also runs bundled Node tools; never use a project/global Node. */
+export async function managedNode(signal?: AbortSignal) {
+  return (await prepared(signal)).nodeBin;
+}
+
 export async function projectTool(directory: string, args: string[], signal?: AbortSignal) {
   const tools = await prepared(signal);
   const operation =

@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from 'bun:test';
-import { mkdir, mkdtemp, readlink, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import release from '../../apps/cli/distribution/version.json';
@@ -39,6 +39,55 @@ async function run(args: string[], cwd = root, extra: Record<string, string | un
     clearTimeout(timeout);
   }
 }
+enabled(
+  'packaged browser installation uses managed Node for forked workers without global Node or project environment',
+  async () => {
+    const fixture = join(root, 'browser-runtime');
+    const library = join(fixture, 'lib/playwright-core');
+    const cache = join(fixture, 'browser-cache');
+    await mkdir(join(library, 'lib'), { recursive: true });
+    await symlink('playwright-core', join(fixture, 'lib/playwright-core-mac-compat'));
+    await mkdir(cache);
+    await cp(binary, join(fixture, 'soyli'));
+    await writeFile(join(library, 'index.mjs'), 'export const chromium = {};');
+    await writeFile(
+      join(library, 'lib/coreBundle.js'),
+      `exports.registry = { registry: { findExecutable(name) { return {
+        name, downloadURLs: ['https://example.invalid/browser'],
+        executablePath: () => require('node:path').join(process.env.PLAYWRIGHT_BROWSERS_PATH, name),
+      }; } } };`,
+    );
+    await writeFile(
+      join(library, 'cli.js'),
+      `const { fork } = require('node:child_process');
+      if (process.versions.bun) throw new Error('Playwright installation requires its supported Node runtime');
+      if (process.env.NODE_OPTIONS || process.env.SOYLI_PROJECT_SECRET) throw new Error('Project environment leaked');
+      const child = fork(require('node:path').join(__dirname, 'worker.cjs'));
+      child.on('exit', code => process.exit(code ?? 1));`,
+    );
+    await writeFile(
+      join(library, 'worker.cjs'),
+      `const fs = require('node:fs');
+      const path = require('node:path');
+      if (process.versions.bun) throw new Error('Download worker requires Node too');
+      fs.writeFileSync(path.join(process.env.PLAYWRIGHT_BROWSERS_PATH, 'chromium-headless-shell'), 'ready');
+      fs.writeFileSync(path.join(process.env.PLAYWRIGHT_BROWSERS_PATH, 'runtime.json'), JSON.stringify(process.versions));`,
+    );
+    // Neither a project .env nor inherited Node options may alter the managed worker.
+    await writeFile(join(cache, '.env'), 'SOYLI_PROJECT_SECRET=must-not-load\n');
+    const installed = await run([join(fixture, 'soyli'), 'browser', 'install', '--json'], fixture, {
+      PLAYWRIGHT_BROWSERS_PATH: cache,
+      NODE_OPTIONS: '--require=/does-not-exist.cjs',
+      SOYLI_PROJECT_SECRET: 'must-not-forward',
+    });
+    expect(installed.code, installed.stderr + installed.stdout).toBe(0);
+    expect(JSON.parse(installed.stdout)).toEqual({ browser: 'ready' });
+    const runtime = await Bun.file(join(cache, 'runtime.json')).json();
+    expect(runtime.bun).toBeUndefined();
+    expect(runtime.node).toMatch(/^(22|24)\./);
+  },
+  90000,
+);
 enabled(
   'packaged CLI ignores project runtime configuration and executes its own frozen sandbox',
   async () => {

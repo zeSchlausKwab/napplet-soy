@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { AccountError } from '../../../packages/identity/src/signer';
 import { browserProfile, playwrightDirectory, standalone } from './distribution';
+import { managedNode } from './toolchain';
 
 type Playwright = Pick<typeof import('@playwright/test'), 'chromium'>;
 let engine: Playwright | undefined;
@@ -100,14 +101,15 @@ export async function installBrowser(
     'SSL_CERT_FILE',
   ])
     if (process.env[key]) env[key] = process.env[key]!;
-  if (standalone) env.BUN_BE_BUN = '1';
   if (process.env.PLAYWRIGHT_BROWSERS_PATH)
     env.PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH;
-  // Run only our shipped Playwright installer, with no project scripts or signing material.
+  // Playwright's forked download workers require Node stream/IPC behavior. Bun
+  // intermittently stalls during Chromium/FFmpeg downloads on native CI runners.
+  // Reuse our verified toolchain, with no project scripts, NODE_OPTIONS or keys.
+  const node = await managedNode();
   const child = Bun.spawn(
     [
-      process.execPath,
-      '--no-env-file',
+      node,
       join(playwrightDirectory(), 'cli.js'),
       'install',
       ...(interactive ? [] : ['--only-shell']),
@@ -119,8 +121,16 @@ export async function installBrowser(
       stdin: 'ignore',
       stdout: 'pipe',
       stderr: 'pipe',
+      detached: true,
     },
   );
+  const kill = (signal: NodeJS.Signals) => {
+    try {
+      process.kill(-child.pid, signal);
+    } catch {
+      child.kill(signal);
+    }
+  };
   const stdout = new ToolOutput((text) => process.stderr.write(text));
   const stderr = new ToolOutput((text) => process.stderr.write(text));
   const drain = async (stream: ReadableStream<Uint8Array>, log: ToolOutput) => {
@@ -131,11 +141,11 @@ export async function installBrowser(
     cancelled = false;
   const timeout = setTimeout(() => {
     timedOut = true;
-    child.kill('SIGKILL');
+    kill('SIGKILL');
   }, 5 * 60_000);
   const stop = () => {
     cancelled = true;
-    child.kill('SIGTERM');
+    kill('SIGTERM');
   };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
