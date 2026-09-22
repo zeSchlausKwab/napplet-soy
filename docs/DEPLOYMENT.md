@@ -10,6 +10,12 @@ Latest verified release: **`20260915191931258-56634`**, with soyLI **0.9.0**; se
 
 ## One command
 
+Website deployment uses `bun run deploy` on its own. Remove the old
+`bun run cli:release --host … &&` prefix: CLI packages now come from GitHub Releases,
+so deploying the website does not require locally built CLI archives. Publish the
+matching GitHub release before deploying an updated installer; see
+[CLI release operations](CLI-RELEASES.md).
+
 ```sh
 bun run deploy --host your-vps --domain napplet.soy --preflight
 bun run deploy --host root@your-vps --domain napplet.example --admin-pubkey <npub-or-hex>

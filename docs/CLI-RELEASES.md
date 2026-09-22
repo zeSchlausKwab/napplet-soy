@@ -4,6 +4,11 @@ GitHub Releases distribute the standalone CLI independently of the website/VPS.
 The source version is **0.18.1**. A successful GitHub workflow run and published
 release are separate acceptance steps.
 
+For website deployment, use `bun run deploy` with the usual options, without the
+old `bun run cli:release --host … &&` prefix. The optional legacy `cli:release`
+uploads four locally built archives to a VPS mirror; it neither triggers GitHub CI
+nor downloads CI artifacts. Missing local archives do not block website deployment.
+
 The 0.18.1 installer resolves macOS CPU probes by their system path, including in
 minimal environments without `/usr/sbin` on PATH. A failed probe reports the
 system error separately from an unsupported processor. Packaged creation and

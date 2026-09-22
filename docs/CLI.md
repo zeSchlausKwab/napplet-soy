@@ -378,7 +378,6 @@ SPACE_TEST_CLI="$PWD/.local/cli/0.18.1/soyli-darwin-arm64/soyli" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts
-bun run cli:release --host root@your-vps
 ```
 
 Archives are named `soyli-<platform>.tar.gz` with matching SHA-256 files. Old
@@ -387,6 +386,16 @@ The build embeds the shared preview and disables project `.env`/bunfig autoload.
 It packages the exact locked Playwright core (including its dynamic worker files)
 and dependency notices alongside the executable. Keep the `lib` directory with
 manual downloads. Chromium remains a separate, cached official Playwright download.
+
+Website deployment only needs `bun run deploy` with the usual host/domain options;
+do not prefix it with `cli:release`. GitHub CI publishes the CLI separately.
+
+Only for an explicit legacy VPS mirror, build **all four** local packages first:
+
+```sh
+bun run cli:build
+bun run cli:release --host root@your-vps
+```
 
 The optional legacy `cli:release --host` command checks all four archives, uploads them over SSH, verifies
 checksums on the VPS and atomically installs the version under

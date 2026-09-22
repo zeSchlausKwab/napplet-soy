@@ -3,22 +3,57 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { validateTarget } from './deploy';
+import { DiagnosticError, diagnose, formatDiagnostic } from '../packages/diagnostics/src';
 import release from '../apps/cli/distribution/version.json';
 
-const { values } = parseArgs({ options: { host: { type: 'string' } } });
+const { values } = parseArgs({
+  options: { host: { type: 'string' }, help: { type: 'boolean' } },
+});
+if (values.help) {
+  console.log(`Usage: bun run cli:release --host <ssh-host>
+
+Optional legacy VPS mirror upload. Requires all four local CLI archives and checksums.
+Build them first with bun run cli:build (without --target).
+
+GitHub Releases is the primary CLI distribution channel; CI builds and publishes it.
+Website deployment does not require cli:release. Use bun run deploy with your usual
+--host, --domain and other deployment options instead.`);
+  process.exit(0);
+}
 const { host } = validateTarget(values.host, 'napplet.soy');
 const version = release.version;
 if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Invalid release version');
 const root = resolve(import.meta.dir, '../.local/cli');
 const files: string[] = [];
-for (const platform of ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64']) {
-  const name = `soyli-${platform}.tar.gz`;
-  const expected = (await Bun.file(join(root, version, `${name}.sha256`)).text()).trim();
-  const actual = new Bun.CryptoHasher('sha256')
-    .update(await Bun.file(join(root, version, name)).bytes())
-    .digest('hex');
-  if (expected !== `${actual}  ${name}`) throw new Error(`Checksum mismatch: ${name}`);
-  files.push(`${version}/${name}`, `${version}/${name}.sha256`);
+try {
+  for (const platform of ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64']) {
+    const name = `soyli-${platform}.tar.gz`;
+    const expected = (await Bun.file(join(root, version, `${name}.sha256`)).text()).trim();
+    const actual = new Bun.CryptoHasher('sha256')
+      .update(await Bun.file(join(root, version, name)).bytes())
+      .digest('hex');
+    if (expected !== `${actual}  ${name}`) throw new Error(`Checksum mismatch: ${name}`);
+    files.push(`${version}/${name}`, `${version}/${name}.sha256`);
+  }
+} catch (cause) {
+  console.error(
+    formatDiagnostic(
+      diagnose(
+        new DiagnosticError(
+          'CLI_RELEASE_ARTIFACTS',
+          'Cannot verify all four local CLI packages for the legacy VPS mirror. Normal CLI distribution uses GitHub Releases.',
+          {
+            operation: 'verify local CLI release artifacts',
+            target: join(root, version),
+            cause,
+            recovery:
+              'For website deployment, omit cli:release and use bun run deploy with your usual options. For an explicit VPS mirror, run bun run cli:build without --target to build all four packages, then retry cli:release.',
+          },
+        ),
+      ),
+    ),
+  );
+  process.exit(1);
 }
 const staging = await mkdtemp(join(tmpdir(), 'napplet-cli-release-'));
 const archive = join(staging, 'release.tar');
