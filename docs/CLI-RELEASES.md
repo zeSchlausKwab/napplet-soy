@@ -1,8 +1,18 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.18.0**. Implementation is ready locally; a successful
-GitHub workflow run and published release are separate acceptance steps.
+The source version is **0.18.1**. A successful GitHub workflow run and published
+release are separate acceptance steps.
+
+The 0.18.1 installer resolves macOS CPU probes by their system path, including in
+minimal environments without `/usr/sbin` on PATH. A failed probe reports the
+system error separately from an unsupported processor. Packaged creation and
+recording test failures include the CLI diagnostic, and artifact actions use
+Node 24. The failed `soyli-v0.18.0` tag is retained; fixes use a new version.
+Chromium/FFmpeg installation uses soyLI's checksum-verified managed Node runtime
+instead of Bun's Node compatibility layer, which stalled downloads intermittently
+on native CI. No separately installed Node is required. Browser availability and
+playback still use the same pinned Playwright driver and browser cache.
 
 ## For creators
 
@@ -54,9 +64,9 @@ installer is running before removing the reported `.install-lock` directory.
 2. Commit the change and push the commit, then its matching tag:
 
    ```sh
-   git tag -a soyli-v0.18.0 -m 'napplet soyLI 0.18.0'
+   git tag -a soyli-v0.18.1 -m 'napplet soyLI 0.18.1'
    git push origin main
-   git push origin soyli-v0.18.0
+   git push origin soyli-v0.18.1
    ```
 
 3. Watch **soyLI releases** in Actions. Publish only after all four native jobs pass.
@@ -100,7 +110,7 @@ access as appropriate for the maintainers.
 ```sh
 bun run check
 bun run cli:build --target darwin-arm64
-SPACE_TEST_CLI="$PWD/.local/cli/0.18.0/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.18.1/soyli-darwin-arm64/soyli" \
   bun test tests/services/cli-update.test.ts tests/services/cli-distribution.test.ts
 ```
 
