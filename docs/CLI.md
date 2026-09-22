@@ -363,7 +363,7 @@ metadata. The artifact and NIP-5D publication format are the same for both profi
 ## Building and releasing
 
 The primary distribution channel is now **GitHub Releases**. Push a version tag
-such as `soyli-v0.18.0` matching `apps/cli/distribution/version.json` and the installer.
+such as `soyli-v0.18.1` matching `apps/cli/distribution/version.json` and the installer.
 CI checks the source, builds and smoke-tests all four platforms on native runners,
 then publishes their archives/checksums and the pinned installer. PRs and manual
 branch runs validate without publishing. Only the release job has write permission;

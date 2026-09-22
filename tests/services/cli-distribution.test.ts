@@ -46,6 +46,7 @@ enabled(
     const library = join(fixture, 'lib/playwright-core');
     const cache = join(fixture, 'browser-cache');
     await mkdir(join(library, 'lib'), { recursive: true });
+    await symlink('playwright-core', join(fixture, 'lib/playwright-core-mac-compat'));
     await mkdir(cache);
     await cp(binary, join(fixture, 'soyli'));
     await writeFile(join(library, 'index.mjs'), 'export const chromium = {};');
