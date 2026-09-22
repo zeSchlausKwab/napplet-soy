@@ -45,27 +45,25 @@ enabled(
     await writeFile(join(root, '.env'), 'SPACE_ACCOUNT_HOME=/this-env-file-must-not-load\n');
     await writeFile(join(root, 'bunfig.toml'), 'preload = ["./hijack.js"]\n');
     await writeFile(join(root, 'hijack.js'), 'throw new Error("PROJECT PRELOAD RAN");');
-    expect((await run([binary, 'account', 'show', '--json'])).code).toBe(0);
-    expect(
-      (
-        await run([
-          binary,
-          'new',
-          'creation',
-          '--template',
-          'soft-orbit',
-          '--identity',
-          'later',
-          '--json',
-        ])
-      ).code,
-    ).toBe(0);
+    const account = await run([binary, 'account', 'show', '--json']);
+    expect(account.code, account.stderr + account.stdout).toBe(0);
+    const created = await run([
+      binary,
+      'new',
+      'creation',
+      '--template',
+      'soft-orbit',
+      '--identity',
+      'later',
+      '--json',
+    ]);
+    expect(created.code, created.stderr + created.stdout).toBe(0);
     const project = join(root, 'creation');
     const selected = await Bun.file(join(project, 'napplet.json')).json();
     selected.preview = { delayMs: 250, recording: { durationMs: 2000, startMs: 0, actions: [] } };
     await writeFile(join(project, 'napplet.json'), JSON.stringify(selected));
     const recording = await run([binary, 'record', '--json'], project);
-    expect(recording.code).toBe(0);
+    expect(recording.code, recording.stderr + recording.stdout).toBe(0);
     expect(JSON.parse(recording.stdout)).toMatchObject({
       width: 960,
       height: 600,
@@ -240,13 +238,15 @@ enabled(
       expect((await fetch(new URL(`/${release.version}/embedded.json`, server.url))).status).toBe(
         404,
       );
-      expect(
-        (
-          await fetch(new URL(`/${release.version}/soyli-linux-x64.tar.gz.sha256`, server.url), {
-            method: 'HEAD',
-          })
-        ).headers.get('content-length'),
-      ).not.toBeNull();
+      const checksum = await fetch(
+        new URL(
+          `/${release.version}/soyli-${process.platform}-${process.arch}.tar.gz.sha256`,
+          server.url,
+        ),
+        { method: 'HEAD' },
+      );
+      expect(checksum.status).toBe(200);
+      expect(checksum.headers.get('content-length')).not.toBeNull();
     } finally {
       server.stop(true);
       delete process.env.SPACE_CLI_DOWNLOAD_DIR;
