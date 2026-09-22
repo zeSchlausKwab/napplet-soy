@@ -29,6 +29,7 @@ import { checkPublication } from './publish-check';
 import { preview, checkProject, doctor } from './local';
 import { installBrowser } from './browser';
 import { commandName, version } from './distribution';
+import { describeRelease, updateCli } from './update';
 import { setupProject, buildProject, projectTool, installConformanceBrowser } from './toolchain';
 import { installCreatorSkills } from './creator-kit';
 import { loadRemix, createRemix } from '../../../packages/remix/src';
@@ -74,6 +75,7 @@ Usage:
   bun run soyli check [--project <folder>]
   bun run soyli browser install
   bun run soyli doctor
+  bun run soyli update
   bun run soyli --version
 
 All commands accept --network public|local and --json.
@@ -143,6 +145,7 @@ try {
       'check',
       'browser',
       'doctor',
+      'update',
       'backend',
       'checkpoint',
       'push',
@@ -232,6 +235,27 @@ try {
   }
   if (!['public', 'local'].includes(values.network!))
     throw new AccountError('USAGE', 'Choose --network public or local.');
+  if (positionals[0] === 'update') {
+    if (
+      positionals.length !== 1 ||
+      Object.keys(values).some((key) => !['json', 'network'].includes(key))
+    )
+      throw new AccountError(
+        'USAGE',
+        'Use soyli update [--json]. For a read-only version check, run soyli doctor.',
+      );
+    const result = await updateCli(controller.signal);
+    console.log(
+      json
+        ? JSON.stringify(result)
+        : result.status === 'updated'
+          ? `Updated soyLI ${result.previous} → ${result.version}. Restart any running soyli dev sessions.\nRun soyli skills update in existing projects to refresh agent guidance.`
+          : result.status === 'current'
+            ? `soyLI ${result.version} is up to date.`
+            : `soyLI ${result.version} is newer than the published release; no downgrade.`,
+    );
+    process.exit(0);
+  }
   const network = values.network as Network;
   const accounts = new Accounts(network);
   if (dangerousFileKeystore())
@@ -663,13 +687,16 @@ try {
         command === 'check'
           ? await checkProject(values.project ?? process.cwd(), network)
           : command === 'doctor'
-            ? await doctor()
+            ? await doctor(controller.signal)
             : (await installBrowser(), { browser: 'ready' });
       console.log(
         json
           ? JSON.stringify(result)
           : Object.entries(result)
-              .map(([key, value]) => `${key}: ${value}`)
+              .map(
+                ([key, value]) =>
+                  `${key}: ${key === 'release' ? describeRelease(value as Awaited<ReturnType<typeof doctor>>['release']) : value}`,
+              )
               .join('\n'),
       );
     }

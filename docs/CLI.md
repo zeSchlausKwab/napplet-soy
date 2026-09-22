@@ -1,5 +1,10 @@
 # napplet soyLI — creator CLI
 
+Source **0.18.0** adds GitHub release CI, `soyli update`, and latest-release checks
+in `soyli doctor`. The workflow and updater are implemented locally; the first
+GitHub release must be published before they can deliver an update. No background
+updates occur. [Release workflow](CLI-RELEASES.md).
+
 Version **0.17.0** adds [unpublish, republish and confirmed hosted-data deletion](LIFECYCLE.md).
 Use `soyli unpublish`, `soyli republish`, `soyli delete`, and `soyli lifecycle`
 inside the publishing project. Each modifying operation requires confirmation
@@ -140,14 +145,31 @@ CLI **0.8.2 is published and deployed** with shared public runtime relay reads. 
 hints no longer have to appear in the site's discovery list. The website installer serves this version. It retains 0.8.1's
 shared audio host and transfer timeout fixes. See [runtime routing](PUBLIC-RUNTIME.md#runtime-relay-routing--soyli-082).
 
-Rerun the installer without arguments to upgrade in place:
+On soyLI 0.18.0 or newer, upgrade in place:
 
 ```sh
-curl -fsSL https://napplet.soy/install.sh | sh
+soyli update
+soyli doctor
 soyli --version
 # Inside an existing project:
 soyli skills update
 ```
+
+For an older CLI without `update`, run the installer attached to the latest
+GitHub release once (after the first CI release is published):
+
+```sh
+curl -fsSL https://github.com/zeSchlausKwab/napplet-soy/releases/latest/download/install.sh | sh
+```
+
+Updates keep the old release directory, validate SHA-256 and the new executable's
+version before switching the managed command, and never downgrade automatically.
+Custom installer directories are retained. Source checkouts and manually unpacked
+binaries need Git/manual updates; soyLI will not replace Bun or an unrelated command.
+Restart any running `soyli dev` sessions after updating. Doctor makes a bounded
+five-second GitHub check and reports current/newer/development/unavailable states;
+offline or rate-limited checks don't fail its other diagnostics. JSON includes a
+structured `release` result. No signing key is needed to check or update.
 
 The installer creates `~/.local/bin/soyli` and keeps a managed `napplet-space`
 compatibility alias so old project scripts continue working. Archives also include
@@ -340,12 +362,19 @@ metadata. The artifact and NIP-5D publication format are the same for both profi
 
 ## Building and releasing
 
+The primary distribution channel is now **GitHub Releases**. Push a version tag
+such as `soyli-v0.18.0` matching `apps/cli/distribution/version.json` and the installer.
+CI checks the source, builds and smoke-tests all four platforms on native runners,
+then publishes their archives/checksums and the pinned installer. PRs and manual
+branch runs validate without publishing. Only the release job has write permission;
+no VPS credentials are needed. See [release operations](CLI-RELEASES.md).
+
 Use the pinned Bun 1.3.11 toolchain for builds:
 
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.6.0/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.18.0/soyli-darwin-arm64/soyli" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts
@@ -359,7 +388,7 @@ It packages the exact locked Playwright core (including its dynamic worker files
 and dependency notices alongside the executable. Keep the `lib` directory with
 manual downloads. Chromium remains a separate, cached official Playwright download.
 
-The release command checks all four archives, uploads them over SSH, verifies
+The optional legacy `cli:release --host` command checks all four archives, uploads them over SSH, verifies
 checksums on the VPS and atomically installs the version under
 `/opt/napplet-space/downloads/cli`. Existing versions are immutable; different
 bytes require a version bump. Archives live outside application releases so a
@@ -368,9 +397,13 @@ versioned archives/checksums, never build directories. `SPACE_CLI_DOWNLOAD_DIR`
 selects another download store; local dev uses `.local/cli` through the same route.
 
 For a new CLI release, bump `apps/cli/distribution/version.json` and the installer
-version together, build/test/upload the artifacts, then deploy the website with
-its updated installer and documentation. Source-only website changes can use
-already-published downloads. Keep older archives for reproducibility and rollback.
+version together, commit and push the matching `soyli-vX.Y.Z` tag. The workflow
+publishes independently of website deployment. The website's pinned installer and
+download links move to that version on its next deployment; publish the GitHub
+release first. The GitHub `latest/download/install.sh` URL always follows the newest
+release. `NAPPLET_DOWNLOAD_BASE` keeps the existing `<base>/<version>/<archive>`
+layout for explicit mirrors, local tests or the optional VPS channel. Keep older
+archives for reproducibility and rollback.
 
 The terminal regression runs the real piped installer and packaged CLI under a
 pseudo-terminal, pauses before choosing an identity option, and checks hidden

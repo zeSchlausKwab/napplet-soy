@@ -67,6 +67,10 @@ local HTTP error responses retain their `error` text and add a `diagnostic` obje
 
 ## Wrapped operations
 
+- **CLI updates:** release lookup retains HTTP status and timeout causes; installer
+  failures retain sanitized curl/tar output and exit status. Doctor reports an
+  unavailable release check alongside local diagnostics. `soyli update --json`
+  keeps installer progress on stderr and emits one structured result/error.
 - **Git:** startup, exit status, bounded stdout/stderr, timeout and output-limit errors.
   Failed source alternatives retain their causes when no source succeeds.
   Proposal inbox confirmation includes failed Git ref pushes, and Git execution

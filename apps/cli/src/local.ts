@@ -12,6 +12,7 @@ import { previewAssets } from './preview/assets';
 import { startPreviewServer } from './preview/server';
 import { gitAvailable } from './prerequisites';
 import { version } from './distribution';
+import { releaseCheck } from './update';
 import { watchProject } from './toolchain';
 import { screenshotProject, recordProject } from './project-config';
 import { localBackend } from './backend';
@@ -177,7 +178,8 @@ export async function checkProject(directory: string, network: Network) {
   };
 }
 
-export async function doctor() {
+export async function doctor(signal?: AbortSignal) {
+  const release = releaseCheck(signal);
   const git = await gitAvailable();
   let browser = 'not installed (downloaded on first check/publish, or run browser install)';
   try {
@@ -203,6 +205,7 @@ export async function doctor() {
   return {
     version,
     platform: `${process.platform}-${process.arch}`,
+    release: await release,
     git: git ? 'ready' : 'missing; install Git with your OS package manager',
     browser,
     credentials: dangerousFileKeystore()

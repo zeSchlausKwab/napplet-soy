@@ -3,8 +3,15 @@ set -eu
 
 # napplet soyLI creator CLI. Inspect this script before running it if you prefer.
 # Downloads are immutable by version; the archive is verified before extraction.
-version=0.17.0
-base=${NAPPLET_DOWNLOAD_BASE:-https://napplet.soy/cli/download}
+version=0.18.0
+# The updater uses this bundled installer with an explicitly checked stable release.
+version=${NAPPLET_RELEASE_VERSION:-$version}
+printf '%s\n' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || { printf '%s\n' 'Invalid release version.' >&2; exit 1; }
+if [ -n "${NAPPLET_DOWNLOAD_BASE:-}" ]; then
+  base="$NAPPLET_DOWNLOAD_BASE/$version"
+else
+  base="https://github.com/zeSchlausKwab/napplet-soy/releases/download/soyli-v$version"
+fi
 install_root=${NAPPLET_INSTALL_DIR:-"$HOME/.local/share/napplet-space"}
 bin_dir=${NAPPLET_BIN_DIR:-"$HOME/.local/bin"}
 fail() { printf '%s\n' "$*" >&2; exit 1; }
@@ -31,26 +38,31 @@ if command -v sha256sum >/dev/null 2>&1; then hash() { sha256sum "$1" | cut -d '
 elif command -v shasum >/dev/null 2>&1; then hash() { shasum -a 256 "$1" | cut -d ' ' -f 1; }
 else fail 'Install a SHA-256 tool (sha256sum or shasum) first.'; fi
 mkdir -p "$install_root/releases" "$bin_dir"
+# Serialize command switches; a failed download must leave the working command intact.
+lock="$install_root/.install-lock"
+mkdir "$lock" 2>/dev/null || fail "Another installation is active. If no installer is running, remove $lock and retry."
+stage=''
+link_stage=''
+cleanup() { [ -z "$stage" ] || rm -rf "$stage"; [ -z "$link_stage" ] || rm -rf "$link_stage"; rmdir "$lock"; }
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 # Do not replace a command that belongs to a different installation.
 if [ -e "$bin_dir/soyli" ] || [ -L "$bin_dir/soyli" ]; then
   [ -L "$bin_dir/soyli" ] || fail "$bin_dir/soyli already exists and is not managed by this installer."
   case "$(readlink "$bin_dir/soyli")" in "$install_root"/releases/*/soyli) ;; *) fail 'An existing soyli command belongs to another installation.' ;; esac
 fi
 stage=$(mktemp -d "$install_root/.install.XXXXXXXX")
-link_stage=''
-cleanup() { rm -rf "$stage"; [ -z "$link_stage" ] || rm -rf "$link_stage"; }
-trap cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
 name="soyli-$os-$arch"
 archive="$name.tar.gz"
 fetch() { curl --fail --show-error --location --proto '=https,http' --proto-redir '=https' --connect-timeout 15 --max-time 300 "$1" -o "$2"; }
 printf 'Downloading napplet soyLI %s for %s…\n' "$version" "$os-$arch"
-fetch "$base/$version/$archive.sha256" "$stage/checksum"
+fetch "$base/$archive.sha256" "$stage/checksum"
 expected=$(cut -d ' ' -f 1 < "$stage/checksum")
 case "$expected" in *[!a-f0-9]*|'') fail 'Invalid release checksum.' ;; esac
 [ "${#expected}" -eq 64 ] || fail 'Invalid release checksum length.'
-fetch "$base/$version/$archive" "$stage/$archive"
+[ "$(cat "$stage/checksum")" = "$expected  $archive" ] || fail 'Checksum does not identify the expected release archive.'
+fetch "$base/$archive" "$stage/$archive"
 [ "$(hash "$stage/$archive")" = "$expected" ] || fail 'Download checksum mismatch; existing installation was kept.'
 tar -tzf "$stage/$archive" > "$stage/entries"
 while IFS= read -r entry; do
@@ -59,9 +71,13 @@ while IFS= read -r entry; do
 done < "$stage/entries"
 tar -xzf "$stage/$archive" -C "$stage"
 [ -x "$stage/$name/soyli" ] || fail 'The archive did not contain an executable.'
-"$stage/$name/soyli" --version
+[ "$("$stage/$name/soyli" --version)" = "soyli $version" ] || fail 'Executable version does not match the requested release; existing installation was kept.'
 release="$install_root/releases/$version-$os-$arch-$expected"
 if [ ! -d "$release" ]; then mv "$stage/$name" "$release"; fi
+[ "$("$release/soyli" --version)" = "soyli $version" ] || fail 'Existing release directory is invalid; command was not changed.'
+# Remember custom bin directories for soyli update, without storing any account data.
+printf '%s' "$bin_dir" > "$stage/bin-dir"
+mv -f "$stage/bin-dir" "$install_root/bin-dir"
 link_stage=$(mktemp -d "$bin_dir/.napplet-link.XXXXXXXX")
 ln -s "$release/soyli" "$link_stage/soyli"
 mv -f "$link_stage/soyli" "$bin_dir/soyli"

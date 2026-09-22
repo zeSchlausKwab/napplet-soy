@@ -161,7 +161,7 @@ function Create() {
           <article>
             <h2>Need a hand?</h2>
             <p>
-              Run <code>soyli doctor</code> for Git and browser diagnostics. Run{' '}
+              Run <code>soyli doctor</code> for Git, browser and latest-version diagnostics. Run{' '}
               <code>soyli account check</code> to verify your signer. Alpine/musl and native Windows
               packages are not supported yet.
             </p>
@@ -177,12 +177,14 @@ function Create() {
           . The CLI never runs sudo for you.
         </p>
         <h2 id="upgrade" className="guide-heading">
-          Upgrading from napplet-space
+          Keep soyLI up to date
         </h2>
         <p className="command-note">
-          Run <code>curl -fsSL https://napplet.soy/install.sh | sh</code> to update without creating
-          a project. The command is now <code>soyli</code>. Your identities, backups and project
-          state stay in place; the old command remains a compatibility alias. Then run{' '}
+          Run <code>soyli update</code> to install the latest stable GitHub release. Older versions
+          without this command can rerun the installer from the{' '}
+          <a href="https://github.com/zeSchlausKwab/napplet-soy/releases/latest">latest release</a>.
+          Your identities, backups and project state stay in place; the old napplet-space command
+          remains a compatibility alias. Restart running preview sessions, then run{' '}
           <code>soyli skills update</code> in each project to refresh its coding guidance.
         </p>
         <h2 id="downloads" className="guide-heading">
@@ -195,11 +197,15 @@ function Create() {
         <ul className="cli-downloads">
           {(['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64'] as const).map((platform) => (
             <li key={platform}>
-              <a href={`/cli/download/${release.version}/soyli-${platform}.tar.gz`}>
+              <a
+                href={`https://github.com/zeSchlausKwab/napplet-soy/releases/download/soyli-v${release.version}/soyli-${platform}.tar.gz`}
+              >
                 {platform.replace('darwin', 'macOS')}
               </a>
               {' · '}
-              <a href={`/cli/download/${release.version}/soyli-${platform}.tar.gz.sha256`}>
+              <a
+                href={`https://github.com/zeSchlausKwab/napplet-soy/releases/download/soyli-v${release.version}/soyli-${platform}.tar.gz.sha256`}
+              >
                 SHA-256
               </a>
             </li>

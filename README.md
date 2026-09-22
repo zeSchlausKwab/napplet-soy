@@ -61,6 +61,11 @@ its [recovery backup](docs/IDENTITY.md#cli-backups). **Published source and push
 Git history are public by default.** Local editing stays local until you publish,
 propose or push.
 
+After installation, `soyli doctor` checks for a newer release and `soyli update`
+installs it. Older CLIs without `update` can use the installer on the
+[latest GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/latest).
+[Release and update details](docs/CLI-RELEASES.md).
+
 ## See the idea in 30 seconds
 
 [![Soybert's game branches into a remix, returns through a merge, and becomes a new release](docs/media/story-poster.png)](docs/media/napplet-soy-story.mp4)

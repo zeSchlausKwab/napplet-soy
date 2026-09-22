@@ -430,14 +430,18 @@ function Documentation() {
           <section id="help" aria-labelledby="docs-help">
             <span className="eyebrow">09 / PICK UP WHERE YOU LEFT OFF</span>
             <h2 id="docs-help">Update, diagnose, carry on.</h2>
-            <DocCommand label="Update soyLI">
-              {'curl -fsSL https://napplet.soy/install.sh | sh'}
-            </DocCommand>
+            <DocCommand label="Update soyLI">{'soyli update'}</DocCommand>
             <p>
-              This updates the installed CLI without creating a project. Then run{' '}
-              <code>soyli skills update</code> in an existing project to refresh its bundled
-              guidance. Edited guidance is preserved and conflicts are reported; source and
-              dependencies are not automatically migrated.
+              This installs the latest stable GitHub release without creating a project. If your CLI
+              does not have update yet, use the installer from the{' '}
+              <a href="https://github.com/zeSchlausKwab/napplet-soy/releases/latest">
+                latest release
+              </a>{' '}
+              once. Restart running previews. Then run <code>soyli skills update</code> in an
+              existing project to refresh its bundled guidance. Edited guidance is preserved and
+              conflicts are reported; source and dependencies are not automatically migrated. Doctor
+              also checks for a newer release; unavailable network checks do not hide local
+              diagnostics.
             </p>
             <DocCommand label="Check your setup">
               {'soyli --version\nsoyli doctor\nsoyli account check\nsoyli --help'}

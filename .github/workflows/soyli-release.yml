@@ -1,0 +1,120 @@
+name: soyLI releases
+
+on:
+  push:
+    tags: ['soyli-v*']
+  pull_request:
+    paths:
+      - '.github/workflows/soyli-release.yml'
+      - 'apps/cli/**'
+      - 'apps/web/public/install.sh'
+      - 'packages/**'
+      - 'scripts/cli-*'
+      - 'tests/services/cli-*'
+      - 'package.json'
+      - 'bun.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Release publication is serialized, including tags for different versions.
+concurrency:
+  group: soyli-${{ startsWith(github.ref, 'refs/tags/soyli-v') && 'publication' || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.3.11'
+      - run: bun install --frozen-lockfile
+      - name: Check version and tag
+        id: release
+        run: bun scripts/cli-release-check.ts
+      - run: bun run check
+
+  build:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-24.04
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: darwin-x64
+            runner: macos-15-intel
+          - platform: darwin-arm64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.3.11'
+      - run: bun install --frozen-lockfile
+      - if: runner.os == 'Linux'
+        run: bunx playwright install-deps chromium
+      - name: Build native distribution
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: bun run cli:build --target "$PLATFORM"
+      - name: Run standalone installer and updater regressions
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          export SPACE_TEST_CLI="$PWD/.local/cli/$VERSION/soyli-$PLATFORM/soyli"
+          "$SPACE_TEST_CLI" browser install
+          bun test tests/services/cli-distribution.test.ts tests/services/cli-update.test.ts apps/cli/src/update.test.ts
+      - name: Fresh account-free create, build and browser check
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+        run: sh scripts/cli-platform-smoke.sh "$PWD/.local/cli/$VERSION/soyli-$PLATFORM/soyli"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: soyli-${{ matrix.platform }}
+          path: |
+            .local/cli/${{ needs.check.outputs.version }}/soyli-${{ matrix.platform }}.tar.gz
+            .local/cli/${{ needs.check.outputs.version }}/soyli-${{ matrix.platform }}.tar.gz.sha256
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/soyli-v') && github.event_name != 'pull_request'
+    needs: [check, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: '1.3.11'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: soyli-*
+          merge-multiple: true
+          path: .local/cli/${{ needs.check.outputs.version }}
+      - name: Verify all artifacts, upload draft, then publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bun scripts/cli-github-release.ts
