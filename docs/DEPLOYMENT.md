@@ -3,10 +3,21 @@
 Deployment is operator-run. Routine changes are verified and committed locally;
 do not deploy or upload releases unless the user explicitly requests deployment.
 
-Updated 2026-09-15. **[napplet.soy](https://napplet.soy) is live**, using the temporary legacy CPU profile on the existing Namecheap VPS. Caddy issued valid Let's Encrypt certificates for the website, www, Blossom and Git; the other site remains available. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. See the deployment record below for verification and the compatibility workaround.
+Updated 2026-09-22. **[napplet.soy](https://napplet.soy) is live**, using the temporary legacy CPU profile on the existing Namecheap VPS. Caddy issued valid Let's Encrypt certificates for the website, www, Blossom and Git; the other site remains available. The deploy script includes Caddy and PM2. Local production builds exercise the same web, relay, Blossom and GRASP implementations and PM2 definitions. Dedicated hosts use the pinned local Caddy version; shared hosts retain their existing Caddy. See the deployment record below for verification and the compatibility workaround.
 
-Latest verified release: **`20260915191931258-56634`**, with soyLI **0.9.0**; see the
-[direct protocol deployment record](#direct-protocol-access-and-soyli-090--2026-09-15).
+Latest verified website release: **`20260922104126995-92458`**, from source `126f0b6`,
+with the installer pinned to **soyLI 0.18.2**. GitHub
+[release CI](https://github.com/zeSchlausKwab/napplet-soy/actions/runs/35716815113)
+passed source checks, all four native builds, packaged cleanup/update tests and
+fresh-starter verification before publishing the CLI downloads.
+
+The normal shared-Caddy deployment then passed all 355 application tests on the
+VPS, Go race checks, relay/Blossom/GRASP integration checks and the production build.
+Public HTTPS checks confirmed the new health release ID, root/docs/about/www,
+exact installer bytes, Blossom health and relay/Git NIP-11 metadata. Both Caddy
+configuration checksums were unchanged, and the other site still returned HTTP 200.
+The prior website release `20260922083609179-60043` is retained for rollback.
+Actual reboot and physical-device testing were not part of this deployment.
 
 ## One command
 
