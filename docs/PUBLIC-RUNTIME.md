@@ -95,7 +95,7 @@ execution; optional metadata is not a playback requirement.
 
 The corner-control revision (2026-09-15, locally implemented and verified; not yet deployed)
 starts a fresh play link automatically after ordinary artifact verification. The
-iframe fills the viewport; only a small bottom-right triangle remains visible at
+iframe fills the viewport; only a small upper-right triangle remains visible at
 rest. Hover or keyboard focus reveals the title, a description excerpt of at most
 160 characters plus an ellipsis (clamped to two lines), and the existing share,
 settings, restart, stop and fullscreen controls. Session-file downloads appear in
@@ -106,10 +106,9 @@ Clicking the triangle returns to details. On touchscreens, the first tap reveals
 the panel and a second tap on the triangle returns to details; touching the napplet
 again dismisses the panel. The triangle has a 48px target, other controls at least
 44px, and the panel respects safe-area insets and narrow/landscape viewports.
-The corner control sits 64px above the bottom safe area, increased to 112px on
-touch-capable or narrow screens to leave room for typical game controls. The open
-panel's available height accounts for this offset, including in landscape. These
-fixed offsets cannot guarantee separation from every napplet's custom controls.
+The corner control sits in the upper-right corner on desktop and mobile, inset
+by at least 10px and respecting the top/right safe areas. The panel opens alongside
+it and extends downward, with its height bounded to the available viewport.
 Hidden controls are inert. Escape dismisses an open corner panel before leaving
 CSS expansion; settings/save dialogs retain their own keyboard handling.
 

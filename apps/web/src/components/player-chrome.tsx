@@ -61,7 +61,7 @@ export function PlayerChrome({
   const exitLabel = detailPath ? 'Back to details' : returnLabel;
   const triangle = (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 20 20 4v16Z" />
+      <path d="M4 4h16v16Z" />
     </svg>
   );
   const triggerProps = {
