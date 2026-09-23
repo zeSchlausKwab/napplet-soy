@@ -5,8 +5,8 @@ bounded public kind-30078 application-data convention with viewer consent. Other
 event kinds and encryption remain denied. The optional shell-init `appData`
 policy hint describes scope/limits without introducing a new NAP domain. See
 [shared data](SHARED-DATA.md) for current-version records, tombstones, missing
-history guarantees and the explicit public NIP-78 relay-policy deviation. Website
-deployment and CLI release are separate from this source implementation.
+history guarantees and the explicit public NIP-78 relay-policy deviation. The local
+preview host ships in CLI 0.20.0; matching website deployment is separate.
 
 Implemented 2026-09-12. Open a public card and choose **Play napplet**. Cards distinguish verified, compatible artifacts from missing capabilities and unavailable downloads. Compatibility means this host implements the requested domains; an individual operation can still be refused by policy or fail upstream.
 

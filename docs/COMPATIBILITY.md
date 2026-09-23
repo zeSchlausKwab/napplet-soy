@@ -31,7 +31,8 @@ usable helpers and preserves creator edits during `skills update`, with no Bun o
 Node on the child PATH. Starter guidance and deployment-archive checks also pass.
 The repository check and production build pass. These are local fixtures, not
 physical-phone, public-provider, independent-client or isolated creator-agent
-acceptance. Release and deployment remain pending. No atomic distributed edits,
+acceptance. CLI 0.20.0 is [released and verified](CLI-RELEASES.md); matching website
+and CVM deployment remain separate. No atomic distributed edits,
 permanent history, private records or hard-deletion guarantee is claimed.
 
 ## Rust/WASM and Bevy — local source qualification, 2026-09-23

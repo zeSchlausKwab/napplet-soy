@@ -4,6 +4,17 @@ GitHub Releases distribute the standalone CLI independently of the website/VPS.
 The source version is **0.20.0**. A successful GitHub workflow run and published
 release are separate acceptance steps.
 
+**0.20.0 published 2026-09-23:**
+[GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.20.0),
+source `0f3adcb3910460efe620d9ff9b419bb5555192cd`.
+[Workflow 35878743238](https://github.com/zeSchlausKwab/napplet-soy/actions/runs/35878743238)
+passed its source gate and all four native builds, installer/updater regressions,
+shared-data helper checks and fresh-project browser smoke tests. All 11 release
+assets are uploaded; the manifest identifies the exact source and four native
+targets. The published installer matches the tagged source and checksums. An
+isolated macOS ARM64 installation reports 0.20.0; both `doctor` and `update` report
+it as current. Website and CVM deployment were not performed with this release.
+
 Version 0.20.0 adds public structured creations using the documented NIP-78
 convention, with scoped viewer-authorized writes, ownership/revision checks,
 unpublish tombstones and managed helper/guidance files. See
