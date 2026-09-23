@@ -14,7 +14,9 @@ import { nip19 } from 'nostr-tools';
 import { scaffold, ScaffoldInputError } from './scaffold';
 import {
   Accounts,
+  accountStorage,
   dangerousFileKeystore,
+  sessionStorageSchema,
   type Account,
 } from '../../../packages/identity/src/accounts';
 import {
@@ -62,8 +64,9 @@ Usage:
   bun run soyli skills update [--project <folder>]
   bun run soyli account create [--new]
   bun run soyli account show|list|check|backup
-  bun run soyli account connect [--stdin]
-  bun run soyli account pair [--signer-relay <url>] [--timeout <seconds>] [--open]
+  bun run soyli account connect [--stdin] [--session-storage file|keychain]
+  bun run soyli account pair [--signer-relay <url>] [--timeout <seconds>] [--open] [--session-storage file|keychain]
+  bun run soyli account storage file|keychain
   bun run soyli account import [--stdin]
   bun run soyli account use <npub-or-account-id>
   bun run soyli account export <new-recovery-file> [--passphrase-stdin]
@@ -74,7 +77,7 @@ Usage:
   bun run soyli dev [--project <folder>] [--port 4173] [--no-open]
   bun run soyli check [--project <folder>]
   bun run soyli browser install
-  bun run soyli doctor
+  bun run soyli doctor [--project <folder>]
   bun run soyli update
   bun run soyli --version
 
@@ -84,7 +87,12 @@ Development fallback: SOYLI_DANGEROUS_PLAINTEXT_KEYS=1 enables separate, unencry
 owner-only account files outside Git. Unset it to return to OS-vault accounts.
 Create reuses your selected account; account create --new creates and selects another.
 Previous identities and backups are kept. Connect accepts a hidden bunker link.
+Publish uses the selected account; a running publication keeps its starting account.
+Each public key keeps separate releases in the same folder. Status/resume use the selected author.
 Pair creates a nostrconnect link and QR to approve in your signer (120-second wait).
+Remote sessions default to owner-only files outside projects; local private keys use the OS vault.
+Use --session-storage keychain with connect/pair to opt in. account storage file migrates
+the selected remote session with one OS-vault read, without pairing again.
 Signer relays carry encrypted signing requests; they do not change publishing targets.
 Create and new save a private nsec backup outside Git projects and report its path.
 Account backup saves/reuses that file for an existing local creator. Keep it private.
@@ -94,7 +102,7 @@ Export writes a passphrase-encrypted NIP-49 file outside Git projects.
 Publish targets: --relay <url> --blossom <origin> --grasp <origin> --site <origin>
 and optional repeated --mirror <url>. Local mode defaults to the dev services.
 Secrets never belong in command arguments. Check/publish download a cached Chromium
-browser when needed. Git and an unlocked OS credential store are needed to publish.`.replaceAll(
+browser when needed. Git is required to publish. OS-vault accounts also need an unlocked credential store.`.replaceAll(
   'bun run soyli',
   commandName,
 );
@@ -124,6 +132,8 @@ const publicAccount = (a: Account, network: Network) => ({
   pubkey: a.pubkey,
   type: a.type,
   status: a.status,
+  storage: accountStorage(a),
+  ...(a.sessionCleanup ? { storageCleanupPending: true } : {}),
   network,
 });
 try {
@@ -212,6 +222,7 @@ try {
         site: { type: 'string' },
         mirror: { type: 'string', multiple: true },
         'signer-relay': { type: 'string', multiple: true },
+        'session-storage': { type: 'string' },
         timeout: { type: 'string' },
         open: { type: 'boolean' },
         players: { type: 'string' },
@@ -261,6 +272,16 @@ try {
     process.exit(0);
   }
   const network = values.network as Network;
+  const sessionStorage = sessionStorageSchema.safeParse(values['session-storage'] ?? 'file');
+  if (
+    !sessionStorage.success ||
+    (values['session-storage'] !== undefined &&
+      !(positionals[0] === 'account' && ['connect', 'pair'].includes(positionals[1])))
+  )
+    throw new AccountError(
+      'USAGE',
+      'Use --session-storage file|keychain only with account connect or account pair.',
+    );
   const accounts = new Accounts(network);
   if (dangerousFileKeystore())
     process.stderr.write(
@@ -280,7 +301,7 @@ try {
         ? (await secretStdin())[0]
         : await hiddenInput('Paste bunker connection link (hidden): ')
       ).trim(),
-      { signal: controller.signal, onAuth },
+      { signal: controller.signal, onAuth, sessionStorage: sessionStorage.data },
     );
   const backupNotice = (path: string) =>
     `Private-key backup: ${path}\nThis unencrypted nsec file is outside your project and readable only by your user. Preserve a private copy to recover your identity.`;
@@ -290,7 +311,7 @@ try {
     else
       console.log(
         data
-          ? `${data.npub}\n${data.type === 'local' ? 'Local key in OS credential store' : 'Remote signer'} · ${network} · ${data.status}`
+          ? `${data.npub}\n${data.type === 'local' ? 'Local key' : 'Remote signer'} · ${network} · ${data.status}\nStorage: ${data.storage}${data.storageCleanupPending ? ' (old-copy cleanup pending; retry account storage)' : ''}${data.type === 'remote' && data.storage === 'file' ? '\nPrivate session file outside projects; your Nostr private key stays with the signer.' : ''}`
           : 'No creator selected. Run account create or account connect.',
       );
     if (!json && backupFile) console.log(backupNotice(backupFile));
@@ -380,6 +401,7 @@ try {
         'setup',
         'build',
         'assets',
+        'doctor',
         'project',
         'skills',
         'config',
@@ -401,7 +423,7 @@ try {
   )
     throw new AccountError(
       'USAGE',
-      'Use --project with dev/check/publish/status; --port and --no-open with dev.',
+      'Use --project with project commands or doctor; --port and --no-open with dev/review.',
     );
   const collaboration = {
     directory: values.project ?? process.cwd(),
@@ -715,7 +737,7 @@ try {
         command === 'check'
           ? await checkProject(values.project ?? process.cwd(), network)
           : command === 'doctor'
-            ? await doctor(controller.signal)
+            ? await doctor(controller.signal, values.project)
             : (await installBrowser(), { browser: 'ready' });
       console.log(
         json
@@ -780,6 +802,7 @@ try {
     const result =
       command === 'status'
         ? await publicationStatus(values.project ?? process.cwd(), network, {
+            creator: (await accounts.current())?.pubkey,
             refresh: values.refresh,
             signal: controller.signal,
           })
@@ -837,7 +860,7 @@ try {
       extra.length ||
       values.template ||
       values.identity ||
-      (argument && !['export', 'use'].includes(action)) ||
+      (argument && !['export', 'use', 'storage'].includes(action)) ||
       (values.stdin && !['import', 'connect'].includes(action)) ||
       (values['passphrase-stdin'] && action !== 'export')
     )
@@ -874,7 +897,10 @@ try {
           json
             ? JSON.stringify({ accounts: rows })
             : rows
-                .map((a) => `${a.selected ? '*' : ' '} ${a.id} ${a.npub} ${a.type} ${a.status}`)
+                .map(
+                  (a) =>
+                    `${a.selected ? '*' : ' '} ${a.id} ${a.npub} ${a.type} ${a.status} · ${a.storage}${a.storageCleanupPending ? ' (cleanup pending)' : ''}`,
+                )
                 .join('\n') || 'No saved creators.',
         );
         break;
@@ -882,6 +908,19 @@ try {
       case 'connect':
         output(await connect());
         break;
+      case 'storage': {
+        const storage = sessionStorageSchema.safeParse(argument);
+        if (
+          !storage.success ||
+          Object.keys(values).some((key) => !['network', 'json'].includes(key))
+        )
+          throw new AccountError(
+            'USAGE',
+            'Use account storage file|keychain [--network public|local] [--json] for the selected remote signer.',
+          );
+        output(await accounts.setSessionStorage(storage.data));
+        break;
+      }
       case 'pair': {
         const timeout = Number(values.timeout ?? 120);
         if (!Number.isInteger(timeout) || timeout < 1 || timeout > 600 || (json && values.open))
@@ -898,6 +937,7 @@ try {
             signal: controller.signal,
             timeoutMs: timeout * 1000,
             onAuth,
+            sessionStorage: sessionStorage.data,
             onPairing: async (uri) => {
               if (json)
                 console.log(JSON.stringify({ pairing: { uri, relays, timeoutSeconds: timeout } }));

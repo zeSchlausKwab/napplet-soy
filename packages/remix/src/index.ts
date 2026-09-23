@@ -297,6 +297,12 @@ export async function createRemix(
     delete (config as Record<string, unknown>).creator;
     (config as Record<string, unknown>).publish = projectPublishingDefaults();
     delete (config as Record<string, unknown>).preview;
+    // A scene-ready milestone is build behavior, not an inherited promotional asset.
+    if (previous?.preview?.readySelector)
+      (config as Record<string, unknown>).preview = {
+        readySelector: previous.preview.readySelector,
+        ...(previous.preview.delayMs !== undefined ? { delayMs: previous.preview.delayMs } : {}),
+      };
     await writeFile(join(target, 'napplet.json'), JSON.stringify(config, null, 2) + '\n', {
       flag: 'wx',
     });

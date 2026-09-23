@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rust garden</title><style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#192f2c;color:#f6ebca;font:16px system-ui}
+#game{display:block;width:100%;height:100%;touch-action:none}header{position:fixed;top:20px;left:20px;pointer-events:none}h1{margin:0;font-size:30px}
+button{position:fixed;bottom:24px;left:24px;min-height:48px;background:#f6ebca;color:#192f2c;border:0;border-radius:12px;padding:12px 20px;font:inherit}
+#status{position:fixed;bottom:80px;left:24px}pre[role=alert]{position:fixed;inset:20px;white-space:pre-wrap;background:#321c21;padding:20px}
+</style></head><body><canvas id="game"></canvas><header><h1>Rust garden</h1><p>Bevy · WebGL2 · NAP host</p></header>
+<output id="status">Growing the garden…</output><button id="save">Save a visit</button>
+<!-- soyli:wasm -->
+<script>
+document.querySelector('#save').onclick=async()=>{const api=await window.soyliWasmReady; await api.save_visit();};
+</script></body></html>

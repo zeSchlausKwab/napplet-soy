@@ -14,6 +14,7 @@ import { gitAvailable } from './prerequisites';
 import { version } from './distribution';
 import { releaseCheck } from './update';
 import { watchProject } from './toolchain';
+import { rustToolchainStatus } from './rust-build';
 import { screenshotProject, recordProject } from './project-config';
 import { localBackend } from './backend';
 import { createWorkshop } from './workshop';
@@ -116,7 +117,7 @@ export async function preview(
     console.log(
       json
         ? JSON.stringify({ url: server.url.href })
-        : `Local napplet preview: ${server.url}\nEdit ${watcher ? 'src/main.ts, src/styles.css or index.html' : 'index.html'}; the preview reloads after each build/save. Press Ctrl+C to stop.`,
+        : `Local napplet preview: ${server.url}\nEdit ${watcher ? 'your project source' : 'index.html'}; the preview reloads after each build/save. Press Ctrl+C to stop.`,
     );
     if (open && !json) {
       const executable = Bun.which(process.platform === 'darwin' ? 'open' : 'xdg-open');
@@ -178,7 +179,7 @@ export async function checkProject(directory: string, network: Network) {
   };
 }
 
-export async function doctor(signal?: AbortSignal) {
+export async function doctor(signal?: AbortSignal, directory = process.cwd()) {
   const release = releaseCheck(signal);
   const git = await gitAvailable();
   let browser = 'not installed (downloaded on first check/publish, or run browser install)';
@@ -202,16 +203,18 @@ export async function doctor(signal?: AbortSignal) {
         ? error.message
         : formatDiagnostic(diagnose(error, 'browser diagnostics'));
   }
+  const rust = await rustToolchainStatus(directory, signal);
   return {
     version,
     platform: `${process.platform}-${process.arch}`,
     release: await release,
     git: git ? 'ready' : 'missing; install Git with your OS package manager',
     browser,
+    ...(rust ? { rust } : {}),
     credentials: dangerousFileKeystore()
       ? 'DANGEROUS: unencrypted owner-only files outside Git; separate account selection. Unset SOYLI_DANGEROUS_PLAINTEXT_KEYS to use the OS vault.'
       : process.platform === 'darwin'
-        ? 'Uses your login Keychain; account check verifies the selected signer.'
-        : 'Requires an unlocked desktop Secret Service (e.g. GNOME Keyring) and D-Bus session; account check verifies the selected signer.',
+        ? 'Local keys use login Keychain. New remote sessions use private files outside projects; Keychain is optional. account show reports storage; account storage file migrates an existing remote session.'
+        : 'New remote sessions use private files outside projects, without a desktop keyring. Local keys and optional remote Keychain storage require an unlocked Secret Service and D-Bus session. account show reports storage; account storage file migrates an existing remote session.',
   };
 }

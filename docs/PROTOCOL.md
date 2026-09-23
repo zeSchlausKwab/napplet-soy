@@ -32,6 +32,19 @@ use the same byte/hash/MIME admission. No new website resource proxy is introduc
 WebM classification and Blob fonts are now supported by the shared host; limits and
 remaining gaps are in [ASSETS.md](ASSETS.md) and [PUBLIC-RUNTIME.md](PUBLIC-RUNTIME.md).
 
+## Rust/WASM authoring — 2026-09-23 source
+
+The optional Rust build recipe embeds gzip-packed executable WASM and bundled
+wasm-bindgen JavaScript in the existing single HTML artifact. Decompression happens
+in memory; the trusted host still verifies the complete HTML hash before execution.
+There is no new manifest kind, file, NAP domain, HTTP proxy or WASM projection.
+The existing opaque `allow-scripts` sandbox, `wasm-unsafe-eval`, blocked direct
+network and blocked workers remain unchanged. Bevy assets use ordinary NAP-RESOURCE;
+host calls go through the existing injected namespace. Other publishers remain
+subject to the same admission and capability checks. Local recipe/toolchain pins
+are source metadata and never playback requirements. See [WASM.md](WASM.md) for
+the measured build profile and [COMPATIBILITY.md](COMPATIBILITY.md) for evidence.
+
 ## 1. Compatibility baseline
 
 The current [NIP-5D proposal at commit 24711d9](https://github.com/dskvr/nips/blob/24711d9c47bbdd07908bf1d52bf677d9cbc530f0/5D.md) defines named napplets as kind `35129`, root napplets as `15129`, and immutable snapshots as `5129`. It adopts the file-manifest tag schema and aggregate-hash algorithm from [NIP-5A](https://github.com/nostr-protocol/nips/blob/master/5A.md). Generic nsites use different kinds; they must not be silently treated as sandboxed napplets.

@@ -160,7 +160,14 @@ export const jobSchema = z
   );
 export type PublishJob = z.infer<typeof jobSchema>;
 const indexSchema = z
-  .object({ version: z.literal(1), active: hash.nullable(), latest: hash.nullable() })
+  .object({
+    version: z.literal(1),
+    active: hash.nullable(),
+    latest: hash.nullable(),
+    creators: z
+      .record(hash, z.object({ active: hash.nullable(), latest: hash.nullable() }).strict())
+      .optional(),
+  })
   .strict();
 
 async function safeDirectory(path: string) {
@@ -208,23 +215,50 @@ export class Journal {
   constructor(
     directory: string,
     readonly network: Network,
+    readonly creator?: string,
   ) {
     this.root = join(directory, '.napplet-space', network);
+    if (creator) hash.parse(creator);
   }
   directory(id: string) {
     return join(this.root, hash.parse(id));
   }
-  async index() {
+  private async readIndex() {
     try {
       return indexSchema.parse(await readJson(join(this.root, 'index.json')));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT')
-        return { version: 1 as const, active: null, latest: null };
+        return { version: 1 as const, active: null, latest: null, creators: undefined };
       throw new PublishError(
         'JOURNAL_INVALID',
         'Publication index is damaged. Restore its backup; it was not overwritten.',
       );
     }
+  }
+  private async histories() {
+    const index = await this.readIndex();
+    const creators = { ...index.creators };
+    // Import the legacy pointer without moving or deleting any saved release.
+    for (const field of ['active', 'latest'] as const) {
+      const id = index[field];
+      if (!id) continue;
+      const pubkey = (await this.load(id)).plan.pubkey;
+      creators[pubkey] ??= { active: null, latest: null };
+      creators[pubkey][field] = id;
+    }
+    return { ...index, creators };
+  }
+  async index() {
+    const index = await this.histories();
+    if (!this.creator) return index;
+    const selected = index.creators[this.creator] ?? { active: null, latest: null };
+    for (const id of [selected.active, selected.latest])
+      if (id && (await this.load(id)).plan.pubkey !== this.creator)
+        throw new PublishError(
+          'JOURNAL_INVALID',
+          'Saved publication history does not match its creator. Nothing was changed.',
+        );
+    return { ...index, ...selected };
   }
   async load(id: string) {
     try {
@@ -248,9 +282,21 @@ export class Journal {
     await atomicJson(join(this.directory(job.id), 'job.json'), jobSchema.parse(job));
   }
   async select(active: string | null, latest: string | null) {
+    const index = await this.histories();
+    const id = active ?? latest;
+    const pubkey = this.creator ?? (id ? (await this.load(id)).plan.pubkey : undefined);
+    if (pubkey) {
+      for (const jobId of [active, latest])
+        if (jobId && (await this.load(jobId)).plan.pubkey !== pubkey)
+          throw new PublishError(
+            'JOURNAL_INVALID',
+            'Cannot mix different creators in a publication history.',
+          );
+      index.creators[pubkey] = { active, latest };
+    }
     await atomicJson(
       join(this.root, 'index.json'),
-      indexSchema.parse({ version: 1, active, latest }),
+      indexSchema.parse({ version: 1, active, latest, creators: index.creators }),
     );
   }
   async lock<T>(fn: () => Promise<T>) {

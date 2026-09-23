@@ -90,7 +90,7 @@ test('workshop rejects stale file and creator snapshots and checkpoints exactly 
       'http://127.0.0.1:4173',
     );
     const saved = await finish(f.workshop);
-    expect(saved.job?.state).toBe('done');
+    expect(saved.job?.state, saved.job?.error).toBe('done');
     expect(saved.tree.changed).toEqual([]);
     expect(await sourceGit(f.directory, ['log', '-1', '--format=%s'])).toBe('Keep the improvement');
   } finally {
@@ -159,6 +159,35 @@ test('workshop serializes capture/edit/actions and detects files edited during a
     expect(result.prepared).toBeNull();
   } finally {
     proceed();
+    await workshop.close();
+    await f.close();
+  }
+});
+test('switching accounts during a workshop check preserves the selection and requires review for the new author', async () => {
+  const f = await fixture();
+  let selected: string | undefined;
+  const workshop = createWorkshop({
+    directory: f.directory,
+    network: 'local',
+    accounts: f.accounts,
+    check: async () => {
+      if (!selected) selected = (await f.accounts.create({ fresh: true })).id;
+      return { profile: 'fixture', browser: 'fixture' };
+    },
+  });
+  try {
+    let state = await workshop.snapshot();
+    await workshop.start({ action: 'check', revision: state.revision }, 'http://127.0.0.1:4173');
+    state = await finish(workshop);
+    expect(state.job?.state).toBe('done');
+    expect(state.prepared).toBeNull();
+    expect((await f.accounts.current())?.id).toBe(selected);
+    await workshop.start({ action: 'check', revision: state.revision }, 'http://127.0.0.1:4173');
+    state = await finish(workshop);
+    expect(state.job?.state).toBe('done');
+    expect(state.prepared?.plan.pubkey).toBe(state.identity?.pubkey);
+    expect((await f.accounts.current())?.id).toBe(selected);
+  } finally {
     await workshop.close();
     await f.close();
   }

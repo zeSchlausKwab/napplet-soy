@@ -7,3 +7,7 @@ declare module '*.sh' {
   const text: string;
   export default text;
 }
+declare module '*.rs' {
+  const text: string;
+  export default text;
+}

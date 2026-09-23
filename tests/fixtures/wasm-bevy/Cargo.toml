@@ -1,0 +1,21 @@
+[package]
+name = "soy-wasm-proof"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+scene3d = ["bevy/bevy_pbr"]
+
+[dependencies]
+bevy = { version = "=0.19.0", default-features = false, features = ["std", "async_executor", "bevy_asset", "bevy_log", "bevy_winit", "bevy_render", "bevy_core_pipeline", "bevy_sprite", "bevy_sprite_render", "webgl2", "png"] }
+wasm-bindgen = "=0.2.125"
+wasm-bindgen-futures = "=0.4.75"
+js-sys = "=0.3.102"
+web-sys = { version = "=0.3.102", features = ["Window", "Document", "Element", "HtmlElement", "Blob"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

@@ -1,0 +1,1 @@
+{"type":"object","properties":{"speed":{"type":"number","title":"Motion speed","minimum":0.1,"maximum":3,"default":1}}}

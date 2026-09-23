@@ -29,6 +29,9 @@ export const sourceDefaults = [
   'CLAUDE.md',
   'dev.ts',
   'package.json',
+  'Cargo.toml',
+  'Cargo.lock',
+  'rust-toolchain.toml',
   '.gitignore',
   '.napplet/server.js',
   '.napplet/client.js',
@@ -77,6 +80,38 @@ export const recordingSchema = z
     'Actions must occur within the clip.',
   );
 export type Recording = z.infer<typeof recordingSchema>;
+const watchInputs = z.array(z.string().min(1).max(200)).min(1).max(32).optional();
+/** Local build recipes only: never projected into a manifest or executed by playback. */
+export const buildSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('rust'),
+      crate: z.string().regex(/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/),
+      target: z.enum(['bin', 'lib']).default('bin'),
+      toolchain: z.string().regex(/^\d+\.\d+\.\d+$/),
+      bindgen: z.string().regex(/^\d+\.\d+\.\d+$/),
+      profile: z
+        .string()
+        .regex(/^[a-z][a-z0-9-]{0,40}$/)
+        .default('release'),
+      features: z
+        .array(z.string().regex(/^[a-zA-Z0-9_/-]+$/))
+        .max(32)
+        .default([]),
+      defaultFeatures: z.boolean().default(true),
+      watch: watchInputs,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('command'),
+      command: z.array(z.string().min(1).max(1000)).min(1).max(32),
+      watch: watchInputs,
+      timeoutSeconds: z.number().int().min(10).max(1200).default(300),
+    })
+    .strict(),
+]);
+export type Build = z.infer<typeof buildSchema>;
 export const projectSchema = z
   .object({
     schema: z.literal('space-local-project/v1'),
@@ -87,6 +122,7 @@ export const projectSchema = z
     previewId: z.uuid(),
     identifier: identifier.optional(),
     template: z.string().optional(),
+    build: buildSchema.optional(),
     remix: remixSchema.optional(),
     license: z.string().min(1).max(100),
     requires: z
@@ -109,6 +145,7 @@ export const projectSchema = z
           .optional(),
         recording: recordingSchema.optional(),
         delayMs: z.number().int().min(250).max(10000).optional(),
+        readySelector: z.string().min(1).max(200).optional(),
       })
       .strict()
       .optional(),

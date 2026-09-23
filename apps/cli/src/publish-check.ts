@@ -129,6 +129,26 @@ export async function checkPublication(
     await frame.waitForFunction(() => document.fonts.status === 'loaded', undefined, {
       timeout: 5000,
     });
+    // Engine initialization is separate from the host SHELL handshake. Creators
+    // may select a visible/DOM milestone (e.g. Bevy's first rendered scene).
+    if (config.preview?.readySelector) {
+      try {
+        await frame
+          .locator(config.preview.readySelector)
+          .first()
+          .waitFor({ state: 'attached', timeout: 30000 });
+      } catch (cause) {
+        throw new PublishError(
+          'PREVIEW_NOT_READY',
+          'The application did not reach preview.readySelector within 30 seconds. Check engine startup, the selector and browser errors before capturing or publishing.',
+          'check',
+          false,
+          errors.length
+            ? new AggregateError([new Error(errors.join('; ')), cause], 'Browser startup failed.')
+            : cause,
+        );
+      }
+    }
     await page.waitForTimeout(delayMs);
     if (errors.length || (await frame.evaluate(() => (window as any).__publishViolations?.length)))
       throw new Error(

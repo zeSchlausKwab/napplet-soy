@@ -1,11 +1,49 @@
 # Compatibility evidence and remaining audit
 
-Updated **2026-09-20**. This records the current implementation and
+Updated **2026-09-23**. This records the current implementation and
 evidence, not a declaration that every NAP is fully implemented. Configuration is
 verified in source/local production builds and public browser checks. CLI 0.5.0
 and website release `20260914142718446-76864` include the configuration host.
 The 0.14.1 starter interoperability fix was published on 2026-09-20;
 [independent-client acceptance](INTEROPERABILITY.md) records its narrower coverage.
+
+## Rust/WASM and Bevy — local source qualification, 2026-09-23
+
+The optional build recipe uses Rust 1.97.1, wasm32-unknown-unknown,
+wasm-bindgen/CLI 0.2.125, js-sys/web-sys 0.3.102 and wasm-bindgen-futures 0.4.75.
+The committed specimen pins Bevy 0.19.0 and locks its internal crates to 0.19.1.
+Protocol, shim, SDK and upstream boilerplate pins remain unchanged.
+
+The real 2D specimen built to **5.57 MiB HTML** (15.96 MiB decoded WASM), starting
+in approximately **2.8 seconds** on the local test machine. Chromium 153.0.8010.12
+exercised the production sandbox, moving rendered content, NAP-RESOURCE image
+loading through the Bevy reader, Rust storage across reloads, configuration,
+390 × 640 iframe resizing and touch-sized controls. No separate WASM request or
+CSP violation was observed. Startup figures are measurements, not performance
+guarantees or physical-phone benchmarks.
+
+The small 3D variant also passed those browser checks, with explicit checks for
+the expected textured color and absence of Bevy's magenta missing-LUT fallback.
+It built to **6.90 MiB HTML** (20.00 MiB decoded WASM), starting in approximately
+**5.8 seconds** locally. Its unlit cubes use a LUT-free tone mapper; this does not
+qualify every PBR effect or asset format. Both profiles retain a 256 MiB linear
+memory ceiling; total browser/GPU memory was not profiled.
+
+The local service test published the real artifact/source through relay, Blossom
+and GRASP, cloned its Git history with Cargo pins intact, rebuilt from a cold
+target cache, and published a playable NIP-34 proposal without changing the
+original author's branch. Source and macOS ARM64 standalone CLI checks cover
+tool failures/redaction, lock mismatches, literal argv recipes, watch rebuilds,
+recovery and compiler cleanup. The standalone executable also built real Bevy
+and exports the guide/bridge examples through `skills update`.
+
+Tests: `apps/cli/src/rust-build.test.ts`, `tests/services/wasm.test.ts`,
+`tests/services/wasm-publishing.test.ts`. Reproduction commands and limits are in
+[WASM.md](WASM.md). Remaining qualification: independent creator-agent and
+independent-client acceptance; physical phones, Safari/Firefox and native Linux/
+Intel creator builds; large games, Rust CVM callbacks and compound assets. No
+threads, WebGPU, native/WASI or Godot claim. This source work is **not released or
+deployed**; no admission cap or iframe permission was increased.
 
 ## Authority and pins
 

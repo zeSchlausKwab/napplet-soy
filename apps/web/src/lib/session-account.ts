@@ -1,6 +1,10 @@
 import { BaseAccount, type SerializedAccount } from 'applesauce-accounts';
 import { z } from 'zod';
-import type { CreatorSigner, RemoteCredential } from '../../../../packages/identity/src/signer';
+import {
+  MAX_SIGNER_RELAYS,
+  type CreatorSigner,
+  type RemoteCredential,
+} from '../../../../packages/identity/src/signer';
 const hex = z.string().regex(/^[a-f0-9]{64}$/);
 export const sessionMaterial = z.discriminatedUnion('method', [
   z.object({ method: z.literal('extension') }).strict(),
@@ -13,7 +17,7 @@ export const sessionMaterial = z.discriminatedUnion('method', [
           type: z.literal('remote'),
           clientKey: hex,
           remote: hex,
-          relays: z.array(z.string().max(400)).min(1).max(3),
+          relays: z.array(z.string().max(400)).min(1).max(MAX_SIGNER_RELAYS),
         })
         .strict(),
     })

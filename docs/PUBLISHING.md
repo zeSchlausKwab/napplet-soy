@@ -15,7 +15,7 @@ Start the platform services with `bun run dev` or `bun run dev:prod`. Set up/sel
 
 `--dry-run` prints the exact selected files, source size, creator, identifier, artifact hash and resolved service destinations. It does not open a signer, run code, contact a service, create a journal, or commit source. It lists remote and browser checks still required. `status` reads the local journal only; it does not claim to observe the current remote state. `--json` writes one structured result to stdout; publication errors include `code`, `message`, `stage` and `retryable`.
 
-An ordinary `publish` checks the current project. If a different unfinished release exists, it stops and explains `--resume`. Explicit resume finishes the saved bytes and metadata even while the editor contains newer changes. Publish again afterward to release the newer revision. There is no implicit retargeting, discard, force-overwrite, or rollback command.
+An ordinary `publish` checks the current project. If a different unfinished release exists for the selected author, it stops and explains `--resume`. Explicit resume finishes that author's saved bytes and metadata even while the editor contains newer changes. Publish again afterward to release the newer revision. Pending releases belonging to other authors remain untouched and do not block this author. There is no implicit retargeting, discard, force-overwrite, or rollback command.
 
 ## Real Git history
 
@@ -59,7 +59,11 @@ Override destinations with `--relay`, `--blossom`, `--grasp`, `--site` and repea
 
 Public endpoints require HTTPS/WSS without credentials, query strings or fragments; service origins have no path. Literal private IPs and localhost/local names are rejected. Local service endpoints require literal-loopback HTTP/WS. The website link may use localhost. These CLI endpoints are operator/creator configuration, not URLs taken from untrusted gallery metadata; DNS pinning against rebinding is implemented in the gallery downloader, not this publisher.
 
-An existing project `creator` must match the selected account and network. No credentials are selected from a project's public key. A missing creator reference uses the selected account. Each generated identifier is stable and independent of its title; older starter projects derive a stable 13-character identifier from their existing `previewId`. Changing the identity or service destinations of a published project requires a separate project. Restoring a lost journal is required to continue an existing remote identity safely; automatic journal adoption remains separate work; remix is supported.
+The user's selected account determines the author of the next publication. A saved project `creator` is a public build hint; no credentials are selected from it. Sharing updates the ignored binding and backend context to the selected author before building. The operation captures that account ID before asynchronous work and never resets the global selection if another terminal changes it.
+
+Publication history is separated by public key within each project/network. The same public key through a different signing method continues the same listing. Another public key creates a separate listing and repository; its history can coexist with the original in this folder. `status`, `publish --resume` and lifecycle operations follow the selected author. Legacy journals are imported without moving or deleting frozen releases. A resumed release always retains its original author and destinations.
+
+Each generated identifier is stable and independent of its title; older starter projects derive a stable 13-character identifier from their existing `previewId`. Changing the identifier, primary relay or Git host within one author's existing publication history still needs explicit migration. Blossom, website and mirrors can change for a new release. Restoring a lost journal is required to continue an existing remote identity safely; automatic journal adoption remains separate work; remix is supported.
 
 ## Source and sandbox checks
 

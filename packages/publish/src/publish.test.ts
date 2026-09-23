@@ -17,6 +17,7 @@ import {
 import { Journal } from './journal';
 import { newer } from './relay';
 import { appReferences, descriptorImages } from '../../protocol/src/preview';
+import { writeBinding } from './binding';
 
 // Existing publication cases explicitly checkpoint fixture edits before sharing.
 async function publishProject(options: PublishOptions) {
@@ -160,6 +161,112 @@ async function fixture() {
     close: () => rm(root, { recursive: true, force: true }),
   };
 }
+test('an unpublished draft follows the selected creator instead of forcing its scaffold identity', async () => {
+  const f = await fixture();
+  try {
+    await writeBinding(f.project, {
+      version: 1,
+      project: { creator: { pubkey: f.creator.pubkey, network: 'local' } },
+    });
+    const selected = await f.accounts.create({ fresh: true });
+    const dry = await publishProject({ ...f.options, dryRun: true });
+    expect(dry.status === 'dry_run' && dry.plan.pubkey).toBe(selected.pubkey);
+    await publishProject(f.options);
+    expect((await f.load()).plan.pubkey).toBe(selected.pubkey);
+    expect((await f.accounts.current())?.id).toBe(selected.id);
+  } finally {
+    await f.close();
+  }
+});
+test('an in-flight publication keeps its selected account without resetting a later global selection', async () => {
+  const f = await fixture();
+  try {
+    let replacement: string | undefined;
+    await publishProject({
+      ...f.options,
+      check: async () => {
+        replacement = (await f.accounts.create({ fresh: true })).id;
+        return { profile: 'test', browser: 'test' };
+      },
+    });
+    expect((await f.load()).plan.pubkey).toBe(f.creator.pubkey);
+    expect((await f.accounts.current())?.id).toBe(replacement);
+  } finally {
+    await f.close();
+  }
+});
+test('switching authors keeps independent histories, including a legacy journal and pending release', async () => {
+  const f = await fixture();
+  try {
+    await publishProject(f.options);
+    const first = await f.load();
+    // Existing installations have a single-pointer index; preserve it when switching.
+    await Bun.write(
+      join(f.journal.root, 'index.json'),
+      JSON.stringify({ version: 1, active: null, latest: first.id }),
+    );
+    const other = await f.accounts.create({ fresh: true });
+    expect(await publicationStatus(f.project, 'local', { creator: other.pubkey })).toEqual({
+      status: 'not_started',
+    });
+    f.deps.checkpoint = async () => {
+      throw new Error('fixture interruption');
+    };
+    await expect(publishProject(f.options)).rejects.toThrow('fixture interruption');
+    const pending = await f.load();
+    expect(pending.plan.pubkey).toBe(other.pubkey);
+    expect(pending.parent).toBeNull();
+    expect(pending.current).toBeUndefined();
+    f.deps.checkpoint = undefined;
+    await f.accounts.use(f.creator.id);
+    expect(await publishProject(f.options)).toMatchObject({
+      unchanged: true,
+      currentId: first.current!.id,
+    });
+    await Bun.write(join(f.project, 'index.html'), '<p>Updated original</p>');
+    await publishProject(f.options);
+    const update = await f.load();
+    expect(update.parent).toBe(first.id);
+    expect(update.current!.pubkey).toBe(f.creator.pubkey);
+    const otherJournal = new Journal(f.project, 'local', other.pubkey);
+    expect((await otherJournal.index()).active).toBe(pending.id);
+    await f.accounts.use(other.id);
+    await publishProject({ ...f.options, resume: true });
+    const resumed = await f.load();
+    expect(resumed.id).toBe(pending.id);
+    expect(resumed.current!.pubkey).toBe(other.pubkey);
+    expect(resumed.plan.artifactHash).toBe(first.plan.artifactHash);
+    expect(resumed.current!.id).not.toBe(first.current!.id);
+    expect((await new Journal(f.project, 'local', f.creator.pubkey).index()).latest).toBe(
+      update.id,
+    );
+    expect((await f.accounts.current())?.id).toBe(other.id);
+    expect(await f.accounts.list()).toHaveLength(2);
+  } finally {
+    await f.close();
+  }
+}, 15000);
+test('publication histories reject pointers belonging to a different author', async () => {
+  const f = await fixture();
+  try {
+    await publishProject(f.options);
+    const job = await f.load();
+    const other = await f.accounts.create({ fresh: true });
+    await Bun.write(
+      join(f.journal.root, 'index.json'),
+      JSON.stringify({
+        version: 1,
+        active: null,
+        latest: job.id,
+        creators: { [other.pubkey]: { active: null, latest: job.id } },
+      }),
+    );
+    await expect(publishProject(f.options)).rejects.toMatchObject({ code: 'JOURNAL_INVALID' });
+    expect((await f.accounts.current())?.id).toBe(other.id);
+  } finally {
+    await f.close();
+  }
+});
 test('managed external assets are uploaded before announcement, resume unchanged and restore from source on remix', async () => {
   const f = await fixture();
   try {
@@ -664,16 +771,9 @@ test('concurrent publishers are excluded and release the lock after interruption
     await f.close();
   }
 });
-test('symlinks, credentials, private filenames, mismatched creators and malformed state are rejected', async () => {
+test('symlinks, credentials, private filenames and malformed state are rejected', async () => {
   const f = await fixture();
   try {
-    await Bun.write(
-      join(f.project, 'napplet.json'),
-      JSON.stringify({ ...f.config, creator: { pubkey: 'a'.repeat(64), network: 'local' } }),
-    );
-    await expect(publishProject({ ...f.options, dryRun: true })).rejects.toMatchObject({
-      code: 'CREATOR_MISMATCH',
-    });
     await Bun.write(
       join(f.project, 'napplet.json'),
       JSON.stringify({

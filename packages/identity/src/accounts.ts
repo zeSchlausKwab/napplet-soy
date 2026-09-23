@@ -9,6 +9,7 @@ import { encrypt, decrypt } from 'nostr-tools/nip49';
 import { bech32 } from '@scure/base';
 import {
   AccountError,
+  MAX_SIGNER_RELAYS,
   bunkerCredential,
   checkPubkey,
   openCredential,
@@ -42,7 +43,7 @@ export class NativeVault implements Vault {
       const status = [code, errno].filter((value) => value !== undefined).join(', ');
       throw new AccountError(
         'KEYSTORE_UNAVAILABLE',
-        `OS credential ${operation} failed${status ? ` (${status})` : ' (no OS error code supplied)'}. Check the credential store permissions and unlock status. Linux needs a running Secret Service/keyring. No automatic plaintext fallback is used. For development only, see SOYLI_DANGEROUS_PLAINTEXT_KEYS in soyli --help.`,
+        `OS credential ${operation} failed${status ? ` (${status})` : ' (no OS error code supplied)'}. Check the credential store permissions and unlock status. Linux needs a running Secret Service/keyring. Remote sessions can use file storage; account storage file migrates an existing remote session once its old vault is accessible. No automatic fallback is used. For local-key development only, see SOYLI_DANGEROUS_PLAINTEXT_KEYS in soyli --help.`,
       );
     }
   }
@@ -58,15 +59,27 @@ export class NativeVault implements Vault {
     await this.operation('delete', () => Bun.secrets.delete({ service: this.service, name: id }));
   }
 }
+export const sessionStorageSchema = z.enum(['file', 'keychain']);
+export type SessionStorage = z.infer<typeof sessionStorageSchema>;
 const accountSchema = z
   .object({
     id: z.uuid(),
     pubkey: z.string().regex(/^[a-f0-9]{64}$/),
     type: z.enum(['local', 'remote']),
     status: z.enum(['pending', 'ready']),
+    sessionStorage: sessionStorageSchema.optional(),
+    // Written before removing the old copy, so cleanup can be retried after a crash.
+    sessionCleanup: z.enum(['legacy', 'file', 'keychain']).optional(),
   })
-  .strict();
+  .strict()
+  .refine((a) => a.type === 'remote' || (!a.sessionStorage && !a.sessionCleanup))
+  .refine(
+    (a) => !a.sessionCleanup || (!!a.sessionStorage && a.sessionCleanup !== a.sessionStorage),
+  );
 export type Account = z.infer<typeof accountSchema>;
+export function accountStorage(account: Account) {
+  return account.sessionStorage ?? (dangerousFileKeystore() ? 'development-file' : 'keychain');
+}
 const indexSchema = z
   .object({
     version: z.literal(1),
@@ -83,7 +96,7 @@ const credentialSchema = z.discriminatedUnion('type', [
       type: z.literal('remote'),
       clientKey: z.string().regex(/^[a-f0-9]{64}$/),
       remote: z.string().regex(/^[a-f0-9]{64}$/),
-      relays: z.array(z.string().max(400)).min(1).max(3),
+      relays: z.array(z.string().max(400)).min(1).max(MAX_SIGNER_RELAYS),
       secret: z.string().max(256).optional(),
     })
     .strict(),
@@ -187,6 +200,12 @@ export class PlaintextVault implements Vault {
       await file.sync();
       await file.close();
       await rename(temporary, path);
+      const dir = await open(this.directory, 'r');
+      try {
+        await dir.sync();
+      } finally {
+        await dir.close();
+      }
     } finally {
       await file.close();
       await rm(temporary, { force: true });
@@ -200,14 +219,29 @@ export class PlaintextVault implements Vault {
 }
 export class Accounts {
   readonly directory: string;
+  private readonly sessionFiles: Vault;
+  private readonly keychain: Vault;
   constructor(
     readonly network: Network = 'public',
     directory = defaultAccountDirectory(network),
     readonly vault: Vault = dangerousFileKeystore()
       ? new PlaintextVault(join(directory, 'credentials'))
       : new NativeVault(`space.napplet.creator.${network}`),
+    stores: { sessionFiles?: Vault; keychain?: Vault } = {},
   ) {
     this.directory = resolve(directory);
+    this.sessionFiles =
+      stores.sessionFiles ?? new PlaintextVault(join(this.directory, 'remote-sessions'));
+    this.keychain =
+      stores.keychain ??
+      (dangerousFileKeystore() ? new NativeVault(`space.napplet.creator.${network}`) : vault);
+  }
+  private store(account: Account, storage = account.sessionStorage ?? 'legacy'): Vault {
+    return storage === 'file'
+      ? this.sessionFiles
+      : storage === 'keychain'
+        ? this.keychain
+        : this.vault;
   }
   private async read(): Promise<Index> {
     await outsideRepository(this.directory);
@@ -280,7 +314,7 @@ export class Accounts {
       // A public reservation survives a crash between credential storage and activation.
       for (const record of [...index.accounts]) {
         if (record.status !== 'pending') continue;
-        const saved = await this.vault.get(record.id);
+        const saved = await this.store(record).get(record.id);
         if (saved === null) index.accounts = index.accounts.filter((a) => a.id !== record.id);
         else {
           const credential = this.decode(saved, record);
@@ -304,7 +338,7 @@ export class Accounts {
   }
   private decode(raw: string, account: Account): Credential {
     try {
-      if (raw.length > 2048) throw new Error();
+      if (raw.length > 4096) throw new Error();
       const value = credentialSchema.parse(JSON.parse(raw));
       if (value.type !== account.type) throw new Error();
       return value;
@@ -316,7 +350,7 @@ export class Accounts {
     }
   }
   private async credential(account: Account) {
-    const raw = await this.vault.get(account.id);
+    const raw = await this.store(account).get(account.id);
     if (raw === null)
       throw new AccountError(
         'CREDENTIAL_MISSING',
@@ -439,7 +473,12 @@ export class Accounts {
       await rm(temporary, { force: true });
     }
   }
-  private async save(index: Index, credential: Credential, pubkey: string) {
+  private async save(
+    index: Index,
+    credential: Credential,
+    pubkey: string,
+    storage: SessionStorage = 'file',
+  ) {
     checkPubkey(pubkey, this.network);
     if (index.accounts.length >= 32)
       throw new AccountError(
@@ -447,7 +486,10 @@ export class Accounts {
         'This account directory already contains 32 identities.',
       );
     const encoded = JSON.stringify(credential);
-    if (encoded.length > 2048)
+    if (
+      Buffer.byteLength(encoded) >
+      (credential.type === 'remote' && storage === 'file' ? 4096 : 2048)
+    )
       throw new AccountError(
         'CREDENTIAL_SIZE',
         'Signer connection exceeds the portable credential-store size limit.',
@@ -457,11 +499,13 @@ export class Accounts {
       pubkey,
       type: credential.type,
       status: 'pending',
+      ...(credential.type === 'remote' ? { sessionStorage: storage } : {}),
     };
     index.accounts.push(record);
     await this.write(index);
-    await this.vault.set(record.id, encoded);
-    if ((await this.vault.get(record.id)) !== encoded)
+    const store = this.store(record);
+    await store.set(record.id, encoded);
+    if ((await store.get(record.id)) !== encoded)
       throw new AccountError(
         'KEYSTORE_VERIFY',
         'Credential storage could not be verified. Retry account setup; no replacement key will be generated while a saved reservation exists.',
@@ -506,7 +550,13 @@ export class Accounts {
       key.fill(0);
     }
   }
-  async connect(uri: string, options: Parameters<typeof openCredential>[2] = {}) {
+  async connect(
+    uri: string,
+    options: NonNullable<Parameters<typeof openCredential>[2]> & {
+      sessionStorage?: SessionStorage;
+    } = {},
+  ) {
+    const storage = this.validateSessionStorage(options.sessionStorage ?? 'file');
     const credential = bunkerCredential(uri, this.network);
     const signer = await openCredential(credential, this.network, options);
     try {
@@ -514,23 +564,95 @@ export class Accounts {
       // authenticate with the client key already approved by the remote signer.
       delete credential.secret;
       return await this.locked(async (index) =>
-        this.save(index, credential, await signer.getPublicKey()),
+        this.save(index, credential, await signer.getPublicKey(), storage),
       );
     } finally {
       await signer.close();
     }
   }
-  async pair(relays: string[], options: PairingOptions) {
+  async pair(relays: string[], options: PairingOptions & { sessionStorage?: SessionStorage }) {
+    const storage = this.validateSessionStorage(options.sessionStorage ?? 'file');
     const { credential, signer } = await pairCredential(relays, this.network, options);
     try {
       return await this.locked(async (index) => {
         if (options.signal?.aborted)
           throw new AccountError('SIGNER_CANCELLED', 'Pairing cancelled.');
-        return this.save(index, credential, await signer.getPublicKey());
+        return this.save(index, credential, await signer.getPublicKey(), storage);
       });
     } finally {
       await signer.close();
     }
+  }
+  private validateSessionStorage(value: unknown): SessionStorage {
+    const result = sessionStorageSchema.safeParse(value);
+    if (!result.success)
+      throw new AccountError(
+        'SESSION_STORAGE',
+        'Choose file or keychain for remote session storage.',
+      );
+    return result.data;
+  }
+  /** Move the selected remote session without re-pairing or changing its identity. */
+  async setSessionStorage(value: SessionStorage) {
+    const target = this.validateSessionStorage(value);
+    return this.locked(async (index) => {
+      const account = index.accounts.find((a) => a.id === index.active);
+      if (!account || account.type !== 'remote')
+        throw new AccountError(
+          'SESSION_STORAGE',
+          'Select a remote signer with account use first. Local private-key storage is unchanged.',
+        );
+      const cleanup = async () => {
+        if (!account.sessionCleanup) return;
+        // Never delete the recovery copy if the destination disappeared or became unsafe.
+        await this.credential(account);
+        try {
+          await this.store(account, account.sessionCleanup).delete(account.id);
+        } catch (error) {
+          // Vault errors may include credentials. Only our safe native/file diagnostics cross this boundary.
+          const code =
+            error instanceof AccountError &&
+            ['KEYSTORE_UNAVAILABLE', 'KEYSTORE_FILE'].includes(error.code)
+              ? ` ${error.message}`
+              : '';
+          throw new AccountError(
+            'SESSION_CLEANUP',
+            `Session is saved in ${account.sessionStorage}, but removing its old ${account.sessionCleanup} copy failed.${code} Retry soyli account storage ${account.sessionStorage} to finish cleanup; do not pair again.`,
+          );
+        }
+        delete account.sessionCleanup;
+        await this.write(index);
+      };
+      await cleanup();
+      if (account.sessionStorage === target) {
+        await this.credential(account);
+        return account;
+      }
+      const credential = await this.credential(account);
+      if (credential.type !== 'remote')
+        throw new AccountError('INVALID_CREDENTIAL', 'Expected a remote session.');
+      delete credential.secret;
+      const encoded = JSON.stringify(credential);
+      if (target === 'keychain' && Buffer.byteLength(encoded) > 2048)
+        throw new AccountError(
+          'CREDENTIAL_SIZE',
+          'This session exceeds the portable Keychain size limit. Keep file storage.',
+        );
+      const previous = account.sessionStorage ?? 'legacy';
+      const destination = this.store(account, target);
+      await destination.set(account.id, encoded);
+      if ((await destination.get(account.id)) !== encoded)
+        throw new AccountError(
+          'KEYSTORE_VERIFY',
+          'Session storage could not be verified. The original session remains selected; retry account storage.',
+        );
+      account.sessionStorage = target;
+      // Legacy native storage and explicit keychain storage share a vault.
+      if (this.store(account, previous) !== destination) account.sessionCleanup = previous;
+      await this.write(index);
+      await cleanup();
+      return account;
+    });
   }
   async use(ref: string, options: Parameters<typeof openCredential>[2] = {}) {
     return this.locked(async (index) => {
@@ -549,8 +671,12 @@ export class Accounts {
       return account;
     });
   }
-  async signer(options: Parameters<typeof openCredential>[2] = {}) {
-    const account = await this.current();
+  async signer(
+    options: NonNullable<Parameters<typeof openCredential>[2]> & { accountId?: string } = {},
+  ) {
+    const account = options.accountId
+      ? (await this.read()).accounts.find((a) => a.id === options.accountId && a.status === 'ready')
+      : await this.current();
     if (!account)
       throw new AccountError(
         'ACCOUNT_REQUIRED',
@@ -601,4 +727,20 @@ export class Accounts {
     }
     return path;
   }
+}
+
+/** A running operation retains its chosen account without changing the global default. */
+export async function captureAccount(accounts: Pick<Accounts, 'current' | 'signer'>) {
+  const account = await accounts.current();
+  return {
+    current: async () => account,
+    signer: (options: Parameters<Accounts['signer']>[0] = {}) => {
+      if (!account)
+        throw new AccountError(
+          'ACCOUNT_REQUIRED',
+          'Select a creator before starting this operation.',
+        );
+      return accounts.signer({ ...options, accountId: account.id });
+    },
+  };
 }

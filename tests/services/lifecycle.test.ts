@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test';
 import { join, resolve } from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rename } from 'node:fs/promises';
 import { stack } from './publish-stack';
 import { sourceGit } from '../../packages/grasp/src/client';
 import { Journal } from '../../packages/publish/src/journal';
@@ -75,7 +75,8 @@ test('real soyLI confirms unpublish, republishes unchanged source, and reports B
     await sourceGit(project, ['init', '--initial-branch=main']);
     await sourceGit(project, ['add', '.']);
     await sourceGit(project, ['commit', '-m', 'Initial fixture']);
-    expect((await cli(['account', 'create'])).code).toBe(0);
+    const original = await cli(['account', 'create']);
+    expect(original.code).toBe(0);
     const published = await cli(['publish']);
     expect(published.code, JSON.stringify(published)).toBe(0);
     const journal = new Journal(project, 'local'),
@@ -85,6 +86,16 @@ test('real soyLI confirms unpublish, republishes unchanged source, and reports B
     expect(plan.data.receipt.plan.complete, JSON.stringify(plan.data.receipt.plan.warnings)).toBe(
       true,
     );
+    await rename(
+      join(journal.root, `lifecycle-${job.plan.pubkey}.json`),
+      join(journal.root, 'lifecycle.json'),
+    );
+    expect((await cli(['lifecycle'])).data.receipt.plan.author).toBe(job.plan.pubkey);
+    expect((await cli(['account', 'create', '--new'])).code).toBe(0);
+    expect((await cli(['status'])).data.status).toBe('not_started');
+    expect((await cli(['lifecycle'])).data.error.code).toBe('LIFECYCLE_MISSING');
+    expect((await cli(['unpublish', '--dry-run'])).data.error.code).toBe('LIFECYCLE_MISSING');
+    expect((await cli(['account', 'use', original.data.account.id])).code).toBe(0);
     expect(
       (await io.read(services.targets.relay, { ids: [job.current!.id], limit: 2 })).length,
     ).toBe(1);
@@ -135,7 +146,10 @@ test('real soyLI confirms unpublish, republishes unchanged source, and reports B
         },
         'unpublish',
       );
-      await Bun.write(join(journal.root, 'lifecycle.json'), JSON.stringify(failure));
+      await Bun.write(
+        join(journal.root, `lifecycle-${failure.plan.author}.json`),
+        JSON.stringify(failure),
+      );
       const preview = await cli(['unpublish', '--resume', '--dry-run']);
       const refused = await cli(['unpublish', '--confirm', preview.data.confirmation]);
       expect(refused.code).not.toBe(0);

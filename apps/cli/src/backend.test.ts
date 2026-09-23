@@ -64,6 +64,26 @@ test('creator sync registers boards over encrypted CVM and generated public cont
       [],
     );
     expect(context.provider).toEqual(service.provider);
+    const secondKey = generateSecretKey(),
+      secondPubkey = getPublicKey(secondKey);
+    const selected: Pick<Accounts, 'current' | 'signer'> = {
+      current: async () => ({ pubkey: secondPubkey }) as Account,
+      signer: async () => ({
+        getPublicKey: async () => secondPubkey,
+        signEvent: async (event) => finalizeEvent(event, secondKey),
+        close: async () => {},
+      }),
+    };
+    await syncBackend(directory, 'local', selected);
+    const changed = await backendProject(directory);
+    expect(changed?.pubkey).toBe(secondPubkey);
+    expect(changed?.napplet).not.toBe(context.napplet);
+    expect(service.boards.read('guest', { napplet: changed!.napplet, board: 'main' }).rows).toEqual(
+      [],
+    );
+    expect(service.boards.read('guest', { napplet: address, board: 'main' }).own).toMatchObject({
+      score: 10,
+    });
   } finally {
     await service.close();
     relay.close();

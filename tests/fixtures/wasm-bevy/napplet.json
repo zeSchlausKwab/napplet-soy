@@ -1,0 +1,11 @@
+{
+  "schema": "space-local-project/v1",
+  "name": "Rust garden",
+  "description": "A Bevy WebGL2 interoperability specimen with host storage, settings and resources.",
+  "entry": "dist/index.html",
+  "previewId": "f15e936a-9de1-4f6f-8fbe-d36fba976407",
+  "license": "MIT",
+  "requires": ["storage", "config"],
+  "build": { "kind": "rust", "crate": "soy-wasm-proof", "toolchain": "1.97.1", "bindgen": "0.2.125" },
+  "preview": { "readySelector": "html[data-napplet-ready='true']", "delayMs": 1000 }
+}

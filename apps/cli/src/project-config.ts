@@ -71,6 +71,7 @@ export async function projectConfiguration(
     preview: {
       ...(project.preview?.image ? { image: project.preview.image } : { capture: 'automatic' }),
       delayMs: project.preview?.delayMs ?? 1500,
+      readySelector: project.preview?.readySelector ?? null,
       video: project.preview?.video ?? null,
       recording: project.preview?.recording ?? { startMs: 0, durationMs: 6000, actions: [] },
     },

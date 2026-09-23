@@ -164,6 +164,12 @@ see the [upstream review](docs/NAP-REVIEW.md) for exact contracts and known gaps
 
 ### A few practical limits
 
+Rust/Bevy creators can use the optional [Rust/WASM build recipe](docs/WASM.md)
+with the same preview, publishing and collaboration commands. Its first profile
+is single-threaded WebGL2 with embedded executable bytes; engine assets use the
+normal host resource API. Players need no Rust installation. See the guide for
+size limits and tested browsers; this source addition is not yet in a CLI release.
+
 soyLI checks metadata, files, supported capabilities and startup in the host; it
 doesn't certify gameplay, mobile usability or multiplayer performance. Test those
 with real users and devices. Built-in video capture currently produces short,

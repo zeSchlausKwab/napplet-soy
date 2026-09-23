@@ -3,7 +3,7 @@ import { parseAssets, ASSET_LOCK } from '../../assets/src';
 import { inspectPreviewVideo, MAX_VIDEO_BYTES } from '../../protocol/src/preview-video';
 import { join } from 'node:path';
 import { realpath, rm } from 'node:fs/promises';
-import { Accounts } from '../../identity/src/accounts';
+import { Accounts, captureAccount } from '../../identity/src/accounts';
 import { checkPubkey, type CreatorSigner, type Network } from '../../identity/src/signer';
 import {
   aggregateHash,
@@ -110,9 +110,10 @@ export async function publicationStatus(
   options: {
     refresh?: boolean;
     signal?: AbortSignal;
+    creator?: string;
   } = {},
 ) {
-  const journal = new Journal(await realpath(directory), network);
+  const journal = new Journal(await realpath(directory), network, options.creator);
   const read = async () => {
     const index = await journal.index();
     const id = index.active ?? index.latest;
@@ -191,7 +192,7 @@ async function verifyFrozen(journal: Journal, job: PublishJob) {
   return { ...inspected, archive, preview, video };
 }
 export async function publishProject(options: PublishOptions) {
-  const accounts = options.accounts ?? new Accounts(options.network);
+  const accounts = await captureAccount(options.accounts ?? new Accounts(options.network));
   const account = await accounts.current();
   if (!account)
     throw new PublishError(
@@ -223,7 +224,7 @@ export async function publishProject(options: PublishOptions) {
     };
   }
   const root = await realpath(options.directory);
-  const journal = new Journal(root, options.network);
+  const journal = new Journal(root, options.network, account.pubkey);
   const deps = options.dependencies ?? {};
   const relays = deps.relays ?? new PublicationRelays(options.signal);
   let signer: CreatorSigner | undefined,
@@ -325,7 +326,7 @@ export async function publishProject(options: PublishOptions) {
               )
                 throw new PublishError(
                   'PUBLISH_IDENTITY',
-                  'The creator, identifier, primary relay or Git host changed. Their existing publication history must be migrated explicitly. Blossom, site and mirrors can be changed for a new release; pending releases retain their frozen destinations.',
+                  'The identifier, primary relay or Git host changed for this creator. Their existing publication history must be migrated explicitly. Blossom, site and mirrors can be changed for a new release; pending releases retain their frozen destinations.',
                 );
               await verifyFrozen(journal, previous);
             }
@@ -500,7 +501,7 @@ export async function publishProject(options: PublishOptions) {
         if (job.plan.pubkey !== account.pubkey)
           throw new PublishError(
             'CREATOR_MISMATCH',
-            'Select the creator that owns this saved publication.',
+            'This pending release belongs to a different creator. Start a new publication under your selected account; do not change accounts automatically.',
           );
         const frozen = await verifyFrozen(journal, job);
         const resumedTargets = resolveTargets(

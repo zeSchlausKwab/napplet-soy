@@ -21,6 +21,9 @@ export const websiteKinds = [
   27235, 30000, 30002, 30003, 30015, 35129, 15129,
 ];
 export const defaultSignerRelays = ['wss://relay.napplet.soy'];
+// A client connection budget, not a NIP-46 protocol limit. Keep saved sessions
+// and both connection directions on the same policy.
+export const MAX_SIGNER_RELAYS = 8;
 export type SignerOptions = {
   expectedPubkey?: string;
   timeoutMs?: number;
@@ -35,8 +38,11 @@ export type PairingOptions = SignerOptions & {
 };
 export function signerRelays(values: string[], network: Network) {
   const relays = [...new Set(values)];
-  if (!relays.length || relays.length > 3)
-    throw new AccountError('INVALID_RELAY', 'Choose 1–3 signer relays.');
+  if (!relays.length || relays.length > MAX_SIGNER_RELAYS)
+    throw new AccountError(
+      'INVALID_RELAY',
+      `Use 1–${MAX_SIGNER_RELAYS} distinct signer relays; received ${relays.length}.`,
+    );
   for (const relay of relays) {
     let r: URL;
     try {
@@ -88,7 +94,11 @@ export function checkPubkey(pubkey: string, network: Network) {
 }
 export function bunkerCredential(uri: string, network: Network): RemoteCredential {
   try {
-    if (uri.length > 2048) throw new Error();
+    if (uri.length > 4096)
+      throw new AccountError(
+        'INVALID_BUNKER',
+        'The bunker link exceeds the 4096-character input limit.',
+      );
     const url = new URL(uri);
     if (
       url.protocol !== 'bunker:' ||
@@ -98,24 +108,38 @@ export function bunkerCredential(uri: string, network: Network): RemoteCredentia
       url.hash ||
       !['', '/'].includes(url.pathname)
     )
-      throw new Error();
+      throw new AccountError(
+        'INVALID_BUNKER',
+        'Expected bunker://<signer-pubkey>?relay=<WSS URL>&secret=<optional secret>, without credentials, port, fragment or an extra path.',
+      );
     if (
       [...url.searchParams.keys()].some((key) => !['relay', 'secret'].includes(key)) ||
       url.searchParams.getAll('secret').length > 1
     )
-      throw new Error();
+      throw new AccountError(
+        'INVALID_BUNKER',
+        'A bunker link accepts relay parameters and at most one secret parameter.',
+      );
     const remote = checkPubkey(url.hostname, 'local');
     const relays = signerRelays(url.searchParams.getAll('relay'), network);
     const secret = url.searchParams.get('secret') ?? undefined;
-    if (secret && secret.length > 256) throw new Error();
+    if (secret && secret.length > 256)
+      throw new AccountError(
+        'INVALID_BUNKER',
+        'The bunker secret exceeds the supported 256-character limit.',
+      );
     const key = new PrivateKeySigner();
     const clientKey = bytesToHex(key.key);
     key.key.fill(0);
     return { type: 'remote', remote, relays, secret, clientKey };
-  } catch {
+  } catch (error) {
     throw new AccountError(
       'INVALID_BUNKER',
-      'Use a bunker connection link with 1–3 WSS relays (literal-loopback WS relays for --network local).',
+      // Only our own safe validation messages may cross the credential boundary;
+      // URL/parser exceptions can contain the supplied link and its secret.
+      error instanceof AccountError
+        ? error.message
+        : 'Could not parse the bunker connection link. Paste the complete bunker:// link at the hidden prompt.',
     );
   }
 }
@@ -252,8 +276,18 @@ async function openSession(
         subscriptionMethod: (relays, filters) => pool!.subscription(relays, filters),
         publishMethod: async (relays, event) => {
           if (closed) throw new AccountError('SIGNER_CLOSED', 'Signer session closed.');
-          const results = await pool!.publish(relays, event, { timeout: 5000, retries: false });
-          if (!results.some((r) => r.ok)) throw new Error('No signing relay accepted the request');
+          // Fan out to every hint, but don't hold an already received signer
+          // response behind a silent relay's ACK deadline. Promise.any consumes
+          // late rejections; the pool still owns and closes all attempts.
+          await Promise.any(
+            relays.map(async (relay) => {
+              const result = await pool!
+                .relay(relay)
+                .publish(event, { timeout: 5000, retries: false });
+              if (!result.ok)
+                throw new AccountError('SIGNER_RELAY', 'A signing relay refused the request.');
+            }),
+          );
         },
         onAuth: async (url) => {
           if (/[\u0000-\u001f\u007f]/.test(url))

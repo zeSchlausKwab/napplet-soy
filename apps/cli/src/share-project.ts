@@ -4,8 +4,21 @@ import { publishProject, type PublishOptions } from '../../../packages/publish/s
 import { propose, type CollaborationOptions } from '../../../packages/collaboration/src/service';
 import { buildProject } from './toolchain';
 import { syncBackend } from './backend';
-import { Accounts } from '../../../packages/identity/src/accounts';
+import { Accounts, captureAccount } from '../../../packages/identity/src/accounts';
+import { readBinding, writeBinding } from '../../../packages/publish/src/binding';
+import { backendProject } from './backend';
+import type { Network } from '../../../packages/identity/src/signer';
 import { checkPublication } from './publish-check';
+
+/** Public build context follows the user's selection; this never selects credentials. */
+export async function prepareSharingIdentity(directory: string, network: Network, pubkey: string) {
+  const binding = (await readBinding(directory)) ?? { version: 1 as const, project: {} };
+  if (binding.project.creator?.pubkey !== pubkey || binding.project.creator.network !== network) {
+    binding.project.creator = { pubkey, network };
+    await writeBinding(directory, binding);
+  }
+  await backendProject(directory, pubkey);
+}
 
 export async function buildForSharing(directory: string, signal?: AbortSignal) {
   await committedSource(directory);
@@ -13,18 +26,21 @@ export async function buildForSharing(directory: string, signal?: AbortSignal) {
     await buildProject(directory, signal);
 }
 export async function publishFromProject(options: PublishOptions) {
+  const accounts = await captureAccount(options.accounts ?? new Accounts(options.network));
   if (!options.dryRun && !options.resume) {
     await committedSource(options.directory);
+    const account = await accounts.current();
+    if (account) await prepareSharingIdentity(options.directory, options.network, account.pubkey);
     await syncBackend(
       options.directory,
       options.network,
-      options.accounts ?? new Accounts(options.network),
+      accounts,
       { signal: options.signal, onAuth: options.onAuth },
       false,
     );
     await buildForSharing(options.directory, options.signal);
   }
-  return publishProject(options);
+  return publishProject({ ...options, accounts });
 }
 export async function proposeFromProject(
   options: CollaborationOptions & {
@@ -33,6 +49,12 @@ export async function proposeFromProject(
     check?: PublishOptions['check'];
   },
 ) {
-  if (!options.resume) await buildForSharing(options.directory, options.signal);
-  return propose({ ...options, check: options.check ?? checkPublication });
+  const accounts = await captureAccount(options.accounts ?? new Accounts(options.network));
+  if (!options.resume) {
+    await committedSource(options.directory);
+    const account = await accounts.current();
+    if (account) await prepareSharingIdentity(options.directory, options.network, account.pubkey);
+    await buildForSharing(options.directory, options.signal);
+  }
+  return propose({ ...options, accounts, check: options.check ?? checkPublication });
 }

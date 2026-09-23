@@ -20,28 +20,72 @@ bun run soyli account list
 bun run soyli account use <previous-account-id>
 ```
 
-`account import` and `account connect` also add and select an identity while retaining earlier entries. `account list` displays public keys, types, status and account IDs. `account use <account-id>` verifies the stored signer before selecting it. An npub is also accepted; use the account ID when multiple sessions represent the same public key. Changing the selected account does not rewrite existing projects' creator bindings. Switch back to the matching creator when publishing those projects.
+`account import`, `account connect` and `account pair` add and select an identity while retaining earlier entries. `account list` displays public keys, types, status and account IDs. `account use <account-id>` verifies the stored signer before selecting it. An npub is also accepted; use the account ID when multiple sessions represent the same public key.
 
-New projects store only `creator: {pubkey, network}` in `napplet.json`. This is a public authorship reference, not access to a key. The publisher matches it against the explicitly selected signer; cloning/remixing someone else's project must never select their credentials. A missing reference uses the current account. The local `previewId` and browser-extension identity belong to preview behavior and remain independent of the publishing signer.
+In the 2026-09-23 source, the selected account controls the next publication, including projects scaffolded with another identity. The ignored `.napplet-space/project.json` creator reference is a public build hint, not an account lock. Sharing updates that reference and generated backend context. Cloning/remixing must never select someone else's credentials. The local `previewId` and browser-extension identity remain independent of the publishing signer.
+
+Each sharing operation captures the selected account ID before building/checking and uses that account until it finishes. A later account switch affects subsequent operations; the running operation never resets the global choice or falls back to another signer. If its selected credential fails, the operation reports the failure.
+
+Publication journals are scoped by public key within the project/network. Switching from a local key to a remote signer for the **same public key** continues the same listing. A **different public key** publishes a separate Nostr address and Git repository; the original listing, assets, releases and pending jobs are preserved. Switching back continues that author's history. `status`, `publish --resume` and lifecycle commands refer to the selected author's releases. Legacy single-author journals are read without moving or deleting releases. Backend boards use the selected author's namespace, so switching public keys starts separate boards rather than transferring scores.
+
+Agents must respect the user's selected account. They must not run account-selection or provisioning commands to restore a saved project creator or bypass a publication error unless the user requested that identity change. Reviewed local-manager actions still require a new check when the author changes before an action starts.
 
 ## Where credentials live
 
-The implementation uses [Bun's native Secrets API](https://bun.sh/docs/runtime/secrets), through a small `Vault` interface. Local keys and NIP-46 client credentials use the OS keychain, without retaining consumed pairing secrets on new connections. Plain account metadata lives at `${XDG_CONFIG_HOME:-~/.config}/napplet-space/accounts/<network>/accounts.json`. `SPACE_ACCOUNT_HOME` overrides the `napplet-space` directory, but account state and recovery destinations are rejected inside Git trees, including symlinked paths.
+Local private keys use [Bun's native Secrets API](https://bun.sh/docs/runtime/secrets), through a small `Vault` interface. In the 2026-09-23 source, **new NIP-46 connections default to private session files**, with optional OS-vault storage. Existing remote accounts retain their storage until explicitly migrated. Plain account metadata lives at `${XDG_CONFIG_HOME:-~/.config}/napplet-space/accounts/<network>/accounts.json`. `SPACE_ACCOUNT_HOME` overrides the `napplet-space` directory, but account state and recovery destinations are rejected inside Git trees, including symlinked paths.
 
 | State | Location |
 | --- | --- |
 | Local creator private key | OS credential store, `space.napplet.creator.<network>` service, random credential ID |
 | Portable local private-key backup | `<public-key>.nsec` beside account JSON, mode 0600, outside Git projects |
-| Remote client key and connection credentials | Same credential store; the creator's private key remains with the remote signer |
+| New remote client key, signer pubkey and relay hints | `accounts/<network>/remote-sessions/<account-id>.json`, mode 0600 in a mode-0700 directory; OS vault optional |
+| Existing remote sessions created before this change | Original OS vault until `account storage file` migrates them |
 | Public keys, credential IDs, type, selection, pending status | Account JSON, mode 0600 in a mode-0700 directory |
 | Process ownership | SQLite lock beside the account JSON; automatically released after process exit |
 | Project creator reference | Public key and network only |
 
-Missing, locked or unavailable native storage produces an actionable error. There is no automatic fallback. The explicit development option below uses a separate plaintext vault. Linux needs a running, unlocked Secret Service such as GNOME Keyring or KWallet; headless Linux without one must explicitly opt into the development file vault to persist creator credentials. The VPS services have separate service identities and do not need a creator account. Native macOS behavior is tested; Linux and Windows credential stores are not yet validated here.
+Missing, locked or unavailable native storage produces an actionable error. There is no automatic fallback. Linux needs a running, unlocked Secret Service such as GNOME Keyring or KWallet for local private keys and remote sessions explicitly stored there. Remote file sessions need no desktop keyring. The explicit development option below uses a separate plaintext vault for local keys. The VPS services have separate service identities and do not need a creator account. Native macOS behavior is tested; Linux and Windows credential stores are not yet validated here.
 
 A public pending reservation is flushed before storing a credential. Activation happens only after reading that credential back. If the process dies between those steps, `account create` without `--new` recovers the reserved identity instead of silently generating a replacement. A pending reservation with no stored credential can be discarded safely because it was never activated or published. Missing keys for an already selected account never trigger key rotation. Damaged metadata is reported and preserved. Previously selected identities remain available when creating/importing/connecting fails before activation.
 
 The OS credential store protects the signing credential at rest. The portable nsec backup is unencrypted, protected by owner-only filesystem permissions; preserve a private copy. JavaScript must still hold key material temporarily to sign or export; strings and OS/runtime memory cannot be guaranteed fully erased. No private key is passed to Git, a build command, a generated preview bundle, SSR, or project configuration.
+
+### Remote session storage choices
+
+```sh
+soyli account pair                                # private session file by default
+soyli account connect --session-storage keychain  # optional OS-vault storage
+soyli account show                                # reports storage without unlocking it
+soyli account storage file                        # migrate the selected remote account
+soyli account storage keychain                    # move it back to the OS vault
+```
+
+`--session-storage file|keychain` applies to both `pair` and `connect`. The choice
+is saved per account. `account show` and `account list` expose only public metadata
+and the storage choice. Local private keys keep their existing OS-vault policy;
+`account storage` rejects a selected local-key account.
+
+The file contains the **client private key** identifying this approved connection,
+the signer transport pubkey and relays. It never contains the remote user's Nostr
+private key or a consumed pairing secret. It is unencrypted: owner-only permissions
+do not protect it from software running as the same OS user. Someone holding this
+credential can send requests as that paired client, subject to the remote signer's
+permissions and approval policy. Keep it outside projects, archives and Git; only
+the public creator reference belongs in `napplet.json`.
+
+Migration preserves the account ID, approved client key, creator key and selection.
+It needs access to the old store once (macOS may prompt to read and remove its item),
+but does not contact the remote signer or re-pair. The destination is written,
+flushed and read back before switching metadata and removing the old copy. Failed
+writes leave the old selection usable. Interrupted/failed cleanup is recorded and
+reported; retry the same `account storage` command to remove the old copy. If the
+destination has disappeared or become unsafe, cleanup refuses to delete the
+recovery copy. File sessions never silently fall back to the OS vault.
+
+File credentials reject permissive modes, symlinks, hard links and Git-tree paths.
+This behavior is implemented and tested in source, not yet a downloadable release.
+Older CLI versions cannot read account metadata containing the new storage fields;
+use the updated CLI consistently after connecting or migrating.
 
 ## Existing remote identity
 
@@ -50,6 +94,20 @@ bun run soyli account connect
 ```
 
 Paste a `bunker://` link at the hidden prompt. Do not put it in command arguments: it can contain an authorization secret. The connection uses Applesauce 6.2.2 and [NIP-46](https://github.com/nostr-protocol/nips/blob/master/46.md), with encrypted kind-24133 relay traffic. The client queries `get_public_key` separately from the bunker transport pubkey and verifies the user key again whenever the session is reopened. A changed key requires an explicit account connection.
+
+2026-09-23 source supports **1–8 distinct signer relays**, consistently across
+bunker parsing, client-generated pairing and saved CLI/browser sessions. This is
+a client connection budget, not a NIP-46 three-relay restriction. Links remain
+bounded to 4096 characters, relay URLs to 400 and the optional secret to 256.
+Validation identifies the failing constraint without printing the link or secret.
+Requests fan out to all supplied relays and proceed after the first positive relay
+acknowledgment; a valid response from the remote signer is still required. Silent
+relay hints no longer delay an already received reply until all ACK deadlines pass.
+
+Released soyLI **0.18.2** still has the older three-relay limit. Until this fix is
+released, pass a local copy containing at most three of the signer's supplied relay
+parameters, keeping its pubkey and secret unchanged. A rejected link has not
+contacted the signer or changed the selected account.
 
 The client requests `get_public_key` and signing permission for kinds 30617, 30618, 24242, 32267, 35129, 15129 and 5129. It verifies every returned signature, author and exact requested event contents. Other event kinds are rejected. Signer denial, cancellation and a 60-second response timeout close the session. The wrapper also clears outstanding RPC promises because the pinned SDK does not do this on close. SDK logging of plaintext RPC parameters is disabled for these sessions.
 
@@ -81,7 +139,7 @@ with the stored client key, and validates the same user before any publication.
 A revoked client must pair again in the signer application.
 
 Signer transport defaults to `wss://relay.napplet.soy` (local mode:
-`ws://127.0.0.1:19347`). `--signer-relay` can be repeated up to three times.
+`ws://127.0.0.1:19347`). In the updated source, `--signer-relay` supports up to eight distinct relays.
 It does not change `napplet.json` or publication relay/Blossom/Git destinations.
 Automatic relay negotiation, remote session revocation management and a wider
 external-signer compatibility matrix remain follow-ups. Remote identities are
@@ -285,13 +343,16 @@ soyli account create
 soyli account check
 ```
 
-This stores **unencrypted** local keys (or NIP-46 client credentials) in
+This stores **unencrypted** local keys (and legacy NIP-46 client credentials) in
 `~/.config/napplet-space/plaintext-accounts/<network>/credentials/`, with files
 restricted to 0600 and the directory to 0700. `SPACE_ACCOUNT_HOME` and
 `XDG_CONFIG_HOME` still apply. Every invocation warns on stderr; JSON stdout
 remains machine-readable. Git trees, symlink credential files, hard links and
 credentials accessible to other users are rejected. Filesystem permissions do
 not protect against software running as your user or someone with disk access.
+New remote connections do not need this switch. When it is enabled, their default
+session files live in `remote-sessions/` beside this separate namespace's account
+index; their explicit `--session-storage keychain` option still means the OS vault.
 
 This vault has a separate account index and selection. It never copies, replaces
 or silently recovers Keychain accounts. To retain an existing identity, explicitly

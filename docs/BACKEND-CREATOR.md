@@ -21,10 +21,18 @@ soyli skills update
 soyli backend init
 ```
 
-`init` adds `backend` to `napplet.json`, binds your selected creator, and resolves
+`init` adds local backend configuration, uses your selected creator, and resolves
 the site's default public provider. It never uploads a game. If that provider is
 offline, local preview still works; run `backend sync` and rebuild when available.
-Read the printed provider key and relay destinations. They remain editable:
+Read the printed provider key and relay destinations.
+
+The selected account also determines the author namespace during `backend sync`
+and publishing. Switching public keys creates separate boards; existing scores
+stay under their original author. Switching back reuses that namespace. A remote
+signer for the same public key keeps the same boards. Sharing rebuilds the public
+backend context before checking the game; it never changes your account selection.
+
+The provider and board definitions remain editable:
 
 ```json
 {

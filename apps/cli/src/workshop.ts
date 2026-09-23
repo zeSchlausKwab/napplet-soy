@@ -1,6 +1,6 @@
 import { diagnose, formatDiagnostic } from '../../../packages/diagnostics/src';
 import { z } from 'zod';
-import { Accounts } from '../../../packages/identity/src/accounts';
+import { Accounts, captureAccount } from '../../../packages/identity/src/accounts';
 import { checkpoint } from '../../../packages/publish/src/git-source';
 import { publicationStatus, type PublishOptions } from '../../../packages/publish/src';
 import { Journal } from '../../../packages/publish/src/journal';
@@ -10,7 +10,12 @@ import { sha256 } from '../../../packages/protocol/src';
 import { pushSource, type CollaborationOptions } from '../../../packages/collaboration/src/service';
 import { manageProject } from './manager';
 import { workingTree, workingDiff } from './workshop-git';
-import { buildForSharing, publishFromProject, proposeFromProject } from './share-project';
+import {
+  buildForSharing,
+  publishFromProject,
+  proposeFromProject,
+  prepareSharingIdentity,
+} from './share-project';
 import { checkPublication } from './publish-check';
 import { review } from './review';
 
@@ -90,19 +95,23 @@ export function createWorkshop(options: WorkshopOptions) {
     );
   const check =
     options.check ?? ((contents) => checkPublication(contents, false, undefined, false, signal));
-  async function snapshot() {
-    const [tree, account, project, binding, publication, index] = await Promise.all([
+  async function snapshot(selectedAccounts = accounts) {
+    const account = await selectedAccounts.current();
+    const [tree, project, binding, publication, index] = await Promise.all([
       workingTree(options.directory),
-      accounts.current(),
       manageProject(options.directory, options.network),
       readBinding(options.directory),
-      publicationStatus(options.directory, options.network),
-      new Journal(options.directory, options.network).index(),
+      publicationStatus(options.directory, options.network, { creator: account?.pubkey }),
+      new Journal(options.directory, options.network, account?.pubkey).index(),
     ]);
     // Only public account data crosses the local HTTP boundary.
     const identity = account ? { pubkey: account.pubkey, type: account.type } : null;
     const key = await sha256(
-      JSON.stringify({ tree: tree.revision, project: project.revision, identity }),
+      JSON.stringify({
+        tree: tree.revision,
+        project: project.revision,
+        identity: identity?.pubkey ?? null,
+      }),
     );
     return {
       revision: key,
@@ -166,7 +175,9 @@ export function createWorkshop(options: WorkshopOptions) {
   }
   async function execute(action: z.infer<typeof actionSchema>, origin: string) {
     if (action.action === 'review') return openReview(origin);
-    const state = await snapshot();
+    const selectedAccounts = await captureAccount(accounts);
+    const selectedContext = { ...context, accounts: selectedAccounts };
+    const state = await snapshot(selectedAccounts);
     if (state.revision !== action.revision)
       throw new Error('Project or identity changed. Reload before continuing; nothing was sent.');
     const progress = (stage: string) => {
@@ -183,6 +194,8 @@ export function createWorkshop(options: WorkshopOptions) {
           'Choose a creator in the terminal with soyli account create, connect or use.',
         );
       progress('Building the committed source');
+      await prepareSharingIdentity(options.directory, options.network, state.identity.pubkey);
+      const preparedState = await snapshot(selectedAccounts);
       await buildForSharing(options.directory, signal);
       const inspected = await inspectProject(
         options.directory,
@@ -191,10 +204,10 @@ export function createWorkshop(options: WorkshopOptions) {
       );
       progress('Checking startup and presentation');
       const checked = await check(inspected.contents);
-      if ((await snapshot()).revision !== state.revision)
+      if ((await snapshot(selectedAccounts)).revision !== preparedState.revision)
         throw new Error('Files changed during the check. Check the new revision before sharing.');
       prepared = {
-        revision: state.revision,
+        revision: preparedState.revision,
         fingerprint: inspected.fingerprint,
         plan: inspected.plan,
         profile: checked.profile,
@@ -211,7 +224,7 @@ export function createWorkshop(options: WorkshopOptions) {
       if (state.pendingJob !== action.jobId)
         throw new Error('The pending release changed. Reload its details before retrying.');
       return publishFromProject({
-        ...context,
+        ...selectedContext,
         resume: true,
         requirePreview: true,
         check,
@@ -233,7 +246,7 @@ export function createWorkshop(options: WorkshopOptions) {
       const result = checkedResult,
         fingerprint = checkedContents;
       return publishFromProject({
-        ...context,
+        ...selectedContext,
         requirePreview: true,
         progress,
         check: async (contents) => {
@@ -250,12 +263,12 @@ export function createWorkshop(options: WorkshopOptions) {
     prepared = undefined;
     if (action.action === 'propose')
       return proposeFromProject({
-        ...context,
+        ...selectedContext,
         description: action.description,
         resume: action.resume,
         check,
       });
-    return pushSource(context);
+    return pushSource(selectedContext);
   }
   return {
     get busy() {

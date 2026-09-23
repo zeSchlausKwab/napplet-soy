@@ -3,7 +3,7 @@ import { effectiveProject, readBinding, writeBinding } from '../../../packages/p
 import { join } from 'node:path';
 import { mkdir, writeFile, rename, rm } from 'node:fs/promises';
 import { PrivateKeySigner } from '@contextvm/sdk/signer';
-import { Accounts } from '../../../packages/identity/src/accounts';
+import { Accounts, captureAccount } from '../../../packages/identity/src/accounts';
 import type { CreatorSigner, Network } from '../../../packages/identity/src/signer';
 import { encodeAddress } from '../../../packages/protocol/src';
 import {
@@ -120,6 +120,7 @@ export async function syncBackend(
   signerOptions = {},
   prepare = true,
 ) {
+  accounts = await captureAccount(accounts);
   const config = await effectiveProject(
     directory,
     projectSchema.parse(
@@ -130,10 +131,11 @@ export async function syncBackend(
   const account = await accounts.current();
   if (!account)
     throw new Error('Select a creator with soyli account create or connect before backend sync.');
-  if (config.creator?.pubkey !== account.pubkey)
-    throw new Error(
-      'Backend creator differs from the selected account. Run soyli backend init, then rebuild before publishing.',
-    );
+  if (config.creator?.pubkey !== account.pubkey || config.creator.network !== network) {
+    config.creator = { pubkey: account.pubkey, network };
+    await saveLocalBackend(directory, config);
+    await backendProject(directory, account.pubkey);
+  }
   const provider = await resolveBackendProvider(directory, network);
   if (!config.backend.provider) {
     if (!prepare)
@@ -193,10 +195,6 @@ export async function initBackend(
     ),
   );
   const account = await accounts.current();
-  if (account && config.creator && config.creator.pubkey !== account.pubkey)
-    throw new Error(
-      'Select this project’s creator account before backend init. Existing board namespaces are not reassigned.',
-    );
   if (account) config.creator = { pubkey: account.pubkey, network };
   config.backend ??= { boards: [] };
   await saveLocalBackend(directory, config);

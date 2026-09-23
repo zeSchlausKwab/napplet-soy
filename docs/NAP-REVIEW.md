@@ -8,6 +8,15 @@ launch. The user's decision that the NIP-5D proposal has authority still applies
 
 ## Sources and revision boundaries
 
+2026-09-23 Rust/WASM slice: this is compilation into the **existing web projection**,
+not adoption of a new WASM projection or capability proposal. Rechecked the registry
+and open proposals; retained the selected NIP-5D, shim 0.30.0, SDK 0.24.4 and
+boilerplate/conformance pins. Rust uses ordinary async host calls and Bevy's asset
+adapter uses the existing RESOURCE bytes contract. No new grants, kinds or
+required authoring metadata. [WASM guidance](WASM.md) and the
+[compatibility record](COMPATIBILITY.md) distinguish working specimens from engine-wide
+or independent-client conformance.
+
 2026-09-20 controller slice (0.16.0 source): native browser Gamepad input is
 available inside the existing sandbox on tested Chromium. The workshop tester
 and bundled creator helper add no NAP domain, shim/SDK change, new device grant

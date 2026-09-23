@@ -7,6 +7,9 @@ import settingsExample from '../templates/napplet-settings.ts.txt' with { type: 
 import actionsGuide from '../../../docs/RUNTIME-ACTIONS.md' with { type: 'text' };
 import controllersGuide from '../../../docs/CONTROLLERS.md' with { type: 'text' };
 import mobileGuide from '../../../docs/MOBILE.md' with { type: 'text' };
+import wasmGuide from '../../../docs/WASM.md' with { type: 'text' };
+import rustBridge from '../support/napplet.rs' with { type: 'text' };
+import bevyAssets from '../support/napplet_bevy.rs' with { type: 'text' };
 // Distinct module identity keeps Bun's raw-source cache separate from executable imports.
 import gamepadHelper from '../../../packages/input/src/gamepad.ts?raw' with { type: 'text' };
 import backendGuide from '../../../docs/BACKEND-CREATOR.md' with { type: 'text' };
@@ -32,14 +35,14 @@ and report missing coverage honestly. Never invent a portrait recording option.
 - The project is already scaffolded. Do not run another creator CLI or re-scaffold it.
 - Skills are already installed locally in .agents/skills and .claude/skills.
   The upstream npx skills command is an alternative for other environments.
-- soyli setup prepares the pinned Node/pnpm toolchain and dependencies.
+- For the maintained TypeScript boilerplate, soyli setup prepares the pinned Node/pnpm toolchain and dependencies.
   Nothing is installed globally; ordinary pnpm commands also work if you have it.
-- soyli run verify runs the upstream guidance/type/build checks.
-- soyli run test:conformance runs the upstream reference-shell checks.
+- soyli run verify runs the TypeScript boilerplate's upstream guidance/type/build checks.
+- soyli run test:conformance runs that boilerplate's upstream reference-shell checks.
   Its pinned test browser is downloaded and cached on first use.
   Report passed, failed and skipped cases separately; skipped is not verified.
   See "Verification boundaries" below before diagnosing a conformance failure.
-- soyli dev watches the Vite build inside the napplet.soy sandbox.
+- soyli dev watches the selected build inside the napplet.soy sandbox (Vite by default).
   Use its URL for preview. The upstream pnpm dev URL serves source without a host.
   Manage project edits name/title, description, tags/license, destinations and assets.
   Its Changes tab reviews files and saves explicit local Git checkpoints; Proposals
@@ -54,8 +57,15 @@ and report missing coverage honestly. Never invent a portrait recording option.
   Play until a useful moment, then capture or record; close the window to cancel.
   Interactive recording ignores scripted actions/start-delay. The duration still applies.
   The Settings button opens the same live configuration form as the website.
-- soyli build makes dist/index.html. Edit index.html, src/main.ts and
+- For the maintained TypeScript boilerplate, soyli build makes dist/index.html. Edit index.html, src/main.ts and
   src/styles.css; keep the upstream Vite configuration and dependency lockfile.
+- Rust/WASM or Bevy is an option, not a required starter. Read docs/napplet-wasm.md
+  before choosing it. Use the generic Rust build recipe, pinned toolchain/lockfile,
+  embedded executable bytes and ordinary NAP host calls. Reuse the same soyli
+  setup/build/dev/check/publish/propose commands. Single-threaded WebGL2 first;
+  do not assume network-fetched WASM, workers or native engine APIs are available.
+  Measure final HTML size early, use the shipped Rust bridge/Bevy asset reader,
+  and set preview.readySelector to a real scene-ready milestone before capture.
 - soyli config shows effective publishing targets without a signer or build.
   config init writes editable targets into the ignored .napplet-space/project.json binding.
 - For shared scores, matchmaking or peer connections, read docs/napplet-backend.md.
@@ -231,7 +241,15 @@ installer without new/remix arguments, and run soyli skills update in this folde
 Review reported conflicts; edited guidance is preserved. Start soyli dev again to
 use the updated bundled host. Skills update does not replace source or dependencies;
 follow explicit migration instructions if a release needs changes to those.
-Keep using the existing creator identity. Do not scaffold a replacement project.
+Respect the user's currently selected account (soyli account show). Never restore
+an old project creator or call account use/create/import/connect to bypass an
+error unless the user asked you to change accounts. The user may switch accounts
+at any time; do not scaffold a replacement project. Each sharing operation keeps
+the account it started with. Switching signing methods for the same public key
+keeps its publication history. A different public key publishes a separate listing
+and Git repository; the original listing and its history remain intact. Status
+and publish --resume refer to the selected public key's saved releases. Backend
+scoreboards also use separate author namespaces; existing scores are not moved.
 soyli publish --resume resumes a saved PUBLICATION, not authoring: it uploads the
 old frozen bytes even if current files changed. Ordinary editing needs no resume flag.
 
@@ -256,6 +274,18 @@ creator. To restore it, use soyli account import --stdin < /path/to/key.nsec.
 Signing continues to use the OS credential store; the project contains only the
 public creator reference. Remote-signer identities are backed up in their signer.
 Never copy the key into source, skills, browser code, or published assets.
+
+## Remote signer sessions
+
+soyli account pair (or account connect with a hidden bunker link) defaults to a
+private session file outside this project. This holds the approved client key and
+relay hints, never the remote creator's private key. No Keychain or desktop keyring
+is needed for these sessions. --session-storage keychain opts into the OS vault.
+account show/list reports the stored choice. To move an existing remote account,
+use soyli account storage file; this preserves the pairing and needs access to its
+old vault once. Retry that command if it reports unfinished old-copy cleanup.
+Local private keys still use the OS vault. Never copy sessions into project files,
+source archives or environment dumps. Do not re-pair just to change storage.
 
 ## Preview process ownership
 
@@ -293,10 +323,14 @@ tests in your normal verification command, not only in a one-off test run.
 
 ## Runtime capabilities
 
-Keep hard domain requirements in vite.config.ts; the publisher reads the build's
+For Vite projects, keep hard domain requirements in vite.config.ts; the publisher reads the build's
 napplet-requires metadata and checks it against this host. Optional domains must
 degrade gracefully, following upstream guidance. Use the injected namespace and
 SDK; do not add a bootstrap or a private protocol extension to app code.
+Rust projects declare requirements in napplet.json.requires, use the same injected
+namespace through docs/examples/napplet.rs and follow docs/napplet-wasm.md. Their
+Cargo tests/build and soyli check replace TypeScript-only package scripts; do not
+claim that these ran the upstream reference harness.
 
 This host provides configuration, identity, storage, theme, resource, relay/outbox reads,
 common reads/writes, user-confirmed links, file imports/session exports, Blossom uploads,
@@ -404,6 +438,9 @@ export function creatorSkills() {
     'docs/napplet-actions.md': actionsGuide,
     'docs/napplet-controllers.md': controllersGuide,
     'docs/napplet-mobile.md': mobileGuide,
+    'docs/napplet-wasm.md': wasmGuide,
+    'docs/examples/napplet.rs': rustBridge,
+    'docs/examples/napplet_bevy.rs': bevyAssets,
     'docs/examples/gamepad.ts': gamepadHelper,
     'docs/examples/multiplayer-sync.ts': multiplayerSync,
     'docs/examples/multiplayer-scenario.mjs': multiplayerScenario,

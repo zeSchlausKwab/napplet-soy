@@ -3,7 +3,7 @@ import { DiagnosticError } from '../../diagnostics/src';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ProtocolClient } from '../../client/src/nostr';
-import { Accounts } from '../../identity/src/accounts';
+import { Accounts, captureAccount } from '../../identity/src/accounts';
 import type { Network } from '../../identity/src/signer';
 import { aggregateHash, sha256, verifiedEvent, type SignedEvent } from '../../protocol/src';
 import { defaultTargets, projectSchema, resolveTargets } from '../../publish/src/config';
@@ -87,9 +87,9 @@ export async function propose(
 ) {
   if (!options.resume && (!options.description.trim() || options.description.length > 8000))
     throw new Error('Provide a proposal description of 1–8000 characters.');
-  const context = await collaborationContext(options),
+  const accounts = await captureAccount(options.accounts ?? new Accounts(options.network));
+  const context = await collaborationContext({ ...options, accounts }),
     { client, targets, account, project, binding } = context;
-  const accounts = options.accounts ?? new Accounts(options.network);
   let signer: Awaited<ReturnType<Accounts['signer']>> | undefined;
   try {
     if (!account) throw new Error('Create or connect a creator identity first.');
@@ -361,6 +361,10 @@ export async function proposalAction(
     text?: string;
   },
 ) {
+  options = {
+    ...options,
+    accounts: await captureAccount(options.accounts ?? new Accounts(options.network)),
+  };
   const context = await collaborationContext(options),
     { client, account } = context;
   let signer: Awaited<ReturnType<Accounts['signer']>> | undefined;
@@ -508,6 +512,10 @@ export async function proposalAction(
 
 /** Publish a reviewed Git merge without releasing a new napplet. */
 export async function pushSource(options: CollaborationOptions) {
+  options = {
+    ...options,
+    accounts: await captureAccount(options.accounts ?? new Accounts(options.network)),
+  };
   const { client, account, targets } = await collaborationContext(options);
   let signer: Awaited<ReturnType<Accounts['signer']>> | undefined;
   try {

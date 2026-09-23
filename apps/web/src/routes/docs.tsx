@@ -122,6 +122,16 @@ function Documentation() {
               checks. These checks complement publication validation; they do not guarantee that
               every interaction works on every client.
             </p>
+            <p>
+              Prefer Rust or Bevy? soyLI also supports a pinned Rust/WASM build recipe using the
+              same setup, build, preview and publishing commands. Read{' '}
+              <a href="https://github.com/zeSchlausKwab/napplet-soy/blob/main/docs/WASM.md">
+                the Rust/WASM guide
+              </a>{' '}
+              or <code>docs/napplet-wasm.md</code> in your project. The initial profile uses
+              single-threaded WebGL2 and embeds the executable in one HTML file. Rust creators need
+              Rustup; players do not.
+            </p>
             <DocCommand label="Save and publish">
               {
                 'git status\ngit diff\nsoyli checkpoint "Ready to share"\nsoyli publish --dry-run\nsoyli publish'
@@ -163,9 +173,9 @@ function Documentation() {
               {'soyli account use YOUR_ACCOUNT_ID\nsoyli account check'}
             </DocCommand>
             <p>
-              Selection is shared by soyLI projects on that network. Existing projects keep their
-              assigned creator; switching does not transfer their authorship. Switch back to that
-              creator to release an existing project.
+              Selection is shared by soyLI projects on that network. Your next publication uses the
+              selected account. A running publication keeps the account it started with, even if you
+              switch while it is checking or uploading.
             </p>
             <h3>Create another identity</h3>
             <p>
@@ -174,9 +184,10 @@ function Documentation() {
               option creates and selects another key while preserving earlier accounts and backups.
             </p>
             <aside className="docs-note">
-              <strong>Keep the original identity.</strong> Existing projects keep their creator
-              binding. Select that creator again before publishing an existing project; creating
-              another key does not transfer its ownership.
+              <strong>Each public key has its own releases.</strong> Switching to a remote signer
+              for the same public key continues the same listing. A different public key creates a
+              separate listing and Git repository; it does not transfer or delete the original. You
+              can switch back later to continue the original history in the same folder.
             </aside>
             <h3>Preserve your key</h3>
             <DocCommand label="Locate your backup">{'soyli account backup'}</DocCommand>
@@ -214,6 +225,19 @@ function Documentation() {
                 <dd>Import an nsec or encrypted recovery key into your OS credential store.</dd>
               </div>
             </dl>
+            <p>
+              New remote connections use a private session file outside your project. Your Nostr
+              private key stays with the signer, and publishing needs no Keychain access. Add{' '}
+              <code>--session-storage keychain</code> to connect or pair if you prefer the OS vault.
+              Use <code>soyli account show</code> to see the current choice.
+            </p>
+            <DocCommand label="Move an existing remote session out of Keychain">
+              {'soyli account storage file'}
+            </DocCommand>
+            <p>
+              This keeps your existing pairing. Allow access to the old vault once; subsequent
+              publishing reads the private file. Local private-key accounts keep using the OS vault.
+            </p>
             <p>
               Website sign-in is separate. Use the identity button to select a saved account or
               connect one there. It does not change soyLI’s selected creator.
@@ -457,8 +481,11 @@ function Documentation() {
               <div>
                 <dt>Keychain unavailable?</dt>
                 <dd>
-                  Unlock the OS credential store. Linux needs a running Secret Service keyring;
-                  there is no plaintext signing fallback.
+                  New remote signer sessions need no Keychain or desktop keyring. For existing
+                  remote sessions, use <code>soyli account storage file</code> while the old vault
+                  is accessible. Local private keys require an unlocked OS credential store; Linux
+                  needs a running Secret Service keyring. The explicit development file fallback is
+                  documented in the identity guide.
                 </dd>
               </div>
               <div>

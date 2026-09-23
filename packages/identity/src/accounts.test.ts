@@ -13,7 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getPublicKey, generateSecretKey, nip19 } from 'nostr-tools';
-import { Accounts, PlaintextVault, type Vault } from './accounts';
+import { Accounts, captureAccount, PlaintextVault, type Vault } from './accounts';
 import { AccountError } from './signer';
 
 const root = await mkdtemp(join(tmpdir(), 'napplet-identity-'));
@@ -34,6 +34,16 @@ function fixture(name: string) {
   const vault = new MemoryVault();
   return { vault, accounts: new Accounts('public', join(root, name), vault) };
 }
+test('a captured unavailable credential never falls back to the newly selected account', async () => {
+  const { accounts, vault } = fixture('captured-unavailable');
+  const original = await accounts.create();
+  const captured = await captureAccount(accounts);
+  const selected = await accounts.create({ fresh: true });
+  await vault.delete(original.id);
+  await expect(captured.signer()).rejects.toMatchObject({ code: 'CREDENTIAL_MISSING' });
+  expect((await accounts.current())?.id).toBe(selected.id);
+  expect(await accounts.list()).toHaveLength(2);
+});
 test('explicit plaintext vault persists signers and rejects unsafe permissions, symlinks and Git trees', async () => {
   const directory = join(root, 'plaintext');
   const vault = new PlaintextVault(join(directory, 'credentials'));

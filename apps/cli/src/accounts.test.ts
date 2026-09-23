@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { getPublicKey } from 'nostr-tools';
 
 test('plaintext opt-in survives CLI restarts and keeps native account selection separate', async () => {
   const home = await mkdtemp(join(tmpdir(), 'soyli-plaintext-cli-'));
@@ -42,7 +43,7 @@ test('plaintext opt-in survives CLI restarts and keeps native account selection 
   }
 }, 15000);
 
-async function run(args: string[], input = '') {
+async function run(args: string[], input = '', onSpawn?: (stop: () => void) => void) {
   const directory = await mkdtemp(join(tmpdir(), 'napplet-account-command-'));
   try {
     const child = Bun.spawn(
@@ -55,11 +56,14 @@ async function run(args: string[], input = '') {
         stderr: 'pipe',
       },
     );
+    onSpawn?.(() => child.kill('SIGINT'));
+    const timer = onSpawn ? setTimeout(() => child.kill('SIGTERM'), 3000) : undefined;
     const [code, stdout, stderr] = await Promise.all([
       child.exited,
       new Response(child.stdout).text(),
       new Response(child.stderr).text(),
     ]);
+    clearTimeout(timer);
     return {
       code,
       stdout,
@@ -142,6 +146,47 @@ test('CLI rejects sensitive arguments and invalid stdin with structured errors t
   }
 });
 
+test('real CLI accepts four bunker relays, reaches transport, and gives a specific over-limit error without exposing its secret', async () => {
+  let contacted = false;
+  let stop: (() => void) | undefined;
+  const relay = Bun.serve({
+    hostname: '127.0.0.1',
+    port: 0,
+    fetch: (request, server) => (server.upgrade(request) ? undefined : new Response()),
+    websocket: {
+      message() {
+        if (!contacted) {
+          contacted = true;
+          stop?.();
+        }
+      },
+    },
+  });
+  try {
+    const link = new URL(`bunker://${getPublicKey(new Uint8Array(32).fill(2))}`);
+    for (let i = 0; i < 4; i++)
+      link.searchParams.append('relay', `ws://127.0.0.1:${relay.port}/${i}`);
+    link.searchParams.set('secret', 'synthetic-bunker-secret-do-not-echo');
+    const accepted = await run(
+      ['account', 'connect', '--stdin', '--network', 'local'],
+      link.href,
+      (cancel) => {
+        stop = cancel;
+      },
+    );
+    expect(contacted).toBe(true);
+    expect(accepted.stdout + accepted.stderr).not.toContain('INVALID_BUNKER');
+    expect(accepted.stdout + accepted.stderr).not.toContain('synthetic-bunker-secret-do-not-echo');
+    for (let i = 4; i < 9; i++)
+      link.searchParams.append('relay', `ws://127.0.0.1:${relay.port}/${i}`);
+    const refused = await run(['account', 'connect', '--stdin', '--network', 'local'], link.href);
+    expect(JSON.parse(refused.stdout).error.message).toContain('8 distinct signer relays');
+    expect(refused.stdout + refused.stderr).not.toContain('synthetic-bunker-secret-do-not-echo');
+  } finally {
+    relay.stop(true);
+  }
+}, 10000);
+
 // Twelve real CLI startups plus scaffolding/Git exceed Bun's 5s default on the VPS.
 // Keep a separate deadline on each child so a hang cannot consume the whole budget.
 test('boilerplate onboarding reports a reusable backup outside Git and the CLI can restore it', async () => {
@@ -223,6 +268,24 @@ test('boilerplate onboarding reports a reusable backup outside Git and the CLI c
     expect(fresh.backupFile).not.toBe(backupFile);
     expect((await stat(fresh.backupFile)).mode & 0o777).toBe(0o600);
     expect((await cli(['account', 'show'])).account).toEqual(fresh.account);
+    const draft = join(directory, 'draft');
+    await Bun.write(
+      join(draft, 'napplet.json'),
+      JSON.stringify({
+        schema: 'space-local-project/v1',
+        name: 'Identity selection',
+        entry: 'index.html',
+        previewId: crypto.randomUUID(),
+        license: 'MIT',
+        creator: { pubkey: account.pubkey, network: 'public' },
+      }),
+    );
+    await Bun.write(join(draft, 'index.html'), '<!doctype html><title>Draft</title><p>Preview</p>');
+    await Bun.write(join(draft, 'LICENSE'), 'MIT');
+    const dryRun = await cli(['publish', '--dry-run', '--project', draft]);
+    expect(dryRun.plan.pubkey).toBe(fresh.account.pubkey);
+    expect((await cli(['account', 'show'])).account.id).toBe(fresh.account.id);
+    expect(await cli(['status', '--project', draft])).toEqual({ status: 'not_started' });
     expect((await cli(['account', 'create'])).backupFile).toBe(fresh.backupFile);
     const saved = (await cli(['account', 'list'])).accounts;
     expect(saved.map((entry: { pubkey: string }) => entry.pubkey)).toEqual([

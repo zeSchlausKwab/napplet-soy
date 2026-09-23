@@ -56,6 +56,11 @@ export async function regularFile(root: string, path: string, limit: number) {
   }
 }
 export function checkSource(path: string, bytes: Uint8Array) {
+  if (path.startsWith('target/'))
+    throw new PublishError(
+      'SOURCE_GENERATED',
+      'Rust target/ build caches must not be published. Add /target/ to .gitignore and remove tracked build caches; retain Cargo.toml, Cargo.lock and rust-toolchain.toml.',
+    );
   if (
     path
       .split('/')
@@ -103,11 +108,14 @@ export async function inspectProject(
     );
   }
   project = await effectiveProject(root, project);
+  // A scaffold's public creator reference is a hint, not authority over the user's
+  // account selection. Frozen jobs alone retain their already-reviewed author.
+  if (!frozenCommit) project = projectSchema.parse({ ...project, creator: { pubkey, network } });
   configBytes = new TextEncoder().encode(JSON.stringify(project, null, 2) + '\n');
   if (project.creator && (project.creator.pubkey !== pubkey || project.creator.network !== network))
     throw new PublishError(
       'CREATOR_MISMATCH',
-      'The project belongs to a different creator or network. Select its saved account, or explicitly change the project creator and identifier for a remix.',
+      'This frozen release belongs to another creator or network. Keep its original author when resuming; do not switch accounts automatically.',
     );
   const targets = resolveTargets(project, network, overrides);
   const managed = await validateAssets(root);
@@ -185,6 +193,14 @@ export async function inspectProject(
     contents.set(path, bytes);
     files.push({ path, hash: await sha256(bytes), size: bytes.length });
   }
+  if (
+    project.build?.kind === 'rust' &&
+    !['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml'].every((path) => contents.get(path)?.length)
+  )
+    throw new PublishError(
+      'RUST_SOURCE',
+      'Rust publications must retain nonempty Cargo.toml, Cargo.lock and rust-toolchain.toml in public source. Track these files before publishing or proposing changes.',
+    );
   if (!contents.get('LICENSE')?.length)
     throw new PublishError('SOURCE_LICENSE', 'Provide a nonempty LICENSE file before publishing.');
   const html = contents.get(project.entry)!;

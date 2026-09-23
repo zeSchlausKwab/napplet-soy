@@ -2,6 +2,16 @@
 
 Updated 2026-09-13. This records the boundary between working code and the larger v1 plan.
 
+2026-09-23 source update: creator selection now governs the next publication in
+any project. Sharing captures an account ID before building/checking and keeps it
+for that operation without rewriting the global selection. Journals and lifecycle
+receipts are scoped by author public key, with legacy journal/receipt reads; another
+author's listings and pending releases remain intact. Ignored build/backend context
+follows the selected author, and agents are explicitly instructed not to restore
+stale creator bindings by switching accounts. Same-public-key signer changes retain
+the listing; different keys have separate Nostr/Git/board namespaces. See
+[identity](IDENTITY.md) and [publishing](PUBLISHING.md).
+
 ## Implemented
 
 - Bun 1.3.11 with TanStack Start 1.168.52, Router 1.170.35, React 19.2.4, Vite 8.3.0, TypeScript, shadcn/ui, and Tailwind.
@@ -113,6 +123,12 @@ This completes the source-hosting component, committed separately from its stack
 
 
 ## Creator identity foundation
+
+2026-09-23 source follow-up: new CLI remote sessions default to owner-only files
+outside Git, with per-account optional native storage and explicit migration of
+existing sessions. Local private keys retain their native-vault policy. The
+foundation's original all-Keychain behavior below is historical; see
+[current storage choices](IDENTITY.md#remote-session-storage-choices).
 
 The CLI now manages persistent creator identities with Bun's native OS credential store and an Applesauce signing adapter shared by source, Blossom and napplet publication. Interactive project creation offers a new key, a bunker connection or setup later, then reuses the selected identity across projects. Account metadata and recovery exports are kept outside Git trees. Public and local profiles have separate directories and credential namespaces. No default creator account was created during development; native tests used isolated temporary metadata and removed their exact test credentials.
 

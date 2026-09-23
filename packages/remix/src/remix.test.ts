@@ -23,6 +23,7 @@ test('remix downloads exact signed archive and makes a fresh project with source
     license: 'MIT',
     creator: { pubkey: pub, network: 'local' },
     publish: { site: 'http://localhost:8080' },
+    preview: { readySelector: 'html[data-napplet-ready]', delayMs: 750 },
   };
   const files = new Map(
     Object.entries({
@@ -82,6 +83,7 @@ test('remix downloads exact signed archive and makes a fresh project with source
     expect(fresh.publish.networks.local.site).toBe('http://localhost:8080');
     expect(fresh.identifier).not.toBe(config.identifier);
     expect(fresh.previewId).not.toBe(config.previewId);
+    expect(fresh.preview).toEqual(config.preview);
     expect(fresh.remix.revision).toBe(manifest.id);
     expect(await Bun.file(join(result.directory, 'src/main.ts')).text()).toBe(
       'export const original = true;',

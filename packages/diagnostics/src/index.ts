@@ -79,6 +79,14 @@ const recovery: Record<string, string> = {
     'The operation timed out. Check connectivity and the selected service before retrying.',
   INVALID_JSON: 'Fix the JSON syntax in the configuration or input file and retry.',
   INVALID_CONFIG: 'Correct the listed configuration fields and retry.',
+  INVALID_BUNKER:
+    'Check the link against the stated limit or format. Retry soyli account connect and paste it at the hidden prompt; do not pass the link as a command argument.',
+  SESSION_STORAGE:
+    'Run soyli account list, select a remote account with account use, then run account storage file or account storage keychain. Local private-key storage is unchanged.',
+  SESSION_CLEANUP:
+    'The destination session is saved. Retry the account storage command named in the error to remove its old copy; no re-pairing is needed.',
+  KEYSTORE_FILE:
+    'Check the indicated owner-only permissions and keep credentials outside Git. Do not replace the session or paste its contents into a bug report.',
   USAGE: 'Run soyli --help for the command syntax.',
 };
 

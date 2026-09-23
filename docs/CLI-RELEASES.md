@@ -1,8 +1,30 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.18.2**. A successful GitHub workflow run and published
+The source version is **0.19.0**. A successful GitHub workflow run and published
 release are separate acceptance steps.
+
+Version 0.19.0 adds Rust/WASM build recipes and verified Bevy 2D/3D examples in
+the existing single-HTML sandbox. See [WASM.md](WASM.md) for supported targets,
+prerequisites and limits. Bunker connections now accept up to eight relay hints;
+an unresponsive relay no longer delays a request already acknowledged elsewhere.
+
+New NIP-46 sessions use owner-only files outside Git by default. Local private
+keys remain in the OS vault. Existing remote sessions retain their storage until
+`soyli account storage file` migrates them without re-pairing; use
+`--session-storage keychain` to opt new sessions into native storage instead.
+
+Publication follows your selected account. A running operation keeps its starting
+account without resetting the shared selection, and each public key retains its
+own releases and pending jobs in the same folder. Backend and local-manager
+context follow that author. Switching signing methods for the same public key
+keeps its listing; switching public keys creates a separate listing and repository.
+The bundled agent guidance forbids switching accounts to bypass a publish error.
+
+After updating, restart previews and run `soyli skills update` in existing projects,
+reviewing conflicts with locally edited guidance. New account metadata and
+multi-author journals are not readable by older CLI versions; use 0.19.0
+consistently after migration. Original keys, sessions, source and releases are kept.
 
 Version 0.18.2 fixes preview cleanup on terminal hangup and launcher exit, corrects
 the bundled action guide's retired bootstrap instructions, and clarifies agent
@@ -76,9 +98,9 @@ installer is running before removing the reported `.install-lock` directory.
 2. Commit the change and push the commit, then its matching tag:
 
    ```sh
-   git tag -a soyli-v0.18.2 -m 'napplet soyLI 0.18.2'
+   git tag -a soyli-v0.19.0 -m 'napplet soyLI 0.19.0'
    git push origin main
-   git push origin soyli-v0.18.2
+   git push origin soyli-v0.19.0
    ```
 
 3. Watch **soyLI releases** in Actions. Publish only after all four native jobs pass.
@@ -122,7 +144,7 @@ access as appropriate for the maintainers.
 ```sh
 bun run check
 bun run cli:build --target darwin-arm64
-SPACE_TEST_CLI="$PWD/.local/cli/0.18.2/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.19.0/soyli-darwin-arm64/soyli" \
   bun test tests/services/cli-update.test.ts tests/services/cli-distribution.test.ts
 ```
 

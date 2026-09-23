@@ -1,6 +1,8 @@
 # napplet soyLI — creator CLI
 
-Source **0.18.2** includes GitHub release CI, `soyli update`, and latest-release checks
+Source **0.19.0** adds Rust/WASM build recipes, Bevy guidance, eight-relay bunker
+connections, private remote-session files and publication histories per author.
+It includes GitHub release CI, `soyli update`, and latest-release checks
 in `soyli doctor`. The workflow and updater are implemented locally; the first
 GitHub release must be published before they can deliver an update. No background
 updates occur. [Release workflow](CLI-RELEASES.md).
@@ -224,8 +226,14 @@ directory; preserve a private copy. The same creator reuses the same file.
 `soyli account create` also reuses the selected identity. Use
 `soyli account create --new` to generate and select a different private key with
 its own backup. Previous identities and backups remain available through
-`soyli account list` and `soyli account use <account-id>`. Existing projects keep
-their creator bindings; switch back to the matching identity to publish them.
+`soyli account list` and `soyli account use <account-id>`. The next publication
+uses your selected account, even in an existing project. Running publications
+keep the account they started with and never reset your selection. The same
+public key keeps its listing when changing signing methods. A different public
+key gets its own listing, Git repository and backend board namespace; previous
+authors' releases and pending jobs remain available in the same folder. Status,
+resume and lifecycle commands show the selected author's history. Agents must
+not switch back to a saved project creator merely to bypass an error.
 Restore with `soyli account import --stdin < /path/to/key.nsec`.
 For an encrypted copy, use `soyli account export /path/to/new.ncryptsec`.
 Remote identities are backed up in the remote signer instead.
@@ -336,12 +344,15 @@ The same real-registry tests run in deployment; no version assertion is relaxed.
 ## Requirements and storage
 
 - macOS: Apple Silicon or modern Intel with AVX2; Git/Apple Command Line Tools;
-  login Keychain. The installer selects native ARM64 even in a Rosetta terminal.
+  login Keychain for local private keys or optional remote-session vault storage.
+  New remote sessions use private files without Keychain access.
+  The installer selects native ARM64 even in a Rosetta terminal.
   Keychain access belongs to the executable; macOS may request authorization when
   changing executables. The explicit dangerous plaintext development fallback is
-  described in the identity section above; normal signing uses the OS vault.
+  described in the identity section above; it is not needed for remote file sessions.
 - Linux: glibc, ARM64 or x86-64 with SSE4.2; Git; an unlocked Secret Service keyring
-  and D-Bus session for identity. Ubuntu 24.04 is the tested desktop baseline.
+  and D-Bus session for local private keys or optional remote-session vault storage.
+  New remote file sessions need no desktop keyring. Ubuntu 24.04 is the tested desktop baseline.
   Chromium system libraries are listed at `/create#platforms` (`/cli` redirects to the same guide). The CLI never installs OS
   packages or invokes sudo. Alpine/musl and native Windows are not supported.
 - Installer: curl, tar, tty, SHA-256 utilities; HTTPS downloads with checksum verification.
@@ -378,7 +389,7 @@ metadata. The artifact and NIP-5D publication format are the same for both profi
 ## Building and releasing
 
 The primary distribution channel is now **GitHub Releases**. Push a version tag
-such as `soyli-v0.18.2` matching `apps/cli/distribution/version.json` and the installer.
+such as `soyli-v0.19.0` matching `apps/cli/distribution/version.json` and the installer.
 CI checks the source, builds and smoke-tests all four platforms on native runners,
 then publishes their archives/checksums and the pinned installer. PRs and manual
 branch runs validate without publishing. Only the release job has write permission;
@@ -389,7 +400,7 @@ Use the pinned Bun 1.3.11 toolchain for builds:
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.18.2/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.19.0/soyli-darwin-arm64/soyli" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts
@@ -541,9 +552,14 @@ Use `soyli account pair` to display a connection link and QR for your
 NIP-46 signer. `--open` also opens the link in a registered signer app. Use
 `account connect` instead to paste a signer-provided `bunker://` link at a hidden
 prompt. Pairing defaults to our relay and supports a separate `--signer-relay`
-override; publishing targets in `napplet.json` are unchanged. Both flows store the
-approved client credential in the OS vault. See [identity](IDENTITY.md) for timeout,
-cancellation, permissions, recovery and the memory-only website sign-in choices.
+override; publishing targets in `napplet.json` are unchanged. In the updated source,
+both flows default to a private session file outside projects. Pass
+`--session-storage keychain` to opt into the OS vault. Existing accounts retain
+their old storage; `soyli account storage file` moves the selected remote account
+without pairing again. `account show` / `account list` report the storage choice.
+The file holds the approved client credential, never the remote creator's private
+key. See [identity](IDENTITY.md#remote-session-storage-choices) for migration,
+permissions, file protection and the separate website sign-in choices.
 
 ## Preview clips (soyLI 0.7.0)
 

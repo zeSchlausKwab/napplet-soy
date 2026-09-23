@@ -140,8 +140,9 @@ function Create() {
             <h2>macOS</h2>
             <p>
               Apple Silicon and modern Intel (AVX2) builds. Git comes with Apple Command Line Tools:
-              run <code>xcode-select --install</code> if it is missing. Creator credentials use your
-              login Keychain.
+              run <code>xcode-select --install</code> if it is missing. Local private keys use your
+              login Keychain. New remote signer sessions use private files outside projects;
+              Keychain storage is optional.
             </p>
             <p>
               Checks and captures require macOS 12 or newer. soyLI automatically uses a frozen
@@ -154,8 +155,9 @@ function Create() {
             <h2>Linux</h2>
             <p>
               Use an ARM64 or x86-64 (SSE4.2) glibc desktop distribution, such as Ubuntu 24.04, with
-              Git and an unlocked Secret Service keyring. Headless servers need a D-Bus/keyring
-              session for creator identity. Chromium also needs system browser libraries.
+              Git. Local private keys need an unlocked Secret Service keyring and D-Bus session.
+              Remote signer sessions can use private files without a desktop keyring. Chromium also
+              needs system browser libraries.
             </p>
           </article>
           <article>

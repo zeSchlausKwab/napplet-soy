@@ -1,6 +1,6 @@
 import { join, resolve } from 'node:path';
 import { Journal, readJson, atomicJson } from '../../../packages/publish/src/journal';
-import { Accounts } from '../../../packages/identity/src/accounts';
+import { Accounts, captureAccount } from '../../../packages/identity/src/accounts';
 import type { Network, CreatorSigner } from '../../../packages/identity/src/signer';
 import { sha256 } from '../../../packages/protocol/src';
 import { DiagnosticError } from '../../../packages/diagnostics/src';
@@ -28,16 +28,28 @@ export async function lifecycleCommand(options: {
   accounts: Accounts;
   onAuth?: (url: string) => Promise<void>;
 }) {
-  const journal = new Journal(resolve(options.directory), options.network),
-    path = join(journal.root, 'lifecycle.json');
+  const accounts = await captureAccount(options.accounts);
+  const account = await accounts.current();
+  const journal = new Journal(resolve(options.directory), options.network, account?.pubkey);
   const transport = new LifecycleTransport(options.signal);
   let signer: CreatorSigner | undefined;
   try {
     return await journal.lock(async () => {
-      const saved = (await readJson(path).catch((e) => {
-        if (e.code === 'ENOENT') return null;
-        throw e;
-      })) as LifecycleReceipt | null;
+      const index = await journal.index();
+      const creator =
+        account?.pubkey ??
+        (index.latest ? (await journal.load(index.latest)).plan.pubkey : undefined);
+      const path = join(journal.root, creator ? `lifecycle-${creator}.json` : 'lifecycle.json');
+      const readReceipt = (file: string) =>
+        readJson(file).catch((e) => {
+          if (e.code === 'ENOENT') return null;
+          throw e;
+        }) as Promise<LifecycleReceipt | null>;
+      let saved = await readReceipt(path);
+      if (!saved && creator) {
+        const legacy = await readReceipt(join(journal.root, 'lifecycle.json'));
+        if (legacy?.plan.author === creator) saved = legacy;
+      }
       if (options.operation === 'lifecycle') {
         if (!saved)
           throw new DiagnosticError(
@@ -47,7 +59,6 @@ export async function lifecycleCommand(options: {
         report(saved, options.json);
         return saved;
       }
-      const account = await options.accounts.current();
       if (!account)
         throw new DiagnosticError(
           'ACCOUNT_REQUIRED',
@@ -62,7 +73,6 @@ export async function lifecycleCommand(options: {
           );
         receipt = parseReceipt(saved);
       } else {
-        const index = await journal.index();
         if (index.active)
           throw new DiagnosticError(
             'PUBLISH_PENDING',
@@ -145,7 +155,7 @@ export async function lifecycleCommand(options: {
           'CONFIRMATION_CHANGED',
           'Confirmation token does not match the saved inventory. Review a new --dry-run.',
         );
-      signer = await options.accounts.signer({
+      signer = await accounts.signer({
         signal: options.signal,
         onAuth: options.onAuth,
         kinds: [5, 24242, 35129, 15129, 5129],

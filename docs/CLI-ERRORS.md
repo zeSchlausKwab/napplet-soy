@@ -1,5 +1,39 @@
 # soyLI error diagnostics
 
+2026-09-23 source no longer reports `CREATOR_MISMATCH` for a live project merely
+because its saved scaffold creator differs from the selected account. Sharing
+captures the selected account and journals releases by public key. Frozen jobs
+still validate their author; a missing or failing captured credential reports its
+cause without falling back to another account. Agents must not change selection to
+work around an error. Real CLI dry-run/status and encrypted NIP-46 tests cover this
+boundary; lifecycle commands cannot manage another selected author's releases.
+
+2026-09-23 source separates remote session files from local private-key storage.
+`account storage file|keychain` verifies the destination before changing metadata.
+`SESSION_CLEANUP` means the new copy is active but removal of the old copy failed;
+the error identifies the retry command, with only safe OS operation/codes when
+available. Cleanup is persisted for recovery after a process restart. `KEYSTORE_FILE`
+reports unsafe file permissions/types without falling back to Keychain. Real CLI
+tests exercise connect/reconnect with native access denied, destination write
+failure, cleanup failure/retry, and permission refusal with redacted diagnostics.
+
+2026-09-23 bunker validation reports the actual failed relay-count, URL, key or
+secret-length constraint as `INVALID_BUNKER`, with a hidden-input recovery step.
+It preserves only validator-authored safe text; URL/parser exceptions and the
+supplied connection string are never included. Entrypoint regressions cover a
+four-relay connection reaching transport and a nine-relay rejection without
+exposing the synthetic test secret. See [IDENTITY.md](IDENTITY.md) for limits.
+
+2026-09-23 source adds pinned Rust/WASM and custom build recipes to the same
+diagnostic/process runner. Rustup, Cargo and wasm-bindgen failures retain tool
+status and bounded redacted output, including the tail containing compiler errors
+after lengthy compilation logs. Missing targets, conflicting lock/tool pins,
+oversized modules/HTML, unsupported memory profiles and missing scene readiness
+have specific recovery messages. A failed Rust build keeps the previous complete
+HTML; its watcher retries after a source edit and terminates owned compilers on
+preview exit. Real entrypoint tests cover compiler failure/redaction, lock mismatch,
+literal custom arguments and watch failure/recovery/cancellation. See [WASM.md](WASM.md).
+
 Source **0.16.2** replaces the top-level `CLI_FAILED` message with a shared
 diagnostic. Failures report the operation, original error message/code, available
 tool exit status or service HTTP status, underlying causes and a recovery step.
