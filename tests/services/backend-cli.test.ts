@@ -48,13 +48,27 @@ test.skipIf(!process.env.SPACE_TEST_CLI)(
       const config = await Bun.file(file).json();
       config.backend = {
         provider: { pubkey: 'f'.repeat(64), relays: ['wss://backend.invalid'] },
-        boards: [{ board: 'test', title: 'Test', order: 'highest', minimum: 0, maximum: 100 }],
+        boards: [
+          {
+            board: 'test',
+            title: 'Test',
+            order: 'highest',
+            minimum: 0,
+            maximum: 100,
+            dataSchema: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['car'],
+              properties: { car: { type: 'string' } },
+            },
+          },
+        ],
       };
       config.requires = ['cvm'];
       config.preview = { delayMs: 3000 };
       await Bun.write(file, JSON.stringify(config));
       await run(['backend', 'init'], directory);
-      const context = await Bun.file(join(directory, 'soy-backend.json')).json();
+      const context = await Bun.file(join(directory, '.napplet-space/soy-backend.json')).json();
       await Bun.write(
         join(directory, 'index.html'),
         `<!doctype html><body>Connecting<script>
@@ -62,17 +76,23 @@ test.skipIf(!process.env.SPACE_TEST_CLI)(
       setTimeout(() => { if (!done) throw new Error('Isolated board never answered'); }, 2000);
       (async () => {
         const context = ${JSON.stringify(context)};
-        const result = await window.napplet.cvm.callTool(context.provider, 'soy_board_submit', { napplet: context.napplet, board: 'test', score: 42 });
-        if (result.isError || result.structuredContent.own.score !== 42) throw new Error('Board failed');
+        const result = await window.napplet.cvm.registry.call('soy.boards.v2', 'soy_board_submit', { napplet: context.napplet, board: 'test', score: 42, data: { car: 'coral' } });
+        if (result.isError || result.structuredContent.own.score !== 42) throw new Error('Board failed: ' + JSON.stringify(result));
+        const own = result.structuredContent.own;
+        const details = await window.napplet.cvm.callTool(context.provider, 'soy_board_entry', { napplet: context.napplet, board: 'test', actor: own.actor, revision: own.revision });
+        if (details.isError || details.structuredContent.entry.data.car !== 'coral') throw new Error('Score attachment failed');
         done = true; document.body.dataset.score = '42';
       })();
     </script>`,
       );
       const result = await run(['check'], directory);
       expect(result.status).toBe('checked');
-      expect(result.profile).toBe('space-playback-3');
+      expect(result.profile).toBe('space-playback-4');
       expect(await Bun.file(join(directory, 'docs/napplet-backend.md')).text()).toContain(
         "import { cvm, webrtc } from '@napplet/sdk'",
+      );
+      expect(await Bun.file(join(directory, 'docs/napplet-backend.md')).text()).toContain(
+        'Score attachments: cars, drawings',
       );
     } finally {
       await rm(root, { recursive: true, force: true });

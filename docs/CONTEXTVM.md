@@ -33,6 +33,7 @@ Caller-supplied `_meta.clientPubkey` cannot impersonate another player.
 | `soy_board_register` | Creator-authorized registration of immutable board rules               |
 | `soy_board_submit`   | Update the caller's personal best; retries do not add scores           |
 | `soy_board_read`     | Current ordered scores plus the caller's personal best                 |
+| `soy_board_entry`    | One public personal best with its structured attachment; optional revision check |
 | `soy_room_create`    | Create a named, optionally listed room with a chosen capacity          |
 | `soy_room_list`      | List rooms in an author-qualified napplet/protocol namespace           |
 | `soy_room_join`      | Join within provider capacity and return current peer keys             |
@@ -83,10 +84,55 @@ players per board, return at most 100 rows, and limit each actor to 120 tool cal
 per minute. Per-key limits are not Sybil protection. Exhausted resources fail
 explicitly; they do not silently evict scores or create paid usage.
 
+### Structured score attachments (service 1.1.0)
+
+`soy.boards.v2` adds a creator-declared immutable `dataSchema`, `data` on score
+submission and `soy_board_entry`. These are Soy MCP service contracts over the
+unchanged pinned NAP-CVM API. The v1 tool family remains available; its existing
+inputs work, with additive `revision`, `hasData` and `nextOffset` result fields.
+No score database reset, custom creator code execution, REST proxy or NIP-5D
+metadata change is involved. SQLite migration adds nullable data and stable run
+revisions to existing records. Update the service before publishing data boards;
+update the shell/soyLI for v2 registry discovery and local preview.
+Keep the pre-upgrade database backup for an operator rollback: previous backend
+binaries use the old SQLite column layout and cannot write to the upgraded table.
+
+Score, name and payload change atomically only for strictly better results.
+Ties/worse retries cannot replace the original run. Data is required for a board
+declaring a schema and rejected otherwise. A board's schema is bound by the same
+creator/caller/provider registration proof as its other rules. Changed schemas
+require a new board ID. Existing boards and scores are preserved across upgrades.
+
+Schemas and data each have an 8 KiB UTF-8 JSON budget. The bounded JSON Schema
+subset supports nested objects/arrays, primitives, required fields, enum and
+bounds, with no references, regular expressions or executable validation. Detailed
+limits and copyable configuration/calls are in the bundled
+[creator guide](BACKEND-CREATOR.md#score-attachments-cars-drawings-loadouts-and-other-run-data).
+List responses omit payloads, include `hasData`/`revision` and cap rows at 16 KiB
+in addition to the requested limit. Use `offset`/`nextOffset` for live pagination.
+`soy_board_entry` takes `{napplet, board, actor, revision?}` and returns one complete
+row, or null if absent; a changed requested revision returns `stale: true` and null
+instead of mixing a previous score with a newer attachment. Past runs are not retained.
+
+Attachments are public, untrusted, client-reported game data. There is no profile
+identity binding, cheat validation, generic collection CRUD or private cloud save.
+Large replay/media data belongs on Blossom with creator-defined URL/hash fields;
+this service never fetches or executes those references. Provider quotas remain
+bounded free-service policy, not automatic billing.
+
+Local verification covers schema limits and errors, registration proofs, atomic
+best/data replacement, ties/retries, persistence, legacy database migration and
+bounded pages. Two independent Chromium guests exercise the actual shim, v2
+registry/schema hashes, encrypted CVM, a full 8 KiB payload and stale/concurrent
+submissions. Compiled darwin-arm64 soyLI also creates and checks an attachment
+project without Bun/Node on its PATH. The development namespace now agrees across
+dev, checks and captures before selecting a creator. These checks are local evidence;
+they do not establish deployment or an independently built game using the feature.
+
 ## Provider selection and schema identity
 
-The host's curated families are `soy.matchmaking.v1`, `soy.rooms.v1` and
-`soy.boards.v1`. These are Soy service contracts exposed through the standard
+The host's curated families are `soy.matchmaking.v1`, `soy.rooms.v1`,
+`soy.boards.v1` and `soy.boards.v2`. These are Soy service contracts exposed through the standard
 NAP-CVM registry, not additions to the NAP browser namespace. Direct `callTool`
 works with other CVM providers. Selecting another provider does not migrate scores,
 rooms or active sessions. There is no automatic stateful-provider fallback.

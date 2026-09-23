@@ -28,10 +28,13 @@ export async function compileCli(
         name: 'raw-creator-source',
         setup(build) {
           // Keep the shipped helper text separate from its executable module identity.
-          build.onResolve({ filter: /\/gamepad\.ts\?raw$/ }, () => ({
-            path: join(root, 'packages/input/src/gamepad.ts'),
-            namespace: 'creator-source',
-          }));
+          build.onResolve(
+            { filter: /\/(gamepad|app-data|app-data-contract)\.ts\?raw$/ },
+            ({ path }) => ({
+              path: resolve(root, 'apps/cli/src', path.slice(0, -4)),
+              namespace: 'creator-source',
+            }),
+          );
           build.onLoad({ filter: /.*/, namespace: 'creator-source' }, async ({ path }) => ({
             contents: await Bun.file(path).text(),
             loader: 'text',

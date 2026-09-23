@@ -24,6 +24,7 @@ import {
 import type { GallerySearch, SignedEvent } from '../../../../packages/protocol/src';
 import type { GallerySocialData } from '../../../../packages/backend/src/gallery-social';
 import { publicLink, type PublicNapplet } from '../../../../packages/backend/src/public-model';
+import { useZapTotals, zapTotalsStore } from '@/lib/zap-totals';
 
 const Context = createContext<{
   data: GallerySocialData | null;
@@ -65,6 +66,7 @@ export function GallerySocialProvider({
   );
   const [message, setMessage] = useState<{ id: string; text: string } | null>(null);
   const [revision, setRevision] = useState(0);
+  useEffect(() => zapTotalsStore.onPayment(() => setRevision((v) => v + 1)), []);
   const query = new URLSearchParams({
     q: search.q,
     tag: search.tag,
@@ -217,6 +219,7 @@ export function GalleryCardSocial({
 }) {
   const social = useContext(Context),
     { pubkey, ready } = useNostr();
+  const zaps = useZapTotals(socialScope(napplet.manifest).key);
   useEffect(() => social?.register(napplet.revisionId), [social?.register, napplet.revisionId]);
   if (!social)
     return (
@@ -224,7 +227,7 @@ export function GalleryCardSocial({
         {children}
       </div>
     );
-  const counts = social.data?.counts[napplet.revisionId];
+  const counts = { ...social.data?.counts[napplet.revisionId], ...zaps };
   const feedback = social.message?.id === napplet.revisionId ? social.message.text : undefined;
   const ownsPending = social.pending?.napplet.revisionId === napplet.revisionId;
   return (

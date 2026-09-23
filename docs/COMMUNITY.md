@@ -111,7 +111,27 @@ Publication needs a positive relay acknowledgement. If an acknowledgement is los
 
 The creator's Lightning service must advertise `allowsNostr`, a receipt-signing pubkey and valid amount limits. The user chooses sats and signs kind 9734 with their connected account, or with a fresh browser-memory key for an anonymous zap. Anonymous mode is automatic while signed out and optional while signed in; it never invokes the profile signer or persists the temporary key. Only the signed request is sent to the Lightning provider. This hides the Nostr profile association, not network/payment metadata from the wallet service. That request goes to the LNURL callback, not to a Nostr relay. Before showing the invoice, the browser checks its BOLT-11 checksum and signature, exact millisatoshi amount and expiry. When a description hash is present, it must match the serialized signed request sent to the callback. The wallet remains responsible for Lightning feature negotiation, route selection and fees.
 
-The invoice offers a locally generated QR code, `lightning:` wallet link and copy control. QR encoding loads lazily in the browser, without a third-party image endpoint. When WebLN is available, **Pay with browser wallet** explicitly enables the wallet and requests payment; invoice creation never pays automatically. Wallet success is labelled as the wallet's report. The total uses kind-9735 receipts verified against the advertised provider, signed request, recipient, target, invoice amount and description; an optional preimage must match the payment hash. Event IDs and payment hashes are deduplicated. A receipt remains the Lightning provider's assertion. Changing providers may make older receipts unverifiable from the current profile.
+The invoice offers a locally generated QR code, `lightning:` wallet link and copy control. QR encoding loads lazily in the browser, without a third-party image endpoint. When WebLN is available, **Pay with browser wallet** explicitly enables the wallet and requests payment; invoice creation never pays automatically. The public total uses kind-9735 receipts verified against the advertised provider, signed request, recipient, target, invoice amount and description; an optional preimage must match the payment hash. Event IDs and payment hashes are deduplicated. A receipt remains the Lightning provider's assertion. Changing providers may make older receipts unverifiable from the current profile.
+
+While the invoice dialog is open, it checks the provider's optional
+[LUD-21 verification URL](https://github.com/lnurl/luds/blob/luds/21.md) and queries
+the invoice's relays for a matching receipt. Provider confirmation must name the
+exact invoice, report `settled: true`, and have a matching preimage if supplied.
+A WebLN preimage matching the invoice's payment hash also confirms immediately;
+a wallet response without that proof waits for provider/relay confirmation.
+Receipt confirmation must match both the payment hash and signed request ID.
+On confirmation the dialog shows **Zap sent!**, updates counts and sats across
+gallery copies, detail controls and the relevant comment, then closes after 1.2
+seconds. Polling stops on success, expiry, close, navigation or invoice replacement.
+Expired invoices offer a new-invoice action; unpaid invoices never show success.
+
+Confirmed local payments bridge relay delivery lag in a bounded, tab-memory cache
+(256 targets, 2,000 payment hashes per target). Relay receipts merge by payment
+hash, so a confirmation and its eventual receipt count once and a stale relay read
+cannot undo the local update. These confirmations are not published as fabricated
+receipts or persisted to disk. Other visitors and fresh reloads still need the
+provider's public receipt. Verification uses direct provider/relay access with
+the existing public URL, size, timeout and redirect policy; no site payment API.
 
 For interoperability with providers such as Minibits, plain-description invoices
 are accepted automatically, including empty descriptions. This is an intentional
@@ -122,7 +142,7 @@ advertised provider, with a valid signed request and matching recipient, target
 and amount. Optional payment preimages are still checked and payment hashes are
 deduplicated. The provider's signed receipt supplies the association that the
 invoice's description hash normally supplies. A payable invoice alone never adds
-to the zap count; the provider must publish a receipt. This applies to all providers,
+to the zap count; a payment confirmation or receipt is required. This applies to all providers,
 napplet and comment zaps, and signed-in and anonymous senders.
 
 Compatibility never ignores an incorrect description hash when one is present.

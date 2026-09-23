@@ -6,6 +6,7 @@ import { scopedStorage } from './storage';
 import { NappletFiles, type ExportFile, type FilePick } from './filesystem';
 import { NappletActions } from './action-session';
 import { NappletUploads } from './upload-session';
+import { NappletAppData, appDataPolicy } from './app-data-session';
 import type { HostSign } from './action-contracts';
 import { PlaybackNostr } from '../../nostr/src/playback';
 import { WorkQueue } from './work-queue';
@@ -61,6 +62,7 @@ const envelope = z
 /** A single frame session. Caller supplies verified identity; messages cannot change it. */
 export function attachNappletHost(options: HostOptions) {
   const source = options.frame.contentWindow;
+  const dataPolicy = appDataPolicy(options.identity, options.actionRelays ?? options.relays);
   let alive = true,
     initialized = false,
     calls = 0,
@@ -149,6 +151,13 @@ export function attachNappletHost(options: HostOptions) {
       pubkey,
       sign: options.sign,
       relays: options.actionRelays ?? options.relays,
+      signal: lifetime.signal,
+      consent: (value, signal) => consent('action', value, signal),
+    });
+    const appData = new NappletAppData({
+      policy: dataPolicy,
+      pubkey,
+      sign: options.sign,
       signal: lifetime.signal,
       consent: (value, signal) => consent('action', value, signal),
     });
@@ -261,6 +270,7 @@ export function attachNappletHost(options: HostOptions) {
       if (domain === 'fs')
         return files.handle(message, (name) => choose('save', name), chooseFiles, lifetime.signal);
       if (domain === 'identity') return nostr.identity(action);
+      if (type === 'outbox.publish' || type === 'relay.publish') return appData.handle(message);
       if (domain === 'relay' || domain === 'outbox') return nostr.handle(message);
       if (domain === 'upload') return uploads.handle(message);
       if (
@@ -364,6 +374,7 @@ export function attachNappletHost(options: HostOptions) {
         // are suppressed once this scope becomes inactive below.
         nostr.close();
         actions.close();
+        appData.close();
         active = false;
         lifetime.abort();
         resources.clear();
@@ -398,7 +409,7 @@ export function attachNappletHost(options: HostOptions) {
     if (message.type === 'shell.ready') {
       if (initialized) return;
       initialized = true;
-      send({ type: 'shell.init', capabilities: { domains: [...RUNTIME_DOMAINS] }, services: [] });
+      send({ type: 'shell.init', capabilities: { domains: [...RUNTIME_DOMAINS], appData: dataPolicy }, services: [] });
       config.ready();
       return;
     }

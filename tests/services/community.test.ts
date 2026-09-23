@@ -100,7 +100,7 @@ test('production SSR, signed named routes and social actions work through a real
         signEvent: (event: unknown) => (window as any).testSign(event),
       };
     }, getPublicKey(key));
-    const walletOptions = { plainDescription: true };
+    const walletOptions = { plainDescription: true, verification: false };
     const wallet = await directWallet(page, events, key, relayUrl, walletOptions);
     await page.goto(`${origin}/n/${fixture.naddr}`);
     const headerActions = page.locator('.napplet-social-actions');
@@ -236,13 +236,16 @@ test('production SSR, signed named routes and social actions work through a real
     expect([...events.values()].filter((e) => e.kind === 7)).toHaveLength(3);
     expect(rejected).toBe(0);
     // Wallet UI is simulated; no invoice provider or wallet receives a real request.
+    await page.exposeFunction('testPay', async (invoice: string) => ({
+      preimage: wallet.preimages[wallet.invoices.indexOf(invoice)],
+    }));
     await page.evaluate(() => {
       (window as any).testPayments = [];
       (window as any).webln = {
         enable: async () => {},
         sendPayment: async (invoice: string) => {
           (window as any).testPayments.push(invoice);
-          return { preimage: 'test-only' };
+          return (window as any).testPay(invoice);
         },
       };
     });
@@ -261,10 +264,13 @@ test('production SSR, signed named routes and social actions work through a real
     ).toBe(`lightning:${wallet.invoices[0]}`);
     expect(await page.evaluate(() => (window as any).testPayments.length)).toBe(0);
     await page.getByRole('button', { name: 'Pay with browser wallet', exact: true }).click();
-    await page.getByText(/Your wallet reports payment sent/).waitFor();
+    await page.getByText('Zap sent!', { exact: true }).waitFor();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    expect(await headerActions.textContent()).toContain('1 · 21 sats');
+    expect(await page.getByRole('button', { name: '21 sats zapped', exact: true }).count()).toBe(1);
     expect(await page.evaluate(() => (window as any).testPayments)).toEqual([wallet.invoices[0]]);
     expect([...events.values()].some((e) => e.kind === 9734)).toBe(false);
-    await page.keyboard.press('Escape');
+    wallet.settle(0);
     walletOptions.plainDescription = false;
     await page.getByRole('button', { name: 'Zap comment', exact: true }).click();
     await page.getByLabel('Satoshis', { exact: true }).waitFor();
@@ -276,6 +282,16 @@ test('production SSR, signed named routes and social actions work through a real
     expect(wallet.requests[1].tags).toContainEqual(['k', '1111']);
     expect(wallet.requests[1].tags.some((t) => t[0] === 'a')).toBe(false);
     expect(await page.evaluate(() => (window as any).testPayments.length)).toBe(1);
+    wallet.settle(1);
+    await page.getByText('Zap sent!', { exact: true }).waitFor();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    expect(await headerActions.textContent()).toContain('1 · 21 sats');
+    expect(
+      await page
+        .locator('.comment-tools')
+        .getByRole('button', { name: 'Zap comment' })
+        .textContent(),
+    ).toContain('21 sats');
     await page.keyboard.press('Escape');
     await mkdir(join(root, '.local/community-check'), { recursive: true });
     await page.locator('.social-panel').scrollIntoViewIfNeeded();

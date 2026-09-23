@@ -1,5 +1,18 @@
 # Napplet interoperability and publishing contract
 
+2026-09-23 public application-data source update: the shared host grants a
+constrained `relay.publish`/`outbox.publish` subset for kind-30078 records under
+the documented `soy.app-data/1` convention. NIP-78 is pinned to
+`6aeea6093786644e892dd2869fa5b642fddd271d`; our public relay access policy deliberately
+differs from that revision's owner-only recommendation. The existing shim 0.30.0
+publish envelopes are unchanged. An optional shell-init `capabilities.appData`
+host-policy hint identifies supported limits and the verified napplet's stable
+scope; it is not a new NAP, manifest requirement or publishing-provenance gate.
+Viewer consent, schema-envelope validation, signed revisions and complete selected
+relay reads bound writes. App payload validation belongs to the consumer. See
+[shared data](SHARED-DATA.md) for tombstones, conflict/retention limits and examples.
+Implemented source is distinct from a deployed runtime or released CLI.
+
 2026-09-15 local A13/A21 update: [creator profiles](PROFILES.md) use ordinary kind-0
 metadata and NIP-19 public keys, and [genealogy](REMIXING.md#genealogy-on-napplet-pages)
 reads signed parent/origin claims. NIP-01/24 and NIP-5A were reviewed at
@@ -20,6 +33,13 @@ The shared host now exposes both domains. Soy scoreboard/room/matchmaking tools
 are separate versioned MCP contracts; `soy-rtc/1` is documented host signaling,
 not an additional NAP or a NIP-100 conformance claim. No custom manifest metadata
 or Soy publisher provenance is required. [Implementation, limits and verification](CONTEXTVM.md).
+
+2026-09-23 score attachments extend the Soy MCP service with `soy.boards.v2`,
+bounded JSON data and per-entry reads. The NAP-CVM `ad68a938`, ContextVM SDK
+0.13.16, MCP 1.30.0 and shim 0.30.0 pins remain unchanged. This is a versioned
+service schema over existing calls, not a new NAP, manifest requirement or proxy.
+The same service runs in soyLI preview and production; all publishers can use
+ordinary CVM calls. See [service semantics and limits](CONTEXTVM.md#structured-score-attachments-service-110).
 
 ## Managed runtime assets — soyLI 0.13.0 source
 
@@ -144,6 +164,12 @@ A creator signature and matching source archive prove what the creator published
 Persist raw signed events and deduplicate by event ID. Resolve event-only legacy references through known manifest history where possible; do not invent missing relationships. Validate referenced authors and event kinds rather than trusting tags alone. For reactions, a deleted old like must not erase a newer like; define active-event reduction and cover it with fixtures.
 
 Validate zap receipts against NIP-57, including provider identity, request, invoice amount and description binding. Deduplicate payment hashes as well as event IDs. A receipt is the provider's assertion of payment, not trustless proof or a reliable anti-Sybil signal. Wallet setup and optional wallet-connect support belong to the site, not the game iframe.
+
+The client's intentional plain-description invoice compatibility and direct LUD-21
+payment confirmation are documented in [COMMUNITY.md](COMMUNITY.md#zaps). Missing
+description hashes use the configured provider's association; a present hash must
+match. Confirmed tab-local payments update the UI while a public receipt travels
+through relays, without publishing synthetic receipts or introducing a site API.
 
 ## 8. Browser trust boundary
 

@@ -3,6 +3,40 @@ import { finalizeEvent } from 'nostr-tools';
 import { Observable } from 'rxjs';
 import { PlaybackNostr, type PlaybackReadPool } from './playback';
 
+test('explicit app-data storage reads do not contact unrelated discovery relays or require a NIP-65 profile', async () => {
+  const requested: string[] = [];
+  const host = new PlaybackNostr(
+    ['wss://offline.example/'],
+    () => {},
+    () => null,
+    {
+      close() {},
+      req: (relays) =>
+        new Observable((output) => {
+          for (const from of relays) {
+            requested.push(from);
+            if (from === 'wss://storage.example/') output.next({ type: 'EOSE', from });
+          }
+        }),
+    },
+  );
+  try {
+    const result = await host.handle({
+      type: 'outbox.query',
+      filters: {
+        kinds: [30078],
+        '#d': ['soy.app-data/1:scope:tracks:one'],
+        authors: ['a'.repeat(64)],
+      },
+      options: { relays: ['wss://storage.example/'], timeoutMs: 500 },
+    });
+    expect(result).toMatchObject({ events: [], incomplete: false });
+    expect(requested).toEqual(['wss://storage.example/']);
+  } finally {
+    host.close();
+  }
+});
+
 test('an explicit station relay hint is read even when discovery relays do not have its event', async () => {
   const station = finalizeEvent(
     {
@@ -39,7 +73,8 @@ test('an explicit station relay hint is read even when discovery relays do not h
       filters: { kinds: [31237], authors: [station.pubkey], '#d': ['station'], limit: 10 },
       options: { relays: ['wss://station.example'], timeoutMs: 1000 },
     });
-    expect(result).toMatchObject({ events: [{ event: station }] });
+    // Missing NIP-65 metadata does not make a complete explicit-relay read partial.
+    expect(result).toMatchObject({ events: [{ event: station }], incomplete: false });
     expect(reads).toContain('wss://station.example/');
   } finally {
     host.close();

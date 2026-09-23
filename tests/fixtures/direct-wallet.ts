@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { bech32 } from '@scure/base';
 import { secp256k1 } from '@noble/curves/secp256k1.js';
 import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
 import { finalizeEvent, getPublicKey } from 'nostr-tools';
 import { verifiedEvent, type SignedEvent } from '../../packages/protocol/src';
 
@@ -30,7 +31,7 @@ export function invoice(
   const expiry = words(3600);
   const data = [
     ...timestamp,
-    ...field(1, sha256(encoder.encode(description))),
+    ...field(1, sha256(sha256(encoder.encode(description)))),
     ...field(16, new Uint8Array(32).fill(9)),
     ...(plainDescription === undefined
       ? field(23, sha256(encoder.encode(description)))
@@ -60,11 +61,13 @@ export async function directWallet(
   events: Map<string, SignedEvent>,
   key: Uint8Array,
   relay: string,
-  options: { plainDescription?: boolean } = {},
+  options: { plainDescription?: boolean; verification?: boolean } = {},
 ) {
   const pubkey = getPublicKey(key),
     requests: SignedEvent[] = [],
-    invoices: string[] = [];
+    invoices: string[] = [],
+    preimages: string[] = [],
+    settled = new Set<number>();
   const profile = finalizeEvent(
     {
       kind: 0,
@@ -95,6 +98,18 @@ export async function directWallet(
   await page.route('https://wallet.example/**', async (route) => {
     const url = new URL(route.request().url());
     const headers = { 'access-control-allow-origin': '*' };
+    if (url.pathname.startsWith('/verify/')) {
+      const index = Number(url.pathname.split('/').at(-1));
+      return route.fulfill({
+        headers,
+        json: {
+          status: 'OK',
+          pr: invoices[index],
+          settled: settled.has(index),
+          preimage: settled.has(index) ? preimages[index] : null,
+        },
+      });
+    }
     if (url.pathname.startsWith('/.well-known/lnurlp/'))
       return route.fulfill({
         headers,
@@ -115,7 +130,41 @@ export async function directWallet(
       plainDescription: options.plainDescription ? request.content : undefined,
     });
     invoices.push(pr);
-    return route.fulfill({ headers, json: { pr } });
+    preimages.push(bytesToHex(sha256(new TextEncoder().encode(serialized))));
+    return route.fulfill({
+      headers,
+      json: {
+        pr,
+        ...(options.verification === false
+          ? {}
+          : { verify: `https://wallet.example/verify/${invoices.length - 1}` }),
+      },
+    });
   });
-  return { requests, invoices };
+  return {
+    requests,
+    invoices,
+    preimages,
+    settle(index: number, publishReceipt = true) {
+      settled.add(index);
+      if (!publishReceipt) return;
+      const request = requests[index];
+      const receipt = finalizeEvent(
+        {
+          kind: 9735,
+          created_at: Math.floor(Date.now() / 1000),
+          content: '',
+          tags: [
+            ...request.tags.filter((t) => ['p', 'e', 'a'].includes(t[0])),
+            ['P', request.pubkey],
+            ['description', JSON.stringify(request)],
+            ['bolt11', invoices[index]],
+            ['preimage', preimages[index]],
+          ],
+        },
+        key,
+      );
+      events.set(receipt.id, receipt);
+    },
+  };
 }

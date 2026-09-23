@@ -1,11 +1,16 @@
 # napplet soyLI — creator CLI
 
-Source **0.19.0** adds Rust/WASM build recipes, Bevy guidance, eight-relay bunker
-connections, private remote-session files and publication histories per author.
-It includes GitHub release CI, `soyli update`, and latest-release checks
-in `soyli doctor`. The workflow and updater are implemented locally; the first
-GitHub release must be published before they can deliver an update. No background
-updates occur. [Release workflow](CLI-RELEASES.md).
+Source **0.20.0** adds public NIP-78 shared creations with portable helpers and
+agent guidance, plus structured CVM score attachments. The same scoped host runs
+in the local preview and website. Update the CLI, restart previews and run
+`soyli skills update` in existing projects; the public site and CVM provider need
+their matching deployment. See [shared data](SHARED-DATA.md),
+[score attachments](BACKEND-CREATOR.md) and [release operations](CLI-RELEASES.md).
+
+Version **0.19.0** introduced Rust/WASM build recipes, Bevy guidance, eight-relay
+bunker connections, private remote-session files and publication histories per
+author. `soyli update` installs the latest stable GitHub release; `soyli doctor`
+checks for updates. No background updates occur.
 
 Version **0.17.0** adds [unpublish, republish and confirmed hosted-data deletion](LIFECYCLE.md).
 Use `soyli unpublish`, `soyli republish`, `soyli delete`, and `soyli lifecycle`
@@ -389,7 +394,7 @@ metadata. The artifact and NIP-5D publication format are the same for both profi
 ## Building and releasing
 
 The primary distribution channel is now **GitHub Releases**. Push a version tag
-such as `soyli-v0.19.0` matching `apps/cli/distribution/version.json` and the installer.
+such as `soyli-v0.20.0` matching `apps/cli/distribution/version.json` and the installer.
 CI checks the source, builds and smoke-tests all four platforms on native runners,
 then publishes their archives/checksums and the pinned installer. PRs and manual
 branch runs validate without publishing. Only the release job has write permission;
@@ -400,7 +405,7 @@ Use the pinned Bun 1.3.11 toolchain for builds:
 ```sh
 bun run cli:build                         # four macOS/Linux archives
 bun run cli:build --target darwin-arm64   # one local target
-SPACE_TEST_CLI="$PWD/.local/cli/0.19.0/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.20.0/soyli-darwin-arm64/soyli" \
   SPACE_TEST_NATIVE_KEYSTORE=1 bun test tests/services/cli-distribution.test.ts \
   tests/services/cli-terminal.test.ts tests/services/native-identity.test.ts \
   tests/services/publish.test.ts

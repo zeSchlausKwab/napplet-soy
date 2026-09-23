@@ -7,6 +7,33 @@ and website release `20260914142718446-76864` include the configuration host.
 The 0.14.1 starter interoperability fix was published on 2026-09-20;
 [independent-client acceptance](INTEROPERABILITY.md) records its narrower coverage.
 
+## Public structured creations — local source qualification, 2026-09-23
+
+The shared website/preview host supports `soy.app-data/1` kind-30078 records via
+the existing relay/outbox publish envelopes. This is an explicit public NIP-78
+convention, with the relay-policy deviation, upstream pin and limits recorded in
+[SHARED-DATA.md](SHARED-DATA.md). There is no new NAP domain, mandatory CVM service,
+REST proxy, creator credential in the iframe or publisher-provenance gate.
+
+`packages/runtime/src/app-data-session.test.ts` covers independent authors,
+ownership after reopening, revision conflicts, incomplete reads, denied consent,
+account changes, concurrent edits, bounded data and retrying the same signed event.
+`packages/nostr/src/playback-routing.test.ts` verifies explicit storage reads avoid
+unrelated discovery relays. The actual pinned Go relay serves these records to
+anonymous readers and replaces an author's record without overwriting another's.
+
+`tests/services/app-data-browser.test.ts` builds the shipped helper and exercises
+the real shim in both the production website build and local preview, using
+independent Chromium contexts at mobile width. It covers discovery, author edits,
+copying, reloads, relay rejection with a useful cause, retry and unpublish.
+`tests/services/app-data-cli.test.ts` verifies a compiled macOS ARM64 soyLI supplies
+usable helpers and preserves creator edits during `skills update`, with no Bun or
+Node on the child PATH. Starter guidance and deployment-archive checks also pass.
+The repository check and production build pass. These are local fixtures, not
+physical-phone, public-provider, independent-client or isolated creator-agent
+acceptance. Release and deployment remain pending. No atomic distributed edits,
+permanent history, private records or hard-deletion guarantee is claimed.
+
 ## Rust/WASM and Bevy — local source qualification, 2026-09-23
 
 The optional build recipe uses Rust 1.97.1, wasm32-unknown-unknown,
@@ -106,8 +133,8 @@ proposal revisions; mapping the remaining domains to individual NAP revisions/de
 | `storage` | get/set/remove/keys; shared and instance SDK scopes; bounded strings/keys; no device/cloud sync | `runtime/storage.ts` and tests; runtime browser persistence/isolation |
 | `theme` | get fixed Space theme; installed onChanged hook has no changing theme to announce yet | `runtime/host.ts`; shim/theme browser checks; dynamic theme acceptance remains open |
 | `resource` | info, bytes, bytesMany, cancel; shim data URL/object URL helpers; HTTPS/Blossom mediation; unsupported schemes and unsafe destinations/formats rejected | `runtime/host.ts`, backend resource responder; resource tests, queued cancellation, public packaged-loader historical check |
-| `relay` | query/subscribe/close on allowed relays; publish/publishEncrypted denied | `nostr/playback.ts`; actual WebSocket fixtures, signature/filter/dedup tests; denied publish browser test |
-| `outbox` | getEvent/query/subscribe/close/resolveRelays; bounded NIP-65 planning, incomplete results; publish denied | Same Applesauce implementation; playback tests. No signer is installed in the iframe |
+| `relay` | query/subscribe/close on allowed relays; publish limited to scoped public app-data records with viewer consent; publishEncrypted denied | `nostr/playback.ts`; actual WebSocket fixtures, signature/filter/dedup tests; denied publish browser test |
+| `outbox` | getEvent/query/subscribe/close/resolveRelays; bounded NIP-65 planning, incomplete results; publish limited to scoped public app-data records with viewer consent | Same Applesauce implementation; playback tests. No signer is installed in the iframe |
 | `common` | Public NIP-19 helpers including nrelay, profile/follows and approved follow/unfollow/react/report | Shared action session; signed event targets; action/unit and real-shim browser tests |
 | `link` | open an HTTPS link through a host-owned user choice; other schemes/credentials denied | `runtime/host.ts`; CLI browser prompt policy checks |
 | `fs` | Session operations plus file/multiple-file/directory import copies and export picker | Atomic virtual copies only; filesystem/unit and real-shim browser tests |

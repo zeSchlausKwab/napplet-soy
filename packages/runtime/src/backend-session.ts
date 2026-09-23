@@ -22,6 +22,13 @@ const families: Record<string, string[]> = {
     'soy_room_leave',
   ],
   'soy.boards.v1': ['soy_session', 'soy_board_read', 'soy_board_submit', 'soy_board_register'],
+  'soy.boards.v2': [
+    'soy_session',
+    'soy_board_read',
+    'soy_board_submit',
+    'soy_board_register',
+    'soy_board_entry',
+  ],
 };
 const rpc = z
   .object({

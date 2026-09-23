@@ -152,6 +152,7 @@ are optional. A name on this website is not the napplet's identity.
 | **Blossom** | Content-addressed app files, assets and previews, retrieved directly with hash verification. [Asset workflow](docs/ASSETS.md). |
 | **Git + NIP-34 / GRASP** | Public source history and ordinary Git repositories, with signed proposals and review. [Source hosting](docs/GRASP.md). |
 | **ContextVM + WebRTC** | Shared scores, rooms, matchmaking and peer connections. [Creator guide](docs/BACKEND-CREATOR.md) and [service limits](docs/CONTEXTVM.md). |
+| **Public app data** | Player-created tracks, puzzles and presets, shared as signed NIP-78 records. [Convention, helpers and current host limits](docs/SHARED-DATA.md). |
 
 Run `soyli config` to see where a project's listings, files and source will go.
 The defaults use `relay.napplet.soy`, `blossom.napplet.soy` and `git.napplet.soy`;

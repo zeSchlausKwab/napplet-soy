@@ -7,7 +7,7 @@ import {
   ticketSchema,
   matchSchema,
 } from './matchmaking';
-import { Boards, boardRegister, boardSubmit, boardRead } from './boards';
+import { Boards, boardRegister, boardSubmit, boardRead, boardEntry } from './boards';
 import { Rooms, roomCreate, roomKey, roomNamespace } from './rooms';
 
 export function createMatchmakingServer(
@@ -18,7 +18,7 @@ export function createMatchmakingServer(
     ice?: (actor: string) => Record<string, unknown>;
   } = {},
 ) {
-  const server = new McpServer({ name: 'napplet-soy-backend', version: '1.0.0' });
+  const server = new McpServer({ name: 'napplet-soy-backend', version: '1.1.0' });
   const boards = options.boards ?? new Boards();
   const rooms = options.rooms ?? new Rooms();
   const limits = new Map<string, { start: number; calls: number }>();
@@ -119,7 +119,7 @@ export function createMatchmakingServer(
     (actor) => ({
       version: 1,
       actor,
-      families: ['soy.matchmaking.v1', 'soy.rooms.v1', 'soy.boards.v1'],
+      families: ['soy.matchmaking.v1', 'soy.rooms.v1', 'soy.boards.v1', 'soy.boards.v2'],
       payments: 'free',
       updates: 'poll',
       minimumPollMs: 2000,
@@ -127,21 +127,27 @@ export function createMatchmakingServer(
   );
   tool(
     'soy_board_register',
-    'Register immutable board rules using the napplet author signature. Retrying the same definition is safe.',
+    'Register immutable board rules and optional dataSchema using the napplet author signature. Retrying the same definition is safe. Changed rules or dataSchema need a new board ID.',
     boardRegister,
     (actor, args) => boards.register(actor, args),
   );
   tool(
     'soy_board_submit',
-    'Submit a casual, client-reported personal best. Retries cannot add to the score. Transport keys are not Sybil resistant.',
+    'Submit a casual, client-reported personal best with data when required by its dataSchema. Score and data update together only for a strictly better result; ties/retries preserve the first run. Transport keys are not Sybil resistant.',
     boardSubmit,
     (actor, args) => boards.submit(actor, args),
   );
   tool(
     'soy_board_read',
-    'Read current scores and your personal best. Poll no more often than every two seconds; notifications are not durable state.',
+    'Read current scores and your personal best, including hasData and revision. Fetch attachments with soy_board_entry. Poll no more often than every two seconds; notifications are not durable state.',
     boardRead,
     (actor, args) => boards.read(actor, args),
+  );
+  tool(
+    'soy_board_entry',
+    'Read one public personal-best entry and its JSON data (up to 8 KiB). Supply actor and revision from soy_board_read to avoid mixing different runs. If stale is true, refresh the leaderboard; old runs are not retained.',
+    boardEntry,
+    (_, args) => boards.entry(args),
   );
   tool(
     'soy_room_create',

@@ -104,6 +104,8 @@ function errorMessage(error: Error) {
   // JSON/parser errors can quote arbitrary input, including plaintext secrets.
   if (error instanceof SyntaxError)
     return 'Invalid JSON or syntax in the input; source contents omitted.';
+  // Only validators that construct messages from field paths/rules may explicitly
+  // set diagnosticMessage. Other Zod messages can contain rejected secret values.
   if (error.name === 'ZodError' && 'issues' in error && Array.isArray(error.issues))
     return (
       'Invalid configuration: ' +
@@ -111,7 +113,7 @@ function errorMessage(error: Error) {
         .slice(0, 8)
         .map(
           (issue) =>
-            `${Array.isArray(issue.path) ? issue.path.join('.') || '(root)' : '(root)'} (${issue.code})`,
+            `${Array.isArray(issue.path) ? issue.path.join('.') || '(root)' : '(root)'} (${issue.code}${issue.code === 'custom' && typeof issue.params?.diagnosticMessage === 'string' ? `: ${issue.params.diagnosticMessage}` : ''})`,
         )
         .join(', ')
     );

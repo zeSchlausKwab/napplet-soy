@@ -13,6 +13,9 @@ import bevyAssets from '../support/napplet_bevy.rs' with { type: 'text' };
 // Distinct module identity keeps Bun's raw-source cache separate from executable imports.
 import gamepadHelper from '../../../packages/input/src/gamepad.ts?raw' with { type: 'text' };
 import backendGuide from '../../../docs/BACKEND-CREATOR.md' with { type: 'text' };
+import sharedDataGuide from '../../../docs/SHARED-DATA.md' with { type: 'text' };
+import appDataHelper from '../../../packages/app-data/src/app-data.ts?raw' with { type: 'text' };
+import appDataContract from '../../../packages/app-data/src/app-data-contract.ts?raw' with { type: 'text' };
 import multiplayerSync from '../templates/multiplayer-sync.ts.txt' with { type: 'text' };
 import multiplayerScenario from '../templates/multiplayer-scenario.mjs.txt' with { type: 'text' };
 import { AccountError } from '../../../packages/identity/src/signer';
@@ -72,6 +75,19 @@ and report missing coverage honestly. Never invent a portrait recording option.
   soyli backend init pins a visible provider and prepares public .napplet-space/soy-backend.json.
   soyli dev runs an isolated copy of the backend automatically; publishing registers
   declared boards with the creator's authorization. Backend status checks connectivity.
+  Boards can declare dataSchema for public JSON attached to each personal best (8 KiB),
+  such as a car, drawing or loadout. Use soy.boards.v2 and soy_board_entry for details;
+  see the guide's score attachments example. Keep score and run data in one submission.
+  Do not drop requested shared data or put it in the player's name to bypass limits.
+  Large replay/media bytes belong on Blossom with a URL/hash reference in the data.
+- For player-created tracks, puzzles, drawings or presets shared independently of scores,
+  read docs/napplet-data.md and use docs/examples/app-data.ts with app-data-contract.ts.
+  Default to the documented public NIP-78 convention, with a stable schema label/version
+  and application payload validation. Keep drafts in local storage, large files on Blossom.
+  Do not invent a CVM collection service or replace requested sharing with local-only saves.
+  Check the host's appData policy; generic outbox presence is not write permission.
+  Existing social entities still use their standard NAPs. Public records are not private saves.
+  Test discovery with another identity, updates after reopening and failed/stale writes.
 - For real-time multiplayer, read the responsive synchronization section of that guide.
   Copy/adapt docs/examples/multiplayer-scenario.mjs into your tests and use
   soyli multiplayer tests/multiplayer.mjs --latency 50 --jitter 15.
@@ -334,7 +350,7 @@ claim that these ran the upstream reference harness.
 
 This host provides configuration, identity, storage, theme, resource, relay/outbox reads,
 common reads/writes, user-confirmed links, file imports/session exports, Blossom uploads,
-public list edits, media, ContextVM and WebRTC. See docs/napplet-actions.md for exact
+public list edits, scoped public NIP-78 records, media, ContextVM and WebRTC. See docs/napplet-actions.md for exact
 APIs, examples and limits (soyLI 0.15.0; remote websites need the matching deployment).
 Use fs pickers for user-selected copies; they never edit original device files.
 Uploads and follow/react/report/list changes require the connected viewer's signer
@@ -342,7 +358,9 @@ and host approval; never borrow the creator publishing key. In local preview con
 a browser extension. The website uses its selected Applesauce account.
 Use upload.info and lists.supported; handle denial, missing identity and asynchronous
 upload status, and never assume private list support. Generic signer operations,
-relay/outbox publishing and cross-napplet operations are not granted.
+arbitrary relay/outbox publishing and cross-napplet writes are not granted.
+The app-data write subset uses docs/napplet-data.md and the optional shell appData
+policy hint; a matching website deployment is required as well as the CLI update.
 A domain's presence does not promise that every operation will be permitted.
 Our host check complements upstream conformance; report each result separately.
 
@@ -435,6 +453,9 @@ export function creatorSkills() {
   const files: Record<string, string> = {
     'docs/napplet-space.md': profile,
     'docs/napplet-backend.md': backendGuide,
+    'docs/napplet-data.md': sharedDataGuide,
+    'docs/examples/app-data.ts': appDataHelper,
+    'docs/examples/app-data-contract.ts': appDataContract,
     'docs/napplet-actions.md': actionsGuide,
     'docs/napplet-controllers.md': controllersGuide,
     'docs/napplet-mobile.md': mobileGuide,

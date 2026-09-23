@@ -64,6 +64,21 @@ test('validation reports field paths without serializing rejected values or pars
   expect(diagnose(new SyntaxError('Unexpected token at "private-input"')).message).not.toContain(
     'private-input',
   );
+  const annotated = z
+    .unknown()
+    .superRefine((_, ctx) =>
+      ctx.addIssue({
+        code: 'custom',
+        message: 'private-rejected-value',
+        params: { diagnosticMessage: 'Expected bounded data; nsec1fixturesecret' },
+      }),
+    )
+    .safeParse('private-rejected-value');
+  if (annotated.success) throw new Error('Invalid test fixture');
+  const safe = diagnose(annotated.error).message;
+  expect(safe).toContain('Expected bounded data');
+  expect(safe).not.toContain('private-rejected-value');
+  expect(safe).not.toContain('nsec1fixturesecret');
 });
 
 test('streamed tool output redacts secrets spanning chunks and bounds oversized lines', () => {

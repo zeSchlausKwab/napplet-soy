@@ -1,5 +1,17 @@
 # NAP concepts and expansion review
 
+2026-09-23 application-data update: reviewed actual relay/outbox publish request and
+result shapes in the installed shim 0.30.0 source maps (its @napplet/core and
+@napplet/nap dependencies are 0.32.0). Retained those package pins and the selected
+NIP-5D revision. NIP-78 `6aeea6093786644e892dd2869fa5b642fddd271d` is the event reference;
+public sharing is an explicit downstream relay-policy convention, not a claim of
+conformance to its owner-only AUTH recommendation. Host-owned publication is
+limited to bounded, viewer-authorized `soy.app-data/1` kind-30078 records. The
+helper observes the existing host handshake and uses ordinary outbox envelopes;
+the optional shell-init appData hint is documented as a host extension. No new
+NAP domain, generic signing permission or required publishing metadata. See
+[contract and limits](SHARED-DATA.md). Wider interoperability remains unverified.
+
 Reviewed **2026-09-14** for upstream concept and interoperability review before wider launch.
 This records an upstream reading and code comparison, not a completed conformance
 audit. The [compatibility inventory](COMPATIBILITY.md) now records the configuration
@@ -324,7 +336,8 @@ FS pickers copy into the bounded virtual session filesystem; they grant no live
 OS paths. UPLOAD uses direct CORS requests and independent hash verification;
 the initial correlated reply precedes asynchronous approval/transfer. COMMON
 constructs constrained follow/reaction/report events through the viewer signer.
-Generic relay/outbox writes and arbitrary key operations remain denied. Browser
+Generic relay/outbox writes and arbitrary key operations remain denied; the later
+app-data subset above is the explicit exception. Browser
 Network settings select action relays/upload storage; signed napplet hints do
 not silently override those write destinations. Proposal previews remain guests.
 

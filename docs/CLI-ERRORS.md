@@ -1,5 +1,11 @@
 # soyLI error diagnostics
 
+Score attachment schema validation preserves the failed field/rule without echoing
+submitted values. Validators can explicitly attach a safe `diagnosticMessage` to
+a custom Zod issue; other Zod messages remain suppressed. `BACKEND_VERSION` reports
+an older provider lacking `soy.boards.v2` before a registration signer is opened,
+with the required upgrade/configuration step. Real CLI tests cover both failures.
+
 2026-09-23 source no longer reports `CREATOR_MISMATCH` for a live project merely
 because its saved scaffold creator differs from the selected account. Sharing
 captures the selected account and journals releases by public key. Frozen jobs

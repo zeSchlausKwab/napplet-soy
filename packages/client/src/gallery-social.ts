@@ -7,6 +7,7 @@ import type { PublicNapplet } from '../../backend/src/public-model';
 import type { GallerySocialData, SocialCounts } from '../../backend/src/gallery-social';
 import type { ProtocolClient } from './nostr';
 import { resolveZapEndpoint, zapTotals, type ZapEndpoint } from './zaps';
+import type { ZapTotalsStore } from './zap-totals';
 
 const chunks = <T>(items: T[], size: number) =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, i) =>
@@ -22,6 +23,7 @@ export class GallerySocialReader {
   constructor(
     private client: ProtocolClient,
     private loadEndpoint = resolveZapEndpoint,
+    private zapCounts?: ZapTotalsStore,
   ) {}
 
   private endpoint(pubkey: string, events: SignedEvent[]) {
@@ -255,14 +257,16 @@ export class GallerySocialReader {
               const events = allowedEvents().filter(
                 (e) => e.kind !== 9735 || targetManifest(e, scope, manifests),
               );
-              if (!events.some((e) => e.kind === 9735)) totals = { zapCount: 0, msats: 0 };
+              if (!events.some((e) => e.kind === 9735))
+                totals = this.zapCounts?.observe(scope.key, []) ?? { zapCount: 0, msats: 0 };
               else
                 try {
-                  totals = await zapTotals(
+                  const verified = await zapTotals(
                     { scope, manifest: n.manifest, relays: hints },
                     { events, manifests },
                     await this.endpoint(n.pubkey, events),
                   );
+                  totals = this.zapCounts?.observe(scope.key, verified.receipts) ?? verified;
                 } catch {}
             }
             signal.throwIfAborted();

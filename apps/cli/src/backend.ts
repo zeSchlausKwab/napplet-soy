@@ -21,7 +21,7 @@ import { boardAuthorization } from '../../../packages/multiplayer/src/contracts'
 import { startBackend } from '../../../packages/multiplayer/src/service';
 import { startLocalBackendRelay } from '../../../packages/multiplayer/src/local-relay';
 
-const developmentAuthor = '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798';
+export const developmentAuthor = '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798';
 async function publicFile(path: string, bytes: Uint8Array | string) {
   const temporary = `${path}.${crypto.randomUUID()}.tmp`;
   try {
@@ -167,6 +167,20 @@ export async function syncBackend(
   let signer: CreatorSigner | undefined;
   try {
     const definitions = prepared.project.backend!.boards;
+    if (definitions.some((board) => board.dataSchema)) {
+      const session = await connection.tool('soy_session');
+      if (!Array.isArray(session.families) || !session.families.includes('soy.boards.v2'))
+        throw new DiagnosticError(
+          'BACKEND_VERSION',
+          'The selected CVM provider does not support score attachments (soy.boards.v2).',
+          {
+            operation: 'register scoreboard data schema',
+            target: provider.pubkey,
+            recovery:
+              'Update the backend service or configure a provider supporting soy.boards.v2, then retry soyli backend sync. Do not discard the dataSchema or score data.',
+          },
+        );
+    }
     if (definitions.length) signer = await accounts.signer({ ...signerOptions, kinds: [1] });
     for (const board of definitions) {
       const definition = { ...board, napplet: prepared.napplet };

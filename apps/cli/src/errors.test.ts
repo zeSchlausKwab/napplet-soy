@@ -103,6 +103,33 @@ test('real CLI preserves actionable dependency errors and identifies missing pro
     expect(actionable.message).toContain('Add backend:');
     expect(actionable.message).toContain('napplet.json');
     expect(actionable.code).not.toBe('CLI_FAILED');
+    const invalidSchema = {
+      schema: 'space-local-project/v1',
+      name: 'Fixture',
+      entry: 'index.html',
+      previewId: crypto.randomUUID(),
+      license: 'MIT',
+      backend: {
+        boards: [
+          {
+            board: 'race',
+            title: 'Race',
+            order: 'lowest',
+            minimum: 1,
+            maximum: 100,
+            dataSchema: {
+              type: 'object',
+              properties: { car: { type: 'string', pattern: 'private-schema-pattern' } },
+            },
+          },
+        ],
+      },
+    };
+    await writeFile(join(root, 'napplet.json'), JSON.stringify(invalidSchema));
+    const schemaError = await run();
+    expect(schemaError.message).toContain('dataSchema');
+    expect(schemaError.message).toContain('Unsupported schema keyword pattern');
+    expect(JSON.stringify(schemaError)).not.toContain('private-schema-pattern');
     await writeFile(join(root, 'napplet.json'), '{"password":"do-not-print-my-password",');
     const invalid = await run();
     expect(invalid.code).toBe('INVALID_JSON');

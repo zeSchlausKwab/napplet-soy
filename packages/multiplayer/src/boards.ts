@@ -9,10 +9,12 @@ import {
   boardRegister,
   boardSubmit,
   boardRead,
+  boardEntry,
   boardAuthorization,
   type BoardDefinition,
 } from './contracts';
-export { boardRegister, boardSubmit, boardRead, boardAuthorization } from './contracts';
+import { encodeScoreData, type ScoreDataSchema } from './score-data';
+export { boardRegister, boardSubmit, boardRead, boardEntry, boardAuthorization } from './contracts';
 
 function reference(input: z.infer<typeof boardRef>) {
   const address = decodeAddress(input.napplet);
@@ -33,7 +35,20 @@ export class Boards {
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
       CREATE TABLE IF NOT EXISTS boards (key TEXT PRIMARY KEY, definition TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS scores (board TEXT NOT NULL, actor TEXT NOT NULL, score REAL NOT NULL, name TEXT NOT NULL,
-        updated INTEGER NOT NULL, PRIMARY KEY(board, actor));`);
+        updated INTEGER NOT NULL, data TEXT, revision TEXT, PRIMARY KEY(board, actor));`);
+    // Upgrade existing durable boards in place, including boards without attachments.
+    this.db
+      .transaction(() => {
+        const columns = this.db.query<{ name: string }, []>('PRAGMA table_info(scores)').all();
+        if (!columns.some((c) => c.name === 'data'))
+          this.db.exec('ALTER TABLE scores ADD COLUMN data TEXT');
+        if (!columns.some((c) => c.name === 'revision'))
+          this.db.exec('ALTER TABLE scores ADD COLUMN revision TEXT');
+        this.db.exec(
+          'UPDATE scores SET revision=lower(hex(randomblob(16))) WHERE revision IS NULL',
+        );
+      })
+      .immediate();
   }
   register(actor: string, input: unknown) {
     const { definition, authorization } = boardRegister.parse(input);
@@ -99,6 +114,7 @@ export class Boards {
       definition = this.definition(key);
     if (args.score < definition.minimum || args.score > definition.maximum)
       throw new Error('Score outside board range');
+    const data = encodeScoreData(definition.dataSchema as ScoreDataSchema | undefined, args.data);
     this.db.transaction(() => {
       const previous = this.db
         .query<{ score: number }, [string, string]>(
@@ -121,9 +137,17 @@ export class Boards {
         throw new Error('Board player capacity reached');
       this.db
         .query(
-          'INSERT INTO scores VALUES (?, ?, ?, ?, ?) ON CONFLICT(board,actor) DO UPDATE SET score=excluded.score,name=excluded.name,updated=excluded.updated',
+          'INSERT INTO scores (board,actor,score,name,updated,data,revision) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(board,actor) DO UPDATE SET score=excluded.score,name=excluded.name,updated=excluded.updated,data=excluded.data,revision=excluded.revision',
         )
-        .run(key, actor, args.score, args.name, this.now());
+        .run(
+          key,
+          actor,
+          args.score,
+          args.name,
+          this.now(),
+          data,
+          crypto.randomUUID().replaceAll('-', ''),
+        );
     })();
     return this.read(actor, { napplet: args.napplet, board: args.board, limit: 20 });
   }
@@ -132,13 +156,46 @@ export class Boards {
       { key } = reference(args),
       definition = this.definition(key);
     const order = definition.order === 'highest' ? 'DESC' : 'ASC';
-    const rows = this.db
-      .query(
-        `SELECT actor,score,name,updated FROM scores WHERE board=? ORDER BY score ${order},updated ASC,actor ASC LIMIT ?`,
+    const candidates = this.db
+      .query<
+        {
+          actor: string;
+          score: number;
+          name: string;
+          updated: number;
+          revision: string;
+          hasData: number;
+        },
+        [string, number, number]
+      >(
+        `SELECT actor,score,name,updated,revision,data IS NOT NULL AS hasData FROM scores WHERE board=? ORDER BY score ${order},updated ASC,actor ASC LIMIT ? OFFSET ?`,
       )
-      .all(key, args.limit);
+      .all(key, args.limit + 1, args.offset)
+      .map((row) => ({ ...row, hasData: !!row.hasData }));
+    // MCP repeats the result as text + structuredContent. Leave room for both
+    // encodings under NIP-44's plaintext limit, even with heavily escaped names.
+    const rows: typeof candidates = [];
+    let bytes = 2;
+    for (const row of candidates) {
+      const size = new TextEncoder().encode(JSON.stringify(row)).length + 1;
+      if (rows.length >= args.limit || bytes + size > 16384) break;
+      rows.push(row);
+      bytes += size;
+    }
     const own = this.db
-      .query('SELECT actor,score,name,updated FROM scores WHERE board=? AND actor=?')
+      .query<
+        {
+          actor: string;
+          score: number;
+          name: string;
+          updated: number;
+          revision: string;
+          hasData: number;
+        },
+        [string, string]
+      >(
+        'SELECT actor,score,name,updated,revision,data IS NOT NULL AS hasData FROM scores WHERE board=? AND actor=?',
+      )
       .get(key, actor);
     return {
       version: 1,
@@ -147,7 +204,35 @@ export class Boards {
       order: definition.order,
       trust: 'client-reported',
       rows,
-      own,
+      nextOffset: candidates.length > rows.length ? args.offset + rows.length : null,
+      own: own ? { ...own, hasData: !!own.hasData } : null,
+    };
+  }
+  entry(input: unknown) {
+    const args = boardEntry.parse(input),
+      { key } = reference(args);
+    this.definition(key);
+    const row = this.db
+      .query<
+        {
+          actor: string;
+          score: number;
+          name: string;
+          updated: number;
+          revision: string;
+          data: string | null;
+        },
+        [string, string]
+      >('SELECT actor,score,name,updated,revision,data FROM scores WHERE board=? AND actor=?')
+      .get(key, args.actor);
+    const stale = !!args.revision && row?.revision !== args.revision;
+    return {
+      version: 2,
+      board: key,
+      trust: 'client-reported',
+      stale,
+      entry:
+        row && !stale ? { ...row, data: row.data === null ? null : JSON.parse(row.data) } : null,
     };
   }
   close() {

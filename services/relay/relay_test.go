@@ -132,6 +132,35 @@ func TestRelayProtocolRoundTrip(t *testing.T) {
 	}
 }
 
+// Public app-data access is an intentional operator convention, not NIP-78's
+// owner-only AUTH recommendation. A successful write alone does not prove this.
+func TestPublicAppDataAcrossAnonymousConnections(t *testing.T) {
+	s := testStore(t)
+	server := httptest.NewServer(newRelay(s))
+	defer server.Close()
+	writer, reader := socket(t, server.URL), socket(t, server.URL)
+	key := nostr.Generate()
+	tags := nostr.Tags{{"d", "soy.app-data/1:scope:tracks:one"}, {"s", "scope"}, {"c", "tracks"}, {"L", "soy.app-data/1"}, {"l", "example.track", "soy.app-data/1"}, {"v", "1"}}
+	first := fixture(t, key, 30078, nostr.Now()-2, tags, `{"data":{"points":[1,2]}}`)
+	publish(t, writer, first, true)
+	filter := nostr.Filter{Kinds: []nostr.Kind{30078}, Tags: nostr.TagMap{"L": {"soy.app-data/1"}, "s": {"scope"}, "c": {"tracks"}}}
+	got := queryRelay(t, reader, filter)
+	if len(got) != 1 || got[0].ID != first.ID {
+		t.Fatal("app record unavailable to an anonymous connection")
+	}
+	second := fixture(t, key, 30078, nostr.Now()-1, tags, `{"data":{"points":[3,4]}}`)
+	publish(t, writer, second, true)
+	got = queryRelay(t, reader, filter)
+	if len(got) != 1 || got[0].ID != second.ID {
+		t.Fatal("addressable update did not replace current app record")
+	}
+	other := fixture(t, nostr.Generate(), 30078, nostr.Now(), tags, `{"data":{"points":[5,6]}}`)
+	publish(t, writer, other, true)
+	if len(queryRelay(t, reader, filter)) != 2 {
+		t.Fatal("same d-tag under another author overwrote a record")
+	}
+}
+
 func TestLiveSearchAndUnknownDeletionTarget(t *testing.T) {
 	s := testStore(t)
 	relay := newRelay(s)

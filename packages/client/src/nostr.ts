@@ -4,6 +4,7 @@ import { matchFilters, type Filter } from 'nostr-tools';
 import { take, takeUntil, takeWhile, timer } from 'rxjs';
 import { verifiedEvent, type SignedEvent } from '../../protocol/src';
 import { readRelayUrl } from '../../nostr/src/relay-policy';
+import { redactDiagnostic } from '../../diagnostics/src';
 
 /** A browser-owned, signer-free store; all wire events are verified before ingestion. */
 export class ProtocolClient {
@@ -163,21 +164,36 @@ export class ProtocolClient {
         }
       })
       .slice(0, 8);
-    const results = (
-      await Promise.all(
-        relays.map(async (relay) => {
-          signal?.throwIfAborted();
-          const connection = this.connection(relay);
-          try {
-            return await connection.pool.publish([relay], event, { timeout: 6000, retries: false });
-          } finally {
-            connection.release();
-          }
-        }),
-      )
-    ).flat();
+    const attempts = await Promise.allSettled(
+      relays.map(async (relay) => {
+        signal?.throwIfAborted();
+        const connection = this.connection(relay);
+        try {
+          return await connection.pool.publish([relay], event, { timeout: 6000, retries: false });
+        } finally {
+          connection.release();
+        }
+      }),
+    );
+    signal?.throwIfAborted();
+    const results = attempts.flatMap((attempt, index) =>
+      attempt.status === 'fulfilled'
+        ? attempt.value
+        : [
+            {
+              from: relays[index],
+              ok: false,
+              message: redactDiagnostic(
+                attempt.reason instanceof Error ? attempt.reason.message : 'Transport failed',
+                200,
+              ),
+            },
+          ],
+    );
     if (!results.some((r) => r.ok))
-      throw new Error('No relay acknowledged the event. Retry sends the same signed event.');
+      throw new Error(
+        `No relay acknowledged the event. Retry sends the same signed event. ${results.map((r) => `${redactDiagnostic(r.from, 200)}: ${redactDiagnostic(r.message || 'rejected or timed out', 200)}`).join('; ')}`,
+      );
     this.seed([event]);
     return results.filter((r) => r.ok).map((r) => r.from);
   }

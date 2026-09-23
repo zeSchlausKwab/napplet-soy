@@ -1,5 +1,6 @@
 import { sha256 } from '../../../packages/protocol/src';
 import { effectiveProject, readBinding, writeBinding } from '../../../packages/publish/src/binding';
+import { developmentAuthor } from './backend';
 import { rename, rm, writeFile, lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { realpath as realDirectory } from 'node:fs/promises';
@@ -95,7 +96,7 @@ export async function screenshotProject(
   const { plan, contents, fingerprint } = await inspectProject(
     root,
     network,
-    (await effectiveProject(root, project)).creator?.pubkey ?? '0'.repeat(64),
+    (await effectiveProject(root, project)).creator?.pubkey ?? developmentAuthor,
   );
   const checked = await checkPublication(contents, true, undefined, interactive, signal);
   if ((await inspectProject(root, network, plan.pubkey)).fingerprint !== fingerprint)
@@ -152,7 +153,7 @@ export async function recordProject(
   const { plan, contents, fingerprint } = await inspectProject(
     root,
     network,
-    (await effectiveProject(root, project)).creator?.pubkey ?? '0'.repeat(64),
+    (await effectiveProject(root, project)).creator?.pubkey ?? developmentAuthor,
   );
   const recording = recordingSchema.parse(settings ?? project.preview?.recording ?? {});
   const checked = await checkPublication(contents, false, recording, interactive, signal);

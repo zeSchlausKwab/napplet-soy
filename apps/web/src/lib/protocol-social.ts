@@ -7,6 +7,7 @@ import { GallerySocialReader } from '../../../../packages/client/src/gallery-soc
 import { protocolClient, network, manifestAllowed } from './network';
 import { queryCatalog, availableCatalog, featured } from './protocol-catalog';
 import { matchesGallery } from '../../../../packages/protocol/src/topics';
+import { zapTotalsStore } from './zap-totals';
 import type { GallerySocialData } from '../../../../packages/backend/src/gallery-social';
 
 const history = new Map<string, SignedEvent[]>();
@@ -128,6 +129,6 @@ export async function gallerySocial(
       (search.sort !== 'featured' || featured(n)) &&
       (search.unavailable || n.availability === 'ready'),
   );
-  galleryReader ??= new GallerySocialReader(protocolClient());
+  galleryReader ??= new GallerySocialReader(protocolClient(), undefined, zapTotalsStore);
   return galleryReader.read(entries, viewer, signal, onUpdate);
 }

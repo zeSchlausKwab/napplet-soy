@@ -103,14 +103,14 @@ stable author-qualified naddr. Relay hints are not part of namespace identity.
 import { cvm, webrtc } from '@napplet/sdk';
 import backend from '../.napplet-space/soy-backend.json';
 
-async function call(tool, args = {}) {
+async function call(tool, args = {}, boardFamily = 'soy.boards.v1') {
   // The preview host maps this public provider to the isolated local service.
   // Before the default provider is available, the configured registry also works.
   const result = backend.provider
     ? await cvm.callTool(backend.provider, tool, args)
     : await cvm.registry.call(
         tool.startsWith('soy_board_')
-          ? 'soy.boards.v1'
+          ? boardFamily
           : tool.startsWith('soy_match_')
             ? 'soy.matchmaking.v1'
             : 'soy.rooms.v1',
@@ -152,7 +152,7 @@ simulation are not provided by this service.
 const ref = { napplet: backend.napplet, board: 'highscore-v1' };
 await call('soy_board_submit', { ...ref, score: finalScore, name: playerName });
 const { rows, own, trust } = await call('soy_board_read', { ...ref, limit: 20 });
-// rows: [{ actor, score, name, updated }]; own: row or null
+// rows: [{ actor, score, name, updated, revision, hasData }]; own: row or null
 ```
 
 Render names as plain text. Submit at the end of a run; poll at most every two
@@ -166,6 +166,123 @@ requesting transport actor. soyLI handles this with the selected local or NIP-46
 creator. Rules persist across releases; an incompatible change uses a new ID
 (e.g. `highscore-v2`). Remixing creates a new naddr and must register separate
 boards. Public provider data is not copied into a remix or local preview.
+
+## Score attachments: cars, drawings, loadouts and other run data
+
+The `soy.boards.v2` family adds structured public data to a personal best. No
+custom backend, website REST API or new NAP capability is needed. Ordinary v1
+boards remain supported. Check `cvm.registry.has('soy.boards.v2')` before offering
+this feature; show an actionable unavailable message if the host/provider is older.
+`soyli backend sync` also checks provider support before requesting registration
+signatures. Update soyLI, run `soyli skills update`, and restart dev for local support;
+the public backend and shell also need this version of the service and registry.
+
+Add a new board to `backend.boards` in `napplet.json` (merge with your existing
+configuration). This example stores race times in milliseconds and a small drawing:
+
+```json
+{
+  "board": "hills-classic-v1",
+  "title": "Hills · Classic",
+  "order": "lowest",
+  "minimum": 1,
+  "maximum": 3600000,
+  "dataSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["version", "limbs"],
+    "properties": {
+      "version": { "type": "integer", "enum": [1] },
+      "color": { "type": "string", "maxLength": 24 },
+      "limbs": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number", "minimum": -100, "maximum": 100 }
+        }
+      }
+    }
+  }
+}
+```
+
+Run `soyli dev` to test against the same isolated service. `soyli publish` registers
+the board; `soyli backend sync` can do that explicitly beforehand. The schema is
+creator-authorized and immutable, like ordering and score limits. Adding/changing
+the schema on an existing board requires a **new board ID**; existing scores remain
+on their original board. Separate tracks, modes and incompatible physics/rulesets.
+
+Using the `call` helper above:
+
+```js
+const ref = { napplet: backend.napplet, board: 'hills-classic-v1' };
+const callBoard = (tool, args) => call(tool, args, 'soy.boards.v2');
+await callBoard('soy_board_submit', {
+  ...ref,
+  score: finishTimeMs,
+  name: playerName,
+  data: { version: 1, color: 'coral', limbs: [[0, 0], [12, 8], [24, 3]] },
+});
+const { rows, own, nextOffset } = await callBoard('soy_board_read', { ...ref, limit: 20 });
+// A list row contains hasData + revision, never the full payload. Fetch on selection:
+const selected = rows[0];
+if (selected?.hasData) {
+  const result = await callBoard('soy_board_entry', {
+    ...ref, actor: selected.actor, revision: selected.revision,
+  });
+  if (result.stale) {
+    // That player's best changed. Refresh the list before displaying run details.
+  } else if (result.entry) {
+    // entry includes score, name, actor, updated, revision and data from ONE run.
+    drawLimbs(result.entry.data.limbs);
+  }
+}
+// For another page, pass offset: nextOffset when it is non-null.
+```
+
+Data is required for boards with `dataSchema`; boards without a schema reject it.
+No coercion or defaults are applied. Score, name and data update together only for
+a **strictly better** result. Equal/worse submissions and retries preserve the
+winning run and its revision. Reads survive service restarts and ordinary releases.
+Only each actor's current personal best is retained, not a complete race history.
+`soy_board_entry` without a revision returns the latest entry, or `entry: null` if
+absent. With an outdated revision it returns `stale: true, entry: null`.
+
+The schema is a bounded JSON Schema subset: root object; nested object/array,
+string, number, safe integer, boolean and null types; `properties`, `required`,
+boolean `additionalProperties` (defaults to true), `items`, primitive `enum`
+(1–32 distinct choices), numeric minimum/maximum, min/max length and min/max items.
+Optional `title`/`description` labels are limited to 512 characters. Unsupported
+keywords, references, regex and composition are rejected. Declare
+`additionalProperties: false` when only named fields should be accepted.
+
+The schema and each attachment are limited to **8 KiB of serialized UTF-8 JSON**.
+Schema depth is at most 8 with 128 schema nodes. Data depth is at most 8 with 2,048
+values, at most 256 items per array and 64 fields per object. Field names are at
+most 128 characters; prototype-related names, non-finite numbers and non-JSON
+values are rejected. Strings count Unicode code points for schema length rules;
+the separate byte budget still applies. Invalid data returns a field-specific
+error without echoing its values. Leaderboard pages return up to `limit` rows
+(1–100), also capped at 16 KiB of row JSON to fit the encrypted transport. Follow
+`nextOffset`; pages are a live view and can move as scores change.
+
+All score attachments are **publicly readable through the provider**, even though
+transport messages are encrypted. Store no secrets or private saves here. Treat
+received fields as untrusted data; render text safely. A session actor is still
+not a durable Nostr profile, and submitted geometry does not prove a score is honest.
+
+Keep large replay, image or video bytes on a configured Blossom server and declare
+URL/hash fields in the data schema. Use the standard upload/resource capabilities
+and verify retrieved bytes; the score service stores references and never uploads,
+fetches or executes them. Snapshot run data at the right moment: a locked design
+can be captured at race start; live editing needs initial geometry plus timed
+changes to replay accurately. A final drawing alone is only a final snapshot.
+Keep personal run history separately in NAP-STORAGE. Do not silently drop requested
+shared data, hide it in display names, or claim that local-only history is shared.
 
 ## Matchmaking to WebRTC
 

@@ -1,5 +1,13 @@
 # Napplet playback profile
 
+2026-09-23 source update: `relay.publish` and `outbox.publish` now accept the
+bounded public kind-30078 application-data convention with viewer consent. Other
+event kinds and encryption remain denied. The optional shell-init `appData`
+policy hint describes scope/limits without introducing a new NAP domain. See
+[shared data](SHARED-DATA.md) for current-version records, tombstones, missing
+history guarantees and the explicit public NIP-78 relay-policy deviation. Website
+deployment and CLI release are separate from this source implementation.
+
 Implemented 2026-09-12. Open a public card and choose **Play napplet**. Cards distinguish verified, compatible artifacts from missing capabilities and unavailable downloads. Compatibility means this host implements the requested domains; an individual operation can still be refused by policy or fail upstream.
 
 ## Standards and integration
@@ -22,8 +30,8 @@ References: [NAP registry and web projection](https://github.com/napplet/naps), 
 | `storage`  | String get/set/remove/keys, shared and instance scopes                                           | Shared data persists in this browser per author/address/build/account; instance data lasts for one play session; 256 keys / approximately 1 Mi characters per scope |
 | `identity` | Connected key, user NIP-65 relay preferences, profile, follows, public mute list                 | Guest key is the empty string; extra list projections return explicit errors; no private lists or signer access                                                     |
 | `theme`    | Space's current light theme                                                                      | Fixed theme; no user theme settings yet                                                                                                                             |
-| `relay`    | Filtered query and live subscribe/close                                                          | Guarded public WSS reads; signatures checked, duplicates removed, filters reapplied; publishing/encryption denied                                                   |
-| `outbox`   | Query, getEvent, subscriptions, close, resolveRelays                                             | NIP-65 selection and public relay hints under the shared read policy, fallback when needed, partial results marked; publishing denied                               |
+| `relay`    | Filtered query and live subscribe/close                                                          | Guarded public WSS reads; signatures checked, duplicates removed, filters reapplied; scoped public app-data publishing with viewer consent; other writes/encryption denied                                                   |
+| `outbox`   | Query, getEvent, subscriptions, close, resolveRelays                                             | NIP-65 selection and public relay hints under the shared read policy, fallback when needed, partial results marked; scoped public app-data publishing with viewer consent                               |
 | `common` | Public NIP-19 helpers including nrelay, profile/follows, follow/unfollow/react/report | Viewer signer and host approval for writes; signed native event targets only; no secret identifiers |
 | `resource` | HTTPS and hash-verified Blossom bytes, ordered bulk responses, cancellation, scheme discovery    | `data:` handled locally by upstream shim; no htree/nostr resolver; raw SVG/HTML/XML denied                                                                          |
 | `link`     | HTTPS links presented in a host-owned confirmation                                               | User clicks to open; no automatic navigation                                                                                                                        |

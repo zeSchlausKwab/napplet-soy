@@ -78,6 +78,7 @@ export async function createDeploymentArchive(archive: string) {
     'bun.lock',
     'tsconfig.json',
     'docs/BACKEND-CREATOR.md',
+    'docs/SHARED-DATA.md',
     'docs/RUNTIME-ACTIONS.md',
     'docs/CONTROLLERS.md',
     'docs/MOBILE.md',

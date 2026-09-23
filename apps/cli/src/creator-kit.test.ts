@@ -87,6 +87,18 @@ test('skill updates preserve creator edits, unrelated skills and symlink targets
   expect(await readFile(precious, 'utf8')).toBe('Never overwrite');
 });
 
+test('managed app-data guidance and both portable helper files reach projects while edited helpers stay owned by the creator', async () => {
+  const directory = await mkdtemp(join(root, 'app-data-guidance-'));
+  const installed = await installCreatorSkills(directory);
+  for (const path of ['docs/napplet-data.md', 'docs/examples/app-data.ts', 'docs/examples/app-data-contract.ts'])
+    expect(installed.updated).toContain(path);
+  expect(await readFile(join(directory, 'docs/napplet-space.md'), 'utf8')).toContain('For player-created tracks');
+  const path = 'docs/examples/app-data.ts';
+  await writeFile(join(directory, path), '// My project customization');
+  expect((await installCreatorSkills(directory)).conflicts).toContain(path);
+  expect(await readFile(join(directory, path), 'utf8')).toBe('// My project customization');
+});
+
 test('publishing freezes editable upstream source and the separate built artifact, including build capabilities', async () => {
   const project = await scaffold(root, 'built-project', 'boilerplate');
   await expect(inspectProject(project, 'local', 'a'.repeat(64))).rejects.toMatchObject({

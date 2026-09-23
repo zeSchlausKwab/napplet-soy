@@ -58,6 +58,10 @@ function Network() {
             spellCheck={false}
           />
         </label>
+        <p>
+          Shared creations inside napplets use the first relay by default. Choose one that lets
+          other players read public application data; some relays keep it private to its author.
+        </p>
         <label>
           Blossom servers · one URL per line
           <textarea

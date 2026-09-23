@@ -24,11 +24,15 @@ export type ZapEndpoint = {
   maxSendable: number;
   commentAllowed: number;
 };
-export type JsonLoader = (url: URL) => Promise<any>;
-const loadJson: JsonLoader = async (url) =>
+export type JsonLoader = (url: URL, signal?: AbortSignal) => Promise<any>;
+const loadJson: JsonLoader = async (url, signal) =>
   JSON.parse(
     new TextDecoder('utf-8', { fatal: true }).decode(
-      await downloadBytes(url.href, AbortSignal.timeout(6000), 20000),
+      await downloadBytes(
+        url.href,
+        signal ? AbortSignal.any([signal, AbortSignal.timeout(6000)]) : AbortSignal.timeout(6000),
+        20000,
+      ),
     ),
   );
 function endpointUrl(profile: SignedEvent) {
@@ -170,13 +174,47 @@ export async function requestZapInvoice(
     );
   if (invoice.expiresAt <= Date.now() / 1000)
     throw new CommunityError(`${provider} returned an expired invoice. Create a new invoice.`, 502);
+  let verify: string | undefined;
+  if (typeof response.verify === 'string') {
+    try {
+      verify = publicResourceUrl(response.verify).href;
+    } catch {
+      /* Optional: relay receipts still work. */
+    }
+  }
   return {
     invoice: response.pr,
     msats: amount,
     expiresAt: invoice.expiresAt,
     paymentHash: invoice.paymentHash,
     request: event,
+    verify,
   };
+}
+export type ZapInvoice = Awaited<ReturnType<typeof requestZapInvoice>>;
+
+export function validPaymentPreimage(preimage: unknown, paymentHash: string) {
+  return (
+    typeof preimage === 'string' &&
+    /^[a-f0-9]{64}$/i.test(preimage) &&
+    bytesToHex(hashBytes(hexToBytes(preimage))) === paymentHash
+  );
+}
+
+/** LUD-21 is optional. Never confuse another invoice or an unsettled response with payment. */
+export async function checkZapPayment(
+  invoice: ZapInvoice,
+  signal?: AbortSignal,
+  load: JsonLoader = loadJson,
+) {
+  if (!invoice.verify) return false;
+  const result = await load(publicResourceUrl(invoice.verify), signal);
+  return (
+    result.status === 'OK' &&
+    result.settled === true &&
+    result.pr === invoice.invoice &&
+    (result.preimage == null || validPaymentPreimage(result.preimage, invoice.paymentHash))
+  );
 }
 export async function verifiedZapReceipt(
   input: unknown,
@@ -221,6 +259,7 @@ export async function verifiedZapReceipt(
     throw new Error('Wrong payment preimage');
   return {
     id: receipt.id,
+    requestId: request.id,
     pubkey: request.pubkey,
     msats: amount,
     paymentHash: invoice.paymentHash,

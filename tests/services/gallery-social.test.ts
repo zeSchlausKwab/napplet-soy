@@ -184,9 +184,17 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
       expect(
         await page.getByRole('link', { name: 'Open Lightning wallet' }).getAttribute('href'),
       ).toBe(`lightning:${wallet.invoices[i]}`);
-      await page.getByRole('button', { name: 'Close', exact: true }).click();
+      if (i === 1) {
+        wallet.settle(i, false); // LUD-21 works before any relay receives the receipt.
+        await page.getByText('Zap sent!', { exact: true }).waitFor();
+      } else {
+        expect(await page.getByText('Zap sent!', { exact: true }).count()).toBe(0);
+        await page.getByRole('button', { name: 'Close', exact: true }).click();
+      }
       await page.getByRole('dialog').waitFor({ state: 'hidden' });
     }
+    expect(await card.getByRole('button', { name: /^Zap .*1 zaps, 21 sats/ }).count()).toBe(1);
+    wallet.settle(1);
     expect(accountSignatures).toBe(0);
     expect(wallet.requests[0].pubkey).not.toBe(fixture.pubkey);
     expect(wallet.requests[0].pubkey).not.toBe(wallet.requests[1].pubkey);

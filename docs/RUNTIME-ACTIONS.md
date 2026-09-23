@@ -167,8 +167,12 @@ List metadata cannot claim a global transaction guarantee.
 Failed publications retain a bounded signed event for an identical retry within
 the same account/frame. A changed base invalidates a pending list event. Host
 approval is required again. Identity changes and request deadlines prevent late
-signer answers from initiating writes. Generic `relay.publish`, `outbox.publish`,
-arbitrary signing, encryption and private list mutation remain ungranted.
+signer answers from initiating writes. Arbitrary signing, encryption and private
+list mutation remain ungranted. The 2026-09-23 source adds a constrained
+`relay.publish`/`outbox.publish` subset for public kind-30078 application records;
+other event kinds and unrestricted writes remain denied. See
+[shared application data](SHARED-DATA.md) for the viewer consent, schema, namespace,
+relay policy, retry and unpublish contract. This requires the matching host update.
 
 ## Verification
 

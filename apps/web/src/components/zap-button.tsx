@@ -4,10 +4,14 @@ import {
   resolveZapEndpoint,
   requestZapInvoice,
   zapTotals,
+  checkZapPayment,
+  validPaymentPreimage,
+  verifiedZapReceipt,
+  type ZapInvoice,
 } from '../../../../packages/client/src/zaps';
 import { commentScope } from '../../../../packages/protocol/src/social';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
-import { Zap } from 'lucide-react';
+import { Zap, Check, LoaderCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { useNostr } from './nostr-provider';
 import {
@@ -18,7 +22,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
-import { jsonResponse, signForAccount, signAnonymousZap } from '@/lib/community-client';
+import { signForAccount, signAnonymousZap } from '@/lib/community-client';
+import { protocolClient } from '@/lib/network';
+import { zapTotalsStore, useZapTotals } from '@/lib/zap-totals';
 import type { SignedEvent } from '../../../../packages/protocol/src';
 import type { SocialScope } from '../../../../packages/protocol/src/social';
 import type { ZapEndpoint } from '../../../../packages/backend/src/zaps';
@@ -44,21 +50,42 @@ export function ZapButton({
     [comment, setComment] = useState(''),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
-    [invoice, setInvoice] = useState<{ invoice: string; msats: number; expiresAt: number } | null>(
-      null,
-    ),
-    [total, setTotal] = useState<number | null>(null),
+    [invoice, setInvoice] = useState<ZapInvoice | null>(null),
+    [paymentState, setPaymentState] = useState<'waiting' | 'paid' | 'expired'>('waiting'),
     [webln, setWebln] = useState(false),
     [relayHints, setRelayHints] = useState(data.relays),
     [anonymous, setAnonymous] = useState(!pubkey);
   const asAnonymous = !pubkey || anonymous;
   const target = commentTarget ?? data.manifest;
+  const scope = commentTarget ? commentScope(commentTarget) : data.scope;
+  const totals = useZapTotals(scope.key);
+  const current = useRef({ open, invoice, target: target.id });
+  current.current = { open, invoice, target: target.id };
+  const confirm = (paidInvoice: ZapInvoice) => {
+    if (
+      !current.current.open ||
+      current.current.invoice !== paidInvoice ||
+      current.current.target !== target.id
+    )
+      return;
+    zapTotalsStore.confirm(scope.key, paidInvoice);
+    setPaymentState('paid');
+    setBusy(false);
+    setMessage('');
+  };
+  useEffect(
+    () => () => {
+      current.current.open = false;
+    },
+    [],
+  );
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
     setMessage('');
     setEndpoint(null);
     setInvoice(null);
+    setPaymentState('waiting');
     setAnonymous(!pubkey);
     setWebln(!!(window as any).webln);
     (async () => {
@@ -89,7 +116,7 @@ export function ZapButton({
         if (controller.signal.aborted) return;
         setEndpoint(value.endpoint);
         setRelayHints(value.relays ?? data.relays);
-        setTotal(value.msats);
+        zapTotalsStore.observe(scope.key, value.receipts);
         setSats(
           String(
             Math.min(
@@ -104,11 +131,81 @@ export function ZapButton({
       });
     return () => controller.abort();
   }, [open, reference, target.id]);
+  useEffect(() => {
+    if (!open || !invoice || !endpoint || paymentState !== 'waiting') return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const check = async () => {
+      if (invoice.expiresAt <= Date.now() / 1000) {
+        setPaymentState('expired');
+        return;
+      }
+      const verify = async () => {
+        if (await checkZapPayment(invoice, controller.signal)) {
+          if (!controller.signal.aborted) confirm(invoice);
+        }
+      };
+      const receipt = async () => {
+        const events = await protocolClient().query(
+          [
+            {
+              kinds: [9735],
+              authors: [endpoint.nostrPubkey],
+              '#e': [target.id],
+              '#p': [target.pubkey],
+              since: invoice.request.created_at - 60,
+              limit: 50,
+            },
+          ],
+          relayHints,
+          controller.signal,
+        );
+        for (const event of events) {
+          try {
+            const checked = await verifiedZapReceipt(
+              event,
+              scope,
+              new Map([[target.id, target]]),
+              endpoint,
+            );
+            if (
+              checked.paymentHash === invoice.paymentHash &&
+              checked.requestId === invoice.request.id &&
+              !controller.signal.aborted
+            ) {
+              confirm(invoice);
+              return;
+            }
+          } catch {
+            /* Unrelated or invalid receipts never confirm this invoice. */
+          }
+        }
+      };
+      await Promise.allSettled([verify(), receipt()]);
+      if (!controller.signal.aborted) timer = setTimeout(check, 2000);
+    };
+    void check();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [open, invoice, endpoint, paymentState, target.id]);
+  useEffect(() => {
+    if (!open || paymentState !== 'paid') return;
+    const timer = setTimeout(() => setOpen(false), 1200);
+    return () => clearTimeout(timer);
+  }, [open, paymentState]);
   return (
     <Dialog
       open={open}
       onOpenChange={(value) => {
-        if (!busy) setOpen(value);
+        if (!busy) {
+          if (value) {
+            setInvoice(null);
+            setPaymentState('waiting');
+          }
+          setOpen(value);
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -119,7 +216,7 @@ export function ZapButton({
             aria-label={commentTarget ? 'Zap comment' : undefined}
           >
             <Zap size={16} />
-            {total === null ? 'Zap' : `${(total / 1000).toLocaleString()} sats zapped`}
+            {!totals ? 'Zap' : `${(totals.msats / 1000).toLocaleString()} sats zapped`}
           </Button>
         )}
       </DialogTrigger>
@@ -143,6 +240,7 @@ export function ZapButton({
               setBusy(true);
               setMessage('');
               try {
+                const targetId = target.id;
                 const msats = Number(sats) * 1000;
                 if (
                   !Number.isSafeInteger(msats) ||
@@ -179,9 +277,15 @@ export function ZapButton({
                   manifest: target,
                   scope: commentTarget ? commentScope(commentTarget) : data.scope,
                 };
-                setInvoice(
-                  await requestZapInvoice(context, new Map([[target.id, target]]), endpoint, event),
+                const prepared = await requestZapInvoice(
+                  context,
+                  new Map([[target.id, target]]),
+                  endpoint,
+                  event,
                 );
+                if (!current.current.open || current.current.target !== targetId) return;
+                setInvoice(prepared);
+                setPaymentState('waiting');
               } catch (error) {
                 setMessage((error as Error).message);
               } finally {
@@ -244,12 +348,39 @@ export function ZapButton({
             </Button>
           </form>
         )}
-        {invoice && (
+        {invoice && paymentState === 'paid' && (
+          <div className="zap-invoice" role="status" aria-live="polite">
+            <Check size={32} aria-hidden="true" />
+            <strong>Zap sent!</strong>
+            <p>{(invoice.msats / 1000).toLocaleString()} sats sent. Thank you!</p>
+          </div>
+        )}
+        {invoice && paymentState === 'expired' && (
+          <div className="zap-invoice" role="status">
+            <p>
+              This invoice has expired. If you already paid, check your wallet before creating
+              another.
+            </p>
+            <Button
+              onClick={() => {
+                setInvoice(null);
+                setPaymentState('waiting');
+                setMessage('');
+              }}
+            >
+              Create another invoice
+            </Button>
+          </div>
+        )}
+        {invoice && paymentState === 'waiting' && (
           <div className="zap-invoice">
             <strong>
               {(invoice.msats / 1000).toLocaleString()} sats to {short(target.pubkey)}
             </strong>
-            <p>Invoice ready. Choose your wallet to pay.</p>
+            <p role="status">
+              <LoaderCircle size={16} className="animate-spin inline" aria-hidden="true" /> Waiting
+              for payment…
+            </p>
             <LightningCode value={invoice.invoice} label="Zap invoice QR code" />
             <textarea aria-label="Lightning invoice" readOnly value={invoice.invoice} />
             <div className="social-actions">
@@ -278,12 +409,15 @@ export function ZapButton({
                         throw new Error('This invoice has expired. Create another.');
                       const wallet = (window as any).webln;
                       await wallet.enable();
-                      await wallet.sendPayment(invoice.invoice);
-                      setMessage(
-                        'Your wallet reports payment sent. The public zap count updates when a verified receipt arrives.',
-                      );
+                      const result = await wallet.sendPayment(invoice.invoice);
+                      if (!current.current.open || current.current.invoice !== invoice) return;
+                      if (validPaymentPreimage(result?.preimage, invoice.paymentHash))
+                        confirm(invoice);
+                      else
+                        setMessage('Your wallet reports payment sent. Waiting for confirmation…');
                     } catch (error) {
-                      setMessage((error as Error).message);
+                      if (current.current.open && current.current.invoice === invoice)
+                        setMessage((error as Error).message);
                     } finally {
                       setBusy(false);
                     }

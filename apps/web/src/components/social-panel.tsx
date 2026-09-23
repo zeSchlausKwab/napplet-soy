@@ -13,12 +13,15 @@ import { jsonResponse, signForAccount, type Template } from '@/lib/community-cli
 import {
   commentTemplate,
   socialScope,
+  commentScope,
   likeTemplate,
   commentLikeTemplate,
   deletionTemplate,
   type SocialScope,
 } from '../../../../packages/protocol/src/social';
 import type { SignedEvent } from '../../../../packages/protocol/src';
+import { resolveZapEndpoint, zapTotals } from '../../../../packages/client/src/zaps';
+import { useZapTotals, zapTotalsStore } from '@/lib/zap-totals';
 type Comment = SignedEvent & {
   deleted: boolean;
   parent: string | null;
@@ -56,6 +59,7 @@ export function NappletSocial({
 }) {
   const hash = useLocation({ select: (location) => location.hash });
   const { pubkey, connect, ready } = useNostr();
+  const nappletZaps = useZapTotals(socialScope(manifest).key);
   const currentKey = useRef(pubkey);
   currentKey.current = pubkey;
   const [data, setData] = useState<SocialData | null>(null),
@@ -76,6 +80,40 @@ export function NappletSocial({
     try {
       const value = await readSocial(manifest, relays, signal);
       if (!signal?.aborted) setData(value);
+      if (!signal?.aborted) {
+        const targets = [manifest, ...value.comments.filter((c) => !c.deleted)];
+        const endpoints = new Map<string, ReturnType<typeof resolveZapEndpoint>>();
+        await Promise.all(
+          targets.map(async (target) => {
+            // Comment counts are hydrated by their own scope, not added to the creator.
+            const targetScope = target.kind === 1111 ? commentScope(target) : value.scope;
+            const events =
+              target.kind !== 1111
+                ? value.events
+                : value.events.filter(
+                    (e) =>
+                      e.kind !== 9735 || e.tags.some((t) => t[0] === 'e' && t[1] === target.id),
+                  );
+            if (!events.some((e) => e.kind === 9735)) {
+              zapTotalsStore.observe(targetScope.key, []);
+              return;
+            }
+            try {
+              if (!endpoints.has(target.pubkey))
+                endpoints.set(target.pubkey, resolveZapEndpoint(target.pubkey, value.events));
+              const totals = await zapTotals(
+                { ...value, scope: targetScope, manifest: target },
+                { ...value, events },
+                await endpoints.get(target.pubkey)!,
+                target.kind === 1111 ? new Map([[target.id, target]]) : value.manifests,
+              );
+              if (!signal?.aborted) zapTotalsStore.observe(targetScope.key, totals.receipts);
+            } catch {
+              /* Existing counts survive temporary provider failures. */
+            }
+          }),
+        );
+      }
     } catch (error) {
       if (!signal?.aborted) setRefreshError((error as Error).message);
     } finally {
@@ -205,6 +243,11 @@ export function NappletSocial({
             aria-label={`Zap ${title}`}
           >
             <Zap size={17} />
+            {nappletZaps && (
+              <span>
+                {nappletZaps.zapCount} · {(nappletZaps.msats / 1000).toLocaleString()} sats
+              </span>
+            )}
           </Button>
         }
       />

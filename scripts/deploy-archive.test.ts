@@ -59,6 +59,9 @@ test('uploaded source starts the CLI and scaffolds its bundled creator guides', 
     expect(await Bun.file(join(directory, 'example/docs/napplet-backend.md')).text()).toBe(
       await Bun.file(join(root, 'docs/BACKEND-CREATOR.md')).text(),
     );
+    expect(await Bun.file(join(directory, 'example/docs/napplet-data.md')).text()).toBe(
+      await Bun.file(join(root, 'docs/SHARED-DATA.md')).text(),
+    );
     expect(await Bun.file(join(directory, 'example/docs/napplet-controllers.md')).text()).toBe(
       await Bun.file(join(root, 'docs/CONTROLLERS.md')).text(),
     );

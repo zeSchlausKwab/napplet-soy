@@ -5,6 +5,7 @@ import { Subscription, take, takeUntil, timer, type Observable } from 'rxjs';
 import { z } from 'zod';
 import { verifiedEvent, type SignedEvent } from '../../protocol/src';
 import { readRelayUrl } from './relay-policy';
+import { APP_DATA_KIND, APP_DATA_PROFILE } from '../../app-data/src/app-data-contract';
 
 const hex = z.string().regex(/^[a-f0-9]{64}$/);
 const hexes = z.array(hex).max(64);
@@ -249,7 +250,19 @@ export class PlaybackNostr {
       : undefined;
     let relays = this.relays;
     let incomplete = false;
-    if (domain === 'outbox' && !explicit) {
+    // These app records live on explicitly chosen storage relays. Unrelated
+    // discovery/NIP-65 relays must not make every storage read partial or slow.
+    const appStorage =
+      domain === 'outbox' &&
+      hints.length > 0 &&
+      filters.every(
+        (f) =>
+          f.kinds?.length === 1 &&
+          f.kinds[0] === APP_DATA_KIND &&
+          (f['#L']?.includes(APP_DATA_PROFILE) ||
+            f['#d']?.every((d) => d.startsWith(`${APP_DATA_PROFILE}:`))),
+      );
+    if (domain === 'outbox' && !explicit && !appStorage) {
       const authors = [
         ...new Set([
           ...(options.authors ?? []),
@@ -259,9 +272,16 @@ export class PlaybackNostr {
       ].slice(0, 16);
       const plan = await this.plan(authors, 'read', Math.min(2000, Math.floor(readBudget / 3)));
       relays = plan.relays;
-      incomplete = plan.missingAuthors.length > 0;
+      // Explicit application/storage relays are a usable read plan even when
+      // the author has never published NIP-65 metadata. Actual relay failures
+      // still mark the result incomplete below.
+      incomplete = plan.missingAuthors.length > 0 && !hints.length;
     }
-    relays = explicit ? [explicit] : [...new Set([...hints, ...relays])].slice(0, 8);
+    relays = explicit
+      ? [explicit]
+      : appStorage
+        ? [...new Set(hints)]
+        : [...new Set([...hints, ...relays])].slice(0, 8);
     if (this.scope.closed) throw new Error('Player closed');
     if (type.endsWith('.subscribe')) {
       const subId = z.string().max(128).parse(message.subId);

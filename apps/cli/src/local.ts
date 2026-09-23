@@ -16,7 +16,7 @@ import { releaseCheck } from './update';
 import { watchProject } from './toolchain';
 import { rustToolchainStatus } from './rust-build';
 import { screenshotProject, recordProject } from './project-config';
-import { localBackend } from './backend';
+import { developmentAuthor, localBackend } from './backend';
 import { createWorkshop } from './workshop';
 
 export async function preview(
@@ -160,7 +160,7 @@ export async function checkProject(directory: string, network: Network) {
   const { plan, contents } = await inspectProject(
     root,
     network,
-    project.creator?.pubkey ?? '0'.repeat(64),
+    project.creator?.pubkey ?? developmentAuthor,
   );
   const { profile, browser, preview } = await checkPublication(contents);
   return {
