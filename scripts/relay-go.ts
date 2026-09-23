@@ -1,11 +1,50 @@
 import { cp, chmod, mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
+import { DiagnosticError, ToolOutput, diagnose, formatDiagnostic } from '../packages/diagnostics/src';
 
 const root = resolve(import.meta.dir, '..');
 const cwd = resolve(root, 'services/relay');
 const env = { ...process.env, GOTOOLCHAIN: 'go1.25.0', CGO_ENABLED: '1' };
 const version = 'v0.0.0-20260902034142-316ef6591fa2';
+
+async function runGo(
+  go: string,
+  args: string[],
+  context: { operation: string; recovery: string; captureJson?: boolean },
+) {
+  const metadata = { operation: context.operation, recovery: context.recovery, tool: 'go', target: cwd };
+  const stdout = new ToolOutput(context.captureJson ? undefined : (text) => process.stdout.write(text));
+  const stderr = new ToolOutput((text) => process.stderr.write(text));
+  let child;
+  try {
+    child = Bun.spawn([go, ...args], { cwd, env, stdout: 'pipe', stderr: 'pipe' });
+  } catch (cause) {
+    throw new DiagnosticError('RELAY_GO', 'Could not start Go for the relay.', { ...metadata, cause });
+  }
+  const drain = async (stream: ReadableStream<Uint8Array>, output: ToolOutput) => {
+    for await (const chunk of stream) output.push(chunk);
+    output.finish();
+  };
+  const [json, , exitCode] = await Promise.all([
+    context.captureJson
+      ? new Response(child.stdout).text().then((text) => {
+          stdout.push(new TextEncoder().encode(text));
+          stdout.finish();
+          return text;
+        })
+      : drain(child.stdout, stdout).then(() => ''),
+    drain(child.stderr, stderr),
+    child.exited,
+  ]);
+  if (exitCode !== 0)
+    throw new DiagnosticError('RELAY_GO', `Go failed during ${context.operation}.`, {
+      ...metadata,
+      exitCode,
+      detail: [stdout.text, stderr.text].filter(Boolean).join('\n'),
+    });
+  return json;
+}
 
 /** Apply checksum-guarded fixes in an isolated module copy. Never edit Go's shared module cache. */
 export async function relayGo(args: string[]) {
@@ -14,15 +53,11 @@ export async function relayGo(args: string[]) {
     throw new Error(
       'The relay needs Go 1.21+ and a C compiler. Install Go, then rerun bun run dev:setup. Builds use pinned Go 1.25.0.',
     );
-  const download = Bun.spawn([go, 'mod', 'download', '-json', `fiatjaf.com/nostr@${version}`], {
-    cwd,
-    env,
-    stdout: 'pipe',
-    stderr: 'inherit',
+  const output = await runGo(go, ['mod', 'download', '-json', `fiatjaf.com/nostr@${version}`], {
+    operation: 'relay dependency download',
+    recovery: 'Address the Go download error above, check network access, then retry the relay command.',
+    captureJson: true,
   });
-  const output = await new Response(download.stdout).text();
-  if ((await download.exited) !== 0)
-    throw new Error('Could not download the pinned relay dependency.');
   const module = JSON.parse(output) as { Dir: string };
   const directory = resolve(root, '.local/relay-build');
   await mkdir(directory, { recursive: true });
@@ -74,18 +109,22 @@ export async function relayGo(args: string[]) {
         `\nreplace fiatjaf.com/nostr => ${JSON.stringify(patchedModule)}\n`,
     );
     await Bun.write(resolve(scratch, 'go.sum'), await Bun.file(resolve(cwd, 'go.sum')).bytes());
-    const child = Bun.spawn([go, args[0], '-modfile', modfile, ...args.slice(1)], {
-      cwd,
-      env,
-      stdout: 'inherit',
-      stderr: 'inherit',
+    await runGo(go, [args[0], '-modfile', modfile, ...args.slice(1)], {
+      operation: `relay ${args[0]}`,
+      recovery:
+        args[0] === 'test'
+          ? 'Fix the reported Go test or compiler failure, then rerun bun run test:relay before deploying.'
+          : 'Address the reported Go build error, then rerun bun run relay:build.',
     });
-    if ((await child.exited) !== 0)
-      throw new Error(
-        `Relay ${args[0]} failed. Build prerequisites: Go and a C compiler (Xcode command-line tools on macOS, build-essential on Debian/Ubuntu).`,
-      );
   } finally {
     await rm(scratch, { recursive: true, force: true });
   }
 }
-if (import.meta.main) await relayGo(process.argv.slice(2));
+if (import.meta.main) {
+  try {
+    await relayGo(process.argv.slice(2));
+  } catch (error) {
+    console.error(formatDiagnostic(diagnose(error, 'relay')));
+    process.exitCode = 1;
+  }
+}

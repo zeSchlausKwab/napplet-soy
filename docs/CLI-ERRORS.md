@@ -118,6 +118,10 @@ local HTTP error responses retain their `error` text and add a `diagnostic` obje
 - **Project tools:** setup, build and other wrapped commands retain a sanitized
   output tail. Vite watcher failures include their output and exit status when
   available. Toolchain downloads identify their destination and HTTP failure.
+- **Relay build/test runner:** Go dependency and build/test failures preserve
+  sanitized tool output, operation, exit status, relay directory and recovery
+  command. Test failures are no longer mislabeled as missing build prerequisites.
+  The relay service gate checks this through a real failing Go subprocess.
 - **Browser:** installer output/status, cancellation and timeout are distinguished.
   Startup checks preserve browser errors and a bounded sample of script errors.
 - **Relays and Blossom:** exhausted remix lookups/downloads retain individual

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ func read(t *testing.T, ws *websocket.Conn) []json.RawMessage {
 	}
 	return msg
 }
-func publish(t *testing.T, ws *websocket.Conn, e nostr.Event, want bool) {
+func publish(t *testing.T, ws *websocket.Conn, e nostr.Event, want bool) string {
 	t.Helper()
 	if err := ws.WriteJSON([]any{"EVENT", e}); err != nil {
 		t.Fatal(err)
@@ -44,7 +45,11 @@ func publish(t *testing.T, ws *websocket.Conn, e nostr.Event, want bool) {
 		if string(msg[1]) != `"`+e.ID.Hex()+`"` || string(msg[2]) != map[bool]string{true: "true", false: "false"}[want] {
 			t.Fatalf("unexpected acknowledgement: %s", msg)
 		}
-		return
+		var reason string
+		if err := json.Unmarshal(msg[3], &reason); err != nil {
+			t.Fatal(err)
+		}
+		return reason
 	}
 }
 func queryRelay(t *testing.T, ws *websocket.Conn, f nostr.Filter) []nostr.Event {
@@ -200,7 +205,13 @@ func TestLiveSearchAndUnknownDeletionTarget(t *testing.T) {
 }
 
 func TestServiceIngressKeepsPublicBudgetAndRejectsBrowsers(t *testing.T) {
-	relay := newRelay(testStore(t))
+	// The budget is a fixed clock-minute window. Do not let test/CI speed
+	// decide whether the final event crosses that boundary and is accepted.
+	var seconds atomic.Int64
+	seconds.Store(59)
+	relay := newRelayWithBudgetClock(testStore(t), func() time.Time {
+		return time.Unix(seconds.Load(), 0)
+	})
 	public := httptest.NewServer(relay)
 	defer public.Close()
 	service := httptest.NewServer(serviceRelayHandler(relay))
@@ -222,14 +233,39 @@ func TestServiceIngressKeepsPublicBudgetAndRejectsBrowsers(t *testing.T) {
 		t.Fatal("expected EOSE")
 	}
 	key := nostr.Generate()
-	for i := 0; i < 121; i++ {
-		event := fixture(t, key, 25050, nostr.Now(), nostr.Tags{}, fmt.Sprint(i))
-		publish(t, normal, event, i < 120)
-		if i < 120 {
+	for window := 0; window < 2; window++ {
+		for i := 0; i < 121; i++ {
+			event := fixture(t, key, 25050, nostr.Now(), nostr.Tags{}, fmt.Sprintf("public-%d-%d", window, i))
+			reason := publish(t, normal, event, i < 120)
+			if i < 120 {
+				read(t, subscriber)
+			} else if reason != "rate-limited: event budget exceeded" {
+				t.Fatalf("unexpected refusal: %s", reason)
+			}
+			event = fixture(t, key, 25050, nostr.Now(), nostr.Tags{}, fmt.Sprintf("service-%d-%d", window, i))
+			publish(t, internal, event, true)
 			read(t, subscriber)
 		}
-		event = fixture(t, key, 25050, nostr.Now(), nostr.Tags{}, fmt.Sprint("service", i))
-		publish(t, internal, event, true)
-		read(t, subscriber)
+		for i := 0; i < 241; i++ {
+			for _, ws := range []*websocket.Conn{normal, internal} {
+				if err := ws.WriteJSON([]any{"REQ", "budget", nostr.Filter{Kinds: []nostr.Kind{1}, LimitZero: true}}); err != nil {
+					t.Fatal(err)
+				}
+				msg := read(t, ws)
+				if ws == normal && i == 240 {
+					if string(msg[0]) != `"CLOSED"` || string(msg[2]) != `"rate-limited: query budget exceeded"` {
+						t.Fatalf("public query budget was not enforced: %s", msg)
+					}
+				} else if string(msg[0]) != `"EOSE"` {
+					t.Fatalf("query refused within budget: %s", msg)
+				}
+				if err := ws.WriteJSON([]any{"CLOSE", "budget"}); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		// Same sockets, next minute: both public counters reset, while the
+		// private connection retains its larger service budget.
+		seconds.Store(60)
 	}
 }

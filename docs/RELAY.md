@@ -42,6 +42,11 @@ Two small upstream compatibility patches are applied by `scripts/relay-go.ts` in
 
 The shared Go module cache is never modified. Production builds and race tests use the same patches. Race/pointer checks remain enabled. A changed upstream file requires an explicit patch review; remove the patches when upgrading to a release that contains equivalent fixes. Use the repository's build/test commands, since plain `go test` does not apply these patches.
 
+The runner preserves sanitized Go output, the failed operation and the tool exit
+status. A test assertion failure is reported as a test failure; it is not diagnosed
+as missing Go/compiler prerequisites. `bun run test:relay` also exercises this
+failure path through the actual runner process, including output redaction.
+
 Local state is `.local/services/relay`; production state is `/var/lib/napplet-space/relay`, outside releases. LMDB currently has a 1 GiB map; Bleve and logs need additional disk. PM2 restarts above 1 GiB resident memory and uses a 15-second termination allowance. SIGTERM/SIGINT stops the expiration worker and closes hijacked WebSockets before closing storage. Back up the data directory with the relay stopped; the search directory can be regenerated. Online backup, dynamic capacity management, and large-catalog recovery benchmarks are not implemented.
 
 ## Seeding and publication boundary
@@ -55,5 +60,20 @@ These fixtures do **not** constitute completed portable publications: their HTML
 ## Operator boundary and evidence
 
 The current relay accepts valid signed events without an account allowlist. It bounds connections (256), WebSocket messages (64 KiB), stored query responses (200), filter dimensions, search length and execution time, and per-connection publication/query rates. These are initial service limits, not a complete public-abuse or moderation system. Public launch still needs operator retention/admission controls, load testing, monitoring, and backup restoration exercises.
+
+Each public connection has separate budgets of 120 publications and 240 queries
+per fixed clock minute. The optional loopback-only CVM ingress permits 6,000
+publications and 12,000 queries per connection per minute and rejects browser
+Origin headers. Both counters reset at the next minute boundary; a connection's
+public/service classification is retained. Tests control this budget clock while
+using real WebSockets, so crossing a wall-clock minute during a slow CI run cannot
+make an otherwise valid acknowledgement fail the deployment gate. Production
+continues to use the wall clock, with the same limits.
+
+2026-09-23 regression verification: the ingress test passed ten consecutive race
+runs. The complete Go race suite, all five Bun relay/runner integration tests and
+repository type checking passed locally. The ingress test covers publication and
+query limits, reset on the same sockets, retained service privileges, and rejected
+browser access. This verification does not constitute a production deployment.
 
 Verified locally: ten Go tests with the race detector; four Applesauce integration tests against a real process; 62 existing application tests; type checking; production build/start; Caddy WebSocket search and NIP-11; a Chromium public-gallery/playback check. Tests cover signature tampering, metadata phrases, combined filters, paging, replacement/ties, owned deletion/replay, interrupted deletion, expiry cleanup, restart/index corruption, process locking, fixture destination restrictions, seed idempotence, and NIP-42 authentication for protected publication. VPS shell syntax is checked, but no Linux deployment, certificate issuance, reboot or remote rollback has been executed.

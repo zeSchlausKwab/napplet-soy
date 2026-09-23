@@ -30,6 +30,12 @@ func env(key, fallback string) string {
 	return fallback
 }
 func newRelay(store *eventStore) *khatru.Relay {
+	return newRelayWithBudgetClock(store, time.Now)
+}
+
+// Only the rate-limit clock is injectable; event expiry and socket deadlines
+// continue to use real time. Production uses the wall clock above.
+func newRelayWithBudgetClock(store *eventStore, now func() time.Time) *khatru.Relay {
 	relay := khatru.NewRelay()
 	// Own the storage lifecycle instead of starting an unjoinable expiration worker.
 	relay.QueryStored = func(ctx context.Context, f nostr.Filter) iter.Seq[nostr.Event] {
@@ -48,7 +54,7 @@ func newRelay(store *eventStore) *khatru.Relay {
 	relay.Info.Version = "space-services-1"
 	relay.Info.SupportedNIPs = []any{1, 9, 11, 40, 42, 50, 70}
 	relay.MaxMessageSize = 65536
-	budgets := &connectionBudgets{values: make(map[*khatru.WebSocket]*connectionBudget)}
+	budgets := &connectionBudgets{values: make(map[*khatru.WebSocket]*connectionBudget), now: now}
 	relay.OnDisconnect = budgets.forget
 	relay.OnConnect = budgets.connect
 	relay.OnEvent = func(ctx context.Context, e nostr.Event) (bool, string) {

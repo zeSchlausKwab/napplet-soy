@@ -32,7 +32,7 @@
     "relay:seed": "bun scripts/relay.ts seed",
     "blossom:build": "bun scripts/blossom.ts build",
     "blossom:seed": "bun scripts/blossom.ts seed",
-    "test:relay": "bun scripts/relay-go.ts test -race ./... && bun test tests/services/relay.test.ts",
+    "test:relay": "bun scripts/relay-go.ts test -race ./... && bun test tests/services/relay.test.ts tests/services/relay-runner.test.ts",
     "test:blossom": "bun test tests/services/blossom*.test.ts",
     "grasp:build": "bun scripts/grasp-build.ts",
     "grasp:seed": "bun scripts/grasp.ts",
