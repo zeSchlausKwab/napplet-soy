@@ -6,7 +6,11 @@ import { finalizeEvent, getPublicKey } from 'nostr-tools';
 import { verifiedEvent, type SignedEvent } from '../../packages/protocol/src';
 
 /** Test-only signed invoice. No real wallet/provider is contacted. */
-export function invoice(msats: number, description: string) {
+export function invoice(
+  msats: number,
+  description: string,
+  { plainDescription }: { plainDescription?: string } = {},
+) {
   const encoder = new TextEncoder(),
     key = new Uint8Array(32).fill(3);
   const words = (n: number) => {
@@ -28,7 +32,9 @@ export function invoice(msats: number, description: string) {
     ...timestamp,
     ...field(1, sha256(encoder.encode(description))),
     ...field(16, new Uint8Array(32).fill(9)),
-    ...field(23, sha256(encoder.encode(description))),
+    ...(plainDescription === undefined
+      ? field(23, sha256(encoder.encode(description)))
+      : field(13, encoder.encode(plainDescription))),
     6,
     0,
     expiry.length,
@@ -54,6 +60,7 @@ export async function directWallet(
   events: Map<string, SignedEvent>,
   key: Uint8Array,
   relay: string,
+  options: { plainDescription?: boolean } = {},
 ) {
   const pubkey = getPublicKey(key),
     requests: SignedEvent[] = [],
@@ -104,7 +111,9 @@ export async function directWallet(
     const serialized = url.searchParams.get('nostr')!;
     const request = verifiedEvent(JSON.parse(serialized));
     requests.push(request);
-    const pr = invoice(Number(url.searchParams.get('amount')), serialized);
+    const pr = invoice(Number(url.searchParams.get('amount')), serialized, {
+      plainDescription: options.plainDescription ? request.content : undefined,
+    });
     invoices.push(pr);
     return route.fulfill({ headers, json: { pr } });
   });

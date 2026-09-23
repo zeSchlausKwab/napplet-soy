@@ -28,7 +28,11 @@ const words = (n: number) => {
   } while (n);
   return w;
 };
-function invoice(msats: number, description: string, { expiry = 3600, badSignature = false } = {}) {
+function invoice(
+  msats: number,
+  description: string,
+  { expiry = 3600, badSignature = false, plainDescription = false } = {},
+) {
   const prefix = `lnbc${msats * 10}p`,
     timestamp = words(now);
   while (timestamp.length < 7) timestamp.unshift(0);
@@ -41,7 +45,10 @@ function invoice(msats: number, description: string, { expiry = 3600, badSignatu
     ...timestamp,
     ...field(1, hashBytes(new Uint8Array(32).fill(7))),
     ...field(16, new Uint8Array(32).fill(9)),
-    ...field(23, hashBytes(encoder.encode(description))),
+    ...field(
+      plainDescription ? 13 : 23,
+      plainDescription ? encoder.encode(description) : hashBytes(encoder.encode(description)),
+    ),
     6,
     Math.floor(x.length / 32),
     x.length % 32,
@@ -122,80 +129,148 @@ test('zap invoices bind amount and description to the signed request; never acce
   expect(inspectInvoice(result.invoice).paymentHash).toBe(
     bytesToHex(hashBytes(new Uint8Array(32).fill(7))),
   );
-  await expect(
-    requestZapInvoice(context, manifests, endpoint, request, async () => ({
-      pr: invoice(22000, description),
-    })),
-  ).rejects.toThrow('match');
+  for (const plainDescription of [false, true]) {
+    const text = plainDescription ? request.content : description;
+    await expect(
+      requestZapInvoice(context, manifests, endpoint, request, async () => ({
+        pr: invoice(22000, text, { plainDescription }),
+      })),
+    ).rejects.toThrow('wallet.example returned an invoice for 22 sats; you requested 21 sats');
+    await expect(
+      requestZapInvoice(context, manifests, endpoint, request, async () => ({
+        pr: invoice(21000, text, { plainDescription, badSignature: true }),
+      })),
+    ).rejects.toThrow('signature');
+    await expect(
+      requestZapInvoice(context, manifests, endpoint, request, async () => ({
+        pr: invoice(21000, text, { plainDescription, expiry: 0 }),
+      })),
+    ).rejects.toThrow('wallet.example returned an expired invoice. Create a new invoice');
+  }
   await expect(
     requestZapInvoice(context, manifests, endpoint, request, async () => ({
       pr: invoice(21000, 'some other purchase'),
     })),
-  ).rejects.toThrow('match');
-  expect(() => inspectInvoice(invoice(21000, description, { badSignature: true }))).toThrow();
-  await expect(
-    requestZapInvoice(context, manifests, endpoint, request, async () => ({
-      pr: invoice(21000, description, { expiry: 0 }),
-    })),
-  ).rejects.toThrow('match');
+  ).rejects.toThrow('wallet.example returned an invoice whose description hash does not match');
 });
-test('zap receipts require the advertised provider and exact recipient, request and payment hash', async () => {
-  const { context, endpoint, request, manifests } = await fixture(),
-    description = JSON.stringify(request);
-  const tags = [
-    ...request.tags.filter((t) => ['p', 'e', 'a'].includes(t[0])),
-    ['description', description],
-    ['bolt11', invoice(21000, description)],
-    ['preimage', '07'.repeat(32)],
-    ['P', request.pubkey],
-  ];
-  const receipt = finalizeEvent({ kind: 9735, created_at: now, content: '', tags }, provider);
-  expect((await verifiedZapReceipt(receipt, context.scope, manifests, endpoint)).msats).toBe(21000);
-  await expect(
-    verifiedZapReceipt(
-      finalizeEvent({ kind: 9735, created_at: now, content: '', tags }, alice),
-      context.scope,
-      manifests,
+test('plain-description providers support invoice creation and signed zap receipts', async () => {
+  const { context, endpoint, request, manifests } = await fixture();
+  // Minibits returned a valid, correctly priced invoice whose d-tag was the note
+  // (or empty without a comment), but no h-tag binding it to the signed request.
+  for (const description of ['derp', '']) {
+    const pr = invoice(21000, description, { plainDescription: true });
+    expect(inspectInvoice(pr).msats).toBe(21000);
+    expect(inspectInvoice(pr).descriptionHash).toBeNull();
+    const result = await requestZapInvoice(context, manifests, endpoint, request, async (url) => {
+      expect(url.origin).toBe('https://wallet.example');
+      expect(verifiedEvent(JSON.parse(url.searchParams.get('nostr')!)).id).toBe(request.id);
+      return { pr };
+    });
+    expect(result.invoice).toBe(pr);
+    expect(result.msats).toBe(21000);
+    const receipt = finalizeEvent(
+      {
+        kind: 9735,
+        created_at: now,
+        content: '',
+        tags: [
+          ...request.tags.filter((t) => ['p', 'e', 'a'].includes(t[0])),
+          ['description', JSON.stringify(request)],
+          ['bolt11', pr],
+        ],
+      },
+      provider,
+    );
+    expect((await verifiedZapReceipt(receipt, context.scope, manifests, endpoint)).msats).toBe(
+      21000,
+    );
+  }
+});
+for (const plainDescription of [false, true])
+  test(`zap receipts (${plainDescription ? 'plain description' : 'description hash'}) require the advertised provider and exact recipient, request and payment hash`, async () => {
+    const { context, endpoint, request, manifests } = await fixture(),
+      description = JSON.stringify(request);
+    const tags = [
+      ...request.tags.filter((t) => ['p', 'e', 'a'].includes(t[0])),
+      ['description', description],
+      [
+        'bolt11',
+        invoice(21000, plainDescription ? request.content : description, { plainDescription }),
+      ],
+      ['preimage', '07'.repeat(32)],
+      ['P', request.pubkey],
+    ];
+    const receipt = finalizeEvent({ kind: 9735, created_at: now, content: '', tags }, provider);
+    expect((await verifiedZapReceipt(receipt, context.scope, manifests, endpoint)).msats).toBe(
+      21000,
+    );
+    await expect(
+      verifiedZapReceipt(
+        finalizeEvent({ kind: 9735, created_at: now, content: '', tags }, alice),
+        context.scope,
+        manifests,
+        endpoint,
+      ),
+    ).rejects.toThrow('Untrusted');
+    const duplicateReceipt = finalizeEvent(
+      { kind: 9735, created_at: now + 1, content: '', tags },
+      provider,
+    );
+    const forgedReceipt = finalizeEvent({ kind: 9735, created_at: now, content: '', tags }, alice);
+    const totals = await zapTotals(
+      context,
+      { manifests, events: [receipt, duplicateReceipt, forgedReceipt] },
       endpoint,
-    ),
-  ).rejects.toThrow('Untrusted');
-  const duplicateReceipt = finalizeEvent(
-    { kind: 9735, created_at: now + 1, content: '', tags },
-    provider,
-  );
-  const forgedReceipt = finalizeEvent({ kind: 9735, created_at: now, content: '', tags }, alice);
-  const totals = await zapTotals(
-    context,
-    { manifests, events: [receipt, duplicateReceipt, forgedReceipt] },
-    endpoint,
-  );
-  expect(totals.zapCount).toBe(1);
-  expect(totals.msats).toBe(21000);
-  const wrong = finalizeEvent(
-    {
-      kind: 9735,
-      created_at: now,
-      content: '',
-      tags: tags.map((t) => (t[0] === 'p' ? ['p', getPublicKey(alice)] : t)),
-    },
-    provider,
-  );
-  await expect(verifiedZapReceipt(wrong, context.scope, manifests, endpoint)).rejects.toThrow(
-    'target',
-  );
-  const bad = finalizeEvent(
-    {
-      kind: 9735,
-      created_at: now,
-      content: '',
-      tags: tags.map((t) => (t[0] === 'preimage' ? ['preimage', '00'.repeat(32)] : t)),
-    },
-    provider,
-  );
-  await expect(verifiedZapReceipt(bad, context.scope, manifests, endpoint)).rejects.toThrow(
-    'preimage',
-  );
-});
+    );
+    expect(totals.zapCount).toBe(1);
+    expect(totals.msats).toBe(21000);
+    const wrong = finalizeEvent(
+      {
+        kind: 9735,
+        created_at: now,
+        content: '',
+        tags: tags.map((t) => (t[0] === 'p' ? ['p', getPublicKey(alice)] : t)),
+      },
+      provider,
+    );
+    await expect(verifiedZapReceipt(wrong, context.scope, manifests, endpoint)).rejects.toThrow(
+      'target',
+    );
+    const bad = finalizeEvent(
+      {
+        kind: 9735,
+        created_at: now,
+        content: '',
+        tags: tags.map((t) => (t[0] === 'preimage' ? ['preimage', '00'.repeat(32)] : t)),
+      },
+      provider,
+    );
+    await expect(verifiedZapReceipt(bad, context.scope, manifests, endpoint)).rejects.toThrow(
+      'preimage',
+    );
+    for (const replacement of [
+      ['e', 'f'.repeat(64)],
+      [
+        'bolt11',
+        invoice(22000, plainDescription ? request.content : description, { plainDescription }),
+      ],
+      ['bolt11', invoice(21000, 'a different request')],
+      ['description', JSON.stringify({ ...request, content: 'changed without signing' })],
+    ]) {
+      const invalid = finalizeEvent(
+        {
+          kind: 9735,
+          created_at: now,
+          content: '',
+          tags: tags.map((t) => (t[0] === replacement[0] ? replacement : t)),
+        },
+        provider,
+      );
+      await expect(
+        verifiedZapReceipt(invalid, context.scope, manifests, endpoint),
+      ).rejects.toThrow();
+    }
+  });
 
 test('invoice inspection agrees with the independent BOLT-11 hashed-description vector', () => {
   // https://github.com/lightning/bolts/blob/master/11-payment-encoding.md#examples

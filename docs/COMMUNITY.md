@@ -109,13 +109,37 @@ Publication needs a positive relay acknowledgement. If an acknowledgement is los
 
 [NIP-57](https://github.com/nostr-protocol/nips/blob/master/57.md) zaps use the author's latest verified kind-0 `lud16` or `lud06` profile. LNURL endpoints and callbacks are fetched directly in the browser with bounded responses, public URL validation and no redirects. Providers must support browser CORS. Profiles and payment endpoint metadata remain separate from aliases.
 
-The creator's Lightning service must advertise `allowsNostr`, a receipt-signing pubkey and valid amount limits. The user chooses sats and signs kind 9734 with their connected account, or with a fresh browser-memory key for an anonymous zap. Anonymous mode is automatic while signed out and optional while signed in; it never invokes the profile signer or persists the temporary key. Only the signed request is sent to the Lightning provider. This hides the Nostr profile association, not network/payment metadata from the wallet service. That request goes to the LNURL callback, not to a Nostr relay. Before showing the invoice, the browser checks its BOLT-11 checksum and signature, exact millisatoshi amount, expiry, and description hash against the serialized signed request sent to the callback. The wallet remains responsible for Lightning feature negotiation, route selection and fees.
+The creator's Lightning service must advertise `allowsNostr`, a receipt-signing pubkey and valid amount limits. The user chooses sats and signs kind 9734 with their connected account, or with a fresh browser-memory key for an anonymous zap. Anonymous mode is automatic while signed out and optional while signed in; it never invokes the profile signer or persists the temporary key. Only the signed request is sent to the Lightning provider. This hides the Nostr profile association, not network/payment metadata from the wallet service. That request goes to the LNURL callback, not to a Nostr relay. Before showing the invoice, the browser checks its BOLT-11 checksum and signature, exact millisatoshi amount and expiry. When a description hash is present, it must match the serialized signed request sent to the callback. The wallet remains responsible for Lightning feature negotiation, route selection and fees.
 
 The invoice offers a locally generated QR code, `lightning:` wallet link and copy control. QR encoding loads lazily in the browser, without a third-party image endpoint. When WebLN is available, **Pay with browser wallet** explicitly enables the wallet and requests payment; invoice creation never pays automatically. Wallet success is labelled as the wallet's report. The total uses kind-9735 receipts verified against the advertised provider, signed request, recipient, target, invoice amount and description; an optional preimage must match the payment hash. Event IDs and payment hashes are deduplicated. A receipt remains the Lightning provider's assertion. Changing providers may make older receipts unverifiable from the current profile.
+
+For interoperability with providers such as Minibits, plain-description invoices
+are accepted automatically, including empty descriptions. This is an intentional
+compatibility exception to NIP-57's required `h` field: the client trusts the
+creator's advertised HTTPS callback to associate the returned invoice with the
+request. Receipts for these invoices are accepted only when signed by the
+advertised provider, with a valid signed request and matching recipient, target
+and amount. Optional payment preimages are still checked and payment hashes are
+deduplicated. The provider's signed receipt supplies the association that the
+invoice's description hash normally supplies. A payable invoice alone never adds
+to the zap count; the provider must publish a receipt. This applies to all providers,
+napplet and comment zaps, and signed-in and anonymous senders.
+
+Compatibility never ignores an incorrect description hash when one is present.
+If invoice validation fails, the dialog identifies the callback provider and
+distinguishes a wrong amount, expired invoice and mismatched hash. Plain-description
+invoices use the same QR, wallet-link and explicit WebLN payment flow without an
+extra confirmation dialog; invoice creation itself does not pay.
 
 Current limits: mainnet amount-bearing BOLT-11 invoices, NIP-07 account signing or ephemeral anonymous signing, recent relay history, and whole-satoshi invoice creation capped at 1,000,000 sats. No wallet custody, NWC pairing, automatic payment or real payment was performed during implementation. Split-recipient `zap` tags are detected and explicitly referred to a split-aware client; this UI does not silently pay the author instead. A missing Lightning profile does not prevent comments, likes, or playback. Local-only development does not create zaps without public WSS relay hints.
 
 Validation: `bun run check`; `bun run build && bun test tests/services/community.test.ts tests/services/remix-cli.test.ts`. The latter uses temporary loopback services, the documented public fixture key, a temporary CLI executable, and a simulated wallet. No public events or Lightning payments are sent by these tests.
+
+Plain-description compatibility is covered by `bun test packages/community packages/client`
+and the production-browser tests `tests/services/community.test.ts` and
+`tests/services/gallery-social.test.ts`: invoices with and without hashes, signed-in
+and anonymous wallet flows, provider-signed receipts, duplicates and rejected
+amount/signature/hash/target mismatches. No test sends a real payment.
 
 ## Remixing without an installed CLI
 

@@ -128,7 +128,8 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
         signEvent: (event: unknown) => (window as any).testSign(event),
       };
     }, getPublicKey(key));
-    const wallet = await directWallet(page, events, key, relayUrl);
+    const walletOptions = { plainDescription: false };
+    const wallet = await directWallet(page, events, key, relayUrl, walletOptions);
     await page.route('http://localhost:19348/*', async (route) => {
       const hash = new URL(route.request().url()).pathname.slice(1);
       const file = Bun.file(join(root, 'packages/backend/data/artifacts', `${hash}.html`));
@@ -151,7 +152,8 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
     expect(
       await card.getByRole('button', { name: /^Comment on .*sign in required/ }).isDisabled(),
     ).toBe(true);
-    expect(await page.locator('iframe').count()).toBe(0);
+    // The landing story has its own iframe; only napplet players count here.
+    expect(await page.locator('.napplet-card iframe').count()).toBe(0);
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     const details = await card
       .getByRole('link', { name: fixture.title, exact: true })
@@ -171,6 +173,7 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
     expect(await card.getByRole('button', { name: /^Comment on .*1 comments/ }).count()).toBe(1);
     // Anonymous visitors can create an invoice without touching the installed signer.
     for (let i = 0; i < 2; i++) {
+      walletOptions.plainDescription = i === 1;
       await card.getByRole('button', { name: /^Zap / }).click();
       await page.getByRole('button', { name: 'Create anonymous zap invoice', exact: true }).click();
       await page.getByLabel('Lightning invoice', { exact: true }).waitFor();
@@ -223,12 +226,12 @@ test('gallery social locks, counts, ranking rails, focused comments and anonymou
     });
     await likedCard.locator('.card-preview').click();
     await likedCard.locator('iframe').waitFor();
-    expect(await page.locator('iframe').count()).toBe(1);
+    expect(await page.locator('.napplet-card iframe').count()).toBe(1);
     await card.locator('.card-preview').click();
     await card.locator('iframe').waitFor();
-    expect(await page.locator('iframe').count()).toBe(1);
+    expect(await page.locator('.napplet-card iframe').count()).toBe(1);
     await card.getByRole('button', { name: 'Stop napplet', exact: true }).click();
-    expect(await page.locator('iframe').count()).toBe(0);
+    expect(await page.locator('.napplet-card iframe').count()).toBe(0);
     // Explicit anonymous mode also bypasses the connected profile signer.
     const signedBefore = accountSignatures;
     await card.getByRole('button', { name: /^Zap / }).click();

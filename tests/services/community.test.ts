@@ -7,6 +7,7 @@ import { finalizeEvent, matchFilters, getPublicKey } from 'nostr-tools';
 import { verifiedEvent, type SignedEvent } from '../../packages/protocol/src';
 import { directWallet } from '../fixtures/direct-wallet';
 import { socialScope, socialView } from '../../packages/protocol/src/social';
+import { inspectInvoice } from '../../packages/protocol/src/invoice';
 import fixtures from '../../packages/backend/data/catalog.json';
 
 test('production SSR, signed named routes and social actions work through a real local WebSocket relay', async () => {
@@ -99,7 +100,8 @@ test('production SSR, signed named routes and social actions work through a real
         signEvent: (event: unknown) => (window as any).testSign(event),
       };
     }, getPublicKey(key));
-    const wallet = await directWallet(page, events, key, relayUrl);
+    const walletOptions = { plainDescription: true };
+    const wallet = await directWallet(page, events, key, relayUrl, walletOptions);
     await page.goto(`${origin}/n/${fixture.naddr}`);
     const headerActions = page.locator('.napplet-social-actions');
     await headerActions.getByRole('button', { name: /^Like / }).waitFor();
@@ -249,20 +251,27 @@ test('production SSR, signed named routes and social actions work through a real
     await headerActions.getByRole('button', { name: `Zap ${fixture.title}`, exact: true }).click();
     await page.getByLabel('Satoshis', { exact: true }).waitFor();
     expect(wallet.requests.length).toBe(0);
+    await page.getByLabel('Note (optional)').fill('derp');
     await page.getByRole('button', { name: 'Create zap invoice', exact: true }).click();
     await page.getByRole('button', { name: 'Pay with browser wallet', exact: true }).waitFor();
     expect(wallet.requests.length).toBe(1);
+    expect(inspectInvoice(wallet.invoices[0]).descriptionHash).toBeNull();
+    expect(
+      await page.getByRole('link', { name: 'Open Lightning wallet' }).getAttribute('href'),
+    ).toBe(`lightning:${wallet.invoices[0]}`);
     expect(await page.evaluate(() => (window as any).testPayments.length)).toBe(0);
     await page.getByRole('button', { name: 'Pay with browser wallet', exact: true }).click();
     await page.getByText(/Your wallet reports payment sent/).waitFor();
     expect(await page.evaluate(() => (window as any).testPayments)).toEqual([wallet.invoices[0]]);
     expect([...events.values()].some((e) => e.kind === 9734)).toBe(false);
     await page.keyboard.press('Escape');
+    walletOptions.plainDescription = false;
     await page.getByRole('button', { name: 'Zap comment', exact: true }).click();
     await page.getByLabel('Satoshis', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Create zap invoice', exact: true }).click();
     await page.getByRole('button', { name: 'Pay with browser wallet', exact: true }).waitFor();
     expect(wallet.requests.length).toBe(2);
+    expect(inspectInvoice(wallet.invoices[1]).descriptionHash).not.toBeNull();
     expect(wallet.requests[0].pubkey).toBe(fixture.pubkey);
     expect(wallet.requests[1].tags).toContainEqual(['k', '1111']);
     expect(wallet.requests[1].tags.some((t) => t[0] === 'a')).toBe(false);

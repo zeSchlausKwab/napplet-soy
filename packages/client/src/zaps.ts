@@ -132,6 +132,11 @@ export function validZapRequest(
     throw new CommunityError('The zap request has expired.');
   return msats;
 }
+/** Plain-description providers bind the payment through their HTTPS callback and
+ * signed receipt instead. An explicit description hash must still match exactly. */
+async function compatibleInvoiceDescription(hash: string | null, serializedRequest: string) {
+  return hash === null || hash === (await sha256(new TextEncoder().encode(serializedRequest)));
+}
 export async function requestZapInvoice(
   context: ZapContext,
   manifests: Map<string, SignedEvent>,
@@ -152,12 +157,19 @@ export async function requestZapInvoice(
   if (response.status === 'ERROR' || typeof response.pr !== 'string')
     throw new CommunityError('The Lightning provider could not create an invoice.', 502);
   const invoice = inspectInvoice(response.pr);
-  if (
-    invoice.msats !== amount ||
-    invoice.descriptionHash !== (await sha256(new TextEncoder().encode(serialized))) ||
-    invoice.expiresAt <= Date.now() / 1000
-  )
-    throw new CommunityError('Invoice does not match the signed zap request.', 502);
+  const provider = url.hostname;
+  if (invoice.msats !== amount)
+    throw new CommunityError(
+      `${provider} returned an invoice for ${invoice.msats / 1000} sats; you requested ${amount / 1000} sats. Create a new invoice.`,
+      502,
+    );
+  if (!(await compatibleInvoiceDescription(invoice.descriptionHash, serialized)))
+    throw new CommunityError(
+      `${provider} returned an invoice whose description hash does not match this zap request. Retry; if it persists, contact the creator’s Lightning provider.`,
+      502,
+    );
+  if (invoice.expiresAt <= Date.now() / 1000)
+    throw new CommunityError(`${provider} returned an expired invoice. Create a new invoice.`, 502);
   return {
     invoice: response.pr,
     msats: amount,
@@ -197,7 +209,7 @@ export async function verifiedZapReceipt(
   const invoice = inspectInvoice(oneTag(receipt, 'bolt11') ?? '');
   if (
     invoice.msats !== amount ||
-    invoice.descriptionHash !== (await sha256(new TextEncoder().encode(description)))
+    !(await compatibleInvoiceDescription(invoice.descriptionHash, description))
   )
     throw new Error('Wrong zap invoice');
   const preimage = oneTag(receipt, 'preimage');
