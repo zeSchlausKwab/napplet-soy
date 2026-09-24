@@ -1,8 +1,22 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.20.0**. A successful GitHub workflow run and published
+The source version is **0.21.0**. A successful GitHub workflow run and published
 release are separate acceptance steps.
+
+Version 0.21.0 automatically saves new projects' complete scaffold, lockfile and
+agent guidance in a local Git commit before identity or dependency setup. Neutral
+soyLI attribution needs no configured Git identity or signing-key access. Existing
+projects are not automatically committed, and Git-backed remixes preserve their
+original history. Initial staging/commit failures keep the generated files and
+surface the Git cause with recovery instructions. Agent guidance encourages
+coherent checkpoints before pausing or handing back work.
+
+The shared local preview also gains light/dark/automatic appearance and NAP-THEME
+updates. Accompanying website source adds the same appearance controls, Nostr
+share-note composition, featured-clip autoplay and faster gallery navigation.
+Website deployment is separate from this CLI release. Existing projects can run
+`soyli skills update` after upgrading; review any preserved-file conflicts.
 
 **0.20.0 published 2026-09-23:**
 [GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.20.0),
@@ -123,9 +137,9 @@ installer is running before removing the reported `.install-lock` directory.
 2. Commit the change and push the commit, then its matching tag:
 
    ```sh
-   git tag -a soyli-v0.20.0 -m 'napplet soyLI 0.20.0'
+   git tag -a soyli-v0.21.0 -m 'napplet soyLI 0.21.0'
    git push origin main
-   git push origin soyli-v0.20.0
+   git push origin soyli-v0.21.0
    ```
 
 3. Watch **soyLI releases** in Actions. Publish only after all four native jobs pass.
@@ -169,7 +183,7 @@ access as appropriate for the maintainers.
 ```sh
 bun run check
 bun run cli:build --target darwin-arm64
-SPACE_TEST_CLI="$PWD/.local/cli/0.20.0/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.21.0/soyli-darwin-arm64/soyli" \
   bun test tests/services/cli-update.test.ts tests/services/cli-distribution.test.ts
 ```
 

@@ -14,11 +14,17 @@ cd "$soyli_work"
 "$soyli_bin" doctor
 "$soyli_bin" new example --identity later --json
 cd example
+# Creation already saves the complete scaffold without a creator or Git identity.
+[ "$(git rev-list --count HEAD)" = 1 ]
+[ "$(git log -1 --format=%s)" = 'Initialize napplet with soyLI' ]
+[ -z "$(git status --porcelain)" ]
 # Verify the assembled starter, including our added docs, using its pinned deps.
 "$soyli_bin" run verify
 "$soyli_bin" check --json
 "$soyli_bin" assets list --json
 "$soyli_bin" config --json
+printf '\nPlatform smoke-test edit.\n' >> README.md
 "$soyli_bin" checkpoint 'Fresh platform check' --json
+[ "$(git rev-list --count HEAD)" = 2 ]
 "$soyli_bin" status --json
 printf 'PLATFORM_SMOKE_PASS\n'
