@@ -32,7 +32,10 @@ test('remembered Applesauce accounts restore and sign the exact event without re
   expect(second.state.pubkey).toBe(pubkey);
   expect(vault.data.revision).toBe(1);
   expect(await second.sign(pubkey, template)).toMatchObject({ ...template, pubkey });
-  expect(() => second.sign(pubkey, { ...template, kind: 1 })).toThrow('permissions');
+  expect(
+    await second.sign(pubkey, { ...template, kind: 1, content: 'A napplet for your feed.' }),
+  ).toMatchObject({ kind: 1, content: 'A napplet for your feed.', pubkey });
+  expect(() => second.sign(pubkey, { ...template, kind: 30617 })).toThrow('permissions');
   await second.initialize(); // Provider remount must not duplicate or reopen accounts.
   expect(second.state.sessions).toHaveLength(1);
   expect(vault.data.revision).toBe(1);

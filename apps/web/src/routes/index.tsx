@@ -1,5 +1,5 @@
 import { useProtocolRefresh } from '@/lib/use-protocol-refresh';
-import { seedCatalog, queryCatalog } from '@/lib/protocol-catalog';
+import { seedCatalog, queryCatalog, browseProtocol } from '@/lib/protocol-catalog';
 import {
   createFileRoute,
   Link,
@@ -8,7 +8,7 @@ import {
   type SearchSchemaInput,
 } from '@tanstack/react-router';
 import { ArrowDown, ArrowUpRight, Eye, Search, Shuffle, Sparkles, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gallerySearchSchema, type GallerySearch } from '../../../../packages/protocol/src';
 import { discoveryTarget } from '../../../../packages/protocol/src/discovery';
 import { getBrowseGallery } from '@/lib/catalog.functions';
@@ -36,15 +36,27 @@ export const Route = createFileRoute('/')({
 });
 function Gallery() {
   const { ready } = useNostr();
-  const refresh = useProtocolRefresh('gallery', () => queryCatalog());
+  const initial = Route.useLoaderData();
+  const search = Route.useSearch();
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  // Child social readers need the SSR projection during their first effects.
+  // Seed each loader result once, not on every render after a relay refresh.
+  const seeded = useRef<typeof initial | null>(null);
+  if (typeof window !== 'undefined' && seeded.current !== initial) {
+    seeded.current = initial;
+    seedCatalog([...initial.featured, ...initial.napplets]);
+  }
+  const refresh = useProtocolRefresh(
+    'gallery',
+    () => queryCatalog(),
+    () => setRefreshVersion((value) => value + 1),
+  );
   const { napplets, topics, total, unavailableCount, status, page, pages, matches, featured } =
-    Route.useLoaderData();
-  if (typeof window !== 'undefined') seedCatalog(napplets);
+    refreshVersion ? browseProtocol(search) : initial;
   const [showAllTags, setShowAllTags] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState('');
-  const search = Route.useSearch(),
-    navigate = useNavigate({ from: '/' });
+  const navigate = useNavigate({ from: '/' });
   const update = (patch: Partial<GallerySearch>) =>
     void navigate({ search: (prev) => ({ ...prev, page: 1, ...patch }), resetScroll: false });
   useEffect(
@@ -273,7 +285,7 @@ function Gallery() {
         )}
         {lookupError && <p role="alert">{lookupError}</p>}
         <SocialRankings active={active} setActive={setActive} />
-        <section className="napplet-collection" aria-labelledby="collection-heading">
+        <section id="napplets" className="napplet-collection" aria-labelledby="collection-heading">
           <h3 id="collection-heading" className="collection-heading">
             {search.q || search.tag
               ? 'Matching napplets'
@@ -302,7 +314,7 @@ function Gallery() {
                 <Link
                   to="/"
                   search={{ ...search, page: page - 1 }}
-                  hash="explore"
+                  hash="napplets"
                   className="pagination-link"
                 >
                   ← Previous
@@ -317,7 +329,7 @@ function Gallery() {
                 <Link
                   to="/"
                   search={{ ...search, page: page + 1 }}
-                  hash="explore"
+                  hash="napplets"
                   className="pagination-link"
                 >
                   Next →
@@ -330,9 +342,11 @@ function Gallery() {
           {!napplets.length && (
             <div className="empty-results">
               <h3>
-                {search.sort === 'featured'
-                  ? 'No featured napplets found.'
-                  : 'No little wonders found.'}
+                {!refreshVersion && !status.fetchedAt
+                  ? 'Finding napplets…'
+                  : search.sort === 'featured'
+                    ? 'No featured napplets found.'
+                    : 'No little wonders found.'}
               </h3>
               <p>
                 {!search.unavailable && unavailableCount > 0

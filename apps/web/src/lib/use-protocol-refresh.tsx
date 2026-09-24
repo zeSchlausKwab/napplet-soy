@@ -2,10 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
 
 /** Keep the SSR page useful while the browser independently refreshes its protocol data. */
-export function useProtocolRefresh(key: string, read: () => Promise<unknown>) {
+export function useProtocolRefresh(
+  key: string,
+  read: () => Promise<unknown>,
+  onSettled?: () => void,
+) {
   const router = useRouter(),
     reader = useRef(read);
   reader.current = read;
+  const settled = useRef(onSettled);
+  settled.current = onSettled;
   const [error, setError] = useState(false),
     [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -14,10 +20,13 @@ export function useProtocolRefresh(key: string, read: () => Promise<unknown>) {
     reader
       .current()
       .then(() => {
-        if (active) return router.invalidate();
+        if (active && !settled.current) return router.invalidate();
       })
       .catch(() => {
         if (active) setError(true);
+      })
+      .finally(() => {
+        if (active) settled.current?.();
       });
     return () => {
       active = false;

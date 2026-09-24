@@ -6,6 +6,7 @@ import { TopicTags } from './topic-tags';
 import { Player } from './player';
 import { GalleryCardSocial } from './gallery-social';
 import { CardShare } from './card-share';
+import { shareMedia } from '../../../../packages/client/src/share-note';
 import { CreatorLink } from './creator-link';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { NappletCard as Card } from '../../../../packages/backend/src/catalog';
@@ -51,6 +52,12 @@ export function NappletCard({
   const share = (
     <CardShare
       title={napplet.title}
+      note={() => ({
+        title: napplet.title,
+        description: napplet.description,
+        topics: napplet.topics,
+        media: external ? shareMedia(napplet) : undefined,
+      })}
       path={
         napplet.naddr
           ? `/n/${napplet.naddr}`

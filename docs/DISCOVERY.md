@@ -16,6 +16,29 @@ the player out of view, switching pages/filters, or leaving the route disposes i
 On narrow screens the active card spans the grid so its controls remain usable.
 Without JavaScript covers remain ordinary links and pagination remains navigable.
 
+## Browser navigation
+
+Gallery transitions filter the browser's existing catalog immediately; Nostr and
+Blossom enrichment runs in the background. Initial server-rendered entries remain
+available, and an empty browser catalog displays a discovery state until the read
+settles. Concurrent general catalog reads share one in-flight request. Site
+moderation, signed deletions, replacement rules and availability filtering still
+apply; this does not add a catalog proxy or change the publication protocol.
+
+“All featured” selects the featured filter and anchors the napplet collection.
+Pagination also lands at the collection; Explore lands at its filters. Filter
+changes preserve scroll, while browser Back/Forward restores the prior position.
+Document and route restoration use immediate scrolling; deliberate carousel
+movement retains its short smooth transition (instant with reduced motion).
+Background gallery refreshes update the view without invalidating the whole router
+or replaying a hash jump. Unchanged slide data does not restart carousel rotation.
+
+`tests/services/gallery-navigation.test.ts` covers unavailable relays, delayed
+successful responses, cold home navigation, featured pinned snapshots, filters
+and history. The local featured selection/anchor budget is 700 ms; it is not a
+guarantee for network-bound detail discovery or physical-device performance.
+This source behavior is implemented separately from deployment.
+
 Creation verification in the player and the pending relay-discovery screen use
 the aligned nine-frame Soybert walking animation. The loading text remains visible;
 the mascot can be paused with click/tap or keyboard Space, and reduced-motion

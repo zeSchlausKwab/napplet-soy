@@ -1,12 +1,25 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Check, Copy, Expand, Share2 } from 'lucide-react';
+import { Check, Copy, Expand, Share2, Send } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { ShareNoteDialog } from './share-note-dialog';
+import type { ShareNoteSource } from '../../../../packages/client/src/share-note';
 
-export function CardShare({ title, path }: { title: string; path: string }) {
+export function CardShare({
+  title,
+  path,
+  note,
+}: {
+  title: string;
+  path: string;
+  note?: () => ShareNoteSource;
+}) {
   const label = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
   const fallbackInput = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteSource, setNoteSource] = useState<ShareNoteSource | null>(null);
   const [copied, setCopied] = useState('');
   const [fallback, setFallback] = useState('');
   useEffect(() => {
@@ -30,71 +43,111 @@ export function CardShare({ title, path }: { title: string; path: string }) {
     }
   }
   return (
-    <Popover
-      open={open}
-      onOpenChange={(value) => {
-        setOpen(value);
-        if (!value) {
-          setFallback('');
-          setCopied('');
-        }
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          data-tone="blue"
-          data-effect="share"
-          variant="ghost"
-          size="sm"
-          className="card-share"
-          title="Share napplet"
-          aria-label={`Share ${title}`}
-        >
-          <Share2 size={15} />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent aria-labelledby={label} className="w-80 max-w-[calc(100vw-24px)] p-3">
-        <p id={label} className="px-2 pb-2 text-sm font-semibold truncate">
-          Share {title}
-        </p>
-        {(
-          [
-            [false, 'Detail link', 'About, source and conversation', Copy],
-            [true, 'Player link', 'Straight to the immersive player', Expand],
-          ] as const
-        ).map(([player, name, description, Icon]) => (
+    <>
+      <Popover
+        open={open}
+        onOpenChange={(value) => {
+          setOpen(value);
+          if (!value) {
+            setFallback('');
+            setCopied('');
+          }
+        }}
+      >
+        <PopoverTrigger asChild>
           <Button
+            ref={trigger}
             data-tone="blue"
-            key={name}
+            data-effect="share"
             variant="ghost"
-            className="h-auto w-full justify-start gap-3 px-2 py-3 text-left"
-            onClick={() => void copy(player)}
-            aria-label={`Copy ${name.toLowerCase()}`}
+            size="sm"
+            className="card-share"
+            title="Share napplet"
+            aria-label={`Share ${title}`}
           >
-            {copied.startsWith(name) ? <Check size={18} /> : <Icon size={18} />}
-            <span className="min-w-0">
-              <span className="block">{copied.startsWith(name) ? copied : name}</span>
-              <span className="block text-xs font-normal text-muted-foreground">{description}</span>
-            </span>
+            <Share2 size={15} />
           </Button>
-        ))}
-        <span role="status" className="sr-only">
-          {copied}
-        </span>
-        {fallback && (
-          <label className="mt-2 block text-xs text-muted-foreground">
-            Copy this link:
-            <input
-              ref={fallbackInput}
-              className="mt-1 w-full rounded-md border border-input bg-transparent px-2 py-2 text-sm text-foreground"
-              aria-label="Share link"
-              value={fallback}
-              readOnly
-              onFocus={(event) => event.currentTarget.select()}
-            />
-          </label>
-        )}
-      </PopoverContent>
-    </Popover>
+        </PopoverTrigger>
+        <PopoverContent
+          aria-labelledby={label}
+          className="w-80 max-w-[calc(100vw-24px)] p-3"
+          onCloseAutoFocus={(event) => {
+            if (noteOpen) event.preventDefault();
+          }}
+        >
+          <p id={label} className="px-2 pb-2 text-sm font-semibold truncate">
+            Share {title}
+          </p>
+          {(
+            [
+              [false, 'Detail link', 'About, source and conversation', Copy],
+              [true, 'Player link', 'Straight to the immersive player', Expand],
+            ] as const
+          ).map(([player, name, description, Icon]) => (
+            <Button
+              data-tone="blue"
+              key={name}
+              variant="ghost"
+              className="h-auto w-full justify-start gap-3 px-2 py-3 text-left"
+              onClick={() => void copy(player)}
+              aria-label={`Copy ${name.toLowerCase()}`}
+            >
+              {copied.startsWith(name) ? <Check size={18} /> : <Icon size={18} />}
+              <span className="min-w-0">
+                <span className="block">{copied.startsWith(name) ? copied : name}</span>
+                <span className="block text-xs font-normal text-muted-foreground">
+                  {description}
+                </span>
+              </span>
+            </Button>
+          ))}
+          {note && (
+            <Button
+              data-tone="blue"
+              variant="ghost"
+              className="h-auto w-full justify-start gap-3 px-2 py-3 text-left"
+              onClick={() => {
+                setNoteSource(note());
+                setOpen(false);
+                setNoteOpen(true);
+              }}
+            >
+              <Send size={18} />
+              <span className="min-w-0">
+                <span className="block">Post to Nostr</span>
+                <span className="block text-xs font-normal text-muted-foreground">
+                  Write a note for your followers
+                </span>
+              </span>
+            </Button>
+          )}
+          <span role="status" className="sr-only">
+            {copied}
+          </span>
+          {fallback && (
+            <label className="mt-2 block text-xs text-muted-foreground">
+              Copy this link:
+              <input
+                ref={fallbackInput}
+                className="mt-1 w-full rounded-md border border-input bg-transparent px-2 py-2 text-sm text-foreground"
+                aria-label="Share link"
+                value={fallback}
+                readOnly
+                onFocus={(event) => event.currentTarget.select()}
+              />
+            </label>
+          )}
+        </PopoverContent>
+      </Popover>
+      {noteSource && (
+        <ShareNoteDialog
+          source={noteSource}
+          path={detailPath}
+          open={noteOpen}
+          onOpenChange={setNoteOpen}
+          returnFocus={() => trigger.current?.focus({ preventScroll: true })}
+        />
+      )}
+    </>
   );
 }

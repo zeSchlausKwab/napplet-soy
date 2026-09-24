@@ -4,6 +4,8 @@ export function getRouter() {
   return createRouter({
     routeTree,
     scrollRestoration: true,
+    scrollRestorationBehavior: 'instant',
+    defaultHashScrollIntoView: { behavior: 'instant', block: 'start' },
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 30_000,
   });

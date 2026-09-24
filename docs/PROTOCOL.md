@@ -152,6 +152,12 @@ A creator signature and matching source archive prove what the creator published
 
 ## 7. Social event mapping
 
+2026-09-24 source: explicit **Post to Nostr** sharing uses a standalone kind-1 note,
+with lowercase NIP-24 `t` tags derived from the edited text and optional NIP-92
+metadata matching its original media URL. Its default `#nappletsoy` is removable
+presentation, never a napplet admission requirement. The viewer signs in the shell;
+no iframe permission or manifest schema changes. See [sharing](COMMUNITY.md#sharing-a-napplet-as-a-nostr-note--2026-09-24-source).
+
 | Interaction | Protocol                                                                                          | Space aggregation rule                                                                                                         |
 | ----------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | Profiles    | Nostr kind 0                                                                                      | Existing author identity; merge updates according to Nostr rules                                                               |

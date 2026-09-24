@@ -166,9 +166,12 @@ of commands; the presentation is an anchored popup. Session and key handling are
 The shell and social prompts open the same account chooser. Choose a NIP-07
 extension, create a NIP-46 connection code/link, paste a `bunker://` link, or import
 an nsec/hex private key after acknowledging the warning. The selected account signs
-comments, likes, identified zaps, profile editing, named links and admin authentication. Website
-remote permissions are limited to kinds 0, 5, 7, 1111, 9734 and 27235 plus public-key
-lookup; creator publishing retains its separate scope. NIP-46 auth challenges are
+comments, likes, identified zaps, profile editing, named links and admin authentication.
+The website also signs explicitly composed kind-1 share notes (2026-09-24 source).
+Existing remote signers may request approval for `sign_event:1`; refusal preserves
+the draft. The bounded `websiteKinds` scope in `packages/identity/src/signer.ts`
+also covers supported COMMON/LISTS, app-data and lifecycle actions; creator
+publishing retains its separate scope. NIP-46 auth challenges are
 shown as validated links in the chooser, including during later signing requests.
 
 The original release was memory-only. **The 2026-09-15 deployed revision adds

@@ -10,7 +10,7 @@ import { IndexStore } from '../../packages/backend/src/index-store';
 import { indexPreviewVideos } from '../../packages/backend/src/preview-videos';
 import fixtures from '../../packages/backend/data/catalog.json';
 
-test('gallery clips load on intent, stop offscreen, honor reduced motion and leave OG static', async () => {
+test('featured clips autoplay while thumbnails stay clean, respect motion settings and leave OG static', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'soyli-video-gallery-'));
   const root = resolve(import.meta.dir, '../..');
   const key = new Uint8Array(32);
@@ -66,7 +66,33 @@ test('gallery clips load on intent, stop offscreen, honor reduced motion and lea
     Date.now() + 3600000,
     Date.now() + 3600000,
   );
+  const fallback = fixtures[1].current;
+  store.admit(fallback);
+  store.project(
+    fallback.id,
+    { ...(await publicNapplet(fallback)), availability: 'ready' },
+    Date.now() + 3600000,
+    Date.now() + 3600000,
+  );
   store.close();
+  await Bun.write(
+    join(directory, 'policy.json'),
+    JSON.stringify({
+      version: 1,
+      revision: 0,
+      rules: [],
+      admins: [],
+      audit: [],
+      used: [],
+      featured: [current, fallback].map((e) => ({
+        type: 'event',
+        target: e.id,
+        actor: e.pubkey,
+        reason: 'Offline fixture',
+        at: 0,
+      })),
+    }),
+  );
   const relay = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -78,7 +104,7 @@ test('gallery clips load on intent, stop offscreen, honor reduced motion and lea
       message(socket, raw) {
         const m = JSON.parse(String(raw));
         if (m[0] === 'REQ') {
-          for (const e of [current, descriptor])
+          for (const e of [current, descriptor, fallback])
             if (matchFilters(m.slice(2), e)) socket.send(JSON.stringify(['EVENT', m[1], e]));
           socket.send(JSON.stringify(['EOSE', m[1]]));
         }
@@ -99,6 +125,7 @@ test('gallery clips load on intent, stop offscreen, honor reduced motion and lea
       SPACE_INDEX_DIR: join(directory, 'index'),
       SPACE_INDEX_RELAYS: `ws://127.0.0.1:${relay.port}/`,
       SPACE_PUBLICDEV: '0',
+      SPACE_MODERATION_FILE: join(directory, 'policy.json'),
       SPACE_COMMUNITY_DIR: join(directory, 'community'),
     },
     stdout: 'ignore',
@@ -115,7 +142,7 @@ test('gallery clips load on intent, stop offscreen, honor reduced motion and lea
     browser = await chromium.launch();
     const page = await browser.newPage({
       viewport: { width: 1365, height: 1000 },
-      reducedMotion: 'reduce',
+      reducedMotion: 'no-preference',
     });
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
@@ -127,29 +154,51 @@ test('gallery clips load on intent, stop offscreen, honor reduced motion and lea
       route.fulfill({ contentType: 'video/webm', body: Buffer.from(bytes) }),
     );
     await page.goto(origin);
-    const cover = page.locator('.napplet-grid .card-cover'),
-      video = cover.locator('video');
+    const hero = page.locator('.featured-hero');
+    const featuredVideo = hero.locator('video').first();
+    await browserExpect
+      .poll(() => featuredVideo.evaluate((v: HTMLVideoElement) => v.readyState >= 2 && !v.paused), {
+        timeout: 2000,
+      })
+      .toBe(true);
+    expect(await featuredVideo.evaluate((v: HTMLVideoElement) => v.muted && v.playsInline)).toBe(
+      true,
+    );
+    await browserExpect(hero.locator('.clip-toggle')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Pause featured clip', exact: true }).click();
+    await browserExpect(featuredVideo).not.toHaveAttribute('src');
+    await page.getByRole('button', { name: 'Play featured clip', exact: true }).click();
+    await browserExpect
+      .poll(() => featuredVideo.evaluate((v: HTMLVideoElement) => !v.paused))
+      .toBe(true);
+    await page.getByRole('button', { name: 'Next featured napplet' }).click();
+    await browserExpect(featuredVideo).not.toHaveAttribute('src');
+    await page.getByRole('button', { name: 'Previous featured napplet' }).click();
+    await browserExpect
+      .poll(() => featuredVideo.evaluate((v: HTMLVideoElement) => !v.paused))
+      .toBe(true);
+    const cover = page
+      .locator('.napplet-grid .napplet-card')
+      .filter({ has: page.getByRole('link', { name: 'Video demo', exact: true }) })
+      .locator('.card-cover');
+    const video = cover.locator('video');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await browserExpect(featuredVideo).not.toHaveAttribute('src');
     await cover.scrollIntoViewIfNeeded();
     await cover.hover();
-    await page.waitForTimeout(300);
-    expect(videoRequests).toBe(0);
-    expect(await page.locator('iframe').count()).toBe(0);
-    await cover.getByRole('button', { name: 'Preview clip for Video demo' }).click();
-    await browserExpect
-      .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState >= 2 && !v.paused))
-      .toBe(true);
-    expect(await video.evaluate((v: HTMLVideoElement) => v.muted)).toBe(true);
-    expect(await page.locator('iframe').count()).toBe(0);
-    await mkdir('.local/video-preview', { recursive: true });
-    await page.screenshot({ path: '.local/video-preview/gallery.png' });
-    // Moving away pauses and releases the decoded media.
-    await page.mouse.move(0, 0);
+    await browserExpect(cover.locator('button')).toHaveCount(0);
     await browserExpect(video).not.toHaveAttribute('src');
+    expect(await page.locator('.player-stage iframe').count()).toBe(0);
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await cover.hover();
     await browserExpect
       .poll(() => video.evaluate((v: HTMLVideoElement) => !v.paused && v.readyState >= 2))
       .toBe(true);
+    expect(await video.evaluate((v: HTMLVideoElement) => v.muted)).toBe(true);
+    await mkdir('.local/video-preview', { recursive: true });
+    await page.screenshot({ path: '.local/video-preview/gallery.png' });
+    await page.mouse.move(0, 0);
+    await browserExpect(video).not.toHaveAttribute('src');
     await page.evaluate(() => window.scrollTo(0, 0));
     await browserExpect(video).not.toHaveAttribute('src');
     expect((await fetch(`${origin}/api/og/${current.id}`)).headers.get('content-type')).toContain(
@@ -161,6 +210,44 @@ test('gallery clips load on intent, stop offscreen, honor reduced motion and lea
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       390,
     );
+    const phone = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    await phone.addInitScript(() =>
+      Object.defineProperty(navigator, 'connection', { value: { saveData: true } }),
+    );
+    await phone.route(url, (route) =>
+      route.fulfill({ contentType: 'video/webm', body: Buffer.from(bytes) }),
+    );
+    const mobile = await phone.newPage();
+    await mobile.goto(origin);
+    await mobile.locator('.featured-slider').scrollIntoViewIfNeeded();
+    const mobileVideo = mobile.locator('.featured-hero video').first();
+    await browserExpect(mobileVideo).not.toHaveAttribute('src');
+    await mobile.getByRole('button', { name: 'Play featured clip', exact: true }).click();
+    await browserExpect
+      .poll(() => mobileVideo.evaluate((v: HTMLVideoElement) => !v.paused && v.readyState >= 2))
+      .toBe(true);
+    await browserExpect.poll(() => mobileVideo.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0.7);
+    await mobile.screenshot({ path: '.local/video-preview/featured-mobile.png' });
+    expect(await mobile.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      390,
+    );
+    await phone.close();
+    // A failed decorative clip leaves a working static cover, without a dead replay control.
+    await page.unroute(url);
+    await page.route(url, (route) => route.abort());
+    await page.goto(origin);
+    await page.locator('.featured-slider').scrollIntoViewIfNeeded();
+    await browserExpect(page.locator('.featured-hero video')).toHaveCount(0);
+    await browserExpect(
+      page.getByRole('button', { name: 'Play featured clip', exact: true }),
+    ).toHaveCount(0);
+    await browserExpect(
+      page.getByRole('link', { name: 'Explore featured napplet: Video demo', exact: true }),
+    ).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     await browser?.close();

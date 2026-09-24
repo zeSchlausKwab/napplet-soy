@@ -1,5 +1,15 @@
 # NAP concepts and expansion review
 
+2026-09-24 note sharing: rechecked official [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md),
+[NIP-10](https://github.com/nostr-protocol/nips/blob/master/10.md),
+[NIP-24](https://github.com/nostr-protocol/nips/blob/master/24.md) and
+[NIP-92](https://github.com/nostr-protocol/nips/blob/master/92.md).
+Explicit website sharing signs a standalone kind-1 text note, with lowercase
+hashtags and optional matching media metadata. There are no thread/reply tags.
+The shell's website-account scope adds kind 1; sandboxed napplets gain no new
+permission or NAP operation. NIP-5D, runtime bindings and dependency pins are
+unchanged. [Community](COMMUNITY.md) records draft, relay and retry behavior.
+
 2026-09-23 appearance update: reviewed [NAP-THEME at registry pin
 `a040914b4bbd3a5cd8a14b0f316a723c968ebfb2`](https://github.com/napplet/naps/blob/a040914b4bbd3a5cd8a14b0f316a723c968ebfb2/naps/NAP-THEME.md)
 and the installed shim 0.30.0 (`@napplet/nap` 0.32.0). The shared host now returns

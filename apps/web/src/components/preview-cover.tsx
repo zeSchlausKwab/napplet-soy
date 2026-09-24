@@ -1,71 +1,109 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Film, Pause } from 'lucide-react';
 import type { CachedVideo } from '../../../../packages/protocol/src/preview-video';
-
 import { playback } from '@/lib/playback-coordinator';
+
+/** Decorative media never intercepts the cover's play/navigation action. */
 export function PreviewCover({
   children,
   video,
   revision,
-  title,
+  mode = 'hover',
+  enabled = true,
+  onPlaybackChange,
+  onUnavailable,
 }: {
   children: ReactNode;
   video?: Pick<CachedVideo, 'url' | 'hash'> | null;
   revision: string;
   title: string;
+  mode?: 'hover' | 'auto' | 'play' | 'pause';
+  enabled?: boolean;
+  onPlaybackChange?: (playing: boolean) => void;
+  onUnavailable?: () => void;
 }) {
   const container = useRef<HTMLDivElement>(null),
     player = useRef<HTMLVideoElement>(null);
-  const [active, setActive] = useState(false),
-    [failed, setFailed] = useState(false);
-  const visible = useRef(false),
-    automatic = useRef(false);
-  const stop = useRef(() => setActive(false));
   const owner = useRef({});
-  function begin(explicit = false) {
-    if (
-      !video ||
-      failed ||
-      !visible.current ||
-      document.hidden ||
-      (!explicit && !automatic.current)
-    )
-      return;
-    if (playback.claim(owner.current, explicit ? 'media' : 'preview', stop.current))
-      setActive(true);
-  }
+  const [active, setActive] = useState(false),
+    [playing, setPlaying] = useState(false),
+    [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [video?.hash, video?.url, revision]);
   useEffect(() => {
-    setFailed(false);
-    setActive(false);
-    if (!video || !container.current) return;
+    if (failed) onUnavailable?.();
+  }, [failed, onUnavailable]);
+  useEffect(() => {
+    onPlaybackChange?.(playing && active);
+  }, [playing, active, onPlaybackChange]);
+  useEffect(() => {
+    const element = container.current;
+    const stop = () => {
+      setActive(false);
+      setPlaying(false);
+      playback.release(owner.current);
+    };
+    stop();
+    if (!video || !element || !enabled || failed || mode === 'pause') return;
+    let visible = false,
+      hovered = false,
+      focused = false;
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
-    const preferences = () => {
-      automatic.current =
+    const sync = () => {
+      const automatic =
         !motion.matches &&
         !(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
-      if (!automatic.current) setActive(false);
+      if (
+        !visible ||
+        document.hidden ||
+        (mode !== 'play' && !automatic) ||
+        (mode === 'hover' && !hovered && !focused)
+      ) {
+        stop();
+        return;
+      }
+      if (playback.claim(owner.current, mode === 'play' ? 'media' : 'preview', stop))
+        setActive(true);
     };
-    preferences();
-    motion.addEventListener('change', preferences);
+    const enter = (event: PointerEvent) => {
+      hovered = event.pointerType === 'mouse';
+      sync();
+    };
+    const leave = () => {
+      hovered = false;
+      sync();
+    };
+    const focus = () => {
+      focused = true;
+      sync();
+    };
+    const blur = (event: FocusEvent) => {
+      focused = element.contains(event.relatedTarget as Node);
+      sync();
+    };
     const observer = new IntersectionObserver(
       ([entry]) => {
-        visible.current = entry.isIntersecting && entry.intersectionRatio >= 0.25;
-        if (!visible.current) setActive(false);
+        visible = entry.isIntersecting && entry.intersectionRatio >= 0.25;
+        sync();
       },
       { threshold: [0, 0.25] },
     );
-    observer.observe(container.current);
-    const hide = () => {
-      if (document.hidden) setActive(false);
-    };
-    document.addEventListener('visibilitychange', hide);
+    observer.observe(element);
+    element.addEventListener('pointerenter', enter);
+    element.addEventListener('pointerleave', leave);
+    element.addEventListener('focusin', focus);
+    element.addEventListener('focusout', blur);
+    motion.addEventListener('change', sync);
+    document.addEventListener('visibilitychange', sync);
     return () => {
       observer.disconnect();
-      motion.removeEventListener('change', preferences);
-      document.removeEventListener('visibilitychange', hide);
-      playback.release(owner.current);
+      element.removeEventListener('pointerenter', enter);
+      element.removeEventListener('pointerleave', leave);
+      element.removeEventListener('focusin', focus);
+      element.removeEventListener('focusout', blur);
+      motion.removeEventListener('change', sync);
+      document.removeEventListener('visibilitychange', sync);
+      stop();
     };
-  }, [video?.hash, revision]);
+  }, [video?.hash, video?.url, revision, enabled, failed, mode]);
   useEffect(() => {
     const node = player.current;
     if (!node || !video || !active) return;
@@ -75,6 +113,7 @@ export function PreviewCover({
     void node.play().catch(() => {
       if (alive) {
         setActive(false);
+        setPlaying(false);
         setFailed(true);
       }
     });
@@ -85,44 +124,28 @@ export function PreviewCover({
       node.removeAttribute('src');
       node.load();
     };
-  }, [active, video?.hash, revision]);
+  }, [active, video?.hash, video?.url, revision]);
   return (
-    <div
-      ref={container}
-      className="card-cover"
-      onPointerEnter={(e) => {
-        if (e.pointerType === 'mouse') begin();
-      }}
-      onPointerLeave={() => setActive(false)}
-    >
+    <div ref={container} className="card-cover">
       {children}
       {video && !failed && (
-        <>
-          <video
-            ref={player}
-            className={`card-preview-clip${active ? ' is-active' : ''}`}
-            muted
-            loop
-            playsInline
-            preload="none"
-            aria-hidden="true"
-            disablePictureInPicture
-            onError={() => {
-              setActive(false);
-              setFailed(true);
-            }}
-          />
-          <button
-            type="button"
-            className="clip-toggle"
-            aria-label={`${active ? 'Pause' : 'Preview'} clip for ${title}`}
-            aria-pressed={active}
-            onClick={() => (active ? setActive(false) : begin(true))}
-          >
-            {active ? <Pause size={14} /> : <Film size={14} />}{' '}
-            <span>{active ? 'Pause clip' : 'Preview clip'}</span>
-          </button>
-        </>
+        <video
+          ref={player}
+          className={`card-preview-clip${playing && active ? ' is-active' : ''}`}
+          muted
+          loop
+          playsInline
+          preload="none"
+          aria-hidden="true"
+          disablePictureInPicture
+          onPlaying={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onError={() => {
+            setActive(false);
+            setPlaying(false);
+            setFailed(true);
+          }}
+        />
       )}
     </div>
   );

@@ -46,6 +46,7 @@ export function PublicDetail({ napplet }: { napplet: PublicNapplet }) {
       manifest={napplet.manifest}
       title={napplet.title}
       relays={napplet.relays ?? []}
+      presentation={napplet}
     >
       {({ actions, feedback, discussion }) => (
         <section className="detail-page">

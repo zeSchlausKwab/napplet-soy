@@ -255,12 +255,21 @@ from the browser and storage provider. The former preview-video API is removed.
 Blossom serves native audio/video documents with `media-src 'self'` while retaining
 its sandbox, so opening an original media link can actually play it.
 
-Gallery clips have no `src` until mouse hover or an explicit **Preview clip** click.
-Only one clip plays at a time, silently; leaving the card, scrolling it out of view,
-hiding the tab or unmounting releases its media source. Reduced-motion and
-Save-Data visitors get the static cover until explicitly requesting a clip.
-Viewer preview playback never creates a napplet iframe. The Play button still
-starts the ordinary verified napplet. OG continues to use a static PNG.
+Gallery thumbnails have no preview badge/button. Their clips load on mouse hover
+or keyboard focus and stop when that interaction ends. The selected featured
+slide plays its clip automatically while visible, muted and inline; inactive
+slides do not load clips. A clip play/pause control sits below the featured slide,
+separate from carousel rotation and the thumbnail's navigation link. It also works
+when there is only one featured napplet.
+
+Only one preview plays at a time, and automatic previews cannot interrupt explicit
+napplet playback. Scrolling offscreen, hiding the tab or unmounting releases the
+media source. Reduced-motion and Save-Data visitors initially see the static cover;
+the featured clip can still be requested explicitly. A failed clip keeps the static
+cover and removes its unavailable replay control. Viewer previews never create a
+napplet iframe. The thumbnail's Play action still starts the ordinary verified
+napplet. OG continues to use a static PNG. These website changes require deployment;
+they do not alter metadata, upload requirements or media URLs.
 
 Local evidence: real recording and stale-build check; signed publication interrupted
 and resumed with identical clip bytes/events; metadata/cache/range rejection tests;

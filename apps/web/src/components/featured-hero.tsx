@@ -8,6 +8,11 @@ import {
 } from '../../../../packages/backend/src/public-model';
 import { getFeaturedGallery } from '@/lib/catalog.functions';
 import { Button } from './ui/button';
+import { PreviewCover } from './preview-cover';
+import { linkedMedia } from '../../../../packages/protocol/src/linked-media';
+
+const previewClip = (entry: PublicNapplet) =>
+  entry.video ?? linkedMedia(entry.manifest, entry.metadata ?? []).videos[0];
 
 export function FeaturedHero({
   initial,
@@ -19,6 +24,9 @@ export function FeaturedHero({
   const [entries, setEntries] = useState(initial);
   const [selection, setSelection] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
+  const [clipMode, setClipMode] = useState<'auto' | 'play' | 'pause'>('auto');
+  const [clipPlaying, setClipPlaying] = useState(false);
+  const [clipFailed, setClipFailed] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [reduced, setReduced] = useState(true);
@@ -32,6 +40,12 @@ export function FeaturedHero({
     entries.findIndex((n) => n.revisionId === selection),
   );
   const current = entries[index];
+  const slideOrder = entries.map((n) => n.revisionId).join(',');
+  useEffect(() => {
+    setClipMode('auto');
+    setClipPlaying(false);
+    setClipFailed(false);
+  }, [current?.revisionId]);
   const selectedIndex = useRef(index);
   selectedIndex.current = index;
   function select(next: number) {
@@ -59,7 +73,7 @@ export function FeaturedHero({
       observer.disconnect();
       clearTimeout(settle.current);
     };
-  }, [entries]);
+  }, [slideOrder]);
   useEffect(() => setEntries(initial), [initial]);
   useEffect(() => {
     let alive = true,
@@ -110,7 +124,7 @@ export function FeaturedHero({
     if (entries.length < 2 || paused || hovered || focused || reduced || !visible) return;
     const timer = setInterval(() => select((index + 1) % entries.length), 7000);
     return () => clearInterval(timer);
-  }, [entries, index, paused, hovered, focused, reduced, visible]);
+  }, [slideOrder, index, paused, hovered, focused, reduced, visible]);
   function move(offset: number) {
     setPaused(true);
     select((index + offset + entries.length) % entries.length);
@@ -188,26 +202,36 @@ export function FeaturedHero({
             aria-label={`${slide + 1} of ${entries.length}: ${entry.title}`}
             inert={slide !== index}
           >
-            <Link
-              {...publicLink(entry)}
-              className="featured-art"
-              aria-label={`Explore featured napplet: ${entry.title}`}
-              draggable={false}
+            <PreviewCover
+              video={previewClip(entry)}
+              revision={entry.revisionId}
+              title={entry.title}
+              mode={clipMode}
+              enabled={slide === index && visible}
+              onPlaybackChange={slide === index ? setClipPlaying : undefined}
+              onUnavailable={slide === index ? () => setClipFailed(true) : undefined}
             >
-              <img
-                src={publicPoster(entry)}
-                className={!entry.preview ? 'generated-poster' : undefined}
-                width={720}
-                height={450}
-                alt=""
+              <Link
+                {...publicLink(entry)}
+                className="featured-art"
+                aria-label={`Explore featured napplet: ${entry.title}`}
                 draggable={false}
-                loading={slide === 0 ? 'eager' : 'lazy'}
-                referrerPolicy="no-referrer"
-              />
-              <span className="featured-open">
-                <ArrowUpRight size={22} />
-              </span>
-            </Link>
+              >
+                <img
+                  src={publicPoster(entry)}
+                  className={!entry.preview ? 'generated-poster' : undefined}
+                  width={720}
+                  height={450}
+                  alt=""
+                  draggable={false}
+                  loading={slide === 0 ? 'eager' : 'lazy'}
+                  referrerPolicy="no-referrer"
+                />
+                <span className="featured-open">
+                  <ArrowUpRight size={22} />
+                </span>
+              </Link>
+            </PreviewCover>
             <div className="featured-caption">
               <Link {...publicLink(entry)}>{entry.title}</Link>
               <p>{entry.description || 'A little world worth a look.'}</p>
@@ -223,43 +247,56 @@ export function FeaturedHero({
       >
         {index + 1} of {entries.length}: {current.title}
       </span>
-      {entries.length > 1 && (
-        <div className="featured-controls">
-          <Button
-            variant="outline"
-            size="icon"
-            data-tone="mint"
-            aria-label="Previous featured napplet"
-            onClick={() => move(-1)}
-          >
-            <ArrowLeft size={16} />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            data-tone="mint"
-            aria-label="Next featured napplet"
-            onClick={() => move(1)}
-          >
-            <ArrowRight size={16} />
-          </Button>
-          {!reduced && (
+      <div className="featured-controls">
+        {entries.length > 1 && (
+          <>
             <Button
-              variant="ghost"
-              size="sm"
-              data-rotation-control
-              aria-label={paused ? 'Resume featured rotation' : 'Pause featured rotation'}
-              onClick={() => setPaused((value) => !value)}
+              variant="outline"
+              size="icon"
+              data-tone="mint"
+              aria-label="Previous featured napplet"
+              onClick={() => move(-1)}
             >
-              {paused ? <Play size={13} /> : <Pause size={13} />}
-              {paused ? 'Resume' : 'Pause'}
+              <ArrowLeft size={16} />
             </Button>
-          )}
-          <Link to="/" search={{ sort: 'featured' }} className="featured-all">
-            All featured <ArrowUpRight size={13} />
-          </Link>
-        </div>
-      )}
+            <Button
+              variant="outline"
+              size="icon"
+              data-tone="mint"
+              aria-label="Next featured napplet"
+              onClick={() => move(1)}
+            >
+              <ArrowRight size={16} />
+            </Button>
+            {!reduced && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-rotation-control
+                aria-label={paused ? 'Resume featured rotation' : 'Pause featured rotation'}
+                onClick={() => setPaused((value) => !value)}
+              >
+                {paused ? <Play size={13} /> : <Pause size={13} />}
+                {paused ? 'Resume' : 'Pause'}
+              </Button>
+            )}
+          </>
+        )}
+        {previewClip(current) && !clipFailed && (
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={clipPlaying ? 'Pause featured clip' : 'Play featured clip'}
+            onClick={() => setClipMode(clipPlaying ? 'pause' : 'play')}
+          >
+            {clipPlaying ? <Pause size={13} /> : <Play size={13} />}
+            {clipPlaying ? 'Pause clip' : 'Play clip'}
+          </Button>
+        )}
+        <Link to="/" search={{ sort: 'featured' }} hash="napplets" className="featured-all">
+          All featured <ArrowUpRight size={13} />
+        </Link>
+      </div>
     </section>
   );
 }

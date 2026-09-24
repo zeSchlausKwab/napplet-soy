@@ -9,6 +9,9 @@ import { useNostr } from './nostr-provider';
 import { useLocation } from '@tanstack/react-router';
 import { ZapButton } from './zap-button';
 import { CardShare } from './card-share';
+import { shareMedia } from '../../../../packages/client/src/share-note';
+import { manifestTopics } from '../../../../packages/protocol/src/topics';
+import type { PublicNapplet } from '../../../../packages/backend/src/public-model';
 import { jsonResponse, signForAccount, type Template } from '@/lib/community-client';
 import {
   commentTemplate,
@@ -45,12 +48,14 @@ export function NappletSocial({
   title,
   manifest,
   relays,
+  presentation,
   children,
 }: {
   reference: string;
   title: string;
   manifest: SignedEvent;
   relays: string[];
+  presentation?: Pick<PublicNapplet, 'description' | 'metadata' | 'video' | 'preview'>;
   children: (slots: {
     actions: ReactNode;
     feedback: ReactNode;
@@ -231,6 +236,12 @@ export function NappletSocial({
       <CardShare
         title={title}
         path={reference.startsWith('naddr1') ? `/n/${reference}` : `/r/${reference}`}
+        note={() => ({
+          title,
+          description: presentation?.description ?? manifest.tags.find((tag) => tag[0] === 'description')?.[1] ?? '',
+          topics: manifestTopics(manifest),
+          media: shareMedia({ ...presentation, manifest }),
+        })}
       />
       <ZapButton
         reference={reference}

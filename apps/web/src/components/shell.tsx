@@ -50,6 +50,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <Link
             to="/"
             search={{ tag: '', sort: 'curated', q: '' }}
+            hash="explore"
             activeProps={{ className: 'nav-active' }}
           >
             Explore

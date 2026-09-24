@@ -16,6 +16,41 @@ The web process requires `SPACE_COMMUNITY_DIR`. `bun run dev` and `bun run dev:p
 
 ## Social actions
 
+### Sharing a napplet as a Nostr note — 2026-09-24 source
+
+The share menus on detail pages and root gallery/ranking cards offer **Post to
+Nostr** alongside the existing detail/player link copy actions. The dialog starts
+with the title, a short description, the original linked preview video (or main
+image when there is no video), the portable fullscreen `/play` URL, `#nappletsoy`
+and the napplet's topics. Missing media is omitted; generated OG cards and media
+proxies are not substituted. Named pages share the portable napplet identity.
+
+Buttons above the textarea toggle each generated element. Ordinary edits to an
+element are retained when it is removed and restored; restoration appends it.
+Replacing several elements at once makes that text wholly user-owned, so toggles
+cannot erase the replacement. The complete text can be rewritten, up to 10,000
+characters. Removing a hashtag or media URL also removes its associated tags:
+lowercase `t` tags are derived from the final prose, and NIP-92 `imeta` is emitted
+only while the selected original asset URL is still present. This is an ordinary
+standalone kind-1 note, not a comment, repost or new napplet manifest.
+
+Guests can prepare a draft and sign in; posting requires the selected website
+account. Only **Post to Nostr** asks its extension, NIP-46 signer or local session
+to sign. The signature, author and exact payload are checked by the existing
+account manager. Direct publication uses the viewer's configured relays and
+requires at least one positive acknowledgement. Failed delivery keeps the exact
+signed event for retry, with editing locked until retry is cancelled. A signer
+refusal preserves the editable draft. Closing before signing finishes prevents
+the late signature from publishing; closing after sending cannot recall a note.
+The button contains signing/publishing/error/success feedback; acknowledged notes
+show **Posted to Nostr** and close the dialog. Drafts survive closing/reopening on
+the same mounted page, not a reload or route change. No public note is posted by
+copying a link, opening the composer, or changing a toggle.
+
+Verification: pure draft/media/tag tests, restored-account kind-1 signing and
+`tests/services/share-note.test.ts` exercise a real local relay/test signer.
+Production deployment and independent-client display remain separate checks.
+
 Napplet detail pages and gallery cards share likes/unlikes and zaps. Detail pages also have comments, replies and author deletion; the gallery comment bubble opens and focuses the detail composer. Likes and commenting require sign-in, while viewing counts and anonymous zapping do not. Connect a NIP-07 signer through Applesauce. Its returned signature, author and complete event payload are verified. Signing happens in the trusted website; napplet iframe signing permissions remain unchanged.
 
 **Detail toolbar (deployed 2026-09-14 in `20260914171728494-21459`):** named, portable and

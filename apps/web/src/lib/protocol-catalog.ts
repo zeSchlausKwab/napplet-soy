@@ -207,7 +207,14 @@ export async function lookupProtocol(
   return event ? { ...(await hydrateNapplet(event)), siteOrigin: location.origin } : null;
 }
 let catalogFresh = 0;
-export async function queryCatalog(author?: string) {
+let catalogPending: Promise<PublicNapplet[]> | undefined;
+export function queryCatalog(author?: string): Promise<PublicNapplet[]> {
+  if (author) return refreshCatalog(author);
+  return (catalogPending ??= refreshCatalog().finally(() => {
+    catalogPending = undefined;
+  }));
+}
+async function refreshCatalog(author?: string) {
   if (!author && catalogFresh > Date.now() - 30000)
     return [...entries.values()].filter(manifestEntry);
   const events = await protocolClient().query([
@@ -295,7 +302,9 @@ export async function queryCatalog(author?: string) {
 }
 export const availableCatalog = () => [...entries.values()].filter(manifestEntry);
 const manifestEntry = (n: PublicNapplet) =>
-  n.manifest.kind !== 5129 && manifestAllowed(n.manifest) && !locallyRemoved(n.manifest);
+  (n.manifest.kind !== 5129 || featured(n)) &&
+  manifestAllowed(n.manifest) &&
+  !locallyRemoved(n.manifest);
 export function featured(n: PublicNapplet) {
   const e = n.manifest,
     address = `${e.kind}:${e.pubkey}:${e.kind === 15129 ? '' : e.tags.find((t) => t[0] === 'd')?.[1]}`;
@@ -303,8 +312,23 @@ export function featured(n: PublicNapplet) {
     r.type === 'event' ? r.target === e.id : r.target === address,
   );
 }
-export async function browseProtocol(search: GallerySearch) {
-  const all = (await queryCatalog()).filter((n) => search.sort !== 'featured' || featured(n));
+// Navigation reads the local projection. Relay/Blossom enrichment runs after render.
+export function browseProtocol(search: GallerySearch) {
+  const known = [...entries.values()].filter(
+    (n) => manifestAllowed(n.manifest) && !locallyRemoved(n.manifest),
+  );
+  const all = known.filter((n) => (search.sort === 'featured' ? featured(n) : manifestEntry(n)));
+  const selected = featuredRules().flatMap((rule) => {
+    const n = known.find(
+      (n) =>
+        n.availability === 'ready' &&
+        (rule.type === 'event'
+          ? rule.target === n.revisionId
+          : rule.target ===
+            `${n.manifest.kind}:${n.pubkey}:${n.manifest.kind === 15129 ? '' : n.slug}`),
+    );
+    return n ? [rule.type === 'event' ? { ...n, naddr: null } : n] : [];
+  });
   const visible = all.filter((n) => search.unavailable || n.availability === 'ready');
   const matches = visible
     .filter((n) => matchesGallery(n, search))
@@ -320,13 +344,13 @@ export async function browseProtocol(search: GallerySearch) {
     matches: matches.length,
     page,
     pages,
-    featured: all.filter((n) => featured(n) && n.availability === 'ready').slice(0, 12),
+    featured: [...new Map(selected.map((n) => [n.revisionId, n])).values()].slice(0, 12),
     status: {
       index: null,
       publicdev: false,
       publicCount: all.length,
-      fetchedAt: Date.now(),
-      stale: false,
+      fetchedAt: catalogFresh || null,
+      stale: catalogFresh < Date.now() - 30000,
       relays: network().relays,
       rejected: 0,
     },
