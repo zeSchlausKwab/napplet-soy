@@ -5,6 +5,11 @@ Code and the pushed commit ancestry are open source by default. Editing or makin
 local checkpoint does not upload anything. New projects use MIT; remixes keep their
 existing license. A website account is unnecessary: the CLI uses your Nostr signer.
 
+`soyli new` saves the generated scaffold and agent guidance in an initial local
+commit before development begins. This checkpoint needs no creator identity and
+uploads nothing. Git-backed remixes retain the exact published commit and ancestry;
+existing work is never automatically checkpointed by setup or skill updates.
+
 soyLI 0.16.3 retains both Git output streams in failure diagnostics, including
 conflicting filenames emitted by `merge-tree` on stdout. Merge preflight needs
 Git 2.38 or newer. Conflicts leave the checkout unchanged; the diagnostic explains

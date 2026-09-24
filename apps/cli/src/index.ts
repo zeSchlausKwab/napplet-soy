@@ -555,7 +555,7 @@ try {
       );
     else
       console.log(
-        `\nYour napplet is ready at ${directory}\n\n  cd ${folder}\n${remix?.needsSetup ? '  soyli setup\n' : ''}  soyli dev\n\nOpen your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nYour code and pushed Git history are open source by default.\nSave edits with soyli checkpoint "Describe your changes", then soyli publish or soyli propose "Description".`,
+        `\nYour napplet is ready at ${directory}\n\n  cd ${folder}\n${remix?.needsSetup ? '  soyli setup\n' : ''}  soyli dev\n\n${remix ? '' : 'Starting scaffold committed locally. Nothing has been uploaded.\n'}Open your coding agent in that folder and make something weird.\n${account ? `Creator: ${nip19.npubEncode(account.pubkey)}` : 'Creator setup can be completed with account create or account connect.'}\nYour code and pushed Git history are open source by default.\nSave edits with soyli checkpoint "Describe your changes", then soyli publish or soyli propose "Description".`,
       );
   } else if (command === 'multiplayer') {
     if (

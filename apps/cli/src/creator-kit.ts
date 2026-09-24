@@ -213,11 +213,14 @@ Existing published napplets can claim a name without republishing.
 
 ## Local Git checkpoints and public releases
 
-new initializes Git but does not create an initial commit. Treat local commits as
-the creator's development checkpoints: make a first commit after reviewing the
-scaffold, then commit coherent changes after the relevant checks. Before pausing,
-save a checkpoint even if the whole napplet is unfinished; describe outstanding
-issues accurately in its message. Do not wait for publication to preserve work.
+New projects start with the completed scaffold and guidance already committed
+locally as "Initialize napplet with soyLI", attributed to napplet soyLI rather than
+a creator identity. Git-backed remixes start at the original published commit and
+preserve its history. Inspect git log and git status when resuming older projects
+or archive/HTML remixes; they may still need their first reviewed checkpoint.
+Commit coherent changes after the relevant checks. Before pausing or handing the
+project back, save a checkpoint even if the whole napplet is unfinished; describe
+outstanding issues accurately in its message. Do not wait for publication to preserve work.
 Follow the creator's Git preferences and inspect git status and git diff first.
 Review the files being staged, including new files; do not sweep unrelated work or
 secrets into a commit, rewrite history, or push without the creator's authorization.

@@ -279,12 +279,25 @@ source code, update dependencies, or fetch unreviewed skill changes from the web
 
 ### Local history, pausing and upgrading
 
-`new` initializes Git but makes **no initial commit**. The developer or their coding
-agent should review the scaffold, make the first commit, and commit coherent changes
-after relevant checks. Checkpoint unfinished work before pausing, recording known
-failures honestly. The managed `docs/napplet-space.md` now gives agents this workflow;
-it is guidance, not automatic background commits. Inspect status, diffs and new files
-before staging; keep private notes ignored and credentials outside the project.
+`new` initializes Git and commits the complete generated scaffold, lockfile and
+bundled agent guidance as **Initialize napplet with soyLI**. The local commit uses
+neutral `napplet soyLI <scaffold@napplet.invalid>` attribution, needs no Git identity
+configuration or Nostr signer, and does not change global Git settings. It happens
+before optional identity/dependency setup, so the starting point survives an
+interrupted setup. Dependencies, build outputs and ignored local state stay out of
+Git. Nothing is uploaded by creating this checkpoint.
+
+Git-backed remixes preserve the published revision and ancestry without an extra
+initial commit. Existing projects, archive/HTML remixes, `setup` and skill updates
+are not automatically committed; inspect their history and save a first checkpoint
+if needed. A failed initial commit preserves the generated files and reports the
+Git cause and recovery command.
+
+The developer or coding agent should commit coherent changes after relevant checks
+and checkpoint unfinished work before pausing or handing it back, recording known
+failures honestly. The managed `docs/napplet-space.md` gives agents this workflow;
+subsequent commits remain explicit. Inspect status, diffs and new files before
+staging; keep private notes ignored and credentials outside the project.
 
 Publishing and proposing require a clean committed working tree. Use ordinary Git
 or `soyli checkpoint "Describe the change"`; checkpoint explicitly stages all source

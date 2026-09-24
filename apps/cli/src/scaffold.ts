@@ -12,7 +12,11 @@ export class ScaffoldInputError extends Error {}
 
 export async function scaffold(parent: string, name: string, template: string) {
   try {
-    return await scaffoldProject(parent, name, template);
+    const target = await scaffoldProject(parent, name, template);
+    // Only a newly created destination reaches here, after all managed guidance
+    // has been written. Existing projects and remixes never use this path.
+    await initializeGit(target);
+    return target;
   } catch (error) {
     if (error instanceof AccountError || error instanceof ScaffoldInputError) throw error;
     const code = (error as NodeJS.ErrnoException).code;
@@ -55,6 +59,31 @@ async function initializeGit(target: string) {
         cause,
         recovery:
           'Resolve the Git error, then initialize Git in the existing folder before running soyli setup --project <folder>.',
+      },
+    );
+  }
+  try {
+    await sourceGit(target, ['add', '--all', '--', '.']);
+    await sourceGit(
+      target,
+      ['-c', 'commit.gpgSign=false', 'commit', '-m', 'Initialize napplet with soyLI'],
+      {
+        GIT_AUTHOR_NAME: 'napplet soyLI',
+        GIT_AUTHOR_EMAIL: 'scaffold@napplet.invalid',
+        GIT_COMMITTER_NAME: 'napplet soyLI',
+        GIT_COMMITTER_EMAIL: 'scaffold@napplet.invalid',
+      },
+    );
+  } catch (cause) {
+    throw new DiagnosticError(
+      'GIT_INITIAL_COMMIT_FAILED',
+      `Project files were created at ${target}, but the initial local Git checkpoint could not be saved.`,
+      {
+        operation: 'save initial scaffold checkpoint',
+        target,
+        cause,
+        recovery:
+          'Resolve the Git error below. In the existing folder, inspect git status and save the starting point with soyli checkpoint "Initialize napplet with soyLI", then run soyli setup if dependencies are needed. Do not recreate the project.',
       },
     );
   }
@@ -104,7 +133,6 @@ async function scaffoldProject(parent: string, name: string, template: string) {
     JSON.stringify(upstream, null, 2) + '\n',
   );
   await installCreatorSkills(target);
-  await initializeGit(target);
   return target;
 }
 
@@ -179,6 +207,5 @@ async function scaffoldLegacy(parent: string, name: string, template: string) {
     resolve(target, 'README.md'),
     `# ${name}\n\nA local napplet based on ${template}, from the Space lab starter collection.\n\nRun \`soyli dev\`, open http://localhost:4173, and edit \`index.html\` with your favorite coding agent. The preview reloads when the artifact changes. No dependency install or separate Bun/Node runtime is required. Install the CLI from https://napplet.soy/create if needed. Git is used for publishing. Local private keys use the OS credential store; new remote signer sessions use private files outside projects. soyli doctor checks prerequisites.\n\nThe preview uses the same hash verification, srcdoc sandbox, pinned shim, and host services as the website. Use the injected domains; optional domains may be absent. \`requires\` declares mandatory domains; \`relays\` configures fallback relay reads and \`servers\` supplies Blossom resource hints. Empty lists work for self-contained experiments. You can connect your browser extension to test identity changes; the preview never signs or publishes events.\n\nThe local \`previewId\` scopes your saves and is not a Nostr identity. Local bytes are trusted as your editable source and verified by hash in the browser; signature verification applies once a manifest is published. Files offered by napplet.fs stay in the preview session until you download them.\n\nEdit the optional lowercase topic labels in \`napplet.json\` as your idea evolves. They describe the creation, for example \`visual\`, \`generative\`, or \`game\`; they are not exclusive categories.\n\nThe HTML is both the source and playable artifact. Keep it self-contained. Creator identities are managed by the platform CLI account commands. The selected creator and publication targets are in ignored .napplet-space/project.json as public configuration; local private keys stay in your OS credential store and remote sessions use private files outside projects by default (optional Keychain storage). This public reference never authorizes a clone or remix to use another creator’s signer. Use \`soyli publish --dry-run\` to inspect the source and destinations, then make a reviewed Git checkpoint with soyli checkpoint before publishing. Code and pushed Git history are public by default. Git-backed remixes can use soyli propose to send changes upstream, and maintainers use soyli review to inspect and play them. Add --network local to use the dev services. The publisher keeps frozen source and retry state in .napplet-space; keep that directory when moving the project. Publication returns a portable Nostr address and reports when the website has indexed it. Friendly named links are optional and do not affect public interoperability.\n`,
   );
-  await initializeGit(target);
   return target;
 }

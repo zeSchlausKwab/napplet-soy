@@ -1,5 +1,11 @@
 # soyLI error diagnostics
 
+`GIT_INITIAL_COMMIT_FAILED` reports a failed initial scaffold checkpoint, preserving
+the Git cause, exit status and bounded redacted output. Generated files stay in the
+new folder; the recovery step explains how to inspect and checkpoint them without
+recreating the project. `GIT_INIT_FAILED` separately identifies initialization
+failures. Both paths are covered through the real CLI entrypoint.
+
 Score attachment schema validation preserves the failed field/rule without echoing
 submitted values. Validators can explicitly attach a safe `diagnosticMessage` to
 a custom Zod issue; other Zod messages remain suppressed. `BACKEND_VERSION` reports
