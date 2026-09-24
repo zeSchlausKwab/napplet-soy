@@ -4,6 +4,18 @@ GitHub Releases distribute the standalone CLI independently of the website/VPS.
 The source version is **0.22.0**. A successful GitHub workflow run and published
 release are separate acceptance steps.
 
+**0.22.0 published 2026-09-24:**
+[GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.22.0),
+source `6132e5504b68e4534dc93585c227a85172b03796`.
+[Workflow 35993373395](https://github.com/zeSchlausKwab/napplet-soy/actions/runs/35993373395)
+passed the source gate and all four native build, installer/updater and fresh-project
+browser checks. All 11 release assets are public. Public installer bytes match
+the tagged source, and installer/manifest checksums and source revision were verified.
+An isolated macOS ARM64 install reports 0.22.0; `doctor` and `update` report current.
+Its account-free starter contains the visual guide and adapted skills in both agent
+directories, keeps host matching disabled, and has one clean initial Git commit.
+The user's installed CLI was not changed. Website deployment was not performed.
+
 Version 0.22.0 gives new napplets independent visual direction. The starter keeps
 its own palette by default instead of automatically adopting the host's colors;
 host matching remains an explicit opt-in. The shipped skills and authoring docs
