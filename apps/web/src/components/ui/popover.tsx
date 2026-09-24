@@ -19,7 +19,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         collisionPadding={12}
-        className={cn('z-50 rounded-xl border bg-background p-5 shadow-lg outline-none', className)}
+        className={cn('z-50 rounded-xl border bg-card text-foreground p-5 shadow-lg outline-none', className)}
         {...props}
       />
     </PopoverPrimitive.Portal>

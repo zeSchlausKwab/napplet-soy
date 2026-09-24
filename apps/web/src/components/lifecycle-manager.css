@@ -54,7 +54,7 @@
   border-color: var(--destructive);
 }
 .lifecycle-steps [data-state='done'] .lifecycle-state {
-  color: #416444;
+  color: var(--mint);
 }
 .lifecycle-backup {
   font-size: 12px;

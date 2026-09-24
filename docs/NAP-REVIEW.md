@@ -1,5 +1,16 @@
 # NAP concepts and expansion review
 
+2026-09-23 appearance update: reviewed [NAP-THEME at registry pin
+`a040914b4bbd3a5cd8a14b0f316a723c968ebfb2`](https://github.com/napplet/naps/blob/a040914b4bbd3a5cd8a14b0f316a723c968ebfb2/naps/NAP-THEME.md)
+and the installed shim 0.30.0 (`@napplet/nap` 0.32.0). The shared host now returns
+resolved Light/Dark/Auto colors in `theme.get.result` and broadcasts `theme.changed`
+with a `theme` field and no request ID after the handshake. There is no new wire
+subscription command, domain or manifest requirement. Changes belong to the frame
+lifetime, not the signing account. Creators choose whether to use them. NIP-5D,
+package pins and sandbox permissions remain unchanged. [Appearance](APPEARANCE.md)
+records browser coverage and limits; independent host conformance remains unverified.
+
+
 2026-09-23 application-data update: reviewed actual relay/outbox publish request and
 result shapes in the installed shim 0.30.0 source maps (its @napplet/core and
 @napplet/nap dependencies are 0.32.0). Retained those package pins and the selected

@@ -1,3 +1,4 @@
+import { AppearanceControl } from '../../../../packages/runtime/src/appearance-control';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, CircleAlert, CircleHelp, Plus, Radio } from 'lucide-react';
 import { type ReactNode } from 'react';
@@ -61,12 +62,13 @@ export function Shell({ children }: { children: ReactNode }) {
           </Link>
         </nav>
         <div className="header-actions">
+          <AppearanceControl />
           <Button asChild variant="ghost" size="icon" className="about-link">
             <Link to="/about" aria-label="About napplet.soy" title="About napplet.soy">
               <CircleHelp size={19} />
             </Link>
           </Button>
-          <Link to="/create" className="make-link">
+          <Link to="/create" className="make-link" data-tone="mint" data-effect="create">
             <Plus size={16} /> Create a napplet
           </Link>
           <PopoverTrigger asChild>

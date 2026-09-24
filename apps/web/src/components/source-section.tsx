@@ -51,7 +51,7 @@ export function SourceSection({
               remix.
             </p>
           </div>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" data-tone="blue" data-effect="source">
             <Link to="/r/$snapshot/source" params={{ snapshot: revision }} preload={false}>
               <Code2 size={16} />
               Browse source

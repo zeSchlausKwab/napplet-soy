@@ -228,6 +228,7 @@ export function FeaturedHero({
           <Button
             variant="outline"
             size="icon"
+            data-tone="mint"
             aria-label="Previous featured napplet"
             onClick={() => move(-1)}
           >
@@ -236,6 +237,7 @@ export function FeaturedHero({
           <Button
             variant="outline"
             size="icon"
+            data-tone="mint"
             aria-label="Next featured napplet"
             onClick={() => move(1)}
           >

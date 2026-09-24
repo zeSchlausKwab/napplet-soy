@@ -211,6 +211,8 @@ export function ZapButton({
       <DialogTrigger asChild>
         {trigger ?? (
           <Button
+            data-tone="gold"
+            data-effect="zap"
             variant={commentTarget ? 'ghost' : 'outline'}
             size={commentTarget ? 'xs' : 'default'}
             aria-label={commentTarget ? 'Zap comment' : undefined}

@@ -109,7 +109,12 @@ function Gallery() {
           </p>
           <SoyliBenefits />
           <div className="hero-links">
-            <Link className="browse-link" to="/docs">
+            <Link
+              className="browse-link hero-docs-link"
+              data-tone="blue"
+              data-effect="source"
+              to="/docs"
+            >
               Meet soyLI. Read the docs <ArrowUpRight size={16} />
             </Link>
             <a className="browse-link" href="#explore">
@@ -164,6 +169,8 @@ function Gallery() {
           <Button
             variant="outline"
             className="shuffle-button"
+            data-tone="lilac"
+            data-effect="surprise"
             disabled={!ready || !napplets.length}
             onClick={() => {
               const n = napplets[Math.floor(Math.random() * napplets.length)];

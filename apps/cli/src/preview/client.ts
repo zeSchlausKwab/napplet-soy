@@ -1,3 +1,5 @@
+import { AppearanceControl } from '../../../../packages/runtime/src/appearance-control';
+import { shellTheme } from '../../../../packages/runtime/src/appearance';
 import type { ExtensionSigner } from 'applesauce-signers';
 import { setupManager } from './manager-client';
 import shim from '@napplet/shim/prelude.global?raw';
@@ -16,6 +18,8 @@ import { SettingsControl } from '../../../../packages/runtime/src/settings-panel
 import { MediaControls } from '../../../../packages/runtime/src/media-controls';
 import { declaredConfig } from '../../../../packages/runtime/src/config-schema';
 import { MultiplayerSettings } from '../../../../packages/runtime/src/multiplayer-settings';
+
+createRoot(document.querySelector('#appearance')!).render(createElement(AppearanceControl));
 
 const stage = document.querySelector<HTMLElement>('#stage')!;
 const status = document.querySelector<HTMLElement>('#status')!;
@@ -182,6 +186,7 @@ async function refresh() {
     // Attach before the child's bootstrap can post shell.ready.
     stage.replaceChildren(frame);
     host = attachNappletHost({
+      theme: shellTheme,
       backend: info.backend,
       backendAliases: info.backendAliases,
       media: (session) =>

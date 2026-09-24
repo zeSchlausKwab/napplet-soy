@@ -3,11 +3,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>soyLI · Your workshop</title>
+  <!-- appearance -->
   <style>
     body {
       margin: 0;
-      background: #f8f6ed;
-      color: #292d23;
+      background: var(--background);
+      color: var(--foreground);
       font: 14px system-ui;
     }
     header {
@@ -25,22 +26,23 @@
       font: inherit;
     }
     button {
+      color: inherit;
       background: transparent;
-      border: 1px solid #c8cbbf;
+      border: 1px solid var(--border);
       border-radius: 6px;
       padding: 7px 10px;
       cursor: pointer;
     }
     button:focus-visible,
     a:focus-visible {
-      outline: 2px solid #397c65;
+      outline: 2px solid var(--mint);
       outline-offset: 3px;
     }
     #status {
       padding: 0 20px 12px;
       margin: 0;
       min-height: 20px;
-      color: #5d6556;
+      color: var(--muted-foreground);
     }
     #stage iframe {
       display: block;
@@ -56,14 +58,14 @@
       padding: 12px 20px;
     }
     a {
-      color: #397c65;
+      color: var(--mint);
     }
     dialog {
       max-width: min(480px, 80vw);
-      border: 1px solid #c8cbbf;
+      border: 1px solid var(--border);
       border-radius: 8px;
-      background: #f8f6ed;
-      color: #292d23;
+      background: var(--background);
+      color: var(--foreground);
       padding: 24px;
     }
     dialog::backdrop {
@@ -85,8 +87,8 @@
       box-sizing: border-box;
     }
     button[aria-pressed='true'] {
-      background: #292d23;
-      color: #f8f6ed;
+      background: var(--primary);
+      color: var(--primary-foreground);
     }
     button:disabled {
       opacity: 0.6;
@@ -111,7 +113,7 @@
     }
     #recording-controls input {
       box-sizing: border-box;
-      border: 1px solid #292d2333;
+      border: 1px solid var(--border);
       border-radius: 5px;
       background: transparent;
       color: inherit;
@@ -122,10 +124,10 @@
       margin: 0;
       padding: 8px 14px;
       font-size: 12px;
-      color: #777f71;
+      color: var(--muted-foreground);
     }
     #listing-status {
-      color: #397c65;
+      color: var(--mint);
       min-height: 20px;
     }
     #listing-content {
@@ -134,7 +136,7 @@
       gap: 24px;
     }
     .listing-card {
-      border: 1px solid #c8cbbf;
+      border: 1px solid var(--border);
       border-radius: 12px;
       overflow: hidden;
     }
@@ -145,12 +147,12 @@
       width: 100%;
       aspect-ratio: 8/5;
       object-fit: contain;
-      background: #eae9dc;
+      background: var(--muted);
     }
     .listing-placeholder {
       display: grid;
       place-items: center;
-      color: #5d6556;
+      color: var(--muted-foreground);
     }
     .listing-caption {
       padding: 24px;
@@ -172,7 +174,7 @@
       line-height: 1.6;
     }
     .listing-checks {
-      background: #efeede;
+      background: var(--muted);
       padding: 24px;
       border-radius: 12px;
     }
@@ -189,13 +191,13 @@
     }
     .muted,
     .listing-key {
-      color: #5d6556;
+      color: var(--muted-foreground);
     }
     .listing-key {
       font: 12px/1.5 monospace;
     }
     .listing-details {
-      border-top: 1px solid #c8cbbf;
+      border-top: 1px solid var(--border);
       padding-top: 24px;
     }
     .listing-details dl {
@@ -205,7 +207,7 @@
       font-size: 13px;
     }
     .listing-details dt {
-      color: #5d6556;
+      color: var(--muted-foreground);
     }
     .listing-details dd {
       margin: 0;
@@ -240,9 +242,9 @@
     .workshop-card {
       min-width: 0;
       padding: clamp(18px, 3vw, 32px);
-      border: 1px solid #d6d9cb;
+      border: 1px solid var(--border);
       border-radius: 14px;
-      background: #fffdf5;
+      background: var(--card);
     }
     .workshop-card h2 {
       margin: 0;
@@ -260,11 +262,11 @@
     .workshop-card a {
       display: inline-block;
       margin: 14px;
-      color: #48683b;
+      color: var(--mint);
     }
     .workshop-summary {
       font: 13px monospace;
-      color: #576c49;
+      color: var(--mint);
       overflow-wrap: anywhere;
     }
     .workshop-diff-layout {
@@ -288,7 +290,7 @@
     }
     .workshop-files small {
       display: block;
-      color: #758166;
+      color: var(--muted-foreground);
       margin-top: 6px;
       font: 11px sans-serif;
     }
@@ -310,15 +312,15 @@
       flex-direction: column;
       gap: 9px;
       margin: 20px 0 8px;
-      color: #536548;
+      color: var(--mint);
     }
     .workshop-field input,
     .workshop-field textarea {
       font: inherit;
       padding: 12px;
-      border: 1px solid #ccd1c1;
+      border: 1px solid var(--border);
       border-radius: 8px;
-      background: #faf9f2;
+      background: var(--card);
       color: inherit;
       min-width: 0;
     }
@@ -334,16 +336,16 @@
       line-height: 1.5;
     }
     .workshop-facts dt {
-      color: #747b68;
+      color: var(--muted-foreground);
     }
     .workshop-facts dd {
       margin: 0;
       overflow-wrap: anywhere;
     }
     .workshop-check {
-      color: #436239;
+      color: var(--mint);
       padding: 14px 18px;
-      background: #e7ecd9;
+      background: var(--accent);
       border-radius: 8px;
     }
     .workshop-media {
@@ -358,18 +360,18 @@
       max-height: 280px;
       object-fit: contain;
       border-radius: 10px;
-      background: #edf0e2;
+      background: var(--muted);
     }
     .workshop-review {
       width: 100%;
       height: 850px;
-      border: 1px solid #d6d9cb;
+      border: 1px solid var(--border);
       border-radius: 12px;
       margin: 20px 0;
     }
     button.workshop-error {
-      color: #9b412e;
-      border-color: #d29680;
+      color: var(--destructive);
+      border-color: var(--destructive);
       text-align: left;
     }
     button[aria-busy='true']::before {
@@ -423,11 +425,11 @@
     .manager-eyebrow {
       font: 11px monospace;
       letter-spacing: 2px;
-      color: #57744c;
+      color: var(--mint);
     }
     .manager-status {
       padding: 14px 18px;
-      background: #e7ecd9;
+      background: var(--accent);
       border-radius: 8px;
       line-height: 1.6;
     }
@@ -439,9 +441,9 @@
     }
     .manager-section {
       padding: 26px;
-      border: 1px solid #d6d9cb;
+      border: 1px solid var(--border);
       border-radius: 14px;
-      background: #fffdf5;
+      background: var(--card);
       min-width: 0;
     }
     .manager-section:nth-child(2) {
@@ -474,7 +476,7 @@
       flex-direction: column;
       gap: 7px;
       font-size: 12px;
-      color: #57614e;
+      color: var(--muted-foreground);
     }
     .manager-form input,
     .manager-form textarea,
@@ -482,10 +484,10 @@
       width: 100%;
       min-width: 0;
       padding: 10px;
-      border: 1px solid #c8cbbf;
+      border: 1px solid var(--border);
       border-radius: 6px;
-      background: #fffef9;
-      color: #292d23;
+      background: var(--card);
+      color: var(--foreground);
       font: 14px/1.5 system-ui;
     }
     .manager-form textarea {
@@ -493,14 +495,14 @@
       resize: vertical;
     }
     .manager-form button {
-      background: #33402c;
-      color: #fffdf5;
+      background: var(--primary);
+      color: var(--primary-foreground);
       padding: 11px 16px;
     }
     .manager-form input:focus-visible,
     .manager-form textarea:focus-visible,
     .manager-form select:focus-visible {
-      outline: 2px solid #57744c;
+      outline: 2px solid var(--mint);
       outline-offset: 2px;
     }
     .asset-grid {
@@ -512,7 +514,7 @@
     .asset-card {
       padding: 14px;
       border-radius: 10px;
-      background: #eeefe4;
+      background: var(--muted);
       overflow: hidden;
     }
     .asset-card img,
@@ -521,7 +523,7 @@
       height: 140px;
       object-fit: contain;
       border-radius: 6px;
-      background: #e0e3d3;
+      background: var(--accent);
     }
     .asset-card audio {
       width: 100%;
@@ -542,7 +544,7 @@
       font:
         bold 56px Georgia,
         serif;
-      color: #728067;
+      color: var(--muted-foreground);
     }
     .manager-recipe,
     .manager-section pre {
@@ -556,10 +558,10 @@
     }
     .manager-budget {
       font: 12px/1.6 monospace;
-      color: #57744c;
+      color: var(--mint);
     }
     header {
-      background: #e7ecd9;
+      background: var(--accent);
       border-radius: 0 0 12px 12px;
     }
     @media (max-width: 760px) {
@@ -580,6 +582,7 @@
     }
   </style>
   <header>
+    <span id="appearance"></span>
     <strong>✳ soyLI <span style="font-weight: 400; opacity: 0.6">/ your workshop</span></strong>
     <div role="group" aria-label="Preview view">
       <button id="view-play" aria-pressed="true">Play</button>

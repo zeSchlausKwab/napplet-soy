@@ -15,7 +15,7 @@
   max-width: 650px;
   font-size: 19px;
   line-height: 1.7;
-  color: #676a5f;
+  color: var(--muted-foreground);
 }
 .docs-intro-links {
   display: flex;
@@ -30,7 +30,7 @@
   gap: 8px;
 }
 .docs-intro-links > span {
-  color: #547050;
+  color: var(--mint);
 }
 .docs-layout {
   display: grid;
@@ -56,13 +56,13 @@
 }
 .docs-contents li a span {
   font: 10px var(--mono);
-  color: #77786f;
+  color: var(--muted-foreground);
 }
 .docs-contents > a {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #547050;
+  color: var(--mint);
 }
 .docs-contents a:hover,
 .docs-intro-links a:hover {
@@ -97,14 +97,14 @@
 .docs-note {
   font-size: 15px;
   line-height: 1.8;
-  color: #63665b;
+  color: var(--muted-foreground);
 }
 .docs-body p + p {
   margin-top: 14px;
 }
 .docs-body p a,
 .about-faq-intro > a {
-  color: #466847;
+  color: var(--mint);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -116,8 +116,8 @@
   color: var(--foreground);
 }
 .docs-note {
-  border-left: 3px solid #93a57b;
-  background: #eef0df;
+  border-left: 3px solid var(--border);
+  background: var(--note-background);
   padding: 16px 20px;
   margin: 24px 0;
 }
@@ -225,7 +225,7 @@
 }
 .about-faq-list summary svg {
   flex-shrink: 0;
-  color: #547050;
+  color: var(--mint);
 }
 .about-faq-list details[open] summary svg {
   transform: rotate(180deg);

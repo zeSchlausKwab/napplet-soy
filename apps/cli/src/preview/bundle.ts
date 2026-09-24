@@ -1,3 +1,4 @@
+import { appearanceBootstrap } from '../../../../packages/runtime/src/appearance';
 import { readFile } from 'node:fs/promises';
 import type { PreviewAssets } from './assets';
 
@@ -48,7 +49,12 @@ export async function compilePreviewAssets(): Promise<PreviewAssets> {
   if (!built.success) throw new Error(`Could not prepare preview: ${built.logs.join('\n')}`);
   return {
     client: await built.outputs[0].text(),
-    html: await readFile(new URL('../../templates/preview.html', import.meta.url), 'utf8'),
+    html: (
+      await readFile(new URL('../../templates/preview.html', import.meta.url), 'utf8')
+    ).replace(
+      '<!-- appearance -->',
+      `<script>${appearanceBootstrap}</script><style>${await readFile(new URL('../../../../packages/runtime/src/appearance.css', import.meta.url), 'utf8')}</style>`,
+    ),
   };
 }
 if (import.meta.main) console.log(JSON.stringify(await compilePreviewAssets()));

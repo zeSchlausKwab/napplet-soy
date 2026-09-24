@@ -18,11 +18,11 @@
 .story-kicker {
   font: 10px var(--mono);
   letter-spacing: 1.1px;
-  color: #4c7150;
+  color: var(--mint);
 }
 .story-heading p {
   font-size: 13px;
-  color: #737a66;
+  color: var(--muted-foreground);
   line-height: 1.7;
   margin: 0;
   max-width: 355px;
@@ -76,7 +76,7 @@
   justify-content: space-between;
   margin-top: 14px;
   font-size: 11px;
-  color: #737a66;
+  color: var(--muted-foreground);
   line-height: 1.6;
 }
 .story-caption p {

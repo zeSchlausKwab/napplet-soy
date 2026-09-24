@@ -42,6 +42,8 @@ export function CardShare({ title, path }: { title: string; path: string }) {
     >
       <PopoverTrigger asChild>
         <Button
+          data-tone="blue"
+          data-effect="share"
           variant="ghost"
           size="sm"
           className="card-share"
@@ -62,6 +64,7 @@ export function CardShare({ title, path }: { title: string; path: string }) {
           ] as const
         ).map(([player, name, description, Icon]) => (
           <Button
+            data-tone="blue"
             key={name}
             variant="ghost"
             className="h-auto w-full justify-start gap-3 px-2 py-3 text-left"

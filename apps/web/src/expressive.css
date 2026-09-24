@@ -1,0 +1,263 @@
+/* Little ink-and-paper accents; creator artwork keeps its own colors. */
+.hero .hero-main > .eyebrow {
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--mint);
+}
+.hero .hero-heading h1 {
+  --headline-accent: var(--coral);
+}
+.hero .hero-heading .weird-word {
+  color: var(--headline-accent);
+}
+.hero .soyli-benefits > li {
+  --benefit-color: var(--blue);
+  padding: 12px;
+  border-top: 3px solid var(--benefit-color);
+  border-radius: 3px 3px 8px 8px;
+  background: color-mix(in srgb, var(--benefit-color) 7%, var(--background));
+}
+.hero .soyli-benefits > li:nth-child(2) {
+  --benefit-color: var(--coral);
+}
+.hero .soyli-benefits > li:nth-child(3) {
+  --benefit-color: var(--mint);
+}
+.hero .soyli-benefits > li > svg {
+  color: var(--benefit-color);
+}
+.hero .hero-docs-link {
+  padding: 9px 12px;
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  color: var(--blue);
+}
+.hero .featured-heading .eyebrow {
+  color: var(--gold);
+}
+.hero .featured-slider {
+  border-bottom: 4px solid var(--gold);
+  box-shadow: 0 5px 0 color-mix(in srgb, var(--gold) 16%, transparent);
+}
+.hero .orbit-doodle svg {
+  stroke: var(--mint);
+}
+.hero .orbit-doodle svg ellipse:first-child {
+  stroke: var(--gold);
+}
+.hero .orbit-doodle svg path {
+  stroke: var(--mint);
+}
+.hero .hero-side .remix-sticker {
+  background: var(--hover-gold);
+  color: var(--hover-ink);
+}
+
+/* The command is selectable from first paint. Only its frame and caret move,
+   once, for less than five seconds; no fake typing or endless attention loop. */
+.hero .starter-command .terminal-box {
+  border: 1px solid #8ba980;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--mint) 20%, transparent);
+  animation: terminal-arrival 2.8s ease-out both;
+}
+.hero .starter-command .terminal-box::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #afd9b7 0% 58%, #f0cf70 58% 80%, #f5a082 80%);
+  pointer-events: none;
+}
+.hero .starter-command .terminal-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    #afd9b724 47%,
+    #f0cf7024 50%,
+    transparent 62%
+  );
+  background-size: 300% 100%;
+  opacity: 0;
+  animation: terminal-sweep 2.4s 0.15s ease-out both;
+}
+.hero .starter-command .terminal-heading > svg:first-child {
+  color: #afd9b7;
+}
+.hero .starter-command summary > code::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 7px;
+  vertical-align: -0.15em;
+  background: #afd9b7;
+  opacity: 0;
+  animation: terminal-caret 0.7s step-end 4;
+}
+.hero .starter-command .terminal-box:has(details[open])::after,
+.hero .starter-command .terminal-box:has(:focus-visible)::after {
+  animation: none;
+}
+@keyframes terminal-arrival {
+  0%,
+  65% {
+    box-shadow:
+      0 4px 0 color-mix(in srgb, var(--mint) 20%, transparent),
+      0 0 0 5px color-mix(in srgb, var(--mint) 14%, transparent);
+  }
+  100% {
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--mint) 20%, transparent);
+  }
+}
+@keyframes terminal-sweep {
+  0% {
+    background-position: 100% 0;
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 0% 0;
+    opacity: 0;
+  }
+}
+@keyframes terminal-caret {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Opt-in actions share a stamped lift and a glint. The pictogram adds a little
+   personality without moving labels, counts, spinners or the hit target size. */
+[data-effect] {
+  --action-motion: action-hop;
+  position: relative;
+  isolation: isolate;
+}
+[data-effect='create'] {
+  --action-motion: action-create;
+}
+[data-effect='zap'] {
+  --action-motion: action-zap;
+}
+[data-effect='remix'],
+[data-effect='surprise'] {
+  --action-motion: action-remix;
+}
+[data-effect='source'] {
+  --action-motion: action-source;
+}
+[data-effect]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, #ffffff55 50%, transparent 65%);
+  background-size: 300% 100%;
+  opacity: 0;
+}
+[data-effect]:not(:disabled):not([aria-disabled='true']):not([data-action-state='error']):not(
+    [data-action-state='working']
+  ) {
+  &:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--hover-fill) 45%, var(--foreground));
+    &::after {
+      animation: action-glint 0.65s ease-out;
+    }
+    & > svg:first-child {
+      animation: var(--action-motion) 0.5s ease-out;
+    }
+  }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 0 color-mix(in srgb, var(--hover-fill) 45%, var(--foreground));
+      &::after {
+        animation: action-glint 0.65s ease-out;
+      }
+      & > svg:first-child {
+        animation: var(--action-motion) 0.5s ease-out;
+      }
+    }
+  }
+  &:active {
+    background: var(--hover-fill);
+    color: var(--hover-ink);
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+}
+@keyframes action-glint {
+  0% {
+    background-position: 100% 0;
+    opacity: 0;
+  }
+  20%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 0% 0;
+    opacity: 0;
+  }
+}
+@keyframes action-create {
+  50% {
+    transform: rotate(90deg) scale(1.2);
+  }
+}
+@keyframes action-zap {
+  35% {
+    transform: rotate(-14deg) scale(1.3);
+  }
+  65% {
+    transform: rotate(9deg) scale(1.1);
+  }
+}
+@keyframes action-remix {
+  30% {
+    transform: rotate(-18deg);
+  }
+  65% {
+    transform: rotate(14deg);
+  }
+}
+@keyframes action-source {
+  50% {
+    transform: scaleX(1.3);
+  }
+}
+@keyframes action-hop {
+  50% {
+    transform: translateY(-3px) rotate(-8deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero .starter-command .terminal-box,
+  .hero .starter-command .terminal-box::after,
+  .hero .starter-command summary > code::after,
+  [data-effect]::after,
+  [data-effect] > svg {
+    animation: none !important;
+  }
+  [data-effect]:is(:hover, :focus-visible, :active) {
+    transform: none !important;
+    transition: none;
+  }
+}

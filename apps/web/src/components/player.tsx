@@ -1,3 +1,4 @@
+import { shellTheme } from '../../../../packages/runtime/src/appearance';
 import { network, backendProvider } from '@/lib/network';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Check, Copy, Expand, Minimize, Play, RotateCcw, Square } from 'lucide-react';
@@ -160,6 +161,7 @@ export function Player({
       host.current = undefined;
       if (!node || !release) return;
       host.current = attachNappletHost({
+        theme: shellTheme,
         backend: reviewScope ? undefined : backendProvider(),
         frame: node,
         identity: reviewScope

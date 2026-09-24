@@ -1,3 +1,4 @@
+import type { ThemeSource } from './appearance';
 import { blossomBytes, downloadBytes, readBytes } from '../../client/src/bytes';
 import { resourceMime } from '../../client/src/resource-mime';
 import { z } from 'zod';
@@ -48,6 +49,7 @@ export type HostOptions = {
   media?: (media: NappletMedia | null) => void;
   backend?: BackendProvider;
   backendAliases?: BackendProvider[];
+  theme?: ThemeSource;
 };
 const envelope = z
   .object({
@@ -281,9 +283,9 @@ export function attachNappletHost(options: HostOptions) {
       if (domain === 'common') return nostr.common(message);
       if (type === 'theme.get')
         return {
-          theme: {
-            title: 'Napplet Space',
-            colors: { background: '#f8f6ed', text: '#292d23', primary: '#72ac98' },
+          theme: options.theme?.get() ?? {
+            title: 'napplet.soy',
+            colors: { background: '#f5f1e4', text: '#1e261c', primary: '#28573d' },
           },
         };
       if (type === 'link.open') {
@@ -409,7 +411,11 @@ export function attachNappletHost(options: HostOptions) {
     if (message.type === 'shell.ready') {
       if (initialized) return;
       initialized = true;
-      send({ type: 'shell.init', capabilities: { domains: [...RUNTIME_DOMAINS], appData: dataPolicy }, services: [] });
+      send({
+        type: 'shell.init',
+        capabilities: { domains: [...RUNTIME_DOMAINS], appData: dataPolicy },
+        services: [],
+      });
       config.ready();
       return;
     }
@@ -538,6 +544,9 @@ export function attachNappletHost(options: HostOptions) {
       .catch(failure)
       .finally(() => scope.requests.delete(failure));
   };
+  const unsubscribeTheme = options.theme?.subscribe(() => {
+    if (initialized) send({ type: 'theme.changed', theme: options.theme!.get() });
+  });
   window.addEventListener('message', listener);
   return {
     diagnostics: () => (alive ? account.diagnostics() : Promise.resolve([])),
@@ -553,6 +562,7 @@ export function attachNappletHost(options: HostOptions) {
       if (!alive) return;
       alive = false;
       unsubscribePermission();
+      unsubscribeTheme?.();
       window.removeEventListener('message', listener);
       account.close('Player closed');
       config.close();

@@ -198,6 +198,7 @@ export function NappletSocial({
   const actions = (
     <div className="napplet-social-actions" role="group" aria-label={`Social actions for ${title}`}>
       <ActionButton
+        data-tone="coral"
         {...control('napplet-like', ownLikes.length ? 'Retry unlike' : 'Retry like')}
         compact
         icon={<Heart size={17} fill={ownLikes.length ? 'currentColor' : 'none'} />}
@@ -239,6 +240,8 @@ export function NappletSocial({
             variant="ghost"
             size="sm"
             disabled={!ready}
+            data-tone="gold"
+            data-effect="zap"
             title="Zap this napplet"
             aria-label={`Zap ${title}`}
           >
@@ -277,6 +280,7 @@ export function NappletSocial({
         <>
           <div className="social-actions">
             <ActionButton
+              data-tone="coral"
               {...control('napplet-like', ownLikes.length ? 'Retry unlike' : 'Retry like')}
               compact
               icon={<Heart size={16} fill={ownLikes.length ? 'currentColor' : 'none'} />}
@@ -346,6 +350,7 @@ export function NappletSocial({
                   Nostr
                 </span>
                 <ActionButton
+                  data-tone="mint"
                   {...control('comment', parent ? 'Retry reply' : 'Retry comment')}
                   disabled={control('comment', '').disabled || !content.trim()}
                   success={action === 'comment' ? success : undefined}
@@ -420,6 +425,7 @@ export function NappletSocial({
                               }
                               size="xs"
                               variant="ghost"
+                              data-tone="coral"
                               aria-label={`Like comment by ${data.profiles[comment.pubkey]?.name ?? short(comment.pubkey)}`}
                               aria-pressed={commentLikes.length > 0}
                               onClick={() =>

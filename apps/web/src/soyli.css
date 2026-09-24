@@ -81,7 +81,7 @@
   border: 1px solid var(--border);
   border-radius: 50%;
   background: var(--background);
-  color: #547050;
+  color: var(--mint);
   opacity: 0;
 }
 .soyli-mascot-sprite:hover .soyli-animation-hint,
@@ -129,7 +129,7 @@
   font-weight: 700;
 }
 .soyli-wordmark > span {
-  color: #ac583f;
+  color: var(--coral);
   font-weight: 500;
 }
 .soyli-ipa {
@@ -138,16 +138,16 @@
     'Times New Roman',
     serif;
   letter-spacing: 0.025em;
-  color: #76786b;
+  color: var(--muted-foreground);
 }
 .soyli-say {
   display: block;
   margin-top: 10px;
   font: 11px/1.6 var(--mono);
-  color: #676b5f;
+  color: var(--muted-foreground);
 }
 .soyli-say > span {
-  color: #797b6d;
+  color: var(--muted-foreground);
 }
 .soyli-definition {
   display: block;
@@ -155,7 +155,7 @@
   font-size: 13px;
   line-height: 1.5;
   font-weight: 600;
-  color: #4c6d47;
+  color: var(--mint);
 }
 .soyli-identity-compact {
   gap: 12px;
@@ -196,7 +196,7 @@
 .soyli-benefits li > svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: #547050;
+  color: var(--mint);
 }
 .soyli-benefits h3 {
   font-size: 14px;
@@ -208,7 +208,7 @@
 .hero .soyli-benefits p {
   font-size: 12px;
   line-height: 1.75;
-  color: #686d5f;
+  color: var(--muted-foreground);
   margin: 0;
 }
 .hero .soyli-benefits {

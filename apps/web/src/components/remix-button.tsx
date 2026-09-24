@@ -32,7 +32,7 @@ export function RemixButton({ revision, title }: { revision: string; title: stri
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button>
+        <Button data-tone="lilac" data-effect="remix">
           <GitFork size={16} /> Remix this
         </Button>
       </DialogTrigger>

@@ -77,3 +77,76 @@ test('retiring an account aborts resources and suppresses late replies even when
     });
   }
 });
+
+test('theme notifications belong to the frame lifetime, wait for handshake, and stop on close', async () => {
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const sent: Record<string, unknown>[] = [];
+  const source = { postMessage: (message: Record<string, unknown>) => sent.push(message) };
+  let listener: (event: MessageEvent) => void = () => {};
+  let changed: () => void = () => {};
+  let unsubscribed = 0;
+  const theme = {
+    title: 'Test host',
+    colors: { background: '#171e1a', text: '#f5f1e5', primary: '#9ad4bb' },
+  };
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      addEventListener(type: string, fn: typeof listener) {
+        if (type === 'message') listener = fn;
+      },
+      removeEventListener() {},
+    },
+  });
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {} });
+  const host = attachNappletHost({
+    frame: { contentWindow: source } as unknown as HTMLIFrameElement,
+    identity: 'theme-test',
+    manifestId: 'a'.repeat(64),
+    relays: [],
+    pubkey: null,
+    prompt() {},
+    files() {},
+    theme: {
+      get: () => theme,
+      subscribe(fn) {
+        changed = fn;
+        return () => {
+          unsubscribed++;
+        };
+      },
+    },
+  });
+  try {
+    changed();
+    expect(sent).toEqual([]);
+    listener({ source, origin: 'null', data: { type: 'shell.ready' } } as unknown as MessageEvent);
+    changed();
+    expect(sent.at(-1)).toEqual({ type: 'theme.changed', theme });
+    listener({
+      source,
+      origin: 'null',
+      data: { type: 'theme.get', id: 'theme' },
+    } as unknown as MessageEvent);
+    await Bun.sleep(0);
+    expect(sent.at(-1)).toEqual({ type: 'theme.get.result', id: 'theme', theme });
+    host.updateIdentity('b'.repeat(64));
+    changed();
+    expect(sent.filter((m) => m.type === 'theme.changed')).toHaveLength(2);
+    expect(sent.filter((m) => m.type === 'shell.init')).toHaveLength(1);
+    host.close();
+    expect(unsubscribed).toBe(1);
+    const count = sent.length;
+    changed();
+    host.close();
+    expect(sent).toHaveLength(count);
+    expect(unsubscribed).toBe(1);
+  } finally {
+    host.close();
+    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
+  }
+});

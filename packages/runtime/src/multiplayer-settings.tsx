@@ -21,8 +21,8 @@ export function MultiplayerSettings() {
         .multiplayer-settings legend{font-weight:600;font-size:18px}
         .multiplayer-settings p{font-size:14px;line-height:1.5;margin:10px 0}
         .multiplayer-settings label{display:grid;gap:8px;font-size:14px}
-        .multiplayer-settings select{font:inherit;color:inherit;background:transparent;border:1px solid #909681;border-radius:6px;padding:10px;width:100%;min-height:44px}
-        .multiplayer-settings select:focus-visible{outline:2px solid #397c65;outline-offset:3px}
+        .multiplayer-settings select{font:inherit;color:inherit;background:transparent;border:1px solid var(--border, #909681);border-radius:6px;padding:10px;width:100%;min-height:44px}
+        .multiplayer-settings select:focus-visible{outline:2px solid var(--mint, #397c65);outline-offset:3px}
       `}</style>
       <legend>Multiplayer connections</legend>
       <p>

@@ -234,6 +234,7 @@ export function GalleryCardSocial({
     <>
       <div className="card-social" role="group" aria-label={`Social actions for ${napplet.title}`}>
         <ActionButton
+          data-tone="coral"
           compact
           icon={<Heart size={15} fill={counts?.liked ? 'currentColor' : 'none'} />}
           working={social.busy && social.active === napplet.revisionId ? social.phase : undefined}
@@ -257,7 +258,7 @@ export function GalleryCardSocial({
           {amount(counts?.likeCount)}
         </ActionButton>
         {pubkey ? (
-          <Button asChild size="sm" variant="ghost">
+          <Button asChild size="sm" variant="ghost" data-tone="mint">
             <Link
               {...publicLink(napplet)}
               hash="comments"
@@ -292,6 +293,8 @@ export function GalleryCardSocial({
               variant="ghost"
               disabled={!ready}
               className="card-zap"
+              data-tone="gold"
+              data-effect="zap"
               title={`${amount(counts?.zapCount)} zaps · ${amount(counts?.msats == null ? null : counts.msats / 1000)} sats`}
               aria-label={`Zap ${napplet.title}: ${counts?.zapCount ?? 'unknown'} zaps, ${counts?.msats == null ? 'unknown' : counts.msats / 1000} sats`}
             >

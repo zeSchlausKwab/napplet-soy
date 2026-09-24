@@ -5,6 +5,7 @@ import { NostrProvider } from '@/components/nostr-provider';
 import { Shell } from '@/components/shell';
 import styles from '@/styles.css?url';
 import { ProfilesProvider } from '@/lib/profiles';
+import { appearanceBootstrap } from '../../../../packages/runtime/src/appearance';
 import { siteHead } from '@/lib/site-head';
 
 export const Route = createRootRoute({
@@ -52,8 +53,13 @@ function Root() {
   // Hydration reuses SSR context without rerunning beforeLoad. Configure before any child reads.
   if (typeof window !== 'undefined') configureClient(clientPolicy);
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* The SSR function body and minified client body differ; the pre-paint script runs once. */}
+        <script
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: appearanceBootstrap }}
+        />
         <HeadContent />
       </head>
       <body>
