@@ -18,6 +18,11 @@ cd example
 [ "$(git rev-list --count HEAD)" = 1 ]
 [ "$(git log -1 --format=%s)" = 'Initialize napplet with soyLI' ]
 [ -z "$(git status --porcelain)" ]
+# Native packages must include the visual guide and app-owned palette default.
+[ -s docs/napplet-visual-design.md ]
+grep -Fq 'const FOLLOW_HOST_THEME = false;' src/main.ts
+grep -Fq 'App-owned colors' .agents/skills/napplet-ui/SKILL.md
+grep -Fq 'App-owned colors' .claude/skills/napplet-ui/SKILL.md
 # Verify the assembled starter, including our added docs, using its pinned deps.
 "$soyli_bin" run verify
 "$soyli_bin" check --json
