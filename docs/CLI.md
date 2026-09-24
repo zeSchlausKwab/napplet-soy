@@ -189,7 +189,8 @@ Accounts, OS vault service names, private backups, toolchain/browser caches,
 There is no identity migration or regenerated key. As with previous executable
 updates, macOS may ask for Keychain authorization. New projects receive `soyli`
 commands; skills update refreshes unedited managed guidance in existing projects.
-Upstream boilerplate/skill pins and bodies are unchanged.
+Upstream boilerplate/skill pins are unchanged; visual-authoring adaptations are
+documented under [Updating the upstream pins](#updating-the-upstream-pins).
 
 ## Create and publish
 
@@ -479,13 +480,25 @@ bun scripts/creator-sync.ts --boilerplate /path/to/boilerplate --skills /path/to
 
 This records tracked files at the exact HEAD commits. Never run a fetched installer
 as part of this update. The snapshot preserves the upstream MIT license; skills
-include their own license copy. The only boilerplate adaptations are package name,
+include their own license copy. Boilerplate adaptations are package name,
 Space configuration/provenance, agent-entry-point preambles, ignored private state,
 excluding bundled skill directories/private state from the guidance scanner, and
-the static NAP-CONFIG example with one main.ts import. The former schema-free-starter
+the static NAP-CONFIG example with one main.ts import, opt-in host theme colors,
+and visual-authoring guidance. The former schema-free-starter
 assertion now checks that example is an object; all other guidance assertions remain.
-See `creator-kit.ts` and its
-fidelity test for the complete adaptation surface.
+`creator-visuals.ts` adapts the generated visual docs and seven skill bodies;
+`napplet-ui` is replaced with a project-specific design workflow. It removes
+mandatory host color matching and universal compact density, while retaining
+sandbox/SDK boundaries and responsive/accessibility checks. Vendored snapshots,
+upstream pins, package dependencies and licenses remain intact. See `creator-kit.ts`,
+`creator-visuals.ts` and the fidelity tests for the complete adaptation surface.
+
+[Visual design](VISUAL-DESIGN.md) is installed as `docs/napplet-visual-design.md`.
+The starter is a replaceable capability demo; its palette stays local unless
+`FOLLOW_HOST_THEME` is explicitly enabled. Agents choose the game/content and UI
+direction together. `soyli skills update` updates unedited managed guidance in both
+agent directories and preserves conflicts; it never restyles source or existing
+published napplets. Older source and `AGENTS.md` need an intentional migration.
 
 Source regressions run the upstream documentation checks on the assembled starter,
 including soyLI's managed guides. Native release smoke runs its complete `verify`
@@ -537,7 +550,7 @@ Capturing requires an explicit same-origin action.
 
 Existing projects get this view by updating the CLI and restarting `soyli dev`.
 Run `soyli skills update` to refresh the separate Space integration guidance;
-upstream boilerplate and skill bodies stay unchanged.
+upstream pins stay unchanged; the visual-authoring adaptations above still apply.
 
 Readable links require a one-time claim on the website: connect the publishing account,
 choose **Named link**, and claim `/@your-handle/your-slug`. Existing releases can do this

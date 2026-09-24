@@ -1,5 +1,21 @@
 # Upstream observations
 
+## Visual-authoring correction — 2026-09-24
+
+An audit found that the pinned UI/design/build/test guidance required whole-surface
+host color matching and compact tool density. The starter immediately applied the
+host's background/text/primary to its CSS tokens. Once the host began supplying
+cream/forest colors, this could overwrite a creator's own palette, including a
+canvas renderer using the same tokens. This is an authoring choice, not a NAP-THEME
+requirement. See [Appearance](APPEARANCE.md) for the pinned protocol contract.
+
+soyLI now adapts the generated guidance consistently and leaves host matching
+opt-in in new projects. [Visual design](VISUAL-DESIGN.md) covers the content/game
+and surrounding UI, project-specific style decisions and theme-policy verification.
+Vendored snapshots remain unchanged; shipped skills now have documented visual
+adaptations. The exact-body statements in the September 14 history below describe
+that earlier integration, not the current bundle.
+
 ## Integrated upstream starter — 2026-09-14
 
 CLI 0.2.0 now uses the creator-maintained boilerplate as its default, superseding

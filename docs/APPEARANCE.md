@@ -36,18 +36,28 @@ is not an account setting, project configuration change or reason to restart a p
 
 ## Napplet integration
 
-Both website playback and the local workshop use the same NAP-THEME source:
+Both website playback and the local workshop use the same NAP-THEME source.
+Napplet art direction is independent: new soyLI starters keep their local palette
+by default. Read [Visual design](VISUAL-DESIGN.md) for app-owned, host-matched and
+hybrid policies. The following is an **opt-in host-matching** example using the SDK:
 
 ```ts
-const apply = (theme) => {
-  document.body.style.background = theme.colors.background;
-  document.body.style.color = theme.colors.text;
-  document.documentElement.style.setProperty('--primary', theme.colors.primary);
+import { themeGet, themeOnChanged, type Theme } from '@napplet/sdk';
+
+const apply = (theme: Theme) => {
+  const { background, text, primary } = theme.colors;
+  if (![background, text, primary].every((color) => /^#[0-9a-f]{6}$/i.test(color))) return;
+  const root = document.documentElement.style;
+  root.setProperty('--bg', background);
+  root.setProperty('--fg', text);
+  root.setProperty('--primary', primary);
 };
-apply(await window.napplet.theme.get());
-const subscription = window.napplet.theme.onChanged(apply);
-// When the napplet no longer needs updates:
-subscription.close();
+// CSS supplies a complete local palette and maps these tokens to the chosen surfaces.
+if (window.napplet?.theme) {
+  themeGet().then(apply).catch(() => { /* Keep the local palette. */ });
+  const subscription = themeOnChanged(apply);
+  window.addEventListener('pagehide', () => subscription.close(), { once: true });
+}
 ```
 
 `theme.get` returns the current snapshot. A resolved color change emits

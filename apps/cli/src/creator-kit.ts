@@ -8,6 +8,8 @@ import actionsGuide from '../../../docs/RUNTIME-ACTIONS.md' with { type: 'text' 
 import controllersGuide from '../../../docs/CONTROLLERS.md' with { type: 'text' };
 import mobileGuide from '../../../docs/MOBILE.md' with { type: 'text' };
 import wasmGuide from '../../../docs/WASM.md' with { type: 'text' };
+import visualGuide from '../../../docs/VISUAL-DESIGN.md' with { type: 'text' };
+import { adaptVisualBoilerplate, adaptVisualSkill } from './creator-visuals';
 import rustBridge from '../support/napplet.rs' with { type: 'text' };
 import bevyAssets from '../support/napplet_bevy.rs' with { type: 'text' };
 // Distinct module identity keeps Bun's raw-source cache separate from executable imports.
@@ -23,9 +25,14 @@ import { AccountError } from '../../../packages/identity/src/signer';
 export const upstream = { boilerplate: boilerplate.revision, skills: skills.revision };
 const profile = `# napplet soyLI integration
 
-This project includes the maintained napplet/boilerplate and unchanged upstream
-napplet-* skills. Start with napplet-make. Protocol guidance stays upstream;
-this note maps its local tooling commands to the installed napplet soyLI.
+This project includes the pinned napplet/boilerplate and napplet-* skills with
+documented soyLI authoring adaptations. Start with napplet-make. Protocol guidance
+stays upstream; this note maps tooling commands to the installed napplet soyLI.
+
+Before styling, read docs/napplet-visual-design.md. Choose a visual direction for
+the main experience AND its UI/HUD; record it in the project brief. Starter colors,
+type, density and settings are replaceable demo choices. App-owned colors are the
+default; matching the host is opt-in. Preserve existing art direction on contributions.
 
 Mobile is part of the default delivery. Read docs/napplet-mobile.md before building
 the interface and before calling it finished. Verify touch controls and real narrow
@@ -439,18 +446,21 @@ local preview, including defaults, live changes and a reload, before publishing.
 Pinned boilerplate: ${boilerplate.repository}/tree/${boilerplate.revision}
 Pinned skills: ${skills.repository}/tree/${skills.revision}
 
-Upstream source, configuration, documentation and scripts are retained. Local
-changes: package name, this integration note, agent entry pointers, private-state
-gitignore entries, a static settings example and its single main.ts import, and
-excluding installed skill folders from the boilerplate's repository-guidance scan.
-The guidance check for a schema-free starter now checks our static settings example.
-Skill bodies and licenses are unchanged. Run
+The vendored snapshots and licenses are retained. Local changes: package name,
+this integration note, agent entry pointers, private-state gitignore entries, a
+static settings example and its main.ts import, opt-in host colors in main.ts,
+and a CSS header explaining the demo's replaceable styling. Generated authoring
+docs and skills replace uniform density/whole-surface host-matching mandates with
+project-specific visual direction for content and UI. Protocol APIs are unchanged.
+Installed skill folders are excluded from the boilerplate's repository-guidance
+scan; the schema-free-starter assertion checks our static settings example instead.
+Run
 soyli skills update to install the CLI's bundled skill revision; modified
 files are reported as conflicts and preserved. Template/source changes are never
 applied by that command.
 `;
 
-const pointer = `## napplet soyLI workspace\n\nRead [docs/napplet-space.md](docs/napplet-space.md) first for this project's CLI commands, installed skills, preview cleanup and host capabilities. This project and its skills are already installed; do not re-scaffold or reinstall them. Use soyli dev and its printed URL for hosted preview, and stop your preview session after testing. Use the upstream guidance below with those tooling mappings.\n\n`;
+const pointer = `## napplet soyLI workspace\n\nRead [docs/napplet-space.md](docs/napplet-space.md) first for this project's CLI commands, installed skills, preview cleanup and host capabilities. Read [docs/napplet-visual-design.md](docs/napplet-visual-design.md) before styling the creation and its UI. This project and its adapted skills are already installed; do not re-scaffold or reinstall them. Use soyli dev and its printed URL for hosted preview, and stop your preview session after testing. Use the upstream guidance below with those tooling mappings.\n\n`;
 
 export function creatorSkills() {
   const files: Record<string, string> = {
@@ -463,6 +473,7 @@ export function creatorSkills() {
     'docs/napplet-controllers.md': controllersGuide,
     'docs/napplet-mobile.md': mobileGuide,
     'docs/napplet-wasm.md': wasmGuide,
+    'docs/napplet-visual-design.md': visualGuide,
     'docs/examples/napplet.rs': rustBridge,
     'docs/examples/napplet_bevy.rs': bevyAssets,
     'docs/examples/gamepad.ts': gamepadHelper,
@@ -470,17 +481,23 @@ export function creatorSkills() {
     'docs/examples/multiplayer-scenario.mjs': multiplayerScenario,
     'docs/napplet-skills-LICENSE.txt': skills.files.LICENSE,
     'CLAUDE.md':
-      '@AGENTS.md\n\nThe upstream skills are installed in .claude/skills; begin with napplet-make.\n',
+      '@AGENTS.md\n\nThe adapted napplet skills are installed in .claude/skills; begin with napplet-make. Read docs/napplet-space.md and docs/napplet-visual-design.md.\n',
   };
   for (const [path, text] of Object.entries(skills.files)) {
     if (!path.startsWith('skills/')) continue;
-    for (const agent of ['.agents', '.claude']) files[`${agent}/${path}`] = text;
+    const adapted = adaptVisualSkill(path, text);
+    for (const agent of ['.agents', '.claude']) files[`${agent}/${path}`] = adapted;
   }
   return files;
 }
 
 export function boilerplateFiles(name: string) {
-  const files: Record<string, string> = { ...boilerplate.files };
+  const files: Record<string, string> = Object.fromEntries(
+    Object.entries(boilerplate.files).map(([path, text]) => [
+      path,
+      adaptVisualBoilerplate(path, text),
+    ]),
+  );
   files['package.json'] =
     JSON.stringify({ ...JSON.parse(files['package.json']), name }, null, 2) + '\n';
   files['AGENTS.md'] = pointer + files['AGENTS.md'];

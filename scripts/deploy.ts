@@ -83,6 +83,7 @@ export async function createDeploymentArchive(archive: string) {
     'docs/CONTROLLERS.md',
     'docs/MOBILE.md',
     'docs/WASM.md',
+    'docs/VISUAL-DESIGN.md',
     'apps',
     'packages',
     'scripts',

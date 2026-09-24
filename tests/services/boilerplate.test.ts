@@ -2,8 +2,9 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { chromium } from '@playwright/test';
+import { chromium, expect as browserExpect } from '@playwright/test';
 import upstream from '../../apps/cli/vendor/boilerplate.json';
+import { boilerplateFiles } from '../../apps/cli/src/creator-kit';
 
 const enabled =
   process.env.SPACE_TEST_CLI && process.env.SPACE_TEST_BOILERPLATE === '1' ? test : test.skip;
@@ -43,12 +44,8 @@ enabled(
     let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
     try {
       await run(['new', 'creation', '--identity', 'later', '--json'], root);
-      expect(
-        (await readFile(join(project, 'src/main.ts'), 'utf8')).replace(
-          "import './napplet-settings.js';\n",
-          '',
-        ),
-      ).toBe(upstream.files['src/main.ts']);
+      const starter = boilerplateFiles('creation');
+      expect(await readFile(join(project, 'src/main.ts'), 'utf8')).toBe(starter['src/main.ts']);
       expect(await readFile(join(project, 'pnpm-lock.yaml'), 'utf8')).toBe(
         upstream.files['pnpm-lock.yaml'],
       );
@@ -90,11 +87,25 @@ enabled(
       const before = await (await fetch(new URL('revision', url))).json();
       expect(before.requires).toEqual(['storage', 'theme']);
       browser = await chromium.launch({ headless: true });
-      const page = await browser.newPage();
+      const page = await browser.newPage({ colorScheme: 'light' });
       const errors: string[] = [];
       page.on('pageerror', (error) => errors.push(error.message));
       await page.goto(url);
       const frame = page.frameLocator('iframe');
+      // A real hosted starter must not overwrite its authored palette at boot or
+      // on live theme events. The shell does not inject CSS into the child frame.
+      await browserExpect(frame.locator('body')).toHaveCSS(
+        'background-color',
+        'rgb(244, 246, 248)',
+      );
+      const appearance = page.getByRole('button', { name: /^Appearance:/ });
+      await appearance.click(); // Auto -> Light (same colors)
+      await appearance.click(); // Light -> Dark
+      await browserExpect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+      await browserExpect(frame.locator('body')).toHaveCSS(
+        'background-color',
+        'rgb(244, 246, 248)',
+      );
       await frame.locator('#noteInput').fill('Saved with upstream SDK');
       await frame.locator('#storageButton').click();
       await frame.locator('#storageValue').filter({ hasText: 'Saved with upstream SDK' }).waitFor();
@@ -106,11 +117,29 @@ enabled(
       expect(await frame.locator('html').evaluate((node) => node.style.fontSize)).toBe('18px');
       await writeFile(
         join(project, 'src/main.ts'),
-        "import './napplet-settings.js';\n" +
-          upstream.files['src/main.ts'] +
-          '\ndocument.getElementById("noteInput")!.setAttribute("data-rebuilt", "yes");\n',
+        starter['src/main.ts'].replace(
+          'const FOLLOW_HOST_THEME = false;',
+          'const FOLLOW_HOST_THEME = true;',
+        ) + '\ndocument.getElementById("noteInput")!.setAttribute("data-rebuilt", "yes");\n',
       );
       await frame.locator('#noteInput[data-rebuilt="yes"]').waitFor({ timeout: 15000 });
+      // Host matching is still available when the project explicitly chooses it.
+      await browserExpect(frame.locator('body')).toHaveCSS('background-color', 'rgb(23, 30, 26)');
+      await appearance.click(); // Dark -> Auto, light OS
+      await browserExpect(frame.locator('body')).toHaveCSS(
+        'background-color',
+        'rgb(245, 241, 228)',
+      );
+      await browserExpect(frame.locator('#noteInput')).toHaveAttribute('data-rebuilt', 'yes');
+      // The same built app is usable without the optional theme (or any host).
+      const unhosted = await browser.newPage();
+      await unhosted.setContent(await readFile(join(project, 'dist/index.html'), 'utf8'));
+      await browserExpect(unhosted.locator('#output')).toContainText('Napplet ready.');
+      await browserExpect(unhosted.locator('body')).toHaveCSS(
+        'background-color',
+        'rgb(244, 246, 248)',
+      );
+      await unhosted.close();
       const after = await (await fetch(new URL('revision', url))).json();
       expect(after.id).not.toBe(before.id);
       expect(after.requires).toEqual(before.requires);

@@ -19,8 +19,8 @@ Mobile support is a product expectation, not an additional protocol requirement.
   provide comfortable on-screen controls, including simultaneous movement/action
   touches where needed; utilities need usable forms and navigation. Aim for touch
   targets at least 44 CSS pixels wide/high, with space between unrelated actions.
-  A compact 28px visual control from the upstream UI defaults can still have a
-  larger hit area. On coarse pointers, expand the clickable area or use larger
+  A visually small control can still have a larger hit area. On coarse pointers,
+  expand the clickable area or use larger
   controls without overlapping neighboring targets; compact visuals are not a
   reason to leave phone controls hard to hit.
 - Keep essential controls visible around browser chrome, safe areas and changing
