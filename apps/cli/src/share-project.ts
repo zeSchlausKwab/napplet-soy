@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { committedSource } from '../../../packages/publish/src/git-source';
+import { committedSource, inspectHistory } from '../../../packages/publish/src/git-source';
 import { publishProject, type PublishOptions } from '../../../packages/publish/src';
 import { propose, type CollaborationOptions } from '../../../packages/collaboration/src/service';
 import { buildProject } from './toolchain';
@@ -28,7 +28,7 @@ export async function buildForSharing(directory: string, signal?: AbortSignal) {
 export async function publishFromProject(options: PublishOptions) {
   const accounts = await captureAccount(options.accounts ?? new Accounts(options.network));
   if (!options.dryRun && !options.resume) {
-    await committedSource(options.directory);
+    await inspectHistory(options.directory, await committedSource(options.directory));
     const account = await accounts.current();
     if (account) await prepareSharingIdentity(options.directory, options.network, account.pubkey);
     await syncBackend(
@@ -51,7 +51,7 @@ export async function proposeFromProject(
 ) {
   const accounts = await captureAccount(options.accounts ?? new Accounts(options.network));
   if (!options.resume) {
-    await committedSource(options.directory);
+    await inspectHistory(options.directory, await committedSource(options.directory));
     const account = await accounts.current();
     if (account) await prepareSharingIdentity(options.directory, options.network, account.pubkey);
     await buildForSharing(options.directory, options.signal);

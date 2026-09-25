@@ -191,6 +191,14 @@ and `run`. Keep provider/module declarations in tracked `napplet.json`; never
 force-add the private `.napplet-space` directory. On a fresh checkout run
 `soyli setup` before invoking the package manager directly.
 
+If older guidance committed that context and it has since been removed from Git,
+the updated publisher accepts its historical versions only after strict validation
+of the former public metadata format and the normal credential scan. Keep the
+current context ignored; do not rewrite Git history merely to remove valid old
+public context. Run `soyli publish --dry-run` to check ancestry. A rejection names
+the path/blob/commit; private bindings, journals, databases and unknown fields stay
+blocked. This needs the publisher fix, not just updated project skills.
+
 ### Typed handler identity
 
 The shipped `docs/examples/backend-context.d.ts` describes the handler context.

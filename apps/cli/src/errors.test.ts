@@ -3,10 +3,117 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import pins from '../vendor/toolchain.json';
+import { sourceGit } from '../../../packages/grasp/src/client';
+import { encodeAddress } from '../../../packages/protocol/src';
 
 const command = process.env.SPACE_TEST_CLI
   ? [process.env.SPACE_TEST_CLI]
   : [process.execPath, new URL('./index.ts', import.meta.url).pathname];
+
+test('real CLI dry-run reports historical source blockers and accepts only removed public backend context', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'soyli-history-errors-'));
+  const project = join(root, 'project');
+  const run = async (args: string[]) => {
+    const child = Bun.spawn([...command, ...args, '--network', 'local'], {
+      cwd: root,
+      env: {
+        PATH: process.env.PATH,
+        SPACE_ACCOUNT_HOME: join(root, 'accounts'),
+        SOYLI_DANGEROUS_PLAINTEXT_KEYS: '1', // disposable fixture; never touch the OS keychain
+      },
+      stdin: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    const [code, out, err] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+    ]);
+    return { code, out, err };
+  };
+  try {
+    const created = await run(['account', 'create', '--json']);
+    expect(created.code, created.out + created.err).toBe(0);
+    await Bun.write(
+      join(project, 'napplet.json'),
+      JSON.stringify({
+        schema: 'space-local-project/v1',
+        name: 'History fixture',
+        entry: 'index.html',
+        previewId: crypto.randomUUID(),
+        license: 'MIT',
+      }),
+    );
+    await Bun.write(join(project, 'index.html'), '<!doctype html><title>History fixture</title>');
+    await Bun.write(join(project, 'LICENSE'), 'MIT');
+    const path = '.napplet-space/soy-backend.json';
+    await Bun.write(
+      join(project, path),
+      JSON.stringify({
+        version: 1,
+        napplet: encodeAddress({ kind: 35129, pubkey: 'a'.repeat(64), identifier: 'test' }),
+        boards: [],
+        modules: ['world'],
+      }),
+    );
+    await sourceGit(project, ['init']);
+    await sourceGit(project, ['add', '.']);
+    await sourceGit(project, ['commit', '-m', 'Historical public context']);
+    await sourceGit(project, ['rm', path]);
+    await Bun.write(join(project, '.gitignore'), '.napplet-space/\n');
+    await sourceGit(project, ['add', '.']);
+    await sourceGit(project, ['commit', '-m', 'Keep generated context ignored']);
+    const accepted = await run(['publish', '--dry-run', '--project', project, '--json']);
+    expect(accepted.code, accepted.out + accepted.err).toBe(0);
+    expect(JSON.parse(accepted.out).sourceHistory).toMatchObject({
+      status: 'checked',
+      legacyPublicContexts: [{ path }],
+    });
+    const privatePath = '.napplet-space/project.json';
+    const secret = 'fixture-history-secret-do-not-print';
+    await Bun.write(join(project, privatePath), JSON.stringify({ privateKey: secret }));
+    await sourceGit(project, ['add', '-f', privatePath]);
+    await sourceGit(project, ['commit', '-m', 'Private historical file']);
+    const badCommit = await sourceGit(project, ['rev-parse', 'HEAD']);
+    const blob = await sourceGit(project, ['rev-parse', `HEAD:${privatePath}`]);
+    await sourceGit(project, ['rm', privatePath]);
+    await sourceGit(project, ['commit', '-m', 'Removed private file']);
+    const head = await sourceGit(project, ['rev-parse', 'HEAD']);
+    for (const dry of [true, false])
+      for (const json of [true, false]) {
+        const rejected = await run([
+          'publish',
+          '--project',
+          project,
+          ...(dry ? ['--dry-run'] : []),
+          ...(json ? ['--json'] : []),
+        ]);
+        expect(rejected.code, rejected.out + rejected.err).toBe(1);
+        const text = rejected.out + rejected.err;
+        expect(text).toContain(privatePath);
+        expect(text).toContain(blob);
+        expect(text).toContain(badCommit);
+        expect(text).toContain('history cleanup');
+        expect(text).not.toContain(secret);
+        expect(text).not.toContain('Remove it from publish.files');
+        if (json)
+          expect(JSON.parse(rejected.out).error).toMatchObject({
+            code: 'SOURCE_SECRET',
+            operation: 'inspect public Git history',
+            retryable: false,
+            recovery: expect.stringContaining('history cleanup'),
+          });
+      }
+    expect(await sourceGit(project, ['rev-parse', 'HEAD'])).toBe(head);
+    expect(await sourceGit(project, ['status', '--porcelain'])).toBe('');
+    const status = await run(['status', '--project', project, '--json']);
+    expect(status.code).toBe(0);
+    expect(JSON.parse(status.out)).toEqual({ status: 'not_started' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}, 15000);
 
 test('Git failures reach the real CLI with stdout, stderr, status and redaction', async () => {
   const root = await mkdtemp(join(tmpdir(), 'soyli-git-errors-'));

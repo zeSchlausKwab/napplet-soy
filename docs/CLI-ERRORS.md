@@ -1,5 +1,15 @@
 # soyLI error diagnostics
 
+Historical source failures now identify the rejected path, Git blob, containing
+commit and release commit without printing blob contents. `publish --dry-run`
+performs the same history checks before sandbox/network work; these failures are
+not resumable service failures. Recovery distinguishes a still-tracked generated
+context from an ancestry-only blocker, where editing `publish.files` cannot help.
+The narrow legacy public backend-context compatibility rule and explicit cleanup
+procedure are documented in [Historical source checks](CLI.md#historical-source-checks).
+CLI terminal and JSON regressions verify the context, recovery, redaction and
+unchanged repository/publication status.
+
 `GIT_INITIAL_COMMIT_FAILED` reports a failed initial scaffold checkpoint, preserving
 the Git cause, exit status and bounded redacted output. Generated files stay in the
 new folder; the recovery step explains how to inspect and checkpoint them without

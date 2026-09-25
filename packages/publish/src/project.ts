@@ -76,6 +76,9 @@ export function checkSource(path: string, bytes: Uint8Array) {
       'SOURCE_SECRET',
       'The source selection contains a private or generated file. Remove it from publish.files.',
     );
+  checkSourceContent(bytes);
+}
+export function checkSourceContent(bytes: Uint8Array) {
   const text = new TextDecoder().decode(bytes);
   if (
     /nsec1[023456789acdefghjklmnpqrstuvwxyz]{58}|ncryptsec1[023456789acdefghjklmnpqrstuvwxyz]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|bunker:\/\/[^\s"'<>]+[?&]secret=|(?:sk-(?:proj-)?[A-Za-z0-9_-]{24,}|ghp_[A-Za-z0-9]{30,})/.test(

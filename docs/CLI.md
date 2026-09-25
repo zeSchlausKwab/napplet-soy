@@ -329,6 +329,46 @@ changes stay local until `propose`, `push`, or `publish`. Source archives reflec
 committed tree; built HTML and screenshots are separate Blossom artifacts.
 See [collaboration](COLLABORATION.md) for proposing, reviewing and merging.
 
+#### Historical source checks
+
+soyLI **0.23.2** checks reachable Git history during `publish --dry-run`, as
+well as before publication/proposal preparation and again when freezing source.
+Dry-run opens no signer, runs no project scripts and publishes nothing. Its JSON
+`sourceHistory` reports the checked commit and any accepted legacy public contexts.
+For a project without a commit it reports `uncommitted` and leaves the history check
+pending; a clean checkpoint is still required for actual publication.
+
+Older backend guidance sometimes caused `.napplet-space/soy-backend.json` to be
+committed. This exact root-relative path may remain in **ancestry only**, provided
+every historical version is at most 16 KiB and matches the former version-1 public
+context: a napplet address, optional provider public key and relay URLs, board
+names and optional module names. Unknown fields, duplicate JSON keys, malformed
+addresses, authenticated/query-bearing relay URLs and detected credentials are
+rejected. The normal content scanner still runs. The exception does not permit
+this file in the release tree, selected source, or another `.napplet-space` file.
+
+For affected projects, keep `.napplet-space/` ignored and retain portable backend
+declarations in `napplet.json` plus module source in Git. If the context is still
+tracked, `git rm --cached -- .napplet-space/soy-backend.json` preserves the local
+generated file; review and commit that removal and the ignored-path/config changes.
+Then run `soyli publish --dry-run`. If it was already removed, no project edit or
+history rewrite is necessary. Existing binaries need a release containing this fix;
+updating skills alone cannot change an installed CLI's history validator.
+
+Other rejected history produces `SOURCE_SECRET` (or the specific source code),
+with the path, blob ID and a containing commit, without printing file contents.
+Removing a file from HEAD or `publish.files` does not remove its ancestry. Inspect
+it locally; rotate exposed credentials if applicable. If cleanup is necessary,
+make a private backup of the complete repository first, agree the affected refs
+and collaboration/publication consequences, and explicitly approve the rewrite
+before using Git history-filtering tools in a separate copy. Recheck the result
+with dry-run. soyLI never silently rewrites history or force-pushes it; existing
+public copies cannot be recalled by a local rewrite.
+
+Inspection is bounded to 10,000 reachable objects, 10,000 distinct historical
+blob/path pairs and 40 MiB of unique blob content. Each historical path is checked,
+including aliases of a blob also stored under a permitted path.
+
 To pause, preserve the whole project folder including `.git`, `napplet.json` and
 `.napplet-space`, plus the creator's separate identity backup. A private, ignored
 `.napplet-space/RESUME.md` can record goals, pending work, checks, host limitations

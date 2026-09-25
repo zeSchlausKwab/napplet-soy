@@ -1,8 +1,27 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.23.1**. A successful GitHub workflow run and published
+The source version is **0.23.2**. A successful GitHub workflow run and published
 release are separate acceptance steps.
+
+**0.23.2 prepared for release:** fixes publication of projects whose old Git
+history contains the former public `.napplet-space/soy-backend.json` context,
+removed from the current tree. Only that exact path and bounded, strictly validated
+public format are accepted; private bindings, journals, databases and credentials
+remain blocked. No Git history is rewritten. See
+[Historical source checks](CLI.md#historical-source-checks) for the compatibility
+rule and recovery procedure.
+
+`publish --dry-run` now checks reachable Git history. Publication and proposal
+preflight reject unsafe history before backend/build preparation; errors identify
+the path, blob and containing commit with useful recovery advice. Every historical
+path is checked, including private aliases of otherwise permitted blobs. Native CI
+also exercises these diagnostics through each packaged CLI's real entrypoint.
+
+Upgrade with `soyli update`, then retry `soyli publish --dry-run`. Existing projects
+whose historical context meets the rule need no history cleanup. Optional
+`soyli skills update` refreshes the bundled backend guidance; skills alone cannot
+fix an older executable's validator. Website and CVM deployment are not required.
 
 **0.23.1 published 2026-09-25:**
 [GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.23.1),
@@ -225,9 +244,9 @@ installer is running before removing the reported `.install-lock` directory.
 2. Commit the change and push the commit, then its matching tag:
 
    ```sh
-   git tag -a soyli-v0.23.1 -m 'napplet soyLI 0.23.1'
+   git tag -a soyli-v0.23.2 -m 'napplet soyLI 0.23.2'
    git push origin main
-   git push origin soyli-v0.23.1
+   git push origin soyli-v0.23.2
    ```
 
 3. Watch **soyLI releases** in Actions. Publish only after all four native jobs pass.
@@ -271,7 +290,7 @@ access as appropriate for the maintainers.
 ```sh
 bun run check
 bun run cli:build --target darwin-arm64
-SPACE_TEST_CLI="$PWD/.local/cli/0.23.1/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.23.2/soyli-darwin-arm64/soyli" \
   bun test tests/services/cli-update.test.ts tests/services/cli-distribution.test.ts
 ```
 

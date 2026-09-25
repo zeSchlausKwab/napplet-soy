@@ -30,7 +30,7 @@ import { PublicationRelays } from './relay';
 import { ownedBlobs, verifiedBlob } from './blobs';
 import { confirmWebsite } from './website';
 import { executableBytes } from './artifact';
-import { committedSource } from './git-source';
+import { committedSource, inspectHistory, SourceHistoryError } from './git-source';
 
 export { PublishError } from './config';
 type RelayOperations = Pick<PublicationRelays, 'latest' | 'ensure' | 'close'> &
@@ -212,11 +212,22 @@ export async function publishProject(options: PublishOptions) {
       account.pubkey,
       options.targets,
     );
+    const sourceHistory =
+      plan.sourceCommit === '0'.repeat(40)
+        ? { status: 'uncommitted' as const }
+        : {
+            status: 'checked' as const,
+            ...(await inspectHistory(options.directory, plan.sourceCommit)),
+          };
     return {
       status: 'dry_run' as const,
       fingerprint,
       plan,
+      sourceHistory,
       checksPending: [
+        ...(sourceHistory.status === 'uncommitted'
+          ? ['committed Git history (save a checkpoint first)']
+          : []),
         'sandbox startup and preview capture',
         'remote current version',
         'Git/Blossom/relay availability',
@@ -303,6 +314,8 @@ export async function publishProject(options: PublishOptions) {
             account.pubkey,
             options.targets,
           );
+          // Fail before remote lookups/sandbox startup; freeze repeats against its exact commit.
+          await inspectHistory(root, inspected.plan.sourceCommit);
           if (job && job.fingerprint !== inspected.fingerprint)
             throw new PublishError(
               'PUBLISH_PENDING',
@@ -831,6 +844,9 @@ export async function publishProject(options: PublishOptions) {
         await save();
         return result(job, completed);
       } catch (error) {
+        // History failures are local preflight failures, not resumable service errors.
+        // Keep their precise recovery/context at the diagnostic boundary.
+        if (error instanceof SourceHistoryError) throw error;
         const diagnostic = diagnose(error, `publish ${stage}`);
         const safe =
           error instanceof PublishError
@@ -839,7 +855,7 @@ export async function publishProject(options: PublishOptions) {
                 diagnostic.code === 'CLI_ERROR' ? 'PUBLISH_FAILED' : diagnostic.code,
                 diagnostic.message,
                 stage,
-                true,
+                diagnostic.retryable ?? true,
                 error,
               );
         if (job) {

@@ -7,7 +7,13 @@ import { mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Accounts, type Vault } from '../../identity/src/accounts';
-import { sha256, validateRelease, verifiedEvent, type SignedEvent } from '../../protocol/src';
+import {
+  encodeAddress,
+  sha256,
+  validateRelease,
+  verifiedEvent,
+  type SignedEvent,
+} from '../../protocol/src';
 import { sourceGit, sourceUrls } from '../../grasp/src/client';
 import {
   publishProject as publishCommitted,
@@ -174,6 +180,96 @@ test('an unpublished draft follows the selected creator instead of forcing its s
     await publishProject(f.options);
     expect((await f.load()).plan.pubkey).toBe(selected.pubkey);
     expect((await f.accounts.current())?.id).toBe(selected.id);
+  } finally {
+    await f.close();
+  }
+});
+
+test('publishing removed legacy backend context preserves exact Git ancestry and dry-run checks it', async () => {
+  const f = await fixture();
+  try {
+    const path = '.napplet-space/soy-backend.json';
+    await sourceGit(f.project, ['init']);
+    await Bun.write(
+      join(f.project, path),
+      JSON.stringify(
+        {
+          version: 1,
+          napplet: encodeAddress({ kind: 35129, pubkey: f.creator.pubkey, identifier: 'legacy' }),
+          provider: { pubkey: 'b'.repeat(64), relays: ['wss://relay.example.com/'] },
+          boards: [],
+          modules: ['world'],
+        },
+        null,
+        2,
+      ),
+    );
+    await sourceGit(f.project, ['add', '.']);
+    await sourceGit(f.project, ['commit', '-m', 'Old public context']);
+    const old = await sourceGit(f.project, ['rev-parse', 'HEAD']);
+    const blob = await sourceGit(f.project, ['rev-parse', `HEAD:${path}`]);
+    await sourceGit(f.project, ['rm', path]);
+    await Bun.write(join(f.project, '.gitignore'), '.napplet-space/\n');
+    await sourceGit(f.project, ['add', '.']);
+    await sourceGit(f.project, ['commit', '-m', 'Upgrade public context guidance']);
+    const head = await sourceGit(f.project, ['rev-parse', 'HEAD']);
+    const dry = await publishCommitted({ ...f.options, dryRun: true });
+    expect(dry).toMatchObject({
+      status: 'dry_run',
+      sourceHistory: {
+        status: 'checked',
+        commit: head,
+        legacyPublicContexts: [{ path, object: blob, commit: old }],
+      },
+    });
+    expect(f.writes).toEqual([]);
+    const result = await publishCommitted(f.options);
+    expect(result).toMatchObject({ status: 'announced_pending_index', sourceCommit: head });
+    const job = await f.load();
+    const source = join(f.journal.directory(job.id), 'source');
+    expect(await sourceGit(source, ['rev-parse', 'HEAD'])).toBe(head);
+    expect(await sourceGit(source, ['rev-parse', `${old}:${path}`])).toBe(blob);
+    expect(await sourceGit(source, ['ls-tree', '-r', '--name-only', 'HEAD'])).not.toContain(path);
+    expect(job.plan.files.some((file) => file.path === path)).toBe(false);
+  } finally {
+    await f.close();
+  }
+});
+
+test('dry-run and publication reject private history before sandbox or network work', async () => {
+  const f = await fixture();
+  try {
+    await sourceGit(f.project, ['init']);
+    await Bun.write(join(f.project, '.env'), 'PRIVATE=fixture-do-not-print');
+    await sourceGit(f.project, ['add', '.']);
+    await sourceGit(f.project, ['commit', '-m', 'Private historical file']);
+    await sourceGit(f.project, ['rm', '.env']);
+    await Bun.write(join(f.project, '.gitignore'), '.napplet-space/\n.env\n');
+    await sourceGit(f.project, ['add', '.']);
+    await sourceGit(f.project, ['commit', '-m', 'Removed from current tree']);
+    f.options.check = async () => {
+      throw new Error('must not run sandbox');
+    };
+    f.deps.relays!.latest = async () => {
+      throw new Error('must not query relays');
+    };
+    f.options.accounts = {
+      current: () => f.accounts.current(),
+      signer: async () => {
+        throw new Error('must not sign');
+      },
+    };
+    for (const dryRun of [true, false])
+      await expect(publishCommitted({ ...f.options, dryRun })).rejects.toMatchObject({
+        code: 'SOURCE_SECRET',
+        retryable: false,
+        context: {
+          operation: 'inspect public Git history',
+          recovery: expect.stringContaining('history cleanup'),
+        },
+      });
+    expect(f.writes).toEqual([]);
+    expect(await publicationStatus(f.project, 'local')).toEqual({ status: 'not_started' });
   } finally {
     await f.close();
   }
