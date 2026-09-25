@@ -6,34 +6,85 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { screenshotProject } from '../../apps/cli/src/project-config';
 
-test('publication startup rejects script failures and direct networking, then accepts a working isolated creation', async () => {
-  const config = new TextEncoder().encode(
-    JSON.stringify({
-      schema: 'space-local-project/v1',
-      name: 'Preview check',
-      license: 'MIT',
-      preview: { delayMs: 250 },
-      previewId: crypto.randomUUID(),
-      entry: 'index.html',
-      requires: [],
-      relays: [],
-      servers: [],
-    }),
-  );
-  const contents = (html: string) =>
-    new Map([
-      ['napplet.json', config],
-      ['index.html', new TextEncoder().encode(html)],
-    ]);
-  for (const html of [
+async function checkCli(contents: Map<string, Uint8Array>) {
+  const directory = await mkdtemp(join(tmpdir(), 'napplet-startup-check-'));
+  try {
+    for (const [path, bytes] of contents) await Bun.write(join(directory, path), bytes);
+    await Bun.write(join(directory, 'LICENSE'), 'MIT');
+    const child = Bun.spawn(
+      [
+        process.execPath,
+        new URL('../../apps/cli/src/index.ts', import.meta.url).pathname,
+        'check',
+        '--project',
+        directory,
+        '--json',
+      ],
+      { stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' },
+    );
+    const timeout = setTimeout(() => child.kill(), 12000);
+    try {
+      const [code, out, err] = await Promise.all([
+        child.exited,
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+      ]);
+      return { code, out, err, data: JSON.parse(out) };
+    } finally {
+      clearTimeout(timeout);
+      if (child.exitCode === null) child.kill();
+      await child.exited;
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+test.each([
+  [
+    'script failures',
     '<!doctype html><script>throw new Error("Broken creation")</script>',
+    'Broken creation',
+  ],
+  [
+    'direct networking',
     '<!doctype html><img src="https://must-not-contact.invalid/image.png">',
-  ])
-    await expect(checkPublication(contents(html))).rejects.toMatchObject({ code: 'BROWSER_CHECK' });
-  expect(await checkPublication(contents('<!doctype html><p>Working creation</p>'))).toMatchObject({
-    profile: 'space-playback-2',
-  });
-}, 30000);
+    'content security policy violation',
+  ],
+  ['a working isolated creation', '<!doctype html><p>Working creation</p>', null],
+])(
+  'publication startup checks %s',
+  async (_, html, errorMessage) => {
+    const config = new TextEncoder().encode(
+      JSON.stringify({
+        schema: 'space-local-project/v1',
+        name: 'Preview check',
+        license: 'MIT',
+        preview: { delayMs: 250 },
+        previewId: crypto.randomUUID(),
+        entry: 'index.html',
+        requires: [],
+        relays: [],
+        servers: [],
+      }),
+    );
+    const contents = new Map([
+      ['napplet.json', config],
+      ['index.html', new TextEncoder().encode(html!)],
+    ]);
+    // Exercise the same process boundary as a creator, including useful diagnostics.
+    const outcome = await checkCli(contents);
+    if (errorMessage) {
+      expect(outcome.code, outcome.out + outcome.err).toBe(1);
+      expect(outcome.data.error).toMatchObject({ code: 'BROWSER_CHECK' });
+      expect(outcome.out).toContain(errorMessage);
+    } else {
+      expect(outcome.code, outcome.out + outcome.err).toBe(0);
+      expect(outcome.data).toMatchObject({ profile: 'space-playback-4' });
+    }
+  },
+  15000,
+);
 
 test('capture contains the app pixels, saves a selected image, and validates chosen images', async () => {
   const root = await mkdtemp(join(tmpdir(), 'napplet-capture-'));

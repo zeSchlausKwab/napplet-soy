@@ -11,11 +11,16 @@ import { projectSchema } from '../../../packages/publish/src/config';
 import { regularFile } from '../../../packages/publish/src/project';
 import type { PeerDiagnostics } from '../../../packages/runtime/src/webrtc-diagnostics';
 import { localBackend } from './backend';
+import { localModule } from './dynamic-backend';
+import { materializePreview } from './frozen-preview';
+import { effectiveProject } from '../../../packages/publish/src/binding';
+import { validateAssets, ASSET_LOCK } from '../../../packages/assets/src';
 import { browserEngine, installBrowser } from './browser';
 import { version } from './distribution';
 import { installNetworkLab, networkConditions, type NetworkConditions } from './network-lab';
 import { previewAssets } from './preview/assets';
 import { startPreviewServer } from './preview/server';
+import { connectTestIdentity, approveTestBackendAccount } from './test-identity';
 
 export const multiplayerOptions = networkConditions.extend({
   players: z.number().int().min(2).max(8).default(2),
@@ -30,6 +35,8 @@ export type MultiplayerScenario = {
   measure: (name: string, milliseconds: number, maximum: number) => void;
   network: (conditions: Partial<NetworkConditions>) => Promise<void>;
   diagnostics: () => Promise<PeerDiagnostics[][]>;
+  connectIdentity: (player: MultiplayerPlayer) => Promise<{ pubkey: string }>;
+  approveBackendAccount: (player: MultiplayerPlayer, module: string) => Promise<void>;
 };
 type Check = { name: string; passed: boolean; milliseconds?: number; maximum?: number };
 
@@ -95,12 +102,33 @@ export async function testMultiplayer(
     !/\.(mjs|js|ts|mts)$/.test(scenarioFile)
   )
     throw new AccountError('USAGE', 'Choose a local .mjs or .ts scenario inside the project.');
-  const config = projectSchema.parse(
-    JSON.parse(new TextDecoder().decode(await regularFile(root, 'napplet.json', 16384))),
+  const config = await effectiveProject(
+    root,
+    projectSchema.parse(
+      JSON.parse(new TextDecoder().decode(await regularFile(root, 'napplet.json', 16384))),
+    ),
   );
   if (!config.backend)
     throw new AccountError('PROJECT_CONFIG', 'Run soyli backend init before testing multiplayer.');
   const artifact = await regularFile(root, config.entry, MAX_ARTIFACT_BYTES);
+  const contents = new Map<string, Uint8Array>([
+    [
+      'napplet.json',
+      new TextEncoder().encode(JSON.stringify({ ...config, entry: 'index.html', relays: [] })),
+    ],
+    ['index.html', artifact],
+  ]);
+  for (const path of config.backend.modules ?? []) {
+    const module = await localModule(root, path);
+    for (const [file, text] of Object.entries(module.files))
+      contents.set(file, new TextEncoder().encode(text));
+  }
+  const assets = await validateAssets(root);
+  if (assets.assets.length) {
+    contents.set(ASSET_LOCK, await regularFile(root, ASSET_LOCK, 1024 * 1024));
+    for (const asset of assets.assets)
+      contents.set(asset.path, await regularFile(root, asset.path, asset.bytes));
+  }
   // Cache acquisition has its own deadline and must not consume a short scenario budget.
   signal.throwIfAborted();
   await installBrowser();
@@ -141,11 +169,7 @@ export async function testMultiplayer(
       ),
     );
   try {
-    await Bun.write(
-      join(directoryCopy, 'napplet.json'),
-      JSON.stringify({ ...config, entry: 'index.html', relays: [] }),
-    );
-    await Bun.write(join(directoryCopy, 'index.html'), artifact);
+    await materializePreview(directoryCopy, contents);
     if (options.turnBinary) turn = await startTestTurn(directoryCopy, options.turnBinary);
     backend = await localBackend(directoryCopy, turn?.connectivity);
     combined.throwIfAborted();
@@ -215,6 +239,14 @@ export async function testMultiplayer(
     const api: MultiplayerScenario = {
       players,
       signal: combined,
+      async connectIdentity(player) {
+        if (!players.includes(player)) throw new Error('Choose a player from this scenario.');
+        return connectTestIdentity(player.page, url);
+      },
+      async approveBackendAccount(player, module) {
+        if (!players.includes(player)) throw new Error('Choose a player from this scenario.');
+        return approveTestBackendAccount(player.page, module, backend!.provider.pubkey);
+      },
       check(name, condition) {
         const passed = condition === true;
         checks.push({ name, passed });

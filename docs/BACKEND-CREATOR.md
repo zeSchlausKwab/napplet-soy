@@ -21,7 +21,7 @@ soyli skills update
 soyli backend init
 ```
 
-`init` adds local backend configuration, uses your selected creator, and resolves
+`init` saves portable backend configuration in `napplet.json`, uses your selected creator, and resolves
 the site's default public provider. It never uploads a game. If that provider is
 offline, local preview still works; run `backend sync` and rebuild when available.
 Read the printed provider key and relay destinations.
@@ -59,7 +59,13 @@ Use `boards: []` for matchmaking without scores. The CLI generates public
 `.napplet-space/soy-backend.json` with `{version, napplet, provider, boards}`. Import it from your
 source (`import backend from '../.napplet-space/soy-backend.json'` in `src/main.ts`). Do not
 handwrite its naddr, copy a different creator's namespace, or put secrets in it.
-Keep it in the source release so other creators can inspect the destinations.
+This context is generated and Git-ignored, alongside private data: never force-add
+`.napplet-space/`. Commit `napplet.json` and declared module source instead; the
+public provider/destinations are inspectable there. `soyli setup`, `build`, `dev`
+and `run` regenerate the context before invoking project tools. After an ordinary
+Git checkout use `soyli setup` before a direct package-manager build. Remixes
+regenerate their own author-qualified namespace. Backend configuration inherited
+from older local bindings is made portable by rerunning `soyli backend init`.
 
 Add `cvm` to the existing Vite plugin's `requires` array, and `webrtc` if peer
 connections are essential. Retain other requirements and the upstream build.
@@ -426,7 +432,8 @@ These temporary contexts allow peer connections for the test; they do not alter
 the player's normal browser permissions.
 Configured backend calls are mapped to a disposable local CVM/room/board instance.
 The temporary copy is removed on completion. This does not reuse or modify the
-dev backend's state. Chromium is cached on first use; Bun/Node and project Playwright
+dev backend's state. Declared dynamic manifests, handlers and schemas are copied
+from the frozen inputs, as they are for check/screenshot/record. Chromium is cached on first use; Bun/Node and project Playwright
 dependencies are not required for `.mjs` scenarios. Each run replaces
 `.napplet-space/multiplayer/latest.json`, including failures. A failed assertion,
 empty scenario, browser error or timeout returns a nonzero exit status.
@@ -435,6 +442,14 @@ a separate bounded deadline; an unavailable observation is reported as a warning
 without discarding the scenario's assertions.
 
 The scenario exports a default async function receiving:
+
+- `connectIdentity(player)`: connects a fresh disposable Nostr viewer in that
+  player's trusted host and returns `{pubkey}`. It does not touch CLI accounts,
+  Keychain or your creator identity; the opaque iframe cannot use the signer.
+  Call once per player. Use distinct players for distinct identities.
+- `approveBackendAccount(player, moduleName)`: waits for and accepts only that
+  module's account-consent prompt on the runner's local provider. Invoke after
+  triggering the UI operation. Other permission dialogs are not auto-approved.
 
 - `players`: `{page, frame}` for each independent browser; these are Playwright
   handles for the trusted preview and sandboxed napplet respectively.

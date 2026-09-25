@@ -30,7 +30,7 @@ import { initBackend, syncBackend, backendStatus } from './backend';
 import { initModule, checkModule, moduleCommand } from './dynamic-backend';
 import { checkPublication } from './publish-check';
 import { preview, checkProject, doctor } from './local';
-import { installBrowser } from './browser';
+import { installBrowser, browserPaths } from './browser';
 import { commandName, version } from './distribution';
 import { describeRelease, updateCli } from './update';
 import { setupProject, buildProject, projectTool, installConformanceBrowser } from './toolchain';
@@ -86,6 +86,7 @@ Usage:
   bun run soyli dev [--project <folder>] [--port 4173] [--no-open]
   bun run soyli check [--project <folder>]
   bun run soyli browser install
+  bun run soyli browser path [--json]
   bun run soyli doctor [--project <folder>]
   bun run soyli update
   bun run soyli --version
@@ -719,9 +720,9 @@ try {
       values['passphrase-stdin'] ||
       argument ||
       extra.length ||
-      (command === 'browser' ? action !== 'install' : !!action)
+      (command === 'browser' ? !['install', 'path'].includes(action) : !!action)
     )
-      throw new AccountError('USAGE', 'Use dev, check, doctor, or browser install.');
+      throw new AccountError('USAGE', 'Use dev, check, doctor, or browser install|path.');
     if (command === 'setup' || command === 'build') {
       const directory = values.project ?? process.cwd();
       if (command === 'setup') await setupProject(directory, controller.signal);
@@ -778,14 +779,16 @@ try {
           ? await checkProject(values.project ?? process.cwd(), network)
           : command === 'doctor'
             ? await doctor(controller.signal, values.project)
-            : (await installBrowser(), { browser: 'ready' });
+            : action === 'path'
+              ? await browserPaths()
+              : (await installBrowser(), { browser: 'ready' });
       console.log(
         json
           ? JSON.stringify(result)
           : Object.entries(result)
               .map(
                 ([key, value]) =>
-                  `${key}: ${key === 'release' ? describeRelease(value as Awaited<ReturnType<typeof doctor>>['release']) : value}`,
+                  `${key}: ${key === 'release' ? describeRelease(value as Awaited<ReturnType<typeof doctor>>['release']) : typeof value === 'object' ? JSON.stringify(value) : value}`,
               )
               .join('\n'),
       );

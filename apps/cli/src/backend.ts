@@ -33,13 +33,20 @@ async function publicFile(path: string, bytes: Uint8Array | string) {
     await rm(temporary, { force: true });
   }
 }
-async function saveLocalBackend(
+async function saveBackendConfiguration(
   directory: string,
   config: import('../../../packages/publish/src/config').Project,
 ) {
+  // Module/board declarations and the provider are portable public configuration.
+  // The creator choice remains local so contributions do not change authorship.
+  const path = join(directory, 'napplet.json');
+  const bytes = await regularFile(directory, 'napplet.json', 16384);
+  const raw = JSON.parse(new TextDecoder().decode(bytes));
+  if (JSON.stringify(raw.backend) !== JSON.stringify(config.backend))
+    await publicFile(path, JSON.stringify({ ...raw, backend: config.backend }, null, 2) + '\n');
   const binding = (await readBinding(directory)) ?? { version: 1 as const, project: {} };
   binding.project.creator = config.creator;
-  binding.project.backend = config.backend;
+  delete binding.project.backend;
   await writeBinding(directory, binding);
 }
 export async function backendProject(directory: string, creator?: string) {
@@ -146,7 +153,7 @@ export async function syncBackend(
     throw new Error('Select a creator with soyli account create or connect before backend sync.');
   if (config.creator?.pubkey !== account.pubkey || config.creator.network !== network) {
     config.creator = { pubkey: account.pubkey, network };
-    await saveLocalBackend(directory, config);
+    await saveBackendConfiguration(directory, config);
     await backendProject(directory, account.pubkey);
   }
   const provider = await resolveBackendProvider(directory, network);
@@ -154,7 +161,7 @@ export async function syncBackend(
     if (!prepare)
       throw new Error('Pin the backend before publishing: soyli backend sync, then soyli build.');
     config.backend.provider = provider;
-    await saveLocalBackend(directory, config);
+    await saveBackendConfiguration(directory, config);
     await backendProject(directory, account.pubkey);
   }
   const expected = encodeAddress({
@@ -224,12 +231,12 @@ export async function initBackend(
   const account = await accounts.current();
   if (account) config.creator = { pubkey: account.pubkey, network };
   config.backend ??= { boards: [] };
-  await saveLocalBackend(directory, config);
+  await saveBackendConfiguration(directory, config);
   let warning: string | undefined;
   if (!config.backend.provider) {
     try {
       config.backend.provider = await resolveBackendProvider(directory, network);
-      await saveLocalBackend(directory, config);
+      await saveBackendConfiguration(directory, config);
     } catch (cause) {
       warning =
         'Default provider unavailable. Local preview works; run backend sync and rebuild when the provider is available. ' +
@@ -241,7 +248,9 @@ export async function initBackend(
     napplet: result!.napplet,
     provider: config.backend.provider,
     config: 'napplet.json',
+    identityBinding: '.napplet-space/project.json',
     context: '.napplet-space/soy-backend.json',
+    contextGenerated: true,
     preview: 'isolated local CVM',
     warning,
   };

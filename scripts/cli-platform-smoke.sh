@@ -26,13 +26,23 @@ grep -Fq 'App-owned colors' .claude/skills/napplet-ui/SKILL.md
 # Verify dynamic guidance and actual compiler execution in every native package.
 [ -s docs/napplet-dynamic-backends.md ]
 [ -s docs/examples/backend-client.ts ]
+[ -s docs/examples/backend-context.d.ts ]
 [ -s .agents/skills/soy-backends/SKILL.md ]
 [ -s .claude/skills/soy-backends/SKILL.md ]
 "$soyli_bin" backend init-module --json
 "$soyli_bin" backend check --json
+# Compiling alone missed omitted source in frozen previews. Declare the module
+# and exercise check/multiplayer through the packaged preview + WASM worker too.
+"$soyli_bin" exec node -e 'const fs = require("node:fs"); const config = JSON.parse(fs.readFileSync("napplet.json", "utf8")); config.backend = {boards: [], modules: ["backend/backend.json"]}; fs.writeFileSync("napplet.json", JSON.stringify(config, null, 2) + "\n");'
 # Verify the assembled starter, including our added docs, using its pinned deps.
 "$soyli_bin" run verify
 "$soyli_bin" check --json
+cat > tests/backend-preview.mjs <<'EOF'
+export default async ({players, check}) => {
+  check('two isolated players with a configured backend', players.length === 2);
+}
+EOF
+"$soyli_bin" multiplayer tests/backend-preview.mjs --json
 "$soyli_bin" assets list --json
 "$soyli_bin" config --json
 printf '\nPlatform smoke-test edit.\n' >> README.md

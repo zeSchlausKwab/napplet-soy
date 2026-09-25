@@ -18,6 +18,7 @@ import type { Network } from '../../identity/src/signer';
 import { builtRequirements } from './artifact';
 import { effectiveProject } from './binding';
 import { committedSource, inspectHistory } from './git-source';
+import { readModule } from '../../dynamic-backends/src/module-source';
 
 export const MAX_SOURCE_BYTES = 40 * 1024 * 1024;
 export type SourceFile = { path: string; hash: string; size: number };
@@ -193,6 +194,16 @@ export async function inspectProject(
     contents.set(path, bytes);
     files.push({ path, hash: await sha256(bytes), size: bytes.length });
   }
+  for (const path of project.backend?.modules ?? [])
+    await readModule(path, async (file) => {
+      const bytes = contents.get(file);
+      if (!bytes)
+        throw new PublishError(
+          'SOURCE_REQUIRED',
+          `Backend source is missing from the snapshot: ${file}. Track every declared module manifest, handler and schema, and include them in publish.files when selecting source explicitly.`,
+        );
+      return bytes;
+    });
   if (
     project.build?.kind === 'rust' &&
     !['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml'].every((path) => contents.get(path)?.length)

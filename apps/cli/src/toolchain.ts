@@ -154,7 +154,7 @@ async function prepare(signal?: AbortSignal) {
   await mkdir(bin, { recursive: true });
   const pnpmLink = join(bin, 'pnpm');
   if (!(await lstat(pnpmLink).catch(() => null))) await symlink(pnpm, pnpmLink);
-  await chmod(pnpm, 0o755);
+  if (((await lstat(pnpm)).mode & 0o111) !== 0o111) await chmod(pnpm, 0o755);
   const env = {
     ...environment(),
     PATH: `${dirname(nodeBin)}:${bin}:${process.env.PATH || '/usr/bin:/bin'}`,
@@ -183,6 +183,7 @@ export async function managedNode(signal?: AbortSignal) {
 }
 
 export async function projectTool(directory: string, args: string[], signal?: AbortSignal) {
+  await backendProject(directory);
   const tools = await prepared(signal);
   const operation =
     args[0] === 'install'
@@ -201,6 +202,7 @@ export async function projectTool(directory: string, args: string[], signal?: Ab
 }
 
 export async function setupProject(directory: string, signal?: AbortSignal) {
+  await backendProject(directory);
   const recipe = await readBuildRecipe(directory);
   if (recipe?.kind === 'rust') return setupRust(directory, recipe, signal);
   if (recipe?.kind === 'command') return;

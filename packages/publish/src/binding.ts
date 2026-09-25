@@ -7,16 +7,14 @@ import { projectSchema, type Project } from './config';
 export const bindingSchema = z
   .object({
     version: z.literal(1),
-    project: projectSchema
-      .partial()
-      .pick({
-        creator: true,
-        identifier: true,
-        previewId: true,
-        remix: true,
-        publish: true,
-        backend: true,
-      }),
+    project: projectSchema.partial().pick({
+      creator: true,
+      identifier: true,
+      previewId: true,
+      remix: true,
+      publish: true,
+      backend: true,
+    }),
     upstream: z
       .object({
         address: z.string(),
@@ -69,6 +67,7 @@ export async function effectiveProject(directory: string, project: Project) {
                 ...project.backend,
                 ...binding.project.backend,
                 boards: project.backend?.boards ?? binding.project.backend?.boards ?? [],
+                modules: project.backend?.modules ?? binding.project.backend?.modules,
               },
             }
           : {}),

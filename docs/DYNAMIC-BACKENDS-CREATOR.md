@@ -143,12 +143,97 @@ requestId:crypto.randomUUID(), expiresAt:now+240, input:{...}})` creates a world
    not private state. Poll conservatively, then refetch via an authorized query.
    An expired cursor reports `RESYNC_REQUIRED`; take a new snapshot.
 
+### Responsive shared editing
+
+An authoritative save need not freeze the UI. Keep a confirmed snapshot separate
+from pending local edits, show immediate pending feedback and serialize a bounded
+command queue. Queue input while a background read finishes instead of disabling
+all controls or dropping clicks. Stop accepting more work visibly when the queue
+is full; a faster animation does not increase the provider's capacity. Coalesce
+refreshes and honor provider limits rather than imposing an unexplained per-click
+delay or overlapping many calls.
+
+Only a confirmed provider result means an edit is saved. Retain the exact request
+ID, expiry and payload while its outcome is uncertain. Do not rewrite an in-flight
+intent to match newer local predictions. On a definitive rejection, reconcile the
+pending display and dependent queued edits with confirmed state. On CONFLICT,
+refetch before constructing any new intent; do not blindly replay stale edits.
+Ignore stale snapshots and preserve pending feedback while newer state arrives.
+
+Prefer compact operation results and queries for affected records/chunks. Use
+full snapshots for joining and recovery, not every click or unchanged poll.
+`soy_backend_changes` can detect new revisions without running a query handler;
+it returns invalidations, not patches. Chunk records reduce payloads but do not
+remove the current instance-wide conflict check. A creator-defined bounded batch
+operation is possible when its schema and rules explicitly define atomic behavior.
+
+CEP-41 streams, backend watches and direct provider WebSockets are **not exposed
+by this host**. WebRTC can carry transient presence or bounded untrusted refresh
+hints; a peer's message is not proof of a durable commit. TURN only assists the
+peer connection and cannot remove CVM save or polling latency.
+
+In multiplayer scenarios, measure input-to-local-feedback, provider confirmation
+and edit visibility on the other player separately. Also exercise rapid input,
+simultaneous edits, rejection reconciliation and uncertain retries. Record the
+chosen budgets, observed timings and environment. The runner's latency/jitter
+controls affect WebRTC data channels, not CVM; local tests do not establish
+public-network or physical-phone performance.
+
 ### Frontend example and response shapes
 
 `backend init` (or `soyli dev`) writes `.napplet-space/soy-backend.json` with the
 public `provider`, `napplet` address and `modules`. Use that napplet address and
 your manifest name for the module reference, not the browser URL or transport key.
 The host maps the configured provider onto its local copy during preview.
+
+The context is generated, ignored, and recreated by `soyli setup`, `build`, `dev`
+and `run`. Keep provider/module declarations in tracked `napplet.json`; never
+force-add the private `.napplet-space` directory. On a fresh checkout run
+`soyli setup` before invoking the package manager directly.
+
+### Typed handler identity
+
+The shipped `docs/examples/backend-context.d.ts` describes the handler context.
+A type-only import is erased by the compiler and requires no runtime dependency:
+
+```ts
+import type { BackendContext } from '../docs/examples/backend-context';
+export async function handle(ctx: BackendContext, input: Record<string, unknown>) {
+  if (ctx.principal !== ctx.owner) throw new Error('FORBIDDEN: Only the owner can do this.');
+  // Implement the declared operation here.
+}
+```
+
+Prefer schema `access: "owner"` for an operation that is always owner-only.
+`ctx.account` is a verified raw hex key (or null); `ctx.principal` and `ctx.owner`
+are prefixed principals, such as `nostr:<pubkey>`. Comparing account directly to
+owner always fails. `ctx.actor` is the ephemeral transport key, not ownership.
+
+### Account-required test scenarios
+
+Use `soyli multiplayer tests/worlds.mjs` with its bundled browser and disposable
+backend. It copies declared module sources and starts with empty isolated state.
+Adapt the following selectors to the game's UI:
+
+```js
+export default async ({players, connectIdentity, approveBackendAccount, check}) => {
+  const [owner, guest] = players;
+  const {pubkey} = await connectIdentity(owner);
+  await owner.frame.getByRole('button', {name: 'Create world', exact: true}).click();
+  await approveBackendAccount(owner, 'main');
+  await owner.frame.getByText('World created', {exact: true}).waitFor();
+  check('owner created a world', await owner.frame.getByText('World created', {exact: true}).isVisible());
+  // Share its world code with guest, then assert the actual guest edit/result.
+  // Add denied owner actions, simultaneous edits, conflicts and exact retry.
+};
+```
+
+These are ephemeral test viewers, not your CLI creator. Real account proofs and
+ACLs remain active. Tests must distinguish guest, owner and other signed-in
+players. `backend check` only compiles; `check` only verifies startup. The runner
+only verifies the assertions you supply. Restart persistence and old-release
+pinning still need explicit tests in a persistent `soyli dev` session. Interactive
+captures can connect a browser extension; automatic captures start as guests.
 
 The optional `docs/examples/backend-client.ts` helper unwraps MCP results and
 preserves the distinction between a definitive rejection and an uncertain

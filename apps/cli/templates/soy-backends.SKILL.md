@@ -23,7 +23,9 @@ provider settings. Start with one useful vertical flow through the real host.
 Use `docs/examples/minicraft/` for contract examples, not as mandatory game design.
 
 Define bounded input, output and record schemas. Derive authority from `ctx`,
-never a player-supplied account/role. Keep handlers self-contained; no imports,
+never a player-supplied account/role. Use the shipped backend-context types;
+prefer schema access: owner, or compare ctx.principal === ctx.owner (account is
+an unprefixed key). Keep handlers self-contained; no runtime imports,
 network, filesystem, npm installs, background jobs or trusted client scores.
 A successful command commits its state and result together; a failure saves none.
 
@@ -33,7 +35,16 @@ guest limitations visible. For an uncertain result, retry the exact request ID,
 expiry and payload. A conflict requires refresh and a new intent; after expiry,
 read state before resubmitting. Do not label local preview data as public data.
 
+For interactive editing, follow "Responsive shared editing" in
+`docs/napplet-dynamic-backends.md`: separate pending feedback from confirmed state,
+bound queued work and keep background reads from freezing controls. Prefer compact
+results and selective reads. Measure local feedback, confirmation and other-player
+visibility separately; eventual delivery alone is not a responsiveness check.
+The current host has no backend streams or watch API; do not invent one.
+
 Run `soyli backend check` and `soyli dev`; restart preview after backend edits.
+Use the documented multiplayer connectIdentity/approveBackendAccount fixtures
+for account-required local tests; never open a creator credential for gameplay tests.
 Exercise at least two identities, an unauthorized write, simultaneous edits,
 retry of a committed request and persistence after restart. Test the game rules,
 not only successful tool calls. Stop the preview you started when done.
@@ -44,3 +55,7 @@ before promising publication. Commit/push the source, then use
 worlds pinned; there is no automatic migration. Never switch accounts, remove
 permissions or silently replace shared state with local storage to bypass errors.
 Report the exact actionable failure and what is verified locally versus remotely.
+Keep a short evidence record: build/commit, commands and assertions passed,
+skipped or blocked checks, inspected media, public release/receipt (if any), and
+the next command needed. A locally working app with publication blocked is not
+a published release; do not reinterpret skipped conformance checks as passed.

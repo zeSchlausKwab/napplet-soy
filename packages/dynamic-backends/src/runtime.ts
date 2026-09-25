@@ -1,18 +1,12 @@
 import { BackendError, LIMITS } from './contracts';
 import { jsonBytes } from './schema';
 import { workerExchange, type WorkerCommand } from './worker-process';
+import type { BackendContext } from './handler-types';
 
 export type HostCall = (method: string, args: Record<string, unknown>) => unknown;
-export type RuntimeContext = {
-  actor: string;
-  account: string | null;
+export type RuntimeContext = Omit<BackendContext, 'state' | 'principal' | 'owner'> & {
   principal: string;
   owner: string;
-  instance: string;
-  release: string;
-  operation: string;
-  requestId: string;
-  now: number;
 };
 export function runtimeCommand() {
   return import.meta.url.includes('/$bunfs/')

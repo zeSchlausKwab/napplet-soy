@@ -54,6 +54,30 @@ export async function browserInstalled(video = false, interactive = false) {
   ).every(Boolean);
 }
 
+/** Read-only discovery; does not assume a global Chrome or download anything. */
+export async function browserPaths() {
+  await browserEngine();
+  const executables = [...browserExecutables(false, false), ...browserExecutables(true, true)];
+  return {
+    profile: browserProfile(),
+    executables: await Promise.all(
+      executables.map(async (executable) => {
+        const path = executable?.executablePath();
+        return {
+          name: executable?.name,
+          path: path ?? null,
+          installed:
+            !!path &&
+            (await access(path).then(
+              () => true,
+              () => false,
+            )),
+        };
+      }),
+    ),
+  };
+}
+
 function browserExecutables(
   video: boolean,
   interactive: boolean,

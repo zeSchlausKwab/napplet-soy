@@ -12,34 +12,16 @@ import { CvmConnection } from '../../../packages/multiplayer/src/client';
 import {
   ABI,
   PROFILE,
-  LIMITS,
   manifestSchema,
-  pathSchema,
-  digest,
   canonical,
   authorizationTemplate,
 } from '../../../packages/dynamic-backends/src/contracts';
 import { buildArtifact, type BuildInput } from '../../../packages/dynamic-backends/src/build';
+import { readModule } from '../../../packages/dynamic-backends/src/module-source';
 import { backendProject, resolveBackendProvider } from './backend';
 
 export async function localModule(directory: string, path: string): Promise<BuildInput> {
-  pathSchema.parse(path);
-  const files: Record<string, string> = {};
-  files[path] = new TextDecoder('utf-8', { fatal: true }).decode(
-    await regularFile(directory, path, 8192),
-  );
-  const manifest = manifestSchema.parse(JSON.parse(files[path]));
-  for (const [file, limit] of [
-    [manifest.entry, LIMITS.sourceBytes],
-    [manifest.schemas, LIMITS.schemaBytes],
-  ] as const)
-    files[file] = new TextDecoder('utf-8', { fatal: true }).decode(
-      await regularFile(directory, file, limit),
-    );
-  return {
-    source: { mode: 'local-preview', manifest: path, workspaceDigest: digest(canonical(files)) },
-    files,
-  };
+  return readModule(path, (file, limit) => regularFile(directory, file, limit));
 }
 
 export async function initModule(directory: string) {

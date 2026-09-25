@@ -10,6 +10,7 @@ import mobileGuide from '../../../docs/MOBILE.md' with { type: 'text' };
 import wasmGuide from '../../../docs/WASM.md' with { type: 'text' };
 import visualGuide from '../../../docs/VISUAL-DESIGN.md' with { type: 'text' };
 import { adaptVisualBoilerplate, adaptVisualSkill } from './creator-visuals';
+import { adaptToolingBoilerplate, adaptToolingSkill } from './creator-tooling';
 import rustBridge from '../support/napplet.rs' with { type: 'text' };
 import bevyAssets from '../support/napplet_bevy.rs' with { type: 'text' };
 // Distinct module identity keeps Bun's raw-source cache separate from executable imports.
@@ -18,6 +19,7 @@ import backendGuide from '../../../docs/BACKEND-CREATOR.md' with { type: 'text' 
 import dynamicBackendGuide from '../../../docs/DYNAMIC-BACKENDS-CREATOR.md' with { type: 'text' };
 import backendClientExample from '../templates/backend-client.ts.txt' with { type: 'text' };
 import backendSkill from '../templates/soy-backends.SKILL.md' with { type: 'text' };
+import backendTypes from '../../../packages/dynamic-backends/src/handler-types.ts?raw' with { type: 'text' };
 import minicraftHandler from '../../../packages/dynamic-backends/fixtures/minicraft/handler.ts?raw' with { type: 'text' };
 import minicraftManifest from '../../../packages/dynamic-backends/fixtures/minicraft/backend.json';
 import minicraftSchemas from '../../../packages/dynamic-backends/fixtures/minicraft/schemas.json';
@@ -85,7 +87,9 @@ and report missing coverage honestly. Never invent a portrait recording option.
 - soyli config shows effective publishing targets without a signer or build.
   config init writes editable targets into the ignored .napplet-space/project.json binding.
 - For shared scores, matchmaking or peer connections, read docs/napplet-backend.md.
-  soyli backend init pins a visible provider and prepares public .napplet-space/soy-backend.json.
+  soyli backend init saves portable backend declarations in napplet.json and generates
+  ignored .napplet-space/soy-backend.json. Commit napplet.json and module source;
+  never force-add .napplet-space. setup/build/dev/run regenerate the public context.
   soyli dev runs an isolated copy of the backend automatically; publishing registers
   declared boards with the creator's authorization. Backend status checks connectivity.
   Boards can declare dataSchema for public JSON attached to each personal best (8 KiB),
@@ -482,6 +486,7 @@ export function creatorSkills() {
     'docs/napplet-backend.md': backendGuide,
     'docs/napplet-dynamic-backends.md': dynamicBackendGuide,
     'docs/examples/backend-client.ts': backendClientExample,
+    'docs/examples/backend-context.d.ts': backendTypes,
     '.agents/skills/soy-backends/SKILL.md': backendSkill,
     '.claude/skills/soy-backends/SKILL.md': backendSkill,
     'docs/examples/minicraft/handler.ts': minicraftHandler,
@@ -506,7 +511,7 @@ export function creatorSkills() {
   };
   for (const [path, text] of Object.entries(skills.files)) {
     if (!path.startsWith('skills/')) continue;
-    const adapted = adaptVisualSkill(path, text);
+    const adapted = adaptToolingSkill(path, adaptVisualSkill(path, text));
     for (const agent of ['.agents', '.claude']) files[`${agent}/${path}`] = adapted;
   }
   return files;
@@ -516,7 +521,7 @@ export function boilerplateFiles(name: string) {
   const files: Record<string, string> = Object.fromEntries(
     Object.entries(boilerplate.files).map(([path, text]) => [
       path,
-      adaptVisualBoilerplate(path, text),
+      adaptToolingBoilerplate(path, adaptVisualBoilerplate(path, text)),
     ]),
   );
   files['package.json'] =
@@ -536,6 +541,13 @@ export function boilerplateFiles(name: string) {
   files['tests/guidance.test.mjs'] = files['tests/guidance.test.mjs'].replace(
     original,
     "new Set(['.git', 'dist', 'node_modules', '.agents', '.claude', '.napplet-space'])",
+  );
+  const skillInstall = 'assert.match(sources.get(path), /npx skills add napplet\\/napplet/, path);';
+  if (!files['tests/guidance.test.mjs'].includes(skillInstall))
+    throw new Error('Upstream skill-install guidance changed; review the adapter.');
+  files['tests/guidance.test.mjs'] = files['tests/guidance.test.mjs'].replace(
+    skillInstall,
+    'assert.match(sources.get(path), /docs\\/napplet-space\\.md/, path);',
   );
   const schemaFree = "assert.equal(sources.has('config.schema.json'), false);";
   if (!files['tests/guidance.test.mjs'].includes(schemaFree))

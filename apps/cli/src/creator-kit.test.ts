@@ -112,6 +112,21 @@ test('assembled authoring guidance chooses scene and UI direction without confli
     expect(guide.replace(/\s+/g, ' ')).toContain(part);
 });
 
+test('shipped tooling guidance follows soyLI setup and allows backend and scenario source', () => {
+  const files = { ...boilerplateFiles('tooling'), ...creatorSkills() };
+  const build = files['.agents/skills/napplet-build/SKILL.md'];
+  expect(build).not.toContain('napplet create my-napplet');
+  expect(build).not.toContain('napplet paja --');
+  expect(build).toContain('soyli setup');
+  expect(build).toContain('`backend/**`');
+  expect(build).toContain('`tests/**`');
+  for (const path of ['README.md', 'AGENTS.md'])
+    expect(files[path]).not.toContain('npx skills add napplet/napplet');
+  expect(files['docs/napplet-backend.md']).toContain('never force-add');
+  expect(files['docs/napplet-dynamic-backends.md']).toContain('ctx.principal !== ctx.owner');
+  expect(files['docs/examples/backend-context.d.ts']).toContain('account: string | null');
+});
+
 test('updating the previous pinned skills removes host styling mandates without rewriting project art or edited instructions', async () => {
   const project = await scaffold(root, 'old-visual-guidance', 'boilerplate');
   const statePath = join(project, '.napplet-space/skills.json');

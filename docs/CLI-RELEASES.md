@@ -1,8 +1,27 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.23.0**. A successful GitHub workflow run and published
+The source version is **0.23.1**. A successful GitHub workflow run and published
 release are separate acceptance steps.
+
+**0.23.1 prepared:** fixes dynamic-backend authoring and verification discovered
+in an independently built multiplayer project. Frozen checks, screenshots, clips
+and multiplayer previews include declared backend manifests, handlers and schemas;
+missing source reports its path before browser startup. Backend configuration is
+portable in `napplet.json`, while generated context and identity bindings stay local.
+Fresh setup/build/dev/run regenerates the ignored context.
+
+Multiplayer scenarios gain disposable signed-in viewers and scoped account-consent
+helpers. `soyli browser path --json` exposes managed executable paths. Typed handler
+context and corrected scaffold/skill guidance preserve existing projects and
+clarify ownership, verification and responsive shared editing. Native CI now tests
+configured modules through frozen preview paths in addition to compilation.
+This patch does not add streams, a new transport or game performance changes.
+
+After updating, restart previews and run `soyli skills update`, reviewing preserved
+local edits. Run `soyli backend init` to migrate older locally stored backend
+declarations into `napplet.json`, then commit the portable config and module source.
+Keep `.napplet-space` ignored. See [backend authoring](DYNAMIC-BACKENDS-CREATOR.md).
 
 **0.23.0 published 2026-09-25:**
 [GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.23.0),
@@ -194,9 +213,9 @@ installer is running before removing the reported `.install-lock` directory.
 2. Commit the change and push the commit, then its matching tag:
 
    ```sh
-   git tag -a soyli-v0.22.0 -m 'napplet soyLI 0.22.0'
+   git tag -a soyli-v0.23.1 -m 'napplet soyLI 0.23.1'
    git push origin main
-   git push origin soyli-v0.22.0
+   git push origin soyli-v0.23.1
    ```
 
 3. Watch **soyLI releases** in Actions. Publish only after all four native jobs pass.
@@ -240,7 +259,7 @@ access as appropriate for the maintainers.
 ```sh
 bun run check
 bun run cli:build --target darwin-arm64
-SPACE_TEST_CLI="$PWD/.local/cli/0.22.0/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.23.1/soyli-darwin-arm64/soyli" \
   bun test tests/services/cli-update.test.ts tests/services/cli-distribution.test.ts
 ```
 

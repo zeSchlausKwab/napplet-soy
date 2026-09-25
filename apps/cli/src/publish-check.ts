@@ -1,6 +1,6 @@
 import { redactDiagnostic } from '../../../packages/diagnostics/src';
 import { waitForCapture } from './interactive-capture';
-import { ASSET_LOCK, parseAssets } from '../../../packages/assets/src';
+import { materializePreview } from './frozen-preview';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,11 +16,7 @@ import { AccountError } from '../../../packages/identity/src/signer';
 import { RUNTIME_PROFILE } from '../../../packages/runtime/src/capabilities';
 import { MAX_PREVIEW_BYTES } from '../../../packages/protocol/src/preview';
 import { localBackend } from './backend';
-import {
-  builtConfiguration,
-  executableBytes,
-  executableEntry,
-} from '../../../packages/publish/src/artifact';
+import { builtConfiguration, executableBytes } from '../../../packages/publish/src/artifact';
 
 /** Execute only the frozen HTML in our current sandbox. Never run a project's build/preview scripts. */
 export async function checkPublication(
@@ -50,15 +46,7 @@ export async function checkPublication(
         'The clip belongs to an older build. Record again or remove preview.video before publishing.',
       );
     await mkdir(join(directory, '.napplet'));
-    await mkdir(join(directory, 'dist'));
-    for (const path of [
-      executableEntry(contents),
-      'napplet.json',
-      ...(contents.has(ASSET_LOCK)
-        ? [ASSET_LOCK, ...parseAssets(contents.get(ASSET_LOCK)).assets.map((a) => a.path)]
-        : []),
-    ])
-      await Bun.write(join(directory, path), contents.get(path)!);
+    await materializePreview(directory, contents);
     backend = await localBackend(directory);
     server = startPreviewServer(pathToFileURL(directory + '/'), 0, false, await previewAssets(), {
       network: 'local',
