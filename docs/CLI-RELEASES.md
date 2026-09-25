@@ -4,7 +4,18 @@ GitHub Releases distribute the standalone CLI independently of the website/VPS.
 The source version is **0.23.2**. A successful GitHub workflow run and published
 release are separate acceptance steps.
 
-**0.23.2 prepared for release:** fixes publication of projects whose old Git
+**0.23.2 published 2026-09-25:**
+[GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.23.2),
+source `8e4e3557a7528ae7d15f20ac57c263b95e8d9f8f`.
+[Workflow 36185275161](https://github.com/zeSchlausKwab/napplet-soy/actions/runs/36185275161)
+passed the source gate and all four native build, installer/updater, packaged
+diagnostic and fresh-project backend preview checks. All 11 release assets are
+public. Public installer/manifest checksums and source revision were verified.
+An isolated public macOS ARM64 installation reports 0.23.2/current; the affected
+project passes dry-run with its historical public context preserved. The user's
+installation, project files, website and CVM deployment were unchanged.
+
+This patch fixes publication of projects whose old Git
 history contains the former public `.napplet-space/soy-backend.json` context,
 removed from the current tree. Only that exact path and bounded, strictly validated
 public format are accepted; private bindings, journals, databases and credentials
