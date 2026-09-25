@@ -2,7 +2,8 @@
 
 `soy.backends.v1` adds creator-defined persistent rules over the existing NAP-CVM
 transport. It is implemented in the shell, soyLI and provider, with a separately
-qualified Linux deployment path. Hosting is available only to admitted creators.
+qualified Linux deployment path. Public napplet.soy enabled admitted hosting on
+2026-09-25 with soyLI 0.23.0. Hosting is available only to admitted creators.
 A website/CLI release alone does not admit public code execution. The operator must
 explicitly enable this service and admit creator accounts and Git source origins.
 Administrators then manage additional creator grants in `/admin` → **Backend slots**.
@@ -132,14 +133,34 @@ baseline Bun 1.3.8 under the intended cgroup and filesystem restrictions, includ
 encrypted provider startup and denied admission. An independent creator built a
 shared garden using only the packaged soyLI and shipped materials: two-player edits,
 permissions, conflicts, exact retry after a lost response and full preview restart
-passed. Touch emulation passed; no physical-phone or public deployment is claimed.
-The project check passed 414 tests; production web build and native darwin-arm64
-soyLI scaffolding/module compilation passed. This evidence supports a controlled,
-admitted rollout, not unrestricted arbitrary-code hosting.
+passed. Touch emulation passed; physical-phone testing is still outstanding.
+The released project check passed 415 tests locally and on the production runtime;
+the web build and all four native soyLI build/install/update/starter/backend compiler
+checks passed in [release CI](https://github.com/zeSchlausKwab/napplet-soy/actions/runs/36159756534).
+This evidence supports controlled, admitted hosting, not unrestricted execution.
+
+**Production rollout, 2026-09-25:** website release `20260925162308197-37378` and
+soyLI [0.23.0](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.23.0)
+are live. Dynamic hosting runs under the qualified systemd/bubblewrap/cgroup profile.
+The existing operator administrator is the sole initial creator seed; additional
+accounts can be admitted or revoked in the signed **Backend slots** administration tab.
+The admin browser test covers grant/revoke, protected seeds, preserved drafts,
+keyboard navigation and mobile layout. Policy tests cover immediate admission,
+rejected self-grants, denied deployment after revocation and retained worlds.
+
+A temporary creator pushed a real source commit to the public GRASP host. Through
+the encrypted public CVM connection, the check discovered the tool schemas, rejected
+an unadmitted author, requested provider compilation, verified the signed source
+receipt, activated the release and created a counter. A state update and an exact
+retry changed it only once. After removing test admission and restarting the actual
+CVM service, the counter retained its value, reads still worked and new builds were
+denied. The test world was then purged and its module disabled. The temporary grant
+was removed from both running and saved service configuration. No extra napplet was
+published in the gallery. Site/index health and public installer bytes were verified.
 
 Still outside this slice: automatic migrations, exports, instance discovery/management
 GUI, backend source watching, coordinated frontend/backend releases, background jobs,
-streaming simulation and additional build profiles. Physical mobile/LAN acceptance
-and full public operator rollout remain distinct from local/browser tests.
+streaming simulation and additional build profiles. Physical mobile/LAN acceptance and a published multiplayer application using the
+hosted modules remain separate from the public provider and emulated browser checks.
 Recovering an unknown instance after all creation replies are lost and its retry
 window expires also requires a future instance-discovery flow.

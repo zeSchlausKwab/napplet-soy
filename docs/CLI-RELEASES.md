@@ -4,7 +4,16 @@ GitHub Releases distribute the standalone CLI independently of the website/VPS.
 The source version is **0.23.0**. A successful GitHub workflow run and published
 release are separate acceptance steps.
 
-**0.23.0 — prepared for release:** creator-defined persistent backends through
+**0.23.0 published 2026-09-25:**
+[GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.23.0),
+source `f139962e6173c08c30d880d3385ead44f1717553`.
+[Workflow 36159756534](https://github.com/zeSchlausKwab/napplet-soy/actions/runs/36159756534)
+passed the source gate and all four native build, installer/updater, fresh-project
+browser and backend compiler checks. All 11 release assets are public. The published
+manifest identifies the tagged commit; the downloaded macOS ARM64 archive checksum
+was verified and its executable reports 0.23.0.
+
+Creator-defined persistent backends through
 `soy.backends.v1`, with provider-built source receipts, schemas, release pinning,
 scoped account proofs and transactional state. soyLI adds module authoring/check/
 deployment commands, local durable preview, the `soy-backends` skill, a portable
@@ -13,7 +22,7 @@ upgrading. Hosts must enable isolated execution and grant creator deployment acc
 The shell adds administrator-managed deployment grants and an accessible tabbed
 administration workspace. See [dynamic backends](DYNAMIC-BACKENDS.md).
 Native release checks now compile a backend module on every supported platform.
-Publication, production activation and live verification will be recorded separately.
+Production activation and live verification are recorded in [dynamic backends](DYNAMIC-BACKENDS.md).
 
 **0.22.0 published 2026-09-24:**
 [GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.22.0),
