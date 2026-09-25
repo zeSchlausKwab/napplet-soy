@@ -15,19 +15,31 @@ pm2_run() { runuser -u napplet -- env PM2_HOME="$state_root/pm2" node "$pm2_bin"
 install -d -m 700 "$backup_root"
 work=$(mktemp -d "$backup_root/.snapshot-XXXXXXXX")
 stopped=0
+cvm_systemd=0
+if [[ -f "$release/dynamic-backends-enabled" ]] || systemctl is-active --quiet napplet-cvm.service; then
+  cvm_systemd=1
+fi
+apps=(napplet-relay napplet-blossom napplet-grasp napplet-indexer napplet-web)
+[[ "$cvm_systemd" == 1 ]] || apps+=(napplet-cvm)
+restart_apps() {
+  pm2_run restart "${apps[@]}"
+  [[ "$cvm_systemd" != 1 ]] || systemctl start napplet-cvm.service
+}
 recover() {
   code=$?
   trap - EXIT
-  if [[ "$stopped" == 1 ]]; then pm2_run restart napplet-relay napplet-blossom napplet-grasp napplet-indexer napplet-cvm napplet-web || code=1; fi
+  if [[ "$stopped" == 1 ]]; then restart_apps || code=1; fi
   rm -rf "$work"
   exit "$code"
 }
 trap recover EXIT
 # Quiesce only this installation. Caddy and other sites keep running.
 stopped=1
-pm2_run stop napplet-web napplet-cvm napplet-indexer napplet-grasp napplet-blossom napplet-relay
+# Stop CVM first: drain bounded calls/builds and checkpoint SQLite before copying.
+[[ "$cvm_systemd" != 1 ]] || systemctl stop napplet-cvm.service
+pm2_run stop "${apps[@]}"
 python3 "$release/scripts/backup-data.py" snapshot --state "$state_root" --shared "$app_root/shared" --destination "$work/snapshot" --release "$(basename "$release")"
-pm2_run restart napplet-relay napplet-blossom napplet-grasp napplet-indexer napplet-cvm napplet-web
+restart_apps
 stopped=0
 name="napplet-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
 python3 "$release/scripts/backup-data.py" pack --snapshot "$work/snapshot" --archive "$work/$name"

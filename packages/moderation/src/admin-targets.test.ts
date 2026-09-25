@@ -23,6 +23,9 @@ test('admin inputs preserve Nostr identities and reject ambiguous entity types',
 test('admin search includes titles, profile names and saved unknown blocked identifiers', () => {
   const state: AdminState = {
     revision: 0,
+    backendCreators: [id],
+    configuredBackendCreators: [],
+    backendHosting: true,
     admins: [pubkey],
     recoveryAdmins: [pubkey],
     audit: [],

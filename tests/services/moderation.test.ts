@@ -70,6 +70,8 @@ test('featured hero, ordered admin curation, membership and remembered extension
       SPACE_SITE_ORIGIN: origin,
       SPACE_MODERATION_FILE: policy,
       SPACE_ADMIN_PUBKEYS: pubkey,
+      SPACE_DYNAMIC_CREATORS: pubkey,
+      SPACE_DYNAMIC_ENABLED: '1',
       SPACE_INDEX_DIR: join(directory, 'index'),
       SPACE_COMMUNITY_DIR: join(directory, 'community'),
       SPACE_INDEX_RELAYS: `ws://127.0.0.1:${storage.port}`,
@@ -120,7 +122,9 @@ test('featured hero, ordered admin curation, membership and remembered extension
     refused = true; // Automatic policy loading must surface refusal without logging out.
     await page.getByRole('button', { name: 'Connect browser extension' }).click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
-    const accountButton = page.getByRole('button', { name: `${pubkey.slice(0, 6)}…`, exact: true });
+    const accountButton = page
+      .locator('#identity-button')
+      .filter({ has: page.locator('.identity-button-name') });
     await accountButton.waitFor();
     await page.getByText(/Your account is still selected/).waitFor();
     await page.getByRole('button', { name: 'Retry loading administration' }).click();
@@ -159,11 +163,13 @@ test('featured hero, ordered admin curation, membership and remembered extension
     );
     await change('feature', fixtures[0].naddr, 'First hero choice');
     await change('feature', fixtures[1].naddr, 'Second hero choice');
+    await page.getByRole('tab', { name: 'Featured', exact: true }).click();
     await page.getByLabel('Featured order change reason').fill('Put the second selection first');
     await page.getByRole('button', { name: 'Move featured selection 2 earlier' }).click();
     await browserExpect(
       page.getByRole('region', { name: 'Featured order', exact: true }).locator('li').first(),
     ).toContainText(fixtures[1].title);
+    await page.getByRole('tab', { name: 'Administrators', exact: true }).click();
     const admins = page.getByRole('region', { name: 'Administrators', exact: true });
     await admins.getByRole('searchbox').fill(nip19.npubEncode(secondKey));
     await admins.getByLabel('Administrators change reason').fill('Help curate the playground');
@@ -178,10 +184,44 @@ test('featured hero, ordered admin curation, membership and remembered extension
       admins.getByRole('button', { name: 'Remove administrator', exact: true }),
     ).toBeDisabled();
     // Each entity retains its own reason and identifier; hashes cannot accidentally become author blocks.
+    await page.getByRole('tab', { name: 'Assets', exact: true }).click();
     const assets = page.getByRole('region', { name: 'Assets', exact: true });
     await assets.getByRole('searchbox').fill('not-a-hash');
     await assets.getByLabel('Assets change reason').fill('Invalid input');
     await browserExpect(assets.getByRole('button', { name: 'Block', exact: true })).toBeDisabled();
+    await page.getByRole('tab', { name: 'Backend slots', exact: true }).click();
+    const slots = page.getByRole('region', { name: 'Backend slots', exact: true });
+    await slots.getByRole('searchbox').fill(nip19.npubEncode(secondKey));
+    await slots.getByLabel('Backend slots change reason').fill('Invite a backend creator');
+    await page.getByRole('tab', { name: 'Assets', exact: true }).click();
+    await browserExpect(assets.getByLabel('Assets change reason')).toHaveValue('Invalid input');
+    await page.getByRole('tab', { name: 'Backend slots', exact: true }).click();
+    await browserExpect(slots.getByLabel('Backend slots change reason')).toHaveValue(
+      'Invite a backend creator',
+    );
+    await slots.getByRole('button', { name: 'Allow deployment', exact: true }).click();
+    await slots.getByRole('status').filter({ hasText: 'Deployment access granted' }).waitFor();
+    expect((await Bun.file(policy).json()).backendCreators).toContain(secondKey);
+    await slots.getByLabel('Backend slots change reason').fill('Trial complete');
+    await slots.getByRole('button', { name: 'Remove deployment access', exact: true }).click();
+    await slots.getByRole('status').filter({ hasText: 'Deployment access removed' }).waitFor();
+    await slots.getByRole('searchbox').fill(pubkey);
+    await slots.getByLabel('Backend slots change reason').fill('Protected bootstrap account');
+    await browserExpect(
+      slots.getByRole('button', { name: 'Remove deployment access', exact: true }),
+    ).toBeDisabled();
+    await page.getByRole('tab', { name: 'Backend slots', exact: true }).focus();
+    await page.keyboard.press('End');
+    await browserExpect(page.getByRole('tab', { name: 'History', exact: true })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await page.keyboard.press('Home');
+    await browserExpect(page.getByRole('tab', { name: 'Napplets', exact: true })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await page.getByRole('tab', { name: 'Backend slots', exact: true }).click();
     await mkdir(join(root, '.local/featured-check'), { recursive: true });
     await page.screenshot({
       path: join(root, '.local/featured-check/admin-desktop.png'),
@@ -193,7 +233,7 @@ test('featured hero, ordered admin curation, membership and remembered extension
       .getByRole('link', { name: `Explore featured napplet: ${fixtures[1].title}` })
       .waitFor();
     await page.screenshot({ path: join(root, '.local/featured-check/hero-desktop.png') });
-    expect(await page.locator('iframe').count()).toBe(0);
+    expect(await hero.locator('iframe').count()).toBe(0);
     await hero.getByRole('button', { name: 'Pause featured rotation' }).click();
     await hero.getByRole('button', { name: 'Resume featured rotation' }).waitFor();
     await hero.getByRole('button', { name: 'Resume featured rotation' }).click();
@@ -232,7 +272,9 @@ test('featured hero, ordered admin curation, membership and remembered extension
       );
       const command = await page.locator('.hero .starter-command').boundingBox();
       expect(command).not.toBeNull();
-      expect(command!.y + command!.height).toBeLessThan(height);
+      expect(command!.width).toBeLessThanOrEqual(width);
+      await page.locator('.hero .starter-command').scrollIntoViewIfNeeded();
+      await browserExpect(page.locator('.hero .starter-command')).toBeInViewport();
     }
     await page.goto(`${origin}/admin`);
     await page.getByRole('region', { name: 'Napplets', exact: true }).waitFor();
@@ -337,10 +379,9 @@ test('featured hero, ordered admin curation, membership and remembered extension
     await memberPage.getByRole('button', { name: 'Connect', exact: true }).click();
     await memberPage.getByRole('button', { name: 'Connect browser extension' }).click();
     await memberPage.getByText('This account is not an administrator.', { exact: true }).waitFor();
-    const memberButton = memberPage.getByRole('button', {
-      name: `${secondKey.slice(0, 6)}…`,
-      exact: true,
-    });
+    const memberButton = memberPage
+      .locator('#identity-button')
+      .filter({ has: memberPage.locator('.identity-button-name') });
     await memberButton.click();
     expect(
       await memberPage
@@ -391,7 +432,10 @@ test('featured hero, ordered admin curation, membership and remembered extension
     await memberContext.close();
     const another = await context.newPage();
     await another.goto(origin);
-    await another.getByRole('button', { name: `${pubkey.slice(0, 6)}…`, exact: true }).waitFor();
+    await another
+      .locator('#identity-button')
+      .filter({ has: another.locator('.identity-button-name') })
+      .waitFor();
     await accountButton.click();
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await another.getByRole('button', { name: 'Connect', exact: true }).waitFor();

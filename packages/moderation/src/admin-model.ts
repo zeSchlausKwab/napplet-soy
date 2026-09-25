@@ -16,5 +16,8 @@ export type AdminCatalog = {
 export type AdminState = Pick<Policy, 'revision' | 'rules' | 'featured' | 'audit'> & {
   admins: string[];
   recoveryAdmins: string[];
+  backendCreators: string[];
+  configuredBackendCreators: string[];
+  backendHosting: boolean;
   catalog: AdminCatalog;
 };

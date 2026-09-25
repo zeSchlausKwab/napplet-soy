@@ -2,6 +2,7 @@ import { sha256, verifiedEvent } from '../../protocol/src';
 import {
   actionSchema,
   effectiveAdmins,
+  configuredBackendCreators,
   configuredAdmins,
   normalizeTarget,
   policyPath,
@@ -120,10 +121,15 @@ export async function adminResponse(request: Request) {
         audit: policy.audit,
         admins: effectiveAdmins(policy),
         recoveryAdmins: configuredAdmins(),
+        backendCreators: [...new Set([...configuredBackendCreators(), ...policy.backendCreators])],
+        configuredBackendCreators: configuredBackendCreators(),
+        backendHosting: process.env.SPACE_DYNAMIC_ENABLED === '1',
         ...(request.method === 'GET'
           ? {
               catalog: await adminCatalog([
                 ...effectiveAdmins(policy),
+                ...configuredBackendCreators(),
+                ...policy.backendCreators,
                 ...policy.rules.filter((r) => r.type === 'pubkey').map((r) => r.target),
               ]),
             }

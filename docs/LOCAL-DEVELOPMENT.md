@@ -20,6 +20,36 @@ bun run dev:down    # stop this checkout’s PM2 services while preserving state
 
 Ordinary napplet creators still use the lightweight `soyli dev` command; they do not need this platform stack. Platform contributors use the full stack to exercise publishing and discovery end to end.
 
+### Troubleshooting the implemented local stack
+
+Run `bun run dev` and open `http://127.0.0.1:3000`. The web process runs in the
+foreground; backing services remain under this checkout's `.local/pm2` when it
+stops. `bun run dev:down` stops those managed services and preserves local data.
+
+Startup timeouts include redacted PM2 logs and a command to inspect the current
+service. PM2 appends process IDs to log filenames, so use the scoped log command
+instead of assuming an `*-error.log` filename:
+
+```sh
+bun run dev:doctor
+PM2_HOME="$PWD/.local/pm2" node node_modules/pm2/bin/pm2 logs napplet-local-blossom --lines 30 --nostream
+PM2_HOME="$PWD/.local/pm2" node node_modules/pm2/bin/pm2 logs napplet-local-indexer --lines 30 --nostream
+```
+
+If Blossom reports `data directory is already in use`, or the indexer reports
+`Another index worker owns this directory`, another live process owns its SQLite
+lock. This can be an orphan no longer registered with PM2, even when PM2 shows a
+failed replacement. On macOS/Linux, identify the owners with:
+
+```sh
+lsof -nP .local/services/blossom/process.sqlite .local/services/index/writer.sqlite
+```
+
+Confirm the process command and working directory belong to this checkout before
+stopping it with `kill -TERM <pid>`, then rerun `bun run dev`. Do not remove the
+databases or lock files, and do not stop unrelated Bun processes. `dev:down` alone
+cannot stop an orphan that PM2 no longer knows about.
+
 ## 2. Shared deployment definition
 
 Implemented definitions:

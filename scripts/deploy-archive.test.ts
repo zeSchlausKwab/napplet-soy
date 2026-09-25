@@ -59,6 +59,16 @@ test('uploaded source starts the CLI and scaffolds its bundled creator guides', 
     expect(await Bun.file(join(directory, 'example/docs/napplet-backend.md')).text()).toBe(
       await Bun.file(join(root, 'docs/BACKEND-CREATOR.md')).text(),
     );
+    expect(await Bun.file(join(directory, 'example/docs/napplet-dynamic-backends.md')).text()).toBe(
+      await Bun.file(join(root, 'docs/DYNAMIC-BACKENDS-CREATOR.md')).text(),
+    );
+    for (const agent of ['.agents', '.claude'])
+      expect(
+        await Bun.file(join(directory, `example/${agent}/skills/soy-backends/SKILL.md`)).text(),
+      ).toBe(await Bun.file(join(root, 'apps/cli/templates/soy-backends.SKILL.md')).text());
+    expect(await Bun.file(join(directory, 'example/docs/examples/backend-client.ts')).text()).toBe(
+      await Bun.file(join(root, 'apps/cli/templates/backend-client.ts.txt')).text(),
+    );
     expect(await Bun.file(join(directory, 'example/docs/napplet-data.md')).text()).toBe(
       await Bun.file(join(root, 'docs/SHARED-DATA.md')).text(),
     );

@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MiniCraft — a little world, together</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #c7eef0;
+        color: #153e42;
+        font-family:
+          Trebuchet MS,
+          sans-serif;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 3px solid #ff7954;
+        outline-offset: 3px;
+      }
+      #app {
+        height: 100dvh;
+        min-height: 420px;
+        position: relative;
+        overflow: hidden;
+      }
+      #scene {
+        position: absolute;
+        inset: 0;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+      header {
+        position: absolute;
+        top: 23px;
+        left: 28px;
+        right: 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        pointer-events: none;
+      }
+      .wordmark {
+        font-size: 32px;
+        font-weight: 900;
+        letter-spacing: -2px;
+        line-height: 0.9;
+      }
+      .wordmark span {
+        color: #dd4b33;
+      }
+      .eyebrow {
+        font: 11px monospace;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-top: 12px;
+      }
+      .status {
+        border: 1px solid #2b656630;
+        padding: 9px 13px;
+        border-radius: 20px;
+        background: #ffffffcf;
+        font: 12px monospace;
+        max-width: 55%;
+        text-align: right;
+      }
+      .status[data-state='error'] {
+        background: #fff0df;
+        color: #a93427;
+      }
+      .status[data-state='busy'] {
+        background: #fff0a9;
+      }
+      button {
+        border: 1px solid #31595f40;
+        border-radius: 9px;
+        background: #fffef8;
+        color: #183e43;
+        padding: 10px 13px;
+        min-height: 42px;
+        transition:
+          background 0.15s,
+          transform 0.15s;
+      }
+      button:hover:not(:disabled) {
+        background: #fff0a9;
+        transform: translateY(-1px);
+      }
+      button.primary {
+        background: #ec6042;
+        border: 0;
+        color: white;
+        font-weight: bold;
+        box-shadow: 0 4px 0 #b84231;
+      }
+      button.primary:hover:not(:disabled) {
+        background: #d54f34;
+      }
+      input,
+      select {
+        width: 100%;
+        border: 1px solid #31595f40;
+        border-radius: 7px;
+        padding: 10px;
+        background: #fffef9;
+        color: inherit;
+        min-width: 0;
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        font-weight: bold;
+        margin: 14px 0 6px;
+      }
+      #world-panel {
+        position: absolute;
+        right: 25px;
+        top: 105px;
+        width: 254px;
+        background: #fffef4ed;
+        backdrop-filter: blur(12px);
+        border: 1px solid #ffffffb0;
+        box-shadow: 0 15px 60px #18576718;
+        border-radius: 16px;
+        padding: 18px;
+        max-height: calc(100% - 230px);
+        overflow: auto;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 17px;
+      }
+      p {
+        font-size: 12px;
+        line-height: 1.55;
+        color: #517174;
+      }
+      .row {
+        display: flex;
+        gap: 7px;
+        margin-top: 10px;
+      }
+      .row > * {
+        flex: 1;
+        min-width: 0;
+      }
+      #saved button {
+        width: 100%;
+        text-align: left;
+        margin-top: 7px;
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #join-code {
+        font: 11px monospace;
+      }
+      #share-box {
+        display: none;
+      }
+      #invite {
+        width: 100%;
+        font: 10px monospace;
+        resize: none;
+        background: #e8f1e9;
+        border: 0;
+        padding: 8px;
+        border-radius: 5px;
+        height: 56px;
+      }
+      #world-name {
+        position: absolute;
+        left: 28px;
+        top: 117px;
+        max-width: calc(100% - 340px);
+        pointer-events: none;
+      }
+      #world-name h1 {
+        font-size: clamp(24px, 3vw, 42px);
+        letter-spacing: -1.5px;
+        margin: 0;
+        line-height: 1.08;
+      }
+      #world-name p {
+        margin: 8px 0;
+        font-size: 13px;
+        max-width: 270px;
+      }
+      #toolbar {
+        position: absolute;
+        bottom: 26px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fffef5ec;
+        backdrop-filter: blur(10px);
+        border: 1px solid white;
+        border-radius: 16px;
+        padding: 10px;
+        box-shadow: 0 12px 50px #16434825;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        max-width: calc(100% - 30px);
+      }
+      #palette {
+        display: flex;
+        gap: 5px;
+      }
+      .material {
+        padding: 6px;
+        width: 46px;
+        height: 48px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        gap: 3px;
+      }
+      .material i {
+        width: 20px;
+        height: 20px;
+        background: var(--block);
+        border-radius: 3px;
+        box-shadow: inset -4px -4px 0 #0002;
+      }
+      .material[aria-pressed='true'],
+      .mode[aria-pressed='true'] {
+        outline: 2px solid #176670;
+        background: #d2eff0;
+      }
+      #modes {
+        display: flex;
+        gap: 5px;
+      }
+      .mode {
+        font-size: 12px;
+        padding: 9px;
+      }
+      .hint {
+        position: absolute;
+        bottom: 103px;
+        left: 28px;
+        right: 28px;
+        text-align: center;
+        font: 11px monospace;
+        pointer-events: none;
+        color: #235c63;
+      }
+      #selection {
+        font-variant-numeric: tabular-nums;
+      }
+      .mobile-action {
+        display: none;
+      }
+      #notification {
+        position: absolute;
+        bottom: 149px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #fffef4f5;
+        padding: 10px 15px;
+        border-radius: 9px;
+        max-width: calc(100% - 35px);
+        font-size: 12px;
+        box-shadow: 0 5px 30px #16434820;
+      }
+      #notification:empty {
+        display: none;
+      }
+      #notification.error {
+        color: #a73527;
+        border-left: 4px solid #e46046;
+      }
+      #retry {
+        display: none;
+        background: #ffe69a;
+        margin-left: 10px;
+        font-size: 12px;
+      }
+      #connection-controls {
+        position: absolute;
+        left: 28px;
+        bottom: 26px;
+      }
+      #connection-controls button {
+        font-size: 11px;
+        background: #ffffff9f;
+      }
+      #revision {
+        font: 11px monospace;
+        display: block;
+        margin-bottom: 6px;
+      }
+      @media (max-width: 850px) {
+        #world-panel {
+          width: 220px;
+          right: 15px;
+        }
+        #toolbar {
+          gap: 6px;
+          padding: 7px;
+          bottom: 18px;
+        }
+        #connection-controls {
+          bottom: 148px;
+          left: 15px;
+        }
+        #world-name {
+          left: 18px;
+          max-width: calc(100% - 260px);
+        }
+        .hint {
+          bottom: 121px;
+        }
+        .material {
+          width: 38px;
+          height: 46px;
+          font-size: 8px;
+        }
+        #palette {
+          gap: 3px;
+        }
+        header {
+          left: 18px;
+          right: 18px;
+        }
+        #notification {
+          bottom: 178px;
+        }
+      }
+      @media (max-width: 600px) {
+        #app {
+          min-height: 480px;
+        }
+        header {
+          top: 18px;
+        }
+        .wordmark {
+          font-size: 28px;
+        }
+        .eyebrow {
+          font-size: 9px;
+          letter-spacing: 1px;
+        }
+        .status {
+          font-size: 10px;
+          max-width: 58%;
+        }
+        #world-name {
+          top: 100px;
+          max-width: 240px;
+        }
+        #world-name p {
+          font-size: 11px;
+          max-width: 180px;
+        }
+        #world-panel {
+          top: 91px;
+          right: 12px;
+          width: calc(100% - 24px);
+          max-height: calc(100% - 230px);
+          z-index: 3;
+          padding: 12px;
+        }
+        #world-panel:not([open]) {
+          width: auto;
+        }
+        #world-panel[open] ~ #world-name {
+          display: none;
+        }
+        #toolbar {
+          flex-wrap: wrap;
+          justify-content: center;
+          width: 340px;
+          bottom: 12px;
+          gap: 7px;
+        }
+        #palette {
+          width: 100%;
+          justify-content: center;
+        }
+        .material {
+          width: 40px;
+        }
+        #modes {
+          width: 100%;
+          justify-content: center;
+        }
+        .mobile-action {
+          display: block !important;
+          background: #176670;
+          color: white;
+          font-weight: bold;
+        }
+        .hint {
+          bottom: 136px;
+          font-size: 9px;
+          left: 8px;
+          right: 8px;
+        }
+        #connection-controls {
+          bottom: 169px;
+        }
+        #connection-controls button {
+          padding: 6px;
+          min-height: 32px;
+        }
+        #notification {
+          bottom: 220px;
+        }
+        #revision {
+          font-size: 9px;
+        }
+      }
+      @media (max-height: 520px) {
+        #app {
+          min-height: 0;
+        }
+        header {
+          top: 12px;
+        }
+        .eyebrow {
+          display: none;
+        }
+        #world-name {
+          top: 66px;
+        }
+        #world-name h1 {
+          font-size: 23px;
+        }
+        #world-name p {
+          display: none;
+        }
+        #world-panel {
+          top: 64px;
+          max-height: calc(100% - 154px);
+        }
+        #toolbar {
+          bottom: 8px;
+        }
+        .hint {
+          bottom: 80px;
+        }
+        #connection-controls {
+          bottom: 103px;
+        }
+        #notification {
+          bottom: 136px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app">
+      <div
+        id="scene"
+        role="img"
+        aria-label="Interactive block island. Drag to orbit, click a block to build."
+      ></div>
+      <header>
+        <div>
+          <div class="wordmark">mini<span>craft.</span></div>
+          <div class="eyebrow">A little world, together.</div>
+        </div>
+        <div id="status" class="status" role="status">Connecting…</div>
+      </header>
+      <details id="world-panel" open>
+        <summary>Worlds ↗</summary>
+        <p>Build an island with a friend. Your blocks stay here, even after everyone leaves.</p>
+        <label for="name">Name your island</label
+        ><input id="name" value="Our little island" maxlength="80" />
+        <label for="access">Who can build?</label
+        ><select id="access">
+          <option value="everyone">Anyone with the world code</option>
+          <option value="members">Only me</option>
+        </select>
+        <div class="row"><button id="create" class="primary" disabled>Create island</button></div>
+        <label for="join-code">Join a world</label
+        ><input id="join-code" placeholder="Paste a world code" autocomplete="off" />
+        <div class="row"><button id="join" disabled>Join island</button></div>
+        <section id="share-box">
+          <label for="invite">World code — send to a friend</label
+          ><textarea id="invite" readonly></textarea><button id="copy">Copy world code</button>
+          <p>Works in another tab or browser on this computer. This preview is local.</p>
+        </section>
+        <label>Your recent worlds</label>
+        <div id="saved"></div>
+        <p>Local preview · creative mode · 16 × 16 × 16 blocks. No public publication.</p>
+      </details>
+      <div id="world-name">
+        <h1>Your island<br />starts here.</h1>
+        <p>Small blocks. Big plans.<br />Create a world to make the first mark.</p>
+      </div>
+      <div id="notification" role="alert"></div>
+      <div id="connection-controls">
+        <span id="revision">NO WORLD LOADED</span><button id="refresh">Refresh world</button
+        ><button id="retry">Retry saved action</button>
+      </div>
+      <div class="hint">
+        Drag to orbit · scroll / pinch to zoom · <span id="selection">tap a block to aim</span>
+      </div>
+      <nav id="toolbar" aria-label="Building tools">
+        <div id="palette"></div>
+        <div id="modes">
+          <button class="mode" id="build" aria-pressed="true">＋ Build</button
+          ><button class="mode" id="remove" aria-pressed="false">− Remove</button
+          ><button id="apply" class="mobile-action" disabled>Place block</button>
+        </div>
+      </nav>
+    </main>
+    <!-- script -->
+  </body>
+</html>

@@ -2,8 +2,14 @@
 
 The Soy backend is an MCP server reached directly over signed, NIP-44-encrypted
 Nostr transport. It provides persistent casual scoreboards, leased named rooms,
-and matchmaking. It does not execute uploaded game code or run a game simulation.
+and matchmaking. The public service does not execute uploaded game code or run a game simulation.
 No HTTP endpoint proxies these calls.
+
+An opt-in dynamic backend supports schema-defined handlers and durable instances in
+soyLI preview, plus a qualified Linux provider deployment with explicit creator
+admission. Public hosting remains disabled until operator activation. See
+[DYNAMIC-BACKENDS.md](DYNAMIC-BACKENDS.md) for the source-build contract, account
+proofs, restrictions and rollout instructions.
 
 The service uses `@contextvm/sdk` 0.13.16 and MCP SDK 1.30.0. Browser mediation targets
 [NAP-CVM PR 31, ad68a938](https://github.com/napplet/naps/blob/ad68a938236e9230324e377cd005008a315ff402/naps/NAP-CVM.md).
@@ -27,22 +33,22 @@ Input schemas are in `packages/multiplayer/src/contracts.ts`, `rooms.ts` and
 errors use `isError`. The transport supplies the authenticated client key.
 Caller-supplied `_meta.clientPubkey` cannot impersonate another player.
 
-| Tool                 | Behavior                                                               |
-| -------------------- | ---------------------------------------------------------------------- |
-| `soy_session`        | Current transport actor, contract version, families and polling policy |
-| `soy_board_register` | Creator-authorized registration of immutable board rules               |
-| `soy_board_submit`   | Update the caller's personal best; retries do not add scores           |
-| `soy_board_read`     | Current ordered scores plus the caller's personal best                 |
+| Tool                 | Behavior                                                                         |
+| -------------------- | -------------------------------------------------------------------------------- |
+| `soy_session`        | Current transport actor, contract version, families and polling policy           |
+| `soy_board_register` | Creator-authorized registration of immutable board rules                         |
+| `soy_board_submit`   | Update the caller's personal best; retries do not add scores                     |
+| `soy_board_read`     | Current ordered scores plus the caller's personal best                           |
 | `soy_board_entry`    | One public personal best with its structured attachment; optional revision check |
-| `soy_room_create`    | Create a named, optionally listed room with a chosen capacity          |
-| `soy_room_list`      | List rooms in an author-qualified napplet/protocol namespace           |
-| `soy_room_join`      | Join within provider capacity and return current peer keys             |
-| `soy_room_status`    | Renew membership and return current peers                              |
-| `soy_room_leave`     | Leave without closing the room for other members                       |
-| `space_match_join`   | Join an exact-release queue; repeated joins reuse the ticket           |
-| `space_match_status` | Read own ticket and renew a waiting lease                              |
-| `space_match_leave`  | Leave the fixed match; this older queue contract closes it for peers   |
-| `soy_ice`            | Temporary authenticated TURN credentials for the host                  |
+| `soy_room_create`    | Create a named, optionally listed room with a chosen capacity                    |
+| `soy_room_list`      | List rooms in an author-qualified napplet/protocol namespace                     |
+| `soy_room_join`      | Join within provider capacity and return current peer keys                       |
+| `soy_room_status`    | Renew membership and return current peers                                        |
+| `soy_room_leave`     | Leave without closing the room for other members                                 |
+| `space_match_join`   | Join an exact-release queue; repeated joins reuse the ticket                     |
+| `space_match_status` | Read own ticket and renew a waiting lease                                        |
+| `space_match_leave`  | Leave the fixed match; this older queue contract closes it for peers             |
+| `soy_ice`            | Temporary authenticated TURN credentials for the host                            |
 
 Room membership lasts 60 seconds without renewal. Poll status every 2–20 seconds.
 Rooms disappear when their last lease expires. Provider defaults are 1,000 rooms,
@@ -132,7 +138,7 @@ they do not establish deployment or an independently built game using the featur
 ## Provider selection and schema identity
 
 The host's curated families are `soy.matchmaking.v1`, `soy.rooms.v1`,
-`soy.boards.v1` and `soy.boards.v2`. These are Soy service contracts exposed through the standard
+`soy.boards.v1`, `soy.boards.v2` and the optional `soy.backends.v1`. These are Soy service contracts exposed through the standard
 NAP-CVM registry, not additions to the NAP browser namespace. Direct `callTool`
 works with other CVM providers. Selecting another provider does not migrate scores,
 rooms or active sessions. There is no automatic stateful-provider fallback.

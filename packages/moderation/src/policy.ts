@@ -32,6 +32,8 @@ const actions = [
   'feature-down',
   'admin-add',
   'admin-remove',
+  'backend-allow',
+  'backend-revoke',
 ] as const;
 const audit = rule.extend({
   action: z.enum(actions),
@@ -47,6 +49,7 @@ const schema = z.object({
     .max(256)
     .default([]),
   admins: z.array(z.string().regex(hex)).max(32).default([]),
+  backendCreators: z.array(z.string().regex(hex)).max(256).default([]),
   audit: z.array(audit).max(500),
   used: z.array(z.object({ id: z.string().regex(hex), expires: z.number().int() })).max(1000),
 });
@@ -57,6 +60,7 @@ const empty = (): Policy => ({
   rules: [],
   featured: [],
   admins: [],
+  backendCreators: [],
   audit: [],
   used: [],
 });
@@ -86,7 +90,11 @@ export function readPolicy(path = policyPath()) {
         throw new Error();
       keys.add(`${r.type}:${r.target}`);
     }
-    if (new Set(policy.admins).size !== policy.admins.length) throw new Error();
+    if (
+      new Set(policy.admins).size !== policy.admins.length ||
+      new Set(policy.backendCreators).size !== policy.backendCreators.length
+    )
+      throw new Error();
     const featured = new Set<string>();
     for (const r of policy.featured) {
       const key = `${r.type}:${r.target}`;
@@ -188,6 +196,10 @@ export const actionSchema = z
   .refine(
     (input) => !input.action.startsWith('admin-') || input.type === 'pubkey',
     'Administrators must be public keys.',
+  )
+  .refine(
+    (input) => !input.action.startsWith('backend-') || input.type === 'pubkey',
+    'Backend creators must be public keys.',
   );
 /** Environment keys are recovery administrators and cannot be removed through the UI. */
 export function configuredAdmins() {
@@ -202,6 +214,25 @@ export function configuredAdmins() {
 }
 export function effectiveAdmins(policy = readPolicy()) {
   return [...new Set([...configuredAdmins(), ...policy.admins])];
+}
+/** Operator bootstrap grants stay visible and cannot be removed by a browser edit. */
+export function configuredBackendCreators() {
+  return [
+    ...new Set(
+      (process.env.SPACE_DYNAMIC_CREATORS ?? '')
+        .split(',')
+        .filter((s) => s.trim())
+        .map((s) => normalizeTarget('pubkey', s)),
+    ),
+  ];
+}
+export function effectiveBackendCreators(policy = readPolicy()) {
+  const blockedAuthors = new Set(
+    policy.rules.filter((r) => r.type === 'pubkey').map((r) => r.target),
+  );
+  return [...new Set([...configuredBackendCreators(), ...policy.backendCreators])].filter(
+    (key) => !blockedAuthors.has(key),
+  );
 }
 export type ModerationAction = z.infer<typeof actionSchema>;
 /** One atomic document contains rules, replay receipts and the bounded audit trail. */
@@ -228,7 +259,7 @@ export function updatePolicy(
     const current = readPolicy(path);
     // Check again while holding the write lock: a revoked admin cannot race a request.
     if (
-      (authorize || input.action.startsWith('admin-')) &&
+      (authorize || input.action.startsWith('admin-') || input.action.startsWith('backend-')) &&
       !effectiveAdmins(current).includes(actor)
     )
       throw new PolicyError('This account is not an administrator.', 403);
@@ -251,6 +282,7 @@ export function updatePolicy(
         r.target !== target,
     );
     const admins = [...current.admins];
+    const backendCreators = [...current.backendCreators];
     const item = { type: input.type, target, reason: input.reason, actor, at: now };
     if (input.action === 'block') rules.push(item);
     if (input.action === 'feature' && (item.type === 'address' || item.type === 'event'))
@@ -278,6 +310,28 @@ export function updatePolicy(
         throw new PolicyError('Keep at least one administrator.', 409);
       admins.splice(position, 1);
     }
+    if (input.action === 'backend-allow') {
+      if (current.rules.some((r) => r.type === 'pubkey' && r.target === target))
+        throw new PolicyError(
+          'Unblock this creator before granting backend deployment access.',
+          409,
+        );
+      if (configuredBackendCreators().includes(target) || backendCreators.includes(target))
+        throw new PolicyError('This account already has backend deployment access.', 409);
+      if (backendCreators.length >= 256)
+        throw new PolicyError('Backend creator limit reached.', 409);
+      backendCreators.push(target);
+    }
+    if (input.action === 'backend-revoke') {
+      if (configuredBackendCreators().includes(target))
+        throw new PolicyError(
+          'Operator-granted deployment access is managed in server configuration.',
+          409,
+        );
+      const position = backendCreators.indexOf(target);
+      if (position < 0) throw new PolicyError('This account has no backend deployment grant.', 409);
+      backendCreators.splice(position, 1);
+    }
     if (featured.length > 256) throw new PolicyError('Featured collection capacity reached.', 409);
     if (rules.length > 10000) throw new PolicyError('Block list capacity reached.', 409);
     const next: Policy = {
@@ -286,6 +340,7 @@ export function updatePolicy(
       rules,
       featured,
       admins,
+      backendCreators,
       audit: [
         ...current.audit,
         { ...item, action: input.action, revision: current.revision + 1, requestId },

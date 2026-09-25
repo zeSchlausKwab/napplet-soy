@@ -259,3 +259,13 @@ confirmed absence, retained shared data and incomplete requests. No manifest
 extension or website deletion API is required. NIP-5D and NAP pins are unchanged.
 GRASP retains deleted repository archives for 90 days by default; copies and forks
 outside the selected services are not recalled.
+# Dynamic backend service extension (2026-09-25)
+
+The feature branch adds opt-in `soy.backends.v1` MCP tools over the existing
+NAP-CVM transport. Module schemas are described separately from outer tool hashes.
+No new NAP capability, mandatory presentation metadata or REST API is introduced.
+The shell can bind a consenting signed-in account to its transport using an exact,
+unpublished proof scoped to provider/module. Provider signatures attest builds;
+they are not proof of honest execution. Public admission defaults off; explicit creator admission and verified Linux isolation are required. See
+[DYNAMIC-BACKENDS.md](DYNAMIC-BACKENDS.md) for implemented behavior and limits.
+A possible upstream CEP is explicitly deferred; upstream protocol pins are unchanged.

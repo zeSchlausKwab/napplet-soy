@@ -76,6 +76,32 @@ These changes are deployed in `20260915084016730-23084`. Browser verification co
 sign-in access, declined signatures and retries, identifier/title search, protected
 keys, live grants/revocation, late responses after sign-out and narrow layouts.
 
+## Backend deployment access and tabs
+
+The workspace separates Napplets, Creators, Revisions, Assets, Backend slots,
+Administrators, Featured and History into keyboard-accessible tabs. Each tab retains
+its selected identifier and reason when you switch; mobile navigation scrolls
+horizontally without widening the page.
+
+**Backend slots** grants/revokes the ability to build and activate creator-defined
+CVM modules. Search by a cached name or paste an npub/hex key; each signed action
+requires a reason and the current policy revision. Grants confer no site-admin
+powers. Up to 256 managed creator keys are persisted as `backendCreators` in the
+existing private policy, with the same writer lock, replay protection and audit.
+`SPACE_DYNAMIC_CREATORS` supplies protected operator grants; the first deployment
+admits the configured launch admin. Other site admins do not automatically receive
+compute access. Explicit author blocks suspend deployment even for granted accounts.
+
+The CVM reads changed policy on each build/activation/enable request and rechecks
+admission before accepting a completed build. Revocation needs no restart and does
+not delete existing code or worlds, interrupt their calls, or prevent author cleanup
+and disable operations. Re-enabling or activating another release requires admission.
+A missing/corrupt configured policy fails closed for deployment. Hosting itself is
+an operator setting; the UI shows configuration status, not a claim of live health.
+No new public HTTP API or NAP message is added: this extends the existing NIP-98
+operator endpoint. See [dynamic hosting](DYNAMIC-BACKENDS.md) for containment and
+provider limits.
+
 ## Rule scope
 
 | Target | Effect |

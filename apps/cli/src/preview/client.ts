@@ -188,6 +188,7 @@ async function refresh() {
     host = attachNappletHost({
       theme: shellTheme,
       backend: info.backend,
+      backendIdentity: info.backendIdentity,
       backendAliases: info.backendAliases,
       media: (session) =>
         mediaRoot.render(session ? createElement(MediaControls, { media: session }) : null),

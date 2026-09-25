@@ -1,8 +1,19 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.22.0**. A successful GitHub workflow run and published
+The source version is **0.23.0**. A successful GitHub workflow run and published
 release are separate acceptance steps.
+
+**0.23.0 — prepared for release:** creator-defined persistent backends through
+`soy.backends.v1`, with provider-built source receipts, schemas, release pinning,
+scoped account proofs and transactional state. soyLI adds module authoring/check/
+deployment commands, local durable preview, the `soy-backends` skill, a portable
+guide and frontend helper. Existing projects can run `soyli skills update` after
+upgrading. Hosts must enable isolated execution and grant creator deployment access.
+The shell adds administrator-managed deployment grants and an accessible tabbed
+administration workspace. See [dynamic backends](DYNAMIC-BACKENDS.md).
+Native release checks now compile a backend module on every supported platform.
+Publication, production activation and live verification will be recorded separately.
 
 **0.22.0 published 2026-09-24:**
 [GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.22.0),

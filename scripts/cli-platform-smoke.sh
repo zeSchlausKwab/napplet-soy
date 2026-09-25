@@ -23,6 +23,13 @@ cd example
 grep -Fq 'const FOLLOW_HOST_THEME = false;' src/main.ts
 grep -Fq 'App-owned colors' .agents/skills/napplet-ui/SKILL.md
 grep -Fq 'App-owned colors' .claude/skills/napplet-ui/SKILL.md
+# Verify dynamic guidance and actual compiler execution in every native package.
+[ -s docs/napplet-dynamic-backends.md ]
+[ -s docs/examples/backend-client.ts ]
+[ -s .agents/skills/soy-backends/SKILL.md ]
+[ -s .claude/skills/soy-backends/SKILL.md ]
+"$soyli_bin" backend init-module --json
+"$soyli_bin" backend check --json
 # Verify the assembled starter, including our added docs, using its pinned deps.
 "$soyli_bin" run verify
 "$soyli_bin" check --json

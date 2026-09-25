@@ -17,6 +17,8 @@ import { listingPreview, listingImage, listingVideo } from './listing';
 import type { Network } from '../../../../packages/identity/src/signer';
 import type { BackendProvider } from '../../../../packages/multiplayer/src/client';
 import { backendConfig } from '../../../../packages/multiplayer/src/contracts';
+import { backendProject } from '../backend';
+import { projectIdentity } from '../../../../packages/publish/src/config';
 
 const relayUrl = z
   .string()
@@ -45,6 +47,7 @@ export type PreviewRevision = {
   servers: string[];
   uploadServers: string[];
   hostIdentity: string;
+  backendIdentity?: string;
   requires: string[];
   relays: string[];
 };
@@ -78,12 +81,18 @@ export function startPreviewServer(
       throw new Error('Project exceeds preview limits.');
     const managed = await readAssets(fileURLToPath(root));
     const artifactHash = await sha256(bytes);
+    const backend = listing.backend ? await backendProject(fileURLToPath(root)) : undefined;
     const info: PreviewRevision = {
       backend: listing.backend,
       backendAliases: listing.backend && config.backend?.provider ? [config.backend.provider] : [],
       id: await sha256(`${artifactHash}:${configText}:${JSON.stringify(managed)}`),
       artifactHash,
       hostIdentity: `local-preview:${config.previewId}:${artifactHash}`,
+      ...(backend
+        ? {
+            backendIdentity: `${backend.pubkey}:35129:${projectIdentity(backend.project)}:${artifactHash}`,
+          }
+        : {}),
       requires: [
         ...new Set([
           ...config.requires,

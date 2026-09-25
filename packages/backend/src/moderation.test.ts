@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, setSystemTime, test } from 'bun:test';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PrivateKeySigner } from 'applesauce-signers/signers/private-key-signer';
@@ -14,11 +14,16 @@ import {
   manifestFeatured,
   readPolicy,
   updatePolicy,
+  configuredBackendCreators,
+  effectiveBackendCreators,
   type ModerationAction,
 } from '../../moderation/src/policy';
 import { artifact, gallery, playableManifest, resolveNapplet } from './catalog';
 import { ogResponse } from './og';
 import { previewResponse } from './previews';
+
+import { DynamicBackends } from '../../dynamic-backends/src/service';
+import { authorizationTemplate, PROFILE } from '../../dynamic-backends/src/contracts';
 
 const admin = new PrivateKeySigner(),
   outsider = new PrivateKeySigner();
@@ -39,6 +44,7 @@ afterEach(async () => {
   for (const name of [
     'SPACE_MODERATION_FILE',
     'SPACE_ADMIN_PUBKEYS',
+    'SPACE_DYNAMIC_CREATORS',
     'SPACE_SITE_ORIGIN',
     'SPACE_INDEX_DIR',
     'SPACE_PUBLICDEV',
@@ -407,3 +413,154 @@ test('authorized administration searches known blocked entries without exposing 
   ).toBe(true);
   expect(data.rules[0].target).toBe(data.catalog.entries[0].address);
 });
+
+test('signed backend grants reload immediately, preserve worlds on revocation, and fail closed', async () => {
+  const creator = await outsider.getPublicKey();
+  process.env.SPACE_DYNAMIC_CREATORS = actor;
+  const module = {
+    napplet: encodeAddress({ kind: 35129, pubkey: creator, identifier: 'admission-test' }),
+    name: 'worlds',
+  };
+  const source = {
+    repository: `30617:${creator}:admission-test`,
+    cloneUrl: 'https://git.example/test.git',
+    commit: 'a'.repeat(40),
+    manifest: 'backend/backend.json',
+  };
+  const files: Record<string, string> = {};
+  for (const name of ['backend.json', 'handler.ts', 'schemas.json'])
+    files['backend/' + name] = await readFile(
+      new URL(`../../dynamic-backends/fixtures/minicraft/${name}`, import.meta.url),
+      'utf8',
+    );
+  let fetches = 0;
+  const service = new DynamicBackends({
+    provider: actor,
+    sign: (event) => admin.signEvent(event),
+    admittedCreators: effectiveBackendCreators,
+    source: async () => {
+      fetches++;
+      return { source, files };
+    },
+  });
+  const transport = 'b'.repeat(64);
+  async function proof(operation: string, input: Record<string, unknown>) {
+    const args = { ...input, requestId: crypto.randomUUID() };
+    return {
+      ...args,
+      authorization: await outsider.signEvent(
+        authorizationTemplate(actor, transport, operation, args),
+      ),
+    };
+  }
+  async function grant(action: 'backend-allow' | 'backend-revoke', target = creator) {
+    const body = JSON.stringify({
+      action,
+      type: 'pubkey',
+      target,
+      reason: 'Controlled hosting trial',
+      revision: readPolicy().revision,
+    });
+    return adminResponse(request(await signed(body), body));
+  }
+  try {
+    expect(configuredBackendCreators()).toEqual([actor]);
+    expect(readPolicy().backendCreators).toEqual([]);
+    await expect(
+      service.build(transport, await proof('build', { module, source, buildProfile: PROFILE })),
+    ).rejects.toThrow('not admitted');
+    expect(fetches).toBe(0);
+    const outsiderBody = JSON.stringify({
+      action: 'backend-allow',
+      type: 'pubkey',
+      target: creator,
+      reason: 'Self-grant',
+      revision: 0,
+    });
+    expect(
+      (await adminResponse(request(await signed(outsiderBody, undefined, outsider), outsiderBody)))
+        .status,
+    ).toBe(403);
+    const allowed = await grant('backend-allow');
+    expect(allowed.status).toBe(200);
+    expect((await allowed.json()).backendCreators).toContain(creator);
+    expect(readPolicy().admins).not.toContain(creator);
+    const job = await service.build(
+      transport,
+      await proof('build', { module, source, buildProfile: PROFILE }),
+    );
+    let status: any;
+    for (let i = 0; i < 100; i++) {
+      status = service.buildStatus(transport, { build: job.build });
+      if (status.status !== 'building' && status.status !== 'queued') break;
+      await Bun.sleep(20);
+    }
+    expect(status.status, JSON.stringify(status)).toBe('ready');
+    const release = status.release;
+    service.activate(
+      transport,
+      await proof('activate', { module, release, expectedActiveRelease: null }),
+    );
+    const challenge = service.sessionChallenge(transport, { module, account: creator });
+    const session = service.sessionBind(transport, {
+      challenge: challenge.challenge,
+      authorization: await outsider.signEvent(challenge.proof),
+    }).session;
+    const intent = {
+      target: { module, release },
+      operation: 'createWorld',
+      input: {
+        name: 'Kept world',
+        seed: 1,
+        mode: 'creative',
+        visibility: 'public',
+        building: 'everyone',
+        guestsMayBuild: true,
+      },
+      requestId: crypto.randomUUID(),
+      expiresAt: Math.floor(Date.now() / 1000) + 240,
+      session,
+    };
+    const world = await service.invoke(transport, intent);
+    expect((await grant('backend-revoke')).status).toBe(200);
+    await expect(
+      service.build(transport, await proof('build', { module, source, buildProfile: PROFILE })),
+    ).rejects.toThrow('not admitted');
+    const activation = await proof('activate', { module, release, expectedActiveRelease: release });
+    expect(() => service.activate(transport, activation)).toThrow('not admitted');
+    expect(
+      (
+        await service.invoke(transport, {
+          ...intent,
+          target: { module, release, instance: world.instance },
+          operation: 'readWorld',
+          input: {},
+          requestId: crypto.randomUUID(),
+        })
+      ).result,
+    ).toHaveProperty('name', 'Kept world');
+    const revision = service.describe(transport, { module }).revision;
+    service.disable(
+      transport,
+      await proof('disable', { module, disabled: true, expectedModuleRevision: revision }),
+    );
+    const enable = await proof('disable', {
+      module,
+      disabled: false,
+      expectedModuleRevision: revision + 1,
+    });
+    expect(() => service.disable(transport, enable)).toThrow('not admitted');
+    expect((await grant('backend-revoke', actor)).status).toBe(409);
+    expect(
+      readPolicy()
+        .audit.slice(-2)
+        .map((a) => a.action),
+    ).toEqual(['backend-allow', 'backend-revoke']);
+    await writeFile(process.env.SPACE_MODERATION_FILE!, '{broken');
+    await expect(
+      service.build(transport, await proof('build', { module, source, buildProfile: PROFILE })),
+    ).rejects.toThrow('unavailable');
+  } finally {
+    await service.close();
+  }
+}, 15000);

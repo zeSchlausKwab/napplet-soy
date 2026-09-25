@@ -10,8 +10,27 @@ import {
 } from '../../multiplayer/src/client';
 import { readRelayUrl } from '../../nostr/src/relay-policy';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { BackendAccount, type BackendAccountOptions } from './backend-account';
 
 const families: Record<string, string[]> = {
+  'soy.backends.v1': [
+    'soy_session',
+    ...[
+      'build',
+      'build_status',
+      'describe',
+      'activate',
+      'disable',
+      'delete_release',
+      'session_challenge',
+      'session_bind',
+      'session_revoke',
+      'invoke',
+      'changes',
+      'purge_plan',
+      'purge_confirm',
+    ].map((name) => `soy_backend_${name}`),
+  ],
   'soy.matchmaking.v1': ['soy_session', 'soy_match_join', 'soy_match_status', 'soy_match_leave'],
   'soy.rooms.v1': [
     'soy_session',
@@ -59,6 +78,7 @@ export function transportSigner(storage: Pick<Storage, 'getItem' | 'setItem'>, s
 }
 
 export class NappletBackend {
+  private account?: BackendAccount;
   private connections = new Map<string, CvmConnection>();
   private approved = new Set<string>();
   private discovery = new Set<ApplesauceRelayPool>();
@@ -82,7 +102,28 @@ export class NappletBackend {
     private send: (message: Record<string, unknown>) => void,
     private consent: (label: string) => Promise<boolean>,
     private aliases: BackendProvider[] = [],
-  ) {}
+    account?: BackendAccountOptions,
+  ) {
+    if (account) this.account = new BackendAccount(account, () => signer.getPublicKey());
+  }
+  private async request(
+    connection: CvmConnection,
+    method: string,
+    params?: Record<string, unknown>,
+    timeout?: number,
+  ) {
+    if (method === 'tools/call' && this.account)
+      params = {
+        ...params,
+        arguments: await this.account.arguments(
+          connection,
+          connection.provider.pubkey,
+          params?.name,
+          z.record(z.string(), z.unknown()).parse(params?.arguments ?? {}),
+        ),
+      };
+    return connection.request(method, params, timeout);
+  }
   private ref(value: unknown) {
     const raw = z
       .object({ pubkey: z.string(), relays: z.array(z.string()).optional() })
@@ -174,7 +215,12 @@ export class NappletBackend {
         ref = this.ref(message.server);
       const connection = await this.connection(ref);
       try {
-        const result = await connection.request(request.method, request.params, opts.timeoutMs);
+        const result = await this.request(
+          connection,
+          request.method,
+          request.params,
+          opts.timeoutMs,
+        );
         return { message: { jsonrpc: '2.0', id: request.id, result } };
       } catch (error) {
         return {
@@ -271,7 +317,21 @@ export class NappletBackend {
             (!query.family || query.family === f) && (!query.search || f.includes(query.search)),
         )
         .slice(0, query.limit ?? 10);
-      return { entries: await Promise.all(names.map((f) => this.entry(f, {}))) };
+      const resolved = await Promise.allSettled(names.map((f) => this.entry(f, {})));
+      for (const result of resolved)
+        if (
+          result.status === 'rejected' &&
+          !(
+            result.reason instanceof Error &&
+            result.reason.message === 'Provider does not implement this family'
+          )
+        )
+          throw result.reason;
+      return {
+        entries: resolved.flatMap((result) =>
+          result.status === 'fulfilled' ? [result.value] : [],
+        ),
+      };
     }
     const family = z.string().max(100).parse(message.family);
     if (message.type === 'cvm.registry.has') {
@@ -289,7 +349,8 @@ export class NappletBackend {
         throw new Error('Tool not in selected family');
       const connection = await this.connection(entry.selected);
       return {
-        result: await connection.request(
+        result: await this.request(
+          connection,
           'tools/call',
           { name: message.tool, arguments: message.args ?? {} },
           opts.timeoutMs,

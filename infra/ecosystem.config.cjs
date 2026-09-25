@@ -23,6 +23,8 @@ module.exports = {
         SPACE_CVM_PUBLIC_RELAYS:
           process.env.SPACE_CVM_PUBLIC_RELAYS || process.env.SPACE_CVM_RELAYS || '',
         SPACE_MODERATION_FILE: process.env.SPACE_MODERATION_FILE || '',
+        SPACE_DYNAMIC_ENABLED: process.env.SPACE_DYNAMIC_ENABLED || '0',
+        SPACE_DYNAMIC_CREATORS: process.env.SPACE_DYNAMIC_CREATORS || '',
         SPACE_ADMIN_PUBKEYS: process.env.SPACE_ADMIN_PUBKEYS || '',
         NODE_ENV: 'production',
         HOST: '127.0.0.1',

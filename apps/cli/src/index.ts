@@ -27,6 +27,7 @@ import {
 import { ask, hiddenInput as readHiddenInput, secretStdin } from './input';
 import { publicationStatus } from '../../../packages/publish/src';
 import { initBackend, syncBackend, backendStatus } from './backend';
+import { initModule, checkModule, moduleCommand } from './dynamic-backend';
 import { checkPublication } from './publish-check';
 import { preview, checkProject, doctor } from './local';
 import { installBrowser } from './browser';
@@ -36,6 +37,11 @@ import { setupProject, buildProject, projectTool, installConformanceBrowser } fr
 import { installCreatorSkills } from './creator-kit';
 import { loadRemix, createRemix } from '../../../packages/remix/src';
 import { testMultiplayer, multiplayerOptions } from './multiplayer';
+
+if (process.argv.includes('--internal-backend-worker')) {
+  await (await import('../../../packages/dynamic-backends/src/worker')).backendWorker();
+  await new Promise(() => {});
+}
 
 const help = `napplet soyLI
 
@@ -57,6 +63,9 @@ Usage:
   bun run soyli project show|set <json-file> [--project <folder>]
   bun run soyli config [init] [--project <folder>]
   bun run soyli backend init|sync|status [--project <folder>]
+  bun run soyli backend init-module|check [manifest.json] [--project <folder>]
+  bun run soyli backend deploy <manifest.json> | describe|disable|enable <module-name>
+  bun run soyli backend delete-release <module-name> --revision <release-hash>
   bun run soyli multiplayer <scenario.mjs> [--players 2] [--latency 50] [--jitter 15] [--seed 1]
     [--project <folder>] [--timeout 60] [--turn-binary <coturn-executable>]
   bun run soyli record [preview.webm] [--project <folder>]
@@ -594,16 +603,47 @@ try {
     );
     if (result.status !== 'passed') process.exitCode = 1;
   } else if (command === 'backend') {
-    if (argument || extra.length || !['init', 'sync', 'status'].includes(action))
-      throw new AccountError('USAGE', 'Use soyli backend init|sync|status [--project folder].');
-    const directory = values.project ?? process.cwd();
-    const result =
-      action === 'init'
-        ? await initBackend(directory, network, accounts)
-        : action === 'sync'
-          ? await syncBackend(directory, network, accounts, { signal: controller.signal, onAuth })
-          : await backendStatus(directory, network);
-    console.log(JSON.stringify(result, null, 2));
+    if (
+      [
+        'init-module',
+        'check',
+        'deploy',
+        'describe',
+        'disable',
+        'enable',
+        'delete-release',
+      ].includes(action)
+    ) {
+      if (extra.length || (action === 'init-module' && argument))
+        throw new AccountError('USAGE', 'Unexpected backend arguments.');
+      const directory = values.project ?? process.cwd();
+      const result =
+        action === 'init-module'
+          ? await initModule(directory)
+          : action === 'check'
+            ? await checkModule(directory, argument)
+            : await moduleCommand(
+                directory,
+                network,
+                accounts,
+                action,
+                argument ?? (action === 'deploy' ? 'backend/backend.json' : 'main'),
+                { signal: controller.signal, onAuth },
+                values.revision,
+              );
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      if (argument || extra.length || !['init', 'sync', 'status'].includes(action))
+        throw new AccountError('USAGE', 'Use soyli backend init|sync|status [--project folder].');
+      const directory = values.project ?? process.cwd();
+      const result =
+        action === 'init'
+          ? await initBackend(directory, network, accounts)
+          : action === 'sync'
+            ? await syncBackend(directory, network, accounts, { signal: controller.signal, onAuth })
+            : await backendStatus(directory, network);
+      console.log(JSON.stringify(result, null, 2));
+    }
   } else if (command === 'assets' || command === 'project') {
     const root = values.project ?? process.cwd();
     const current = await manageProject(root, network);

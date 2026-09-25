@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { backendIdentity, startBackend } from '../../../packages/multiplayer/src/service';
+import { effectiveBackendCreators } from '../../../packages/moderation/src/policy';
 import { validateProvider } from '../../../packages/multiplayer/src/client';
 
 const keyPath =
@@ -11,6 +12,18 @@ export async function startMatchmaking() {
   const service = await startBackend({
     relays,
     keyPath,
+    ...(process.env.SPACE_DYNAMIC_ENABLED === '1'
+      ? {
+          dynamic: {
+            local: false,
+            bundleDirectory: process.env.SPACE_DYNAMIC_BUNDLE_DIR,
+            sourceOrigins: (process.env.SPACE_DYNAMIC_SOURCE_ORIGINS ?? '')
+              .split(',')
+              .filter(Boolean),
+            creators: effectiveBackendCreators,
+          },
+        }
+      : {}),
     dataPath:
       process.env.SPACE_CVM_DATA_PATH ||
       resolve(import.meta.dir, '../../../.local/contextvm/boards.sqlite'),

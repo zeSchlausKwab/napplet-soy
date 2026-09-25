@@ -11,6 +11,9 @@ import { Boards } from './boards';
 import { Rooms } from './rooms';
 import { createMatchmakingServer } from './server';
 import type { BoardDefinition } from './contracts';
+import { DynamicBackends } from '../../dynamic-backends/src/service';
+import { gitSourceLoader } from '../../dynamic-backends/src/build';
+import { productionSandbox } from '../../dynamic-backends/src/sandbox';
 
 export async function backendIdentity(path: string) {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
@@ -59,7 +62,46 @@ export async function startBackend(options: {
   turnSecret?: string;
   relayOnly?: boolean;
   publicRelays?: string[];
+  dynamic?: {
+    sourceOrigins: string[];
+    local?: boolean;
+    workerCommand?: string[];
+    bundleDirectory?: string;
+    creators?: string[] | (() => string[]);
+  };
+  localModules?: {
+    module: import('../../dynamic-backends/src/contracts').ModuleRef;
+    input: import('../../dynamic-backends/src/build').BuildInput;
+  }[];
 }) {
+  const dynamicRequested = Boolean(options.dynamic || options.localModules?.length);
+  const localOnly =
+    options.relays.length > 0 &&
+    options.relays.every((value) => {
+      const url = new URL(value);
+      return url.protocol === 'ws:' && ['127.0.0.1', '[::1]'].includes(url.hostname);
+    }) &&
+    !options.announce &&
+    !options.publicRelays?.length;
+  let isolated: Awaited<ReturnType<typeof productionSandbox>> | undefined;
+  if (dynamicRequested && (!localOnly || options.dynamic?.local === false)) {
+    const creators =
+      typeof options.dynamic?.creators === 'function'
+        ? options.dynamic.creators()
+        : options.dynamic?.creators;
+    if (
+      options.localModules?.length ||
+      options.dynamic?.local !== false ||
+      !options.dynamic.bundleDirectory ||
+      !creators?.length ||
+      creators.some((key) => !/^[a-f0-9]{64}$/.test(key)) ||
+      !options.dynamic.sourceOrigins.length
+    )
+      throw new Error(
+        'Public dynamic backends require explicit creator admission, source origins and the production sandbox; local preview modules cannot be exposed.',
+      );
+    isolated = await productionSandbox(options.dynamic.bundleDirectory);
+  }
   if (
     options.maxPeers !== undefined &&
     (!Number.isInteger(options.maxPeers) || options.maxPeers < 2 || options.maxPeers > 64)
@@ -75,7 +117,34 @@ export async function startBackend(options: {
     boards.close();
     throw error;
   }
+  const dynamic =
+    options.dynamic || options.localModules?.length
+      ? new DynamicBackends({
+          path: `${options.dataPath}.dynamic.sqlite`,
+          provider: pubkey,
+          sign: (event) => signer.signEvent({ ...event, pubkey }),
+          source: gitSourceLoader(
+            options.dynamic?.sourceOrigins ?? [],
+            !isolated,
+            isolated?.sourceCommand,
+          ),
+          workerCommand: isolated?.workerCommand ?? options.dynamic?.workerCommand,
+          admittedCreators: isolated ? options.dynamic!.creators : undefined,
+          isolation: isolated?.isolation,
+          maxInFlight: isolated ? 2 : 8,
+          maxBuilds: isolated ? 1 : 2,
+        })
+      : undefined;
+  try {
+    for (const entry of options.localModules ?? [])
+      await dynamic!.provisionPreview(entry.module, entry.input);
+  } catch (error) {
+    await dynamic?.close();
+    boards.close();
+    throw error;
+  }
   const server = createMatchmakingServer(undefined, {
+    dynamic,
     boards,
     rooms: new Rooms(Date.now, 1000, options.maxPeers ?? 8),
     ice: (actor) =>

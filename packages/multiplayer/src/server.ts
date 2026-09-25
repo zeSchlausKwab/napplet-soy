@@ -9,6 +9,8 @@ import {
 } from './matchmaking';
 import { Boards, boardRegister, boardSubmit, boardRead, boardEntry } from './boards';
 import { Rooms, roomCreate, roomKey, roomNamespace } from './rooms';
+import { registerDynamicTools } from '../../dynamic-backends/src/server';
+import type { DynamicBackends } from '../../dynamic-backends/src/service';
 
 export function createMatchmakingServer(
   service = new Matchmaking(),
@@ -16,6 +18,7 @@ export function createMatchmakingServer(
     boards?: Boards;
     rooms?: Rooms;
     ice?: (actor: string) => Record<string, unknown>;
+    dynamic?: DynamicBackends;
   } = {},
 ) {
   const server = new McpServer({ name: 'napplet-soy-backend', version: '1.1.0' });
@@ -119,7 +122,14 @@ export function createMatchmakingServer(
     (actor) => ({
       version: 1,
       actor,
-      families: ['soy.matchmaking.v1', 'soy.rooms.v1', 'soy.boards.v1', 'soy.boards.v2'],
+      ...(options.dynamic ? { dynamic: options.dynamic.health() } : {}),
+      families: [
+        'soy.matchmaking.v1',
+        'soy.rooms.v1',
+        'soy.boards.v1',
+        'soy.boards.v2',
+        ...(options.dynamic ? ['soy.backends.v1'] : []),
+      ],
       payments: 'free',
       updates: 'poll',
       minimumPollMs: 2000,
@@ -186,10 +196,12 @@ export function createMatchmakingServer(
       z.object({}).strict(),
       (actor) => options.ice!(actor),
     );
+  if (options.dynamic) registerDynamicTools(server, options.dynamic);
   const close = server.close.bind(server);
   server.close = async () => {
     await close();
     boards.close();
+    await options.dynamic?.close();
   };
   return server;
 }

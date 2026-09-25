@@ -202,7 +202,7 @@ if [[ -f "$state_root/grasp/upstream.commit" ]] && [[ "$(cat "$state_root/grasp/
   echo 'GRASP upstream pin changed. Stop here: migrate/restore its full state separately before deployment.' >&2
   exit 1
 fi
-systemd-run --scope --quiet --unit="napplet-build-$release_id" -p MemoryMax=3G -p CPUQuota=200% -p TasksMax=512 runuser -u napplet -- env -u SPACE_MODERATION_FILE -u SPACE_ADMIN_PUBKEYS -u SPACE_INDEX_DIR -u SPACE_COMMUNITY_DIR GOMAXPROCS=2 GOFLAGS=-p=2 CARGO_BUILD_JOBS=2 nice -n 10 bash -ec 'cd "$1"; "$2" install --frozen-lockfile; if [[ "$3" == legacy-x64 ]]; then bash scripts/legacy-images.sh "$1" "$4"; fi; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$bun_bin" "$runtime_profile" "$app_root/tools/legacy-images"
+systemd-run --scope --quiet --unit="napplet-build-$release_id" -p MemoryMax=3G -p CPUQuota=200% -p TasksMax=512 runuser -u napplet -- env -u SPACE_MODERATION_FILE -u SPACE_ADMIN_PUBKEYS -u SPACE_DYNAMIC_CREATORS -u SPACE_DYNAMIC_ENABLED -u SPACE_DYNAMIC_SOURCE_ORIGINS -u SPACE_DYNAMIC_BUNDLE_DIR -u SPACE_INDEX_DIR -u SPACE_COMMUNITY_DIR GOMAXPROCS=2 GOFLAGS=-p=2 CARGO_BUILD_JOBS=2 nice -n 10 bash -ec 'cd "$1"; "$2" install --frozen-lockfile; if [[ "$3" == legacy-x64 ]]; then bash scripts/legacy-images.sh "$1" "$4"; fi; "$2" run check; "$2" run test:relay; "$2" run test:blossom; "$2" run test:grasp; "$2" scripts/relay.ts build "$1/bin/napplet-relay"; "$2" scripts/blossom.ts build "$1/bin/blossom.js"; "$2" scripts/grasp-build.ts "$1/bin/ngit-grasp"; "$2" run build' -- "$release_dir" "$bun_bin" "$runtime_profile" "$app_root/tools/legacy-images"
 
 runuser -u napplet -- "$bun_bin" "$release_dir/scripts/moderation-init.ts" "$SPACE_MODERATION_FILE"
 
@@ -214,6 +214,16 @@ export SPACE_CVM_RELAYS='ws://127.0.0.1:19351'
 export SPACE_RELAY_CVM_BIND='127.0.0.1:19351'
 export SPACE_CVM_PUBLIC_RELAYS="wss://$relay_domain"
 export SPACE_CVM_ANNOUNCE=1
+if [[ "${SPACE_DYNAMIC_ENABLED:-0}" == 1 ]]; then
+  [[ -n "${SPACE_DYNAMIC_CREATORS:-}" && -n "${SPACE_DYNAMIC_SOURCE_ORIGINS:-}" ]] || { echo 'Dynamic backends need explicit creator pubkeys and source origins in shared/server.env.' >&2; exit 1; }
+  bash "$release_dir/scripts/backend-sandbox-install.sh"
+  runuser -u napplet -- "$bun_bin" "$release_dir/scripts/backend-workers.ts" "$release_dir/bin/backend-workers"
+  # A release-local marker also makes rollback choose the correct process manager.
+  touch "$release_dir/dynamic-backends-enabled"
+  export SPACE_DYNAMIC_BUNDLE_DIR="$release_dir/bin/backend-workers"
+  systemd-run --quiet --wait --pipe --collect --unit="napplet-backend-preflight-$release_id" -p User=napplet -p MemoryMax=1G -p MemorySwapMax=0 -p TasksMax=128 -p CPUQuota=200% -p Delegate=yes -p DelegateSubgroup=supervisor -p OOMPolicy=continue -p RuntimeMaxSec=30s -p NoNewPrivileges=yes -p PrivateTmp=yes -p ProtectHome=yes -p ProtectSystem=strict -p "ReadWritePaths=/sys/fs/cgroup/system.slice/napplet-backend-preflight-$release_id.service" -- "$bun_bin" "$release_dir/scripts/backend-preflight.ts" "$SPACE_DYNAMIC_BUNDLE_DIR"
+  systemd-run --quiet --wait --pipe --collect --unit="napplet-backend-check-$release_id" -p User=napplet -p WorkingDirectory="$release_dir" -p MemoryMax=1G -p MemorySwapMax=0 -p TasksMax=128 -p CPUQuota=200% -p Delegate=yes -p DelegateSubgroup=supervisor -p OOMPolicy=continue -p RuntimeMaxSec=120s -p NoNewPrivileges=yes -p PrivateTmp=yes -p ProtectHome=yes -p ProtectSystem=strict -p "ReadWritePaths=/sys/fs/cgroup/system.slice/napplet-backend-check-$release_id.service" -E SPACE_TEST_BACKEND_SANDBOX=1 -E SPACE_DYNAMIC_BUNDLE_DIR="$SPACE_DYNAMIC_BUNDLE_DIR" -- "$bun_bin" test tests/services/dynamic-backend-linux.test.ts
+fi
 SPACE_CVM_PUBKEY=$(runuser -u napplet -- env SPACE_CVM_KEY_PATH="$SPACE_CVM_KEY_PATH" "$bun_bin" "$release_dir/apps/cvm/src/index.ts" --identity)
 export SPACE_CVM_PUBKEY
 if [[ "${SPACE_MANAGED_TURN:-1}" == 1 ]]; then
@@ -263,10 +273,19 @@ start_indexer() {
   [[ ! -f "$source_release/index-hints" ]] || hints=$(cat "$source_release/index-hints")
   runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$source_release")" SPACE_INDEX_HINTS="$hints" SPACE_RELEASE_DIR="$source_release" SPACE_RELEASE_ID="$(basename "$source_release")" SPACE_SERVICE_PREFIX=napplet PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/indexer.ecosystem.config.cjs" --update-env
 }
+stop_cvm() {
+  if [[ -f /etc/systemd/system/napplet-cvm.service ]]; then systemctl disable --now napplet-cvm.service; fi
+  pm2_run delete napplet-cvm || true
+}
 start_cvm() {
-  local source_release=$1
-  runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$source_release")" SPACE_RELEASE_DIR="$source_release" PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/cvm.ecosystem.config.cjs" --update-env
-  runuser -u napplet -- "$(release_bun "$source_release")" "$source_release/scripts/cvm-health.ts"
+  local source_release=$1 dynamic=0
+  if [[ -f "$source_release/dynamic-backends-enabled" ]]; then
+    dynamic=1
+    bash "$source_release/scripts/backend-service.sh" "$source_release" "$(release_bun "$source_release")"
+  else
+    runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$source_release")" SPACE_RELEASE_DIR="$source_release" SPACE_DYNAMIC_ENABLED=0 PATH="$source_release/bin:$PATH" node "$pm2_bin" start "$source_release/infra/cvm.ecosystem.config.cjs" --update-env
+  fi
+  runuser -u napplet -- env SPACE_DYNAMIC_ENABLED="$dynamic" "$(release_bun "$source_release")" "$source_release/scripts/cvm-health.ts"
 }
 indexer_ready() {
   local source_release=$1
@@ -331,7 +350,7 @@ rollback() {
       if [[ -f "$previous/infra/grasp.ecosystem.config.cjs" ]]; then start_grasp "$previous" || true; fi
       pm2_run delete napplet-indexer || true
       if [[ -f "$previous/infra/indexer.ecosystem.config.cjs" ]]; then start_indexer "$previous" || true; fi
-      pm2_run delete napplet-cvm || true
+      stop_cvm || true
       if [[ -f "$previous/scripts/cvm-health.ts" ]]; then start_cvm "$previous" || true; fi
       pm2_run delete napplet-web || true
       runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$(release_bun "$previous")" SPACE_RELEASE_DIR="$previous" SPACE_RELEASE_ID="$(basename "$previous")" PATH="$previous/bin:$PATH" node "$pm2_bin" start "$previous/infra/ecosystem.config.cjs" --update-env || true
@@ -341,7 +360,7 @@ rollback() {
       pm2_run delete napplet-blossom || true
       pm2_run delete napplet-grasp || true
       pm2_run delete napplet-indexer || true
-      pm2_run delete napplet-cvm || true
+      stop_cvm || true
       rm -f "$app_root/current"
     fi
     pm2_run save --force || true
@@ -433,7 +452,7 @@ grasp_ready "$release_dir"
 pm2_run delete napplet-indexer || true
 start_indexer "$release_dir"
 indexer_ready "$release_dir"
-pm2_run delete napplet-cvm || true
+stop_cvm
 start_cvm "$release_dir"
 pm2_run delete napplet-web || true
 runuser -u napplet -- env PM2_HOME="$state_root/pm2" BUN_BIN="$bun_bin" SPACE_RELEASE_DIR="$release_dir" SPACE_RELEASE_ID="$release_id" PATH="$PATH" node "$pm2_bin" start "$release_dir/infra/ecosystem.config.cjs" --update-env

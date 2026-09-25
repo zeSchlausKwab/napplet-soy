@@ -13,6 +13,9 @@ import {
   Users,
   FileCode,
   Boxes,
+  Server,
+  History,
+  ListOrdered,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNostr } from '@/components/nostr-provider';
@@ -65,6 +68,14 @@ const sections = [
       'An asset block denies those exact bytes, including direct storage requests. Stored data is retained.',
   },
   {
+    entity: 'backend',
+    title: 'Backend slots',
+    icon: Server,
+    hint: 'Search creators, or paste an npub / hex public key.',
+    scope:
+      'Allow creators to deploy persistent backend rules on our CVM. This grants deployment access, not site administration. Removing access stops new builds and activations; existing worlds keep running.',
+  },
+  {
     entity: 'admin',
     title: 'Administrators',
     icon: ShieldCheck,
@@ -82,6 +93,8 @@ const outcomes: Record<Change['action'], string> = {
   'feature-down': 'Moved later',
   'admin-add': 'Administrator added',
   'admin-remove': 'Administrator removed',
+  'backend-allow': 'Deployment access granted',
+  'backend-revoke': 'Deployment access removed',
 };
 function Admin() {
   const { pubkey, adminAccess, refreshAdminAccess, needsReconnect, connect } = useNostr();
@@ -115,6 +128,12 @@ function Admin() {
 function AdminWorkspace({ pubkey, needsReconnect }: { pubkey: string; needsReconnect: boolean }) {
   const { refreshAdminAccess, connect } = useNostr();
   const router = useRouter();
+  const [tab, setTab] = useState<string>('address');
+  const tabs = [
+    ...sections.map((s) => ({ id: s.entity, label: s.title, icon: s.icon })),
+    { id: 'featured', label: 'Featured', icon: ListOrdered },
+    { id: 'history', label: 'History', icon: History },
+  ];
   const [state, setState] = useState<AdminState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -228,55 +247,140 @@ function AdminWorkspace({ pubkey, needsReconnect }: { pubkey: string; needsRecon
       )}
       {state && (
         <>
-          <nav className="admin-nav" aria-label="Administration sections">
-            {sections.map((s) => (
-              <a key={s.entity} href={`#admin-${s.entity}`}>
-                {s.title}
-              </a>
-            ))}
-            <a href="#admin-featured">Featured order</a>
-            <a href="#admin-history">Recent changes</a>
-          </nav>
+          <div className="admin-tabs" role="tablist" aria-label="Administration sections">
+            {tabs.map(({ id, label, icon: Icon }, index) => {
+              const count =
+                id === 'backend'
+                  ? state.backendCreators.length
+                  : id === 'admin'
+                    ? state.admins.length
+                    : id === 'featured'
+                      ? state.featured.length
+                      : id === 'history'
+                        ? state.audit.length
+                        : state.rules.filter((r) => r.type === id).length;
+              return (
+                <button
+                  type="button"
+                  role="tab"
+                  key={id}
+                  id={`admin-tab-${id}`}
+                  aria-selected={tab === id}
+                  aria-controls={`admin-panel-${id}`}
+                  tabIndex={tab === id ? 0 : -1}
+                  onClick={() => setTab(id)}
+                  onKeyDown={(event) => {
+                    const next =
+                      event.key === 'Home'
+                        ? 0
+                        : event.key === 'End'
+                          ? tabs.length - 1
+                          : event.key === 'ArrowRight'
+                            ? (index + 1) % tabs.length
+                            : event.key === 'ArrowLeft'
+                              ? (index + tabs.length - 1) % tabs.length
+                              : -1;
+                    if (next < 0) return;
+                    event.preventDefault();
+                    setTab(tabs[next].id);
+                    document
+                      .getElementById(`admin-tab-${tabs[next].id}`)
+                      ?.focus({ preventScroll: true });
+                    document
+                      .getElementById(`admin-tab-${tabs[next].id}`)
+                      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                  }}
+                >
+                  <Icon size={17} />
+                  <span>{label}</span>
+                  <span className="admin-tab-count" aria-hidden="true">
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <p className="muted admin-search-note">
             Search covers up to {state.catalog.limit.toLocaleString()} recent indexed releases and
             saved policy entries, including blocked content. Paste an exact identifier to manage
             anything else.
           </p>
           {sections.map((section) => (
-            <EntitySection
+            <div
               key={section.entity}
-              section={section}
-              state={state}
-              busy={busy}
-              change={change}
-            />
-          ))}
-          <FeaturedOrder state={state} busy={busy} change={change} />
-          <section
-            id="admin-history"
-            className="admin-history"
-            aria-labelledby="admin-history-title"
-          >
-            <h2 id="admin-history-title">Recent changes</h2>
-            <p className="muted">Showing the latest 30 of up to 500 retained actions.</p>
-            <ol className="admin-audit">
-              {[...state.audit]
-                .reverse()
-                .slice(0, 30)
-                .map((item) => (
-                  <li key={item.revision}>
+              role="tabpanel"
+              id={`admin-panel-${section.entity}`}
+              aria-labelledby={`admin-tab-${section.entity}`}
+              hidden={tab !== section.entity}
+              tabIndex={0}
+            >
+              {section.entity === 'backend' && (
+                <div className="admin-hosting-status">
+                  <span className={`admin-hosting-dot ${state.backendHosting ? 'is-live' : ''}`} />
+                  <div>
                     <strong>
-                      #{item.revision} · {outcomes[item.action]}
+                      {state.backendHosting
+                        ? 'Backend hosting enabled'
+                        : 'Backend hosting is not enabled'}
                     </strong>
-                    <code>{item.target}</code>
-                    <p>{item.reason}</p>
-                    <small>
-                      {new Date(item.at * 1000).toLocaleString()} · {item.actor.slice(0, 12)}…
-                    </small>
-                  </li>
-                ))}
-            </ol>
-          </section>
+                    <p>
+                      {state.backendHosting
+                        ? 'Grants apply to the next deployment request. Each creator can register up to 8 modules.'
+                        : 'You can prepare access now. Hosting must be enabled in server configuration before creators can deploy.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <EntitySection section={section} state={state} busy={busy} change={change} />
+            </div>
+          ))}
+          <div
+            role="tabpanel"
+            id="admin-panel-featured"
+            aria-labelledby="admin-tab-featured"
+            hidden={tab !== 'featured'}
+            tabIndex={0}
+          >
+            <FeaturedOrder state={state} busy={busy} change={change} />
+          </div>
+          <div
+            role="tabpanel"
+            id="admin-panel-history"
+            aria-labelledby="admin-tab-history"
+            hidden={tab !== 'history'}
+            tabIndex={0}
+          >
+            <section
+              id="admin-history"
+              className="admin-history"
+              aria-labelledby="admin-history-title"
+            >
+              <h2 id="admin-history-title">Recent changes</h2>
+              <p className="muted">Showing the latest 30 of up to 500 retained actions.</p>
+              {!state.audit.length && (
+                <p className="admin-empty muted">
+                  No changes yet. Signed actions and their reasons will appear here.
+                </p>
+              )}
+              <ol className="admin-audit">
+                {[...state.audit]
+                  .reverse()
+                  .slice(0, 30)
+                  .map((item) => (
+                    <li key={item.revision}>
+                      <strong>
+                        #{item.revision} · {outcomes[item.action]}
+                      </strong>
+                      <code>{item.target}</code>
+                      <p>{item.reason}</p>
+                      <small>
+                        {new Date(item.at * 1000).toLocaleString()} · {item.actor.slice(0, 12)}…
+                      </small>
+                    </li>
+                  ))}
+              </ol>
+            </section>
+          </div>
         </>
       )}
     </>
@@ -294,7 +398,7 @@ function EntitySection({
   change: (input: Change) => Promise<void>;
 }) {
   const { entity, title, icon: Icon } = section;
-  const type = entity === 'admin' ? 'pubkey' : entity;
+  const type = entity === 'admin' || entity === 'backend' ? 'pubkey' : entity;
   const [query, setQuery] = useState('');
   const [reason, setReason] = useState('');
   const [selected, setSelected] = useState<TargetChoice | null>(null);
@@ -322,36 +426,56 @@ function EntitySection({
   const featured = state.featured.some((r) => r.type === type && r.target === target);
   const member = !!target && state.admins.includes(target);
   const recovery = !!target && state.recoveryAdmins.includes(target);
+  const admitted = !!target && state.backendCreators.includes(target);
+  const configured = !!target && state.configuredBackendCreators.includes(target);
   const actions: { action: Change['action']; label: string; disabled?: boolean }[] =
-    entity === 'admin'
+    entity === 'backend'
       ? [
           {
-            action: member ? 'admin-remove' : 'admin-add',
-            label: member ? 'Remove administrator' : 'Add administrator',
-            disabled: recovery,
+            action: admitted ? 'backend-revoke' : 'backend-allow',
+            label: admitted ? 'Remove deployment access' : 'Allow deployment',
+            disabled: configured || (!admitted && blocked),
           },
         ]
-      : [
-          { action: blocked ? 'unblock' : 'block', label: blocked ? 'Unblock' : 'Block' },
-          ...(['address', 'event'].includes(type)
-            ? [
-                {
-                  action: featured ? ('unfeature' as const) : ('feature' as const),
-                  label: featured ? 'Remove from Featured' : 'Feature',
-                  disabled: !featured && blocked,
-                },
-              ]
-            : []),
-        ];
+      : entity === 'admin'
+        ? [
+            {
+              action: member ? 'admin-remove' : 'admin-add',
+              label: member ? 'Remove administrator' : 'Add administrator',
+              disabled: recovery,
+            },
+          ]
+        : [
+            { action: blocked ? 'unblock' : 'block', label: blocked ? 'Unblock' : 'Block' },
+            ...(['address', 'event'].includes(type)
+              ? [
+                  {
+                    action: featured ? ('unfeature' as const) : ('feature' as const),
+                    label: featured ? 'Remove from Featured' : 'Feature',
+                    disabled: !featured && blocked,
+                  },
+                ]
+              : []),
+          ];
   const saved =
-    entity === 'admin'
-      ? state.admins.map((target) => ({
+    entity === 'backend'
+      ? state.backendCreators.map((target) => ({
           target,
-          reason: state.recoveryAdmins.includes(target)
-            ? 'Recovery administrator · server configuration'
-            : 'Administrator',
+          reason: state.configuredBackendCreators.includes(target)
+            ? 'Operator grant · server configuration'
+            : [...state.audit]
+                .reverse()
+                .find((a) => a.action === 'backend-allow' && a.target === target)?.reason ||
+              'Deployment access granted',
         }))
-      : state.rules.filter((r) => r.type === type);
+      : entity === 'admin'
+        ? state.admins.map((target) => ({
+            target,
+            reason: state.recoveryAdmins.includes(target)
+              ? 'Recovery administrator · server configuration'
+              : 'Administrator',
+          }))
+        : state.rules.filter((r) => r.type === type);
   const savedMatches = saved.filter(
     (item) =>
       !query.trim() ||
@@ -441,13 +565,21 @@ function EntitySection({
           <strong>{selection?.label || 'Identifier selected'}</strong>
           <code>{target}</code>
           <span className="muted">
-            {entity === 'admin'
-              ? recovery
-                ? 'Recovery administrator · server configuration'
-                : member
-                  ? 'Administrator'
-                  : 'Not an administrator'
-              : `${blocked ? 'Blocked' : 'No direct block'}${featured ? ' · Featured' : ''}`}
+            {entity === 'backend'
+              ? blocked
+                ? 'Deployment suspended · creator is blocked'
+                : configured
+                  ? 'Deployment allowed · operator grant'
+                  : admitted
+                    ? 'Deployment allowed'
+                    : 'No deployment access'
+              : entity === 'admin'
+                ? recovery
+                  ? 'Recovery administrator · server configuration'
+                  : member
+                    ? 'Administrator'
+                    : 'Not an administrator'
+                : `${blocked ? 'Blocked' : 'No direct block'}${featured ? ' · Featured' : ''}`}
           </span>
         </div>
       )}
@@ -503,12 +635,19 @@ function EntitySection({
           </span>
         </Button>
       )}
+      {entity === 'backend' && !saved.length && (
+        <p className="admin-empty muted">
+          No accounts have deployment access yet. Select a creator above to grant access.
+        </p>
+      )}
       {!!saved.length && (
-        <details className="admin-saved" open={entity === 'admin'}>
+        <details className="admin-saved" open={entity === 'admin' || entity === 'backend'}>
           <summary>
-            {entity === 'admin'
-              ? `${saved.length} administrators`
-              : `${saved.length} blocked ${title.toLowerCase()}`}
+            {entity === 'backend'
+              ? `${saved.length} account${saved.length === 1 ? '' : 's'} with deployment access`
+              : entity === 'admin'
+                ? `${saved.length} administrators`
+                : `${saved.length} blocked ${title.toLowerCase()}`}
           </summary>
           <p className="muted">
             {savedMatches.length} matching entries. Showing up to 20; use the search above to narrow
@@ -538,7 +677,12 @@ function EntitySection({
                     )
                   }
                 >
-                  Select {entity === 'admin' ? 'administrator' : 'block'}
+                  Select{' '}
+                  {entity === 'admin'
+                    ? 'administrator'
+                    : entity === 'backend'
+                      ? 'creator'
+                      : 'block'}
                 </Button>
               </li>
             ))}

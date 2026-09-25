@@ -143,7 +143,10 @@ CEP-15 hashes. Registry families are Soy contracts, not new NAP browser methods.
 Another provider needs user permission. No automatic provider failover migrates
 state; switching infrastructure is an explicit creator/operator decision.
 Payment-required results remain errors; there is no wallet authorization here.
-Generic streams, sampling, arbitrary uploaded backend code and server game
+The separate soy.backends.v1 family supports bounded persistent custom rules;
+read docs/napplet-dynamic-backends.md and the soy-backends skill for availability
+and authoring. The standard room/board service does not accept uploaded code.
+Generic streams, sampling and server game
 simulation are not provided by this service.
 
 ## Shared scoreboard

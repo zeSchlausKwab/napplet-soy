@@ -48,6 +48,8 @@ export type HostOptions = {
   configuration?: (config: NappletConfig | null) => void;
   media?: (media: NappletMedia | null) => void;
   backend?: BackendProvider;
+  /** Trusted local preview's configured napplet scope; never supplied by the frame. */
+  backendIdentity?: string;
   backendAliases?: BackendProvider[];
   theme?: ThemeSource;
 };
@@ -235,6 +237,13 @@ export function attachNappletHost(options: HostOptions) {
           sendScoped,
           (label) => choose('network', label),
           options.backendAliases,
+          {
+            identity: options.backendIdentity ?? options.identity,
+            pubkey,
+            sign: options.sign,
+            signal: lifetime.signal,
+            consent: (label) => choose('network', label),
+          },
         );
         if (domain === 'cvm') return backend.handle(message);
         webrtc ??= new NappletWebrtc(

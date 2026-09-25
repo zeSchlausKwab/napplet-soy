@@ -99,5 +99,6 @@ export const backendConfig = z
       .array(boardDefinition.omit({ napplet: true }))
       .max(16)
       .default([]),
+    modules: z.array(z.string().min(1).max(240)).max(8).optional(),
   })
   .strict();

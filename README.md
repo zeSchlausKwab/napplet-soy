@@ -202,6 +202,10 @@ Open [localhost:3000](http://localhost:3000). The local relay, Blossom, GRASP an
 backend services start with the dev stack. Local examples are test fixtures;
 they are not automatically published or featured on the public site.
 
+For a playable shared-world example, run `bun run demo:minicraft` and open
+[localhost:4180](http://127.0.0.1:4180). This separate local demo exercises the
+experimental dynamic backend; see the [MiniCraft guide](packages/dynamic-backends/demo/README.md).
+
 ```sh
 bun run dev publicdev      # browse public publications in development
 bun run check

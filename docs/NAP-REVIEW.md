@@ -367,3 +367,10 @@ verification. Both production web player and soyLI preview were exercised with
 the real pinned shim against isolated signed relay and Blossom fixtures, including
 mobile approval controls. This is not independent-client acceptance or full
 NAP conformance. No production deployment is part of this change.
+# Local dynamic-backend extension (2026-09-25)
+
+`soy.backends.v1` is a Soy MCP service family transported by the already pinned
+NAP-CVM proposal. It does not amend that proposal or create a new host domain.
+Its optional local preview and account binding do not affect other publishers'
+playback. An opt-in Linux deployment path is qualified separately; public activation and any CEP submission remain separate decisions. See
+[DYNAMIC-BACKENDS.md](DYNAMIC-BACKENDS.md) for the implementation boundary.

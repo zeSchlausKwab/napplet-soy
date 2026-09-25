@@ -7,6 +7,8 @@ import { graspHealth, localGraspOrigin, localGraspInstance, seedLocalGrasp } fro
 import { seedExamples } from './seed';
 import { backendIdentity } from '../packages/multiplayer/src/service';
 import { refreshPublicCatalog } from './publicdev';
+import { serviceStartupError } from './dev-diagnostics';
+import { DiagnosticError, diagnose, formatDiagnostic } from '../packages/diagnostics/src';
 import {
   buildBlossom,
   blossomBundle,
@@ -131,7 +133,13 @@ async function prepare() {
 }
 async function run(args: string[]) {
   const child = Bun.spawn(args, { cwd: root, env, stdout: 'inherit', stderr: 'inherit' });
-  if ((await child.exited) !== 0) throw new Error(`${args[0]} failed`);
+  const exitCode = await child.exited;
+  if (exitCode !== 0)
+    throw new DiagnosticError('DEV_TOOL_FAILED', 'A local development command failed.', {
+      tool: args[0],
+      exitCode,
+      recovery: 'Address the command error above, then rerun bun run dev.',
+    });
 }
 async function relayHealth() {
   try {
@@ -164,9 +172,7 @@ async function startRelay() {
     if (result?.build === build && result.instance === localRelayInstance) return;
     await Bun.sleep(500);
   }
-  throw new Error(
-    'Relay did not become ready. Check .local/pm2/logs/napplet-local-relay-error.log.',
-  );
+  throw await serviceStartupError(root, 'relay');
 }
 async function blossomHealth() {
   try {
@@ -199,9 +205,7 @@ async function startBlossom() {
     if (result?.build === build && result.instance === localBlossomInstance) return;
     await Bun.sleep(500);
   }
-  throw new Error(
-    'Blossom did not become ready. Check .local/pm2/logs/napplet-local-blossom-error.log.',
-  );
+  throw await serviceStartupError(root, 'blossom');
 }
 async function startGrasp() {
   await buildGrasp();
@@ -238,9 +242,7 @@ async function startGrasp() {
     }
     await Bun.sleep(500);
   }
-  throw new Error(
-    'GRASP did not become ready. Check .local/pm2/logs/napplet-local-grasp-error.log.',
-  );
+  throw await serviceStartupError(root, 'grasp');
 }
 async function startProxy() {
   await installCaddy();
@@ -278,7 +280,7 @@ async function startProxy() {
       return;
     await Bun.sleep(500);
   }
-  throw new Error('The local Caddy Git origin did not become ready. Check .local/pm2/logs.');
+  throw await serviceStartupError(root, 'caddy');
 }
 async function fetchBytes(url: string) {
   const response = await fetch(url);
@@ -397,10 +399,7 @@ try {
           } catch {}
           await Bun.sleep(1000);
         }
-        if (!ready)
-          throw new Error(
-            'The PM2/Caddy stack did not become healthy. Check bun run dev:doctor and .local/pm2/logs.',
-          );
+        if (!ready) throw await serviceStartupError(root, 'web');
       }
       console.log(`Production build under PM2 + Caddy: ${site}`);
       break;
@@ -408,6 +407,6 @@ try {
       throw new Error('Expected development, setup, doctor, production, or down.');
   }
 } catch (error) {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(formatDiagnostic(diagnose(error, `bun run dev (${command})`)));
   process.exit(1);
 }

@@ -2,7 +2,7 @@ import { nip19 } from 'nostr-tools';
 import { normalizeTarget, type RuleType } from '../../../../packages/moderation/src/targets';
 import type { AdminState } from '../../../../packages/moderation/src/admin-model';
 
-export type Entity = RuleType | 'admin';
+export type Entity = RuleType | 'admin' | 'backend';
 export type TargetChoice = { target: string; label: string; search: string };
 export function adminTarget(type: RuleType, value: string) {
   let input = value;
@@ -22,7 +22,7 @@ export function adminTarget(type: RuleType, value: string) {
   return normalizeTarget(type, input);
 }
 export function targetChoices(state: AdminState, entity: Entity): TargetChoice[] {
-  const type = entity === 'admin' ? 'pubkey' : entity;
+  const type = entity === 'admin' || entity === 'backend' ? 'pubkey' : entity;
   const names = new Map(state.catalog.profiles.map((p) => [p.pubkey, p.name]));
   const choices = new Map<string, TargetChoice>();
   function add(target: string, label: string, extra = '') {
@@ -65,6 +65,8 @@ export function targetChoices(state: AdminState, entity: Entity): TargetChoice[]
     for (const profile of state.catalog.profiles) add(profile.pubkey, profile.name);
   if (entity === 'admin')
     for (const key of state.admins) add(key, names.get(key) || 'Administrator');
+  if (entity === 'backend')
+    for (const key of state.backendCreators) add(key, names.get(key) || 'Backend creator');
   for (const rule of [...state.rules, ...state.featured])
     if (rule.type === type)
       add(rule.target, names.get(rule.target) || 'Saved identifier', rule.reason);

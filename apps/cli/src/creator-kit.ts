@@ -15,6 +15,12 @@ import bevyAssets from '../support/napplet_bevy.rs' with { type: 'text' };
 // Distinct module identity keeps Bun's raw-source cache separate from executable imports.
 import gamepadHelper from '../../../packages/input/src/gamepad.ts?raw' with { type: 'text' };
 import backendGuide from '../../../docs/BACKEND-CREATOR.md' with { type: 'text' };
+import dynamicBackendGuide from '../../../docs/DYNAMIC-BACKENDS-CREATOR.md' with { type: 'text' };
+import backendClientExample from '../templates/backend-client.ts.txt' with { type: 'text' };
+import backendSkill from '../templates/soy-backends.SKILL.md' with { type: 'text' };
+import minicraftHandler from '../../../packages/dynamic-backends/fixtures/minicraft/handler.ts?raw' with { type: 'text' };
+import minicraftManifest from '../../../packages/dynamic-backends/fixtures/minicraft/backend.json';
+import minicraftSchemas from '../../../packages/dynamic-backends/fixtures/minicraft/schemas.json';
 import sharedDataGuide from '../../../docs/SHARED-DATA.md' with { type: 'text' };
 import appDataHelper from '../../../packages/app-data/src/app-data.ts?raw' with { type: 'text' };
 import appDataContract from '../../../packages/app-data/src/app-data-contract.ts?raw' with { type: 'text' };
@@ -95,7 +101,15 @@ and report missing coverage honestly. Never invent a portrait recording option.
   Check the host's appData policy; generic outbox presence is not write permission.
   Existing social entities still use their standard NAPs. Public records are not private saves.
   Test discovery with another identity, updates after reopening and failed/stale writes.
-- For real-time multiplayer, read the responsive synchronization section of that guide.
+- For authoritative persistent rules (world edits, inventory, turns), read
+  the soy-backends skill and docs/napplet-dynamic-backends.md. Public deployment
+  requires a compatible provider and creator admission; check availability first. Use backend init-module,
+  declare backend.modules manifests, backend check and soyli dev. Keep handlers
+  self-contained; schemas, permissions, retry IDs and release pinning are part of
+  correctness. Test two identities, conflicts, retries and restart persistence.
+  Restart dev after backend edits. Never weaken ownership checks or switch accounts
+  to bypass an error; public player-created content still belongs in NIP-78.
+- For real-time multiplayer, read the responsive synchronization section of docs/napplet-backend.md.
   Copy/adapt docs/examples/multiplayer-scenario.mjs into your tests and use
   soyli multiplayer tests/multiplayer.mjs --latency 50 --jitter 15.
   Test a guest's visible movement/aim/shot feedback, not only connection success.
@@ -466,6 +480,13 @@ export function creatorSkills() {
   const files: Record<string, string> = {
     'docs/napplet-space.md': profile,
     'docs/napplet-backend.md': backendGuide,
+    'docs/napplet-dynamic-backends.md': dynamicBackendGuide,
+    'docs/examples/backend-client.ts': backendClientExample,
+    '.agents/skills/soy-backends/SKILL.md': backendSkill,
+    '.claude/skills/soy-backends/SKILL.md': backendSkill,
+    'docs/examples/minicraft/handler.ts': minicraftHandler,
+    'docs/examples/minicraft/backend.json': JSON.stringify(minicraftManifest, null, 2) + '\n',
+    'docs/examples/minicraft/schemas.json': JSON.stringify(minicraftSchemas, null, 2) + '\n',
     'docs/napplet-data.md': sharedDataGuide,
     'docs/examples/app-data.ts': appDataHelper,
     'docs/examples/app-data-contract.ts': appDataContract,

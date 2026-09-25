@@ -20,6 +20,8 @@ import {
 import { boardAuthorization } from '../../../packages/multiplayer/src/contracts';
 import { startBackend } from '../../../packages/multiplayer/src/service';
 import { startLocalBackendRelay } from '../../../packages/multiplayer/src/local-relay';
+import { localModule } from './dynamic-backend';
+import { manifestSchema } from '../../../packages/dynamic-backends/src/contracts';
 
 export const developmentAuthor = '79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798';
 async function publicFile(path: string, bytes: Uint8Array | string) {
@@ -60,6 +62,17 @@ export async function backendProject(directory: string, creator?: string) {
     napplet,
     provider: project.backend.provider,
     boards: project.backend.boards.map((b) => b.board),
+    ...(project.backend.modules?.length
+      ? {
+          modules: await Promise.all(
+            project.backend.modules.map(
+              async (path) =>
+                manifestSchema.parse(JSON.parse((await localModule(directory, path)).files[path]))
+                  .name,
+            ),
+          ),
+        }
+      : {}),
   };
   const bytes = new TextEncoder().encode(JSON.stringify(context, null, 2) + '\n');
   let previous: Uint8Array | undefined;
@@ -252,11 +265,19 @@ export async function localBackend(
   await mkdir(root, { recursive: true, mode: 0o700 });
   const relay = startLocalBackendRelay();
   try {
+    const localModules = await Promise.all(
+      (prepared.project.backend!.modules ?? []).map(async (path) => {
+        const input = await localModule(directory, path),
+          manifest = manifestSchema.parse(JSON.parse(input.files[path]));
+        return { module: { napplet: prepared.napplet, name: manifest.name }, input };
+      }),
+    );
     const service = await startBackend({
       relays: [relay.url],
       keyPath: join(root, 'identity'),
       dataPath: join(root, 'boards.sqlite'),
       ...connectivity,
+      localModules,
       localBoards: prepared.project.backend!.boards.map((board) => ({
         ...board,
         napplet: prepared.napplet,

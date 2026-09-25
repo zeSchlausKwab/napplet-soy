@@ -7,6 +7,13 @@ for (let attempt = 0; attempt < 3; attempt++) {
   try {
     const result = await connection.tool('soy_session');
     if (result.version !== 1) throw new Error('Wrong backend contract');
+    if (
+      process.env.SPACE_DYNAMIC_ENABLED === '1' &&
+      (!(result.families as string[]).includes('soy.backends.v1') ||
+        (result.dynamic as any)?.isolation?.profile !== 'soy-linux-bwrap-v1' ||
+        (result.dynamic as any)?.admission !== 'allowlist')
+    )
+      throw new Error('Dynamic backend isolation/admission health is unavailable.');
     break;
   } catch (error) {
     if (attempt === 2) throw error;
