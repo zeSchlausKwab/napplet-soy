@@ -4,7 +4,19 @@ GitHub Releases distribute the standalone CLI independently of the website/VPS.
 The source version is **0.23.1**. A successful GitHub workflow run and published
 release are separate acceptance steps.
 
-**0.23.1 prepared:** fixes dynamic-backend authoring and verification discovered
+**0.23.1 published 2026-09-25:**
+[GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.23.1),
+source `f4df0c76381d75a2ae992e3873e13f1eda5b4a62`.
+[Workflow 36174075409](https://github.com/zeSchlausKwab/napplet-soy/actions/runs/36174075409)
+passed the source gate and all four native build, installer/updater and fresh-project
+backend preview checks. All 11 release assets are public. Installer and manifest
+checksums and source revision were verified; a separate macOS ARM64 installation
+reports 0.23.1 and doctor reports current. An account-free generated project has
+the corrected skills and handler types with one clean initial commit. Local
+verification also passed 418 source tests and six browser preview/capture/identity
+regressions. The user's installation and website/provider deployment were unchanged.
+
+This patch fixes dynamic-backend authoring and verification discovered
 in an independently built multiplayer project. Frozen checks, screenshots, clips
 and multiplayer previews include declared backend manifests, handlers and schemas;
 missing source reports its path before browser startup. Backend configuration is
