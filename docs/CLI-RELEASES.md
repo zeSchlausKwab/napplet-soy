@@ -1,11 +1,20 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.23.4**. A successful GitHub workflow run and published
-release are separate acceptance steps.
+The current published version is **0.23.4**.
 
-**0.23.4 source — account approval timing fixes:** the shared shell and local preview
-validate backend account sessions when signing completes, so normal extension or
+**0.23.4 published 2026-09-26:**
+[GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.23.4),
+source `923e89e3074463484bde98e8b496b5433799dffd`.
+[Workflow 36221163275](https://github.com/zeSchlausKwab/napplet-soy/actions/runs/36221163275)
+passed the source gate and all four native build, installer/updater, delayed-signing
+browser and fresh-project checks. All 11 release assets are public. Installer and
+manifest checksums, source revision and native matrix were verified; an isolated
+public macOS ARM64 installation reports 0.23.4/current. The user's installation
+and accounts were unchanged.
+
+The shared shell and local preview validate backend account sessions when signing
+completes, so normal extension or
 remote-signer approval delays no longer produce `Invalid request`. Invalid provider
 challenges/session responses now identify the failing step.
 
@@ -19,11 +28,17 @@ looked in Playwright's default cache after the packaged CLI installed Chromium i
 its own cache. Release CI now shares an explicit browser cache between both
 processes; the regression remains required on all four platforms.
 
-After release, run `soyli update`, restart previews, and run `soyli skills update`
+Run `soyli update`, restart previews, and run `soyli skills update`
 inside existing projects. Review any preserved helper conflicts, then rebuild and
-republish to update copied client code. The website must also deploy the shared-host
-fix; installing soyLI alone does not update the public player. Existing uncertain
+republish to update copied client code. Hosts must also deploy the shared-host
+fix; installing soyLI alone does not update their public player. Existing uncertain
 requests retain their original IDs and expiry to avoid duplicate worlds.
+
+napplet.soy deployed the fix in website release `20260926054112843-53639` on
+2026-09-26. Live authenticated read-only browser checks pass with both 2.5-second
+and 16-second extension signing delays. The latter explicitly uses the updated
+approval timeout; previously published napplets still need their copied helper
+rebuilt and republished. See [deployment verification](DEPLOYMENT.md).
 
 **0.23.2 published 2026-09-25:**
 [GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.23.2),
@@ -276,9 +291,9 @@ installer is running before removing the reported `.install-lock` directory.
 2. Commit the change and push the commit, then its matching tag:
 
    ```sh
-   git tag -a soyli-v0.23.2 -m 'napplet soyLI 0.23.2'
+   git tag -a soyli-v0.23.4 -m 'napplet soyLI 0.23.4'
    git push origin main
-   git push origin soyli-v0.23.2
+   git push origin soyli-v0.23.4
    ```
 
 3. Watch **soyLI releases** in Actions. Publish only after all four native jobs pass.
@@ -322,7 +337,7 @@ access as appropriate for the maintainers.
 ```sh
 bun run check
 bun run cli:build --target darwin-arm64
-SPACE_TEST_CLI="$PWD/.local/cli/0.23.2/soyli-darwin-arm64/soyli" \
+SPACE_TEST_CLI="$PWD/.local/cli/0.23.4/soyli-darwin-arm64/soyli" \
   bun test tests/services/cli-update.test.ts tests/services/cli-distribution.test.ts
 ```
 
