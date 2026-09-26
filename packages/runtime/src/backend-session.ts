@@ -58,7 +58,9 @@ const rpc = z
   })
   .strict();
 const optionsSchema = z.object({
-  timeoutMs: z.number().int().min(1).max(25000).optional(),
+  // The iframe deadline includes human consent/signing. Individual provider RPCs
+  // still have CvmConnection's independent 25-second ceiling.
+  timeoutMs: z.number().int().min(1).max(120000).optional(),
   initialize: z.boolean().optional(),
   payment: z.enum(['deny', 'prompt', 'allow']).optional(),
   cache: z.enum(['default', 'reload', 'no-store']).optional(),

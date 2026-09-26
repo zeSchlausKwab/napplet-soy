@@ -24,7 +24,7 @@
     "cli:release": "bun scripts/cli-release.ts",
     "cvm": "bun apps/cvm/src/index.ts",
     "test:backend": "bun test packages/multiplayer apps/cli/src/backend.test.ts tests/services/backend-relay.test.ts",
-    "test:backend:browser": "bun test tests/services/backend-browser.test.ts",
+    "test:backend:browser": "bun test tests/services/backend-browser.test.ts tests/services/backend-account-browser.test.ts",
     "deploy": "bun scripts/deploy.ts",
     "dev:setup": "bun scripts/dev.ts setup",
     "dev:doctor": "bun scripts/dev.ts doctor",

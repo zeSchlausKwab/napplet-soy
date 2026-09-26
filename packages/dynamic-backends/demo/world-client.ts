@@ -54,7 +54,14 @@ export async function tool(name: string, args: unknown): Promise<any> {
   let response;
   try {
     response = await (window as any).napplet.cvm.registry.call('soy.backends.v1', name, args, {
-      timeoutMs: 15000,
+      timeoutMs: [
+        'soy_backend_invoke',
+        'soy_backend_changes',
+        'soy_backend_purge_plan',
+        'soy_backend_purge_confirm',
+      ].includes(name)
+        ? 120000
+        : 15000,
     });
   } catch (error) {
     throw new BackendFailure(

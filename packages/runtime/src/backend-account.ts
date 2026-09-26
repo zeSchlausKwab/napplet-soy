@@ -24,6 +24,7 @@ export class BackendAccount {
   constructor(
     private options: BackendAccountOptions,
     private actor: () => Promise<string>,
+    private now: () => number = Date.now,
   ) {}
   async arguments(
     connection: Connection,
@@ -68,7 +69,7 @@ export class BackendAccount {
         module: target.module,
         account: this.options.pubkey,
       });
-      const parsed = z
+      const challengeResult = z
         .object({
           challenge: z.string().uuid(),
           module: z.literal(ref.key),
@@ -76,8 +77,13 @@ export class BackendAccount {
           scope: z.literal('instance-actions'),
           proof: z.object({ created_at: z.number().int() }).passthrough(),
         })
-        .parse(challenge);
-      const now = Math.floor(Date.now() / 1000);
+        .safeParse(challenge);
+      if (!challengeResult.success)
+        throw new Error(
+          'Backend provider returned an invalid account challenge. Reconnect and retry.',
+        );
+      const parsed = challengeResult.data;
+      const now = Math.floor(this.now() / 1000);
       if (
         parsed.expiresAt <= now ||
         parsed.expiresAt > now + 300 ||
@@ -109,6 +115,9 @@ export class BackendAccount {
         challenge: parsed.challenge,
         authorization,
       });
+      // The provider starts the session after signing. A person or remote signer may
+      // spend seconds approving; the earlier challenge timestamp is not this clock.
+      const boundNow = Math.floor(this.now() / 1000);
       const result = z
         .object({
           session: z.string().uuid(),
@@ -116,15 +125,19 @@ export class BackendAccount {
           expiresAt: z
             .number()
             .int()
-            .min(now + 1)
-            .max(now + 3601),
+            .min(boundNow + 1)
+            .max(boundNow + 3601),
         })
-        .parse(bound);
+        .safeParse(bound);
+      if (!result.success)
+        throw new Error(
+          'Backend provider returned an invalid or expired account session. Reconnect and retry.',
+        );
       this.options.signal.throwIfAborted();
-      return result;
+      return result.data;
     };
     let cached = this.sessions.get(key);
-    if (cached && (await cached).expiresAt <= Math.floor(Date.now() / 1000) + 30) {
+    if (cached && (await cached).expiresAt <= Math.floor(this.now() / 1000) + 30) {
       this.sessions.delete(key);
       cached = undefined;
     }

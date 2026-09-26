@@ -189,8 +189,10 @@ The host owns a per-tab, napplet- and viewer-scoped transport signer in
 sessionStorage, shared by CVM and WebRTC. It survives same-tab reloads and build
 updates, but is not a durable profile identity. Duplicated tabs may inherit it;
 use independent browser contexts for distinct guest players. Provider sessions
-are capped at four, requests time out in at most 25 seconds after initialization,
-and replies are capped at 256 KB. Payment-required results remain errors.
+are capped at four, provider requests time out in at most 25 seconds after initialization,
+and replies are capped at 256 KB. The iframe call deadline can be up to two minutes
+to include human consent and signing; this does not extend backend execution limits.
+Payment-required results remain errors.
 
 Registry discovery checks live tool schemas and any advertised CEP-15 hash.
 It never equates semantics based only on tool names. Per-tool hashes are exposed;

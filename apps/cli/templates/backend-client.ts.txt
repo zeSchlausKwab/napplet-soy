@@ -13,7 +13,10 @@ export class BackendCallError extends Error {
 export function backendClient(napplet: any) {
   async function call<T>(name: string, args: unknown): Promise<T> {
     let reply: any;
-    try { reply = await napplet.cvm.registry.call('soy.backends.v1', name, args, {timeoutMs:15000}); }
+    // First account-bound calls include a host popup and extension/remote signing.
+    // This is the UI deadline, not a longer handler execution or retry window.
+    const accountCall = ['soy_backend_invoke', 'soy_backend_changes', 'soy_backend_purge_plan', 'soy_backend_purge_confirm'].includes(name);
+    try { reply = await napplet.cvm.registry.call('soy.backends.v1', name, args, {timeoutMs:accountCall ? 120000 : 15000}); }
     catch (error) { throw new BackendCallError(error instanceof Error ? error.message : 'Connection interrupted', false); }
     const value = reply.structuredContent ?? JSON.parse(reply.content?.find((item: any) => item.type === 'text')?.text ?? '{}');
     if (reply.isError) throw new BackendCallError(value.error?.message ?? 'Backend rejected this operation', true, value.error?.code);

@@ -1,8 +1,24 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.23.2**. A successful GitHub workflow run and published
+The source version is **0.23.3**. A successful GitHub workflow run and published
 release are separate acceptance steps.
+
+**0.23.3 source — account approval timing fixes:** the shared shell and local preview
+validate backend account sessions when signing completes, so normal extension or
+remote-signer approval delays no longer produce `Invalid request`. Invalid provider
+challenges/session responses now identify the failing step.
+
+The supplied backend client allows up to two minutes for account-bound calls,
+including consent and signing. Provider RPC deadlines, sandbox limits and intent
+expiry are unchanged. Native CI includes a real browser regression with a 16-second
+extension approval and an idempotent world-creation retry.
+
+After release, run `soyli update`, restart previews, and run `soyli skills update`
+inside existing projects. Review any preserved helper conflicts, then rebuild and
+republish to update copied client code. The website must also deploy the shared-host
+fix; installing soyLI alone does not update the public player. Existing uncertain
+requests retain their original IDs and expiry to avoid duplicate worlds.
 
 **0.23.2 published 2026-09-25:**
 [GitHub release](https://github.com/zeSchlausKwab/napplet-soy/releases/tag/soyli-v0.23.2),

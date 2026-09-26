@@ -290,6 +290,14 @@ account to this provider, transport and napplet module. Sessions last up to one 
 Reloading the host or reconnecting its transport may require fresh consent before
 then. Preview may also require reconnecting the selected browser identity. Restore
 viewer-scoped UI/storage when identity changes, not just at initial startup.
+The supplied client allows up to two minutes for account-bound calls, including
+the host prompt and extension/remote signer approval. Provider RPCs still time out
+within 25 seconds after initialization; handler execution and the original intent's
+retry expiry are unchanged. Session lifetime is checked when binding completes,
+so taking time to approve does not invalidate an otherwise valid session. Old
+projects must update their copied `docs/examples/backend-client.ts` as well as the
+host/soyLI to receive this behavior. A timeout still means an uncertain outcome:
+retain and retry the same intent, never silently create a replacement world.
 The iframe receives no key or arbitrary signing capability. Guest calls remain
 possible where the rules allow them. A signed-in identity must match across devices
 to retain world ownership. A guest transport key is not a durable profile identity.
