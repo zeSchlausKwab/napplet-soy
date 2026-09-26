@@ -1,10 +1,10 @@
 # soyLI releases and updates
 
 GitHub Releases distribute the standalone CLI independently of the website/VPS.
-The source version is **0.23.3**. A successful GitHub workflow run and published
+The source version is **0.23.4**. A successful GitHub workflow run and published
 release are separate acceptance steps.
 
-**0.23.3 source — account approval timing fixes:** the shared shell and local preview
+**0.23.4 source — account approval timing fixes:** the shared shell and local preview
 validate backend account sessions when signing completes, so normal extension or
 remote-signer approval delays no longer produce `Invalid request`. Invalid provider
 challenges/session responses now identify the failing step.
@@ -13,6 +13,11 @@ The supplied backend client allows up to two minutes for account-bound calls,
 including consent and signing. Provider RPC deadlines, sandbox limits and intent
 expiry are unchanged. Native CI includes a real browser regression with a 16-second
 extension approval and an idempotent world-creation retry.
+
+The unpublished 0.23.3 candidate passed source checks but its native browser test
+looked in Playwright's default cache after the packaged CLI installed Chromium in
+its own cache. Release CI now shares an explicit browser cache between both
+processes; the regression remains required on all four platforms.
 
 After release, run `soyli update`, restart previews, and run `soyli skills update`
 inside existing projects. Review any preserved helper conflicts, then rebuild and

@@ -12,6 +12,7 @@ on:
       - 'scripts/cli-*'
       - 'tests/services/cli-*'
       - 'tests/services/app-data-cli.test.ts'
+      - 'tests/services/backend-account-browser.test.ts'
       - 'package.json'
       - 'bun.lock'
   workflow_dispatch:
@@ -77,6 +78,8 @@ jobs:
         env:
           VERSION: ${{ needs.check.outputs.version }}
           PLATFORM: ${{ matrix.platform }}
+          # Packaged soyLI and source Playwright otherwise use different caches.
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/soyli-browsers
         run: |
           export SPACE_TEST_CLI="$PWD/.local/cli/$VERSION/soyli-$PLATFORM/soyli"
           "$SPACE_TEST_CLI" browser install
